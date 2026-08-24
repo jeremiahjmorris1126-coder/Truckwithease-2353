@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "icon": "./assets/icon.png",
+    "android": {
+      "package": "com.truckwithease_twe1.runable",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "REPLACE_WITH_GOOGLE_MAPS_KEY"
+        }
+      }
+    },
+    "extra": {
+      "apiUrl": "https://truckwi-0p0ovfn-preview-4200.runable.site/",
+      "applicationId": "truckwi-0p0ovfn"
+    },
+    "ios": {
+      "bundleIdentifier": "com.truckwithease_twe1.runable",
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "REPLACE_WITH_GOOGLE_MAPS_KEY"
+      }
+    },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#ffffff"
+    },
+    "name": "TruckWithEase",
+    "slug": "truckwithease",
+    "version": "1.0.0",
+    "scheme": "truckwithease",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "TruckWithEase uses your location to show your position on the live map, find nearby diesel, and share your position with dispatch."
+        }
+      ]
+    ]
+  }
+}

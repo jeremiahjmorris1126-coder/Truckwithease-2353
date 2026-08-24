@@ -1,0 +1,1769 @@
+import { useState, useEffect, useRef, lazy } from "react";
+import PocketBase from "pocketbase";
+const BrandingCenter = lazy(() => import("./pages/BrandingCenter"));
+const BrandIdentity = lazy(() => import("./pages/BrandIdentity"));
+const FMCSAELDIntegration = lazy(() => import("./pages/FMCSAELDIntegration"));
+const MorrishiveELDRevolutionPage = lazy(() => import("./pages/MorrishiveELDRevolutionPage"));
+const QuantumHOSAnalyticsDashboard = lazy(() => import("./pages/QuantumHOSAnalyticsDashboard"));
+const ELDHardwareMarketingPage = lazy(() => import("./pages/ELDHardwareMarketingPage"));
+const TruckWithEaseELDPage = lazy(() => import("./pages/TruckWithEaseELDPage"));
+const SwitchFromSamsaraPage = lazy(() => import("./pages/SwitchFromSamsaraPage"));
+const FMCSARegistrationPage = lazy(() => import("./pages/FMCSARegistrationPage"));
+const SignupPage = lazy(() => import("./SignupPage"));
+const AccessibleSignupPage = lazy(() => import("./AccessibleSignupPage"));
+const OnboardingPage = lazy(() => import("./OnboardingPage"));
+const DemoPage = lazy(() => import("./DemoPage"));
+const PricingPage = lazy(() => import("./PricingPage"));
+const SupportAgentTechnical = lazy(() => import("./SupportAgentTechnical"));
+const SupportAgentBilling = lazy(() => import("./SupportAgentBilling"));
+const FinancialModelDashboard = lazy(() => import("./FinancialModelDashboard"));
+const TutorialsPage = lazy(() => import("./TutorialsPage"));
+const SubscriberAgentPage = lazy(() => import("./SubscriberAgentPage"));
+const SystemMaintenanceAgentPage = lazy(() => import("./SystemMaintenanceAgentPage"));
+const SecurityAgentPage = lazy(() => import("./SecurityAgentPage"));
+const HOSComplianceAgentPage = lazy(() => import("./HOSComplianceAgentPage"));
+const QualityAssuranceAgentPage = lazy(() => import("./QualityAssuranceAgentPage"));
+const EntertainmentAgentPage = lazy(() => import("./EntertainmentAgentPage"));
+const BillingScanAgentPage = lazy(() => import("./BillingScanAgentPage"));
+const FleetMarketingPage = lazy(() => import("./FleetMarketingPage"));
+const APIIntegrationDashboard = lazy(() => import("./APIIntegrationDashboard"));
+const CompetitiveAdvantagesPage = lazy(() => import("./CompetitiveAdvantagesPage"));
+const CompetitorAnalysisPage = lazy(() => import("./CompetitorAnalysisPage"));
+const GrowthCommandPage = lazy(() => import("./GrowthCommandPage"));
+const LocationMemoryPage = lazy(() => import("./LocationMemoryPage"));
+const WeekInReviewPage = lazy(() => import("./WeekInReviewPage"));
+const TruckingNewsPage = lazy(() => import("./TruckingNewsPage"));
+const DriverChatPage = lazy(() => import("./DriverChatPage"));
+const TraxesPage = lazy(() => import("./TraxesPage"));
+const RigBucksPage = lazy(() => import("./BigRigPointsPage"));
+const SubscriptionSeatsPage = lazy(() => import("./pages/SubscriptionSeatsPage"));
+const LoadBoardLicenseManagementPage = lazy(() => import("./pages/LoadBoardLicenseManagementPage"));
+const AgentDashboardPage = lazy(() => import("./pages/AgentDashboardPage"));
+const LoadBoardOptionsPage = lazy(() => import("./pages/LoadBoardOptionsPage"));
+const FeatureCompletionAudit = lazy(() => import("./FeatureCompletionAudit"));
+const MigrationROICalculator = lazy(() => import("./MigrationROICalculator"));
+const SalesCollateral = lazy(() => import("./SalesCollateral"));
+const ComplianceAudit = lazy(() => import("./ComplianceAudit"));
+const ProofOfConceptSandbox = lazy(() => import("./ProofOfConceptSandbox"));
+const IntegrationVerification = lazy(() => import("./IntegrationVerification"));
+const CustomerMemorySystem = lazy(() => import("./CustomerMemorySystem"));
+const DocumentScanningSystem = lazy(() => import("./DocumentScanningSystem"));
+const OperationsHealthDashboard = lazy(() => import("./OperationsHealthDashboard"));
+const LeaderboardPage = lazy(() => import("./LeaderboardPage"));
+const RoadAgentPage = lazy(() => import("./RoadAgentPage"));
+const RoadContextPage = lazy(() => import("./pages/RoadContextPage"));
+const OnboardingWizardPage = lazy(() => import("./pages/OnboardingWizardPage"));
+const LaunchChecklistPage = lazy(() => import("./LaunchChecklistPage"));
+const ReferralPage = lazy(() => import("./ReferralPage"));
+const FontPreviewPage = lazy(() => import("./FontPreviewPage"));
+const MorrishiveLandingPage = lazy(() => import("./pages/MorrishiveLandingPage"));
+const TimezoneIntelligencePage = lazy(() => import("./pages/TimezoneIntelligencePage"));
+const AdminBoundariesPage = lazy(() => import("./pages/AdminBoundariesPage"));
+const IPGeolocationPage = lazy(() => import("./pages/IPGeolocationPage"));
+const IPWhoisPage = lazy(() => import("./pages/IPWhoisPage"));
+
+const CommandCenterPage = lazy(() => import("./CommandCenterPage"));
+const DriverProfilePage = lazy(() => import("./DriverProfilePage"));
+const TripPlannerPage = lazy(() => import("./TripPlannerPage"));
+const HOSLoggerPage = lazy(() => import("./HOSLoggerPage"));
+const DVIRPage = lazy(() => import("./DVIRPage"));
+const AICharactersPage = lazy(() => import("./AICharactersPage"));
+const APIAgentPage = lazy(() => import("./pages/APIAgentPage"));
+const APIDiagnosticPage = lazy(() => import("./pages/APIDiagnosticPage"));
+const ScanBillPage = lazy(() => import("./ScanBillPage"));
+const HReaseAgentPage = lazy(() => import("./HReaseAgentPage"));
+const HRPlatformPage = lazy(() => import("./HRPlatformPage"));
+const VehicleMaintenanceAgentPage = lazy(() => import("./VehicleMaintenanceAgentPage"));
+const LoadProfitPage = lazy(() => import("./LoadProfitPage"));
+const FuelFinderPage = lazy(() => import("./FuelFinderPage"));
+const LoadBoardMapAgentPage = lazy(() => import("./LoadBoardMapAgentPage"));
+const FleetLoadBoardPage = lazy(() => import("./FleetLoadBoardPage"));
+const ExpensesPage = lazy(() => import("./ExpensesPage"));
+const ReportsPage = lazy(() => import("./ReportsPage"));
+const TollsPage = lazy(() => import("./TollsPage"));
+const DispatchRoutingAgentPage = lazy(() => import("./DispatchRoutingAgentPage"));
+const WeatherPage = lazy(() => import("./WeatherPage"));
+const BreakdownPage = lazy(() => import("./BreakdownPage"));
+const ScorecardPage = lazy(() => import("./ScorecardPage"));
+const PermitBookPage = lazy(() => import("./PermitBookPage"));
+const FactoringPage = lazy(() => import("./FactoringPage"));
+const HardwareSoftwareBundle = lazy(() => import("./pages/HardwareSoftwareBundle"));
+const PricingStrategy = lazy(() => import("./pages/PricingStrategy"));
+
+const QATestingAgent = lazy(() => import("./pages/QATestingAgent"));
+const DailyMaintenanceAgent = lazy(() => import("./pages/DailyMaintenanceAgent"));
+const FuelCardPage = lazy(() => import("./FuelCardPage"));
+const ParkingPage = lazy(() => import("./ParkingPage"));
+const CheckoutPage = lazy(() => import("./CheckoutPage"));
+const FinanceAlertAgentPage = lazy(() => import("./FinanceAlertAgentPage"));
+const FleetProfilePage = lazy(() => import("./FleetProfilePage"));
+const MemoryManagementAgentPage = lazy(() => import("./MemoryManagementAgentPage"));
+const HealthPage = lazy(() => import("./HealthPage"));
+const StatePatrolPage = lazy(() => import("./StatePatrolPage"));
+const BypassPage = lazy(() => import("./BypassPage"));
+const DetentionPage = lazy(() => import("./DetentionPage"));
+const VoicePage = lazy(() => import("./VoicePage"));
+const HardwareInventoryAgentPage = lazy(() => import("./HardwareInventoryAgentPage"));
+const PayrollPage = lazy(() => import("./pages/PayrollPage"));
+const CompetitiveIntelligencePage = lazy(() => import("./pages/CompetitiveIntelligencePage"));
+const SamsaraConnectPage = lazy(() => import("./pages/SamsaraConnectPage"));
+const FleetVoicePage = lazy(() => import("./pages/FleetVoicePage"));
+const TwilioSetupPage = lazy(() => import("./pages/TwilioSetupPage"));
+const PageGuardianAgent = lazy(() => import("./pages/PageGuardianAgent"));
+const NeuralSafetyCore = lazy(() => import("./pages/NeuralSafetyCore"));
+const QuantumDispatchCore = lazy(() => import("./pages/QuantumDispatchCore"));
+const QuantumNexusPage = lazy(() => import("./QuantumNexusPage"));
+const UserGuideHub = lazy(() => import("./pages/UserGuideHub"));
+const AgentOrchestrator = lazy(() => import("./pages/AgentOrchestrator"));
+const ProfitableLanesPage = lazy(() => import("./pages/ProfitableLanesPage"));
+const HardwareSupplierIntegration = lazy(() => import("./HardwareSupplierIntegration"));
+const OnboardingGlossary = lazy(() => import("./OnboardingGlossary"));
+const DOTComplianceVault = lazy(() => import("./DOTComplianceVault"));
+const CommandOptimizer = lazy(() => import("./CommandOptimizer"));
+const FleetDashboardCustomizer = lazy(() => import("./FleetDashboardCustomizer"));
+const FleetQuickActions = lazy(() => import("./FleetQuickActions"));
+const LocationDataAgent = lazy(() => import("./LocationDataAgent"));
+const VehicleVINAgent = lazy(() => import("./VehicleVINAgent"));
+const CommandRepository = lazy(() => import("./CommandRepository"));
+const FeatureHealthMonitor = lazy(() => import("./FeatureHealthMonitor"));
+const ContactMessagesInbox = lazy(() => import("./ContactMessagesInbox"));
+const ShareAndOnboardPage = lazy(() => import("./ShareAndOnboardPage"));
+const QuantumIntegrationHub = lazy(() => import("./QuantumIntegrationHub"));
+const MicrosoftIntegration = lazy(() => import("./MicrosoftIntegration"));
+const SatelliteMapsIntegration = lazy(() => import("./SatelliteMapsIntegration"));
+const DriverGalaFaceTime = lazy(() => import("./DriverGalaFaceTime"));
+const DriverGalaAndroid = lazy(() => import("./DriverGalaAndroid"));
+const WalkieTalkieTraces = lazy(() => import("./WalkieTalkieTraces"));
+const DreamTeamAdmin = lazy(() => import("./DreamTeamAdmin"));
+const SupplierAdminPanel = lazy(() => import("./SupplierAdminPanel"));
+const SubscriptionsAdminPage = lazy(() => import("./SubscriptionsAdminPage"));
+const AccidentReportPage = lazy(() => import("./AccidentReportPage"));
+const DOTConnectPage = lazy(() => import("./DOTConnectPage"));
+const SafetySOSPage = lazy(() => import("./SafetySOSPage"));
+const CustomerBookPage = lazy(() => import("./CustomerBookPage"));
+
+const AppMaintenanceAgentPage = lazy(() => import("./AppMaintenanceAgentPage"));
+const QuantumNervePage = lazy(() => import("./QuantumNervePage"));
+const QuantumMindPage = lazy(() => import("./QuantumMindPage"));
+const GameUpPage = lazy(() => import("./pages/GameUpPage"));
+const CoverPage = lazy(() => import("./CoverPage"));
+const PlatformShowcasePage = lazy(() => import("./pages/PlatformShowcasePage"));
+const VehicleSelectorPage = lazy(() => import("./pages/VehicleSelectorPage"));
+const DriveWithEasePage = lazy(() => import("./pages/DriveWithEasePage"));
+const RideWithEasePage = lazy(() => import("./pages/RideWithEasePage"));
+const QuantumRoutingEngine = lazy(() => import("./pages/QuantumRoutingEngine"));
+const AdStrategyPage = lazy(() => import("./pages/AdStrategyPage"));
+const SocialCalendarPage = lazy(() => import("./pages/SocialCalendarPage"));
+const FleetSafetyIntelligencePage = lazy(() => import("./pages/FleetSafetyIntelligencePage"));
+const GeminiIntegrationPage = lazy(() => import("./pages/GeminiIntegrationPage"));
+const CodeVaultPage = lazy(() => import("./pages/CodeVaultPage"));
+const SafetyMeetingsPage = lazy(() => import("./pages/SafetyMeetingsPage"));
+const DriverScorecardPage = lazy(() => import("./pages/DriverScorecardPage"));
+const PredictiveMaintenancePage = lazy(() => import("./pages/PredictiveMaintenancePage"));
+const LiveComplianceMonitorPage = lazy(() => import("./pages/LiveComplianceMonitorPage"));
+const FleetCommunicationHubPage = lazy(() => import("./pages/FleetCommunicationHubPage"));
+const OutreachAgentPage = lazy(() => import("./pages/OutreachAgentPage"));
+const SafetyHRFusionPage = lazy(() => import("./pages/SafetyHRFusionPage"));
+const PhoneAssistantPage = lazy(() => import("./pages/PhoneAssistantPage"));
+const PersonalIndexPage = lazy(() => import("./pages/PersonalIndexPage"));
+const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
+const DocumentsPage = lazy(() => import("./pages/DocumentsPage"));
+const PrivacyDetailPage = lazy(() => import("./pages/PrivacyDetailPage"));
+const VoiceClonePage = lazy(() => import("./pages/VoiceClonePage"));
+const ComplianceAuthPage = lazy(() => import("./pages/ComplianceAuthPage"));
+const UserDocumentAccessPage = lazy(() => import("./pages/UserDocumentAccessPage"));
+const CloudUsageMonitorPage = lazy(() => import("./pages/CloudUsageMonitorPage"));
+const StorageGrowthScalabilityPage = lazy(() => import("./pages/StorageGrowthScalabilityPage"));
+const HapticLanguagePage = lazy(() => import("./pages/HapticLanguagePage"));
+const MultiDeviceHapticsPage = lazy(() => import("./pages/MultiDeviceHapticsPage"));
+const JJKellerCompliancePage = lazy(() => import("./pages/JJKellerCompliancePage"));
+const SignLanguageLearningPage = lazy(() => import("./pages/SignLanguageLearningPage"));
+const AgentTechnicianPage = lazy(() => import("./pages/AgentTechnicianPage"));
+const ResponsibleUseOnboardingPage = lazy(() => import("./pages/ResponsibleUseOnboardingPage"));
+const DriverHealthRecoveryPage = lazy(() => import("./pages/DriverHealthRecoveryPage"));
+const MedicalExaminerLocatorPage = lazy(() => import("./pages/MedicalExaminerLocatorPage"));
+const CustomerSupportPage = lazy(() => import("./pages/CustomerSupportPage"));
+const AndroidNativeSetupPage = lazy(() => import("./pages/AndroidNativeSetupPage"));
+const AccessibilityDeafPage = lazy(() => import("./pages/AccessibilityDeafPage"));
+const DeafCommunityBridgePage = lazy(() => import("./pages/DeafCommunityBridgePage"));
+const AccessibilityBlindPage = lazy(() => import("./pages/AccessibilityBlindPage"));
+const HumanSupportNetworkPage = lazy(() => import("./pages/HumanSupportNetworkPage"));
+const MaintenanceSchedulerPage = lazy(() => import("./pages/MaintenanceSchedulerPage"));
+const UniversalAccessibilityPage = lazy(() => import("./pages/UniversalAccessibilityPage"));
+const AccessibilityAgentsPage = lazy(() => import("./pages/AccessibilityAgentsPage"));
+const ExclusiveAgentVerificationPage = lazy(() => import("./pages/ExclusiveAgentVerificationPage"));
+const ApiKeySecurityPage = lazy(() => import("./pages/ApiKeySecurityPage"));
+const GooglePlaySubmitPage = lazy(() => import("./pages/GooglePlaySubmitPage"));
+const LiveGPSPage = lazy(() => import("./pages/LiveGPSPage"));
+const AssetEasePage = lazy(() => import("./pages/AssetEasePage"));
+const FreightNexusPage = lazy(() => import("./pages/FreightNexusPage"));
+const ClientBuilderPage = lazy(() => import("./pages/ClientBuilderPage"));
+const LoadReworkPage = lazy(() => import("./pages/LoadReworkPage"));
+const A2PRegistrationPage = lazy(() => import("./pages/A2PRegistrationPage"));
+const IndexMechanicPage = lazy(() => import("./pages/IndexMechanicPage"));
+const AgentCommandTestPage = lazy(() => import("./pages/AgentCommandTestPage"));
+const RevenueForecastPage = lazy(() => import("./pages/RevenueForecastPage"));
+const CatScalesPage = lazy(() => import("./pages/CatScalesPage"));
+const StaffAppointedPage = lazy(() => import("./pages/StaffAppointedPage"));
+const EntitledIndexPage = lazy(() => import("./pages/EntitledIndexPage"));
+const PreLaunchAssurancePage = lazy(() => import("./pages/PreLaunchAssurancePage"));
+const LaunchScenarioCenterPage = lazy(() => import("./pages/LaunchScenarioCenterPage"));
+const FleetPaymentsPage = lazy(() => import("./pages/FleetPaymentsPage"));
+const FactoringLogPage = lazy(() => import("./pages/FactoringLogPage"));
+const FleetioImportPage = lazy(() => import("./pages/FleetioImportPage"));
+const GoogleAPIsPage = lazy(() => import("./pages/GoogleAPIsPage"));
+const QuantumFleetIntelligencePage = lazy(() => import("./pages/QuantumFleetIntelligencePage"));
+const AccessibilityLegacyPage = lazy(() => import("./pages/AccessibilityLegacyPage"));
+const RevolutionPage = lazy(() => import("./pages/RevolutionPage"));
+const DriverAssistanceQuantumPage = lazy(() => import("./pages/DriverAssistanceQuantumPage"));
+const LaunchLandingPage = lazy(() => import("./pages/LaunchLandingPage"));
+const SimplifiedDashboardPage = lazy(() => import("./pages/SimplifiedDashboardPage"));
+const CoreBreakthroughsPage = lazy(() => import("./pages/CoreBreakthroughsPage"));
+const JourneyPage = lazy(() => import("./pages/JourneyPage"));
+const FleetMemoryPage = lazy(() => import("./pages/FleetMemoryPage"));
+const BrokerArrivalNotificationPage = lazy(() => import("./pages/BrokerArrivalNotificationPage"));
+const FleetTemplatePage = lazy(() => import("./pages/FleetTemplatePage"));
+const DOTPortalPage = lazy(() => import("./pages/DOTPortalPage"));
+const MedicalCDLPage = lazy(() => import("./pages/MedicalCDLPage"));
+const ChargingStationsPage = lazy(() => import("./pages/ChargingStationsPage"));
+const OperationModelPage = lazy(() => import("./pages/OperationModelPage"));
+const WorkflowStreamlinerPage = lazy(() => import("./pages/WorkflowStreamlinerPage"));
+const AstronomyNavigationPage = lazy(() => import("./pages/AstronomyNavigationPage"));
+const APIFreaksHubPage = lazy(() => import("./pages/APIFreaksHubPage"));
+const AccessibilityLandingPage = lazy(() => import("./pages/AccessibilityLandingPage"));
+const TaxRatesIntelligencePage = lazy(() => import("./pages/TaxRatesIntelligencePage"));
+const pb = new PocketBase();
+const NAVY   = "#0B1929";
+const NAVY2  = "#050C12";
+const RED    = "#DC2626";
+const DARK   = "#0B1929";
+const ORANGE = "#FF6B00";
+const AMBER  = "#FFB400";
+const GOLD   = "#FFB400";
+const GREEN  = "#16A34A";
+
+// ─── Data ───────────────────────────────────────────────────────────────────
+const features = [
+  { icon: "⏱️", title: "HOS / ELD Compliance",           desc: "FMCSA-compliant hours-of-service logging. 11/14 rule, 34h restart, sleeper berth splits — all automated, zero paperwork." },
+  { icon: "🛰️", title: "Live GPS Fleet Tracking",        desc: "Real-time location pushed every 10 seconds. Background tracking even when the app is minimized. Full fleet map for admins." },
+  { icon: "🔍", title: "Pre-Trip DVIR",                   desc: "DOT-compliant vehicle inspections (49 CFR 396.11). Defect logging, photo upload, mechanic sign-off, PDF export." },
+  { icon: "🤖", title: "State DOT AI Watcher",            desc: "Alerts as you cross state lines — weight limits, weigh stations, seasonal bans, emissions rules — all 50 states, proactively." },
+  { icon: "🅿️", title: "Parking Finder + AI Guide",      desc: "Find safe truck parking anywhere. AI navigator gives turn-by-turn guidance, amenity details, and safety warnings in real time." },
+  { icon: "📦", title: "Load Board",                      desc: "Live loads for owner-operators. Filter by lane, weight, rate-per-mile. Post your truck, get matched instantly." },
+  { icon: "💰", title: "Load Profit Calculator",          desc: "See your real take-home before you accept a load. Fuel, tolls, detention, and taxes — all factored in automatically." },
+  { icon: "💬", title: "Dispatch Messaging",              desc: "Real-time driver ↔ dispatcher communication. Trip assignments, status updates, and emergency alerts in one thread." },
+  { icon: "📊", title: "IFTA Mileage Tracking",           desc: "Auto-track miles per state. Generate IFTA fuel tax reports quarterly. Export to PDF or spreadsheet in one tap." },
+  { icon: "🏦", title: "Factoring Integration",           desc: "Submit invoices and get paid faster with built-in factoring. No separate app, no extra fees, no delay on your money." },
+  { icon: "🧾", title: "Expense Tracker & Tax AI",        desc: "Log fuel, tolls, meals, and repairs on the go. Your personal accountant AI keeps your deductions clean come tax time." },
+  { icon: "⚡", title: "Weigh Station Bypass",            desc: "Integrated Drivewyze + PrePass network. Sail past weigh stations legally — saves hours every week and earns Rig Bucks every bypass." },
+  { icon: "⏳", title: "Detention Pay Tracker",           desc: "Smart timer starts the moment you arrive. Auto-calculates detention pay owed, logs it for invoicing, and alerts your dispatcher automatically." },
+  { icon: "🛣️", title: "Toll Route Optimizer",           desc: "Estimate, avoid, and track tolls on every route. Compare cheapest vs. fastest options. Pro plan includes PrePass transponder perk." },
+  { icon: "🗺️", title: "Trip Planner & Pre-Planner",    desc: "Full trip planning with drive-leg breakdown, ETA calculation, fuel stops, rest area planning, and weight/permit compliance built in." },
+  { icon: "🛡️", title: "State Patrol Intelligence",      desc: "Real-time state patrol activity, speed trap alerts, weigh station wait times, and road closure intel — crowdsourced from verified TruckWithEase drivers." },
+  { icon: "🏅", title: "Driver Safety Scorecard",         desc: "Your personal safety score tracked daily — HOS compliance, speed, DVIR completion, violations, and clean inspection history. Share with brokers to get better loads." },
+  { icon: "🔧", title: "Fleet Chief AI",                  desc: "Your AI mechanic on call 24/7. Enter a fault code (SPN/FMI) and Fleet Chief delivers instant diagnostics, repair priority, and nearest certified shop." },
+  { icon: "🩺", title: "Driver Health & DOT Medical",     desc: "Medical card reminders, DOT physical scheduling, vitals logging, and the AI Health Chief — all in one place. Never miss a med card renewal again." },
+  { icon: "📑", title: "Digital Permit Book",             desc: "Store, organize, and access all your permits, credentials, and compliance docs in one secure digital permit book — always current, never paper." },
+  { icon: "🆘", title: "Breakdown SOS",                   desc: "One tap sends your GPS location, truck details, and breakdown type to roadside assistance. Tracks your case until you're moving again." },
+  { icon: "🎤", title: "Voice Commands",                  desc: "Hands-free control of HOS logging, DVIR, dispatch messaging, and navigation — so your eyes stay on the road and your hands stay on the wheel." },
+  { icon: "📈", title: "Reports & Analytics",             desc: "Full fleet reports — HOS summaries, DVIR history, IFTA exports, expense breakdowns, safety scores — all downloadable in PDF or spreadsheet." },
+  { icon: "🔒", title: "No Contracts. Ever.",             desc: "Month-to-month. Cancel anytime. No setup fees. No lock-in. We earn your business every single month." },
+];
+
+const plans = [
+  {
+    id: "solo", name: "Solo", price: "$19.99", period: "/mo",
+    tag: "Owner-Operators", color: AMBER,
+    features: ["HOS/ELD Logger","GPS Tracking","Pre-Trip DVIR","State DOT AI Watcher","Live Fuel Finder","Parking Finder","Load Board","IFTA Tracking","Load Profit Calculator","Expense Tracker","Detention Pay Tracker","Trip Planner","Digital Permit Book","Driver Safety Scorecard","Breakdown SOS","Voice Commands"],
+    cta: "Start Free Trial",
+  },
+  {
+    id: "pro", name: "Pro", price: "$34.99", period: "/mo",
+    tag: "Most Popular", color: ORANGE,
+    features: ["Everything in Solo","💳 $100 Fuel Card included","Dispatch Messaging","Factoring Integration","⚡ Weigh Station Bypass (PrePass)","🛣️ Toll Route Optimizer","🔧 Fleet Chief AI","🩺 Health Chief AI","🎤 Voice Commands (Priority)","🎬 Moviease","TruckEase Cam Integration","Speed & Idle Tracking"],
+    cta: "Start Free Trial", highlight: true,
+  },
+  {
+    id: "fleet", name: "Fleet", price: "$24.99", period: "/seat/mo",
+    tag: "Fleet Managers", color: GREEN,
+    features: ["Everything in Pro","Unlimited Drivers","Multi-vehicle Admin Map","Fleet HOS Overview","Bulk DVIR Reports","Driver Safety Scorecards","State Patrol Intelligence","California AB5 Compliance Tools","Driver Coaching Alerts","Custom Integrations","Dedicated Support"],
+    cta: "Contact Sales",
+  },
+];
+
+const compareRows = [
+  { feature: "Live GPS Tracking (All Trucks)",  us: true,     motive: true,      trucker: false,     dat: false },
+  { feature: "FMCSA-Registered ELD / HOS",      us: true,     motive: true,      trucker: false,     dat: false },
+  { feature: "Pre-Trip / Post-Trip DVIR",       us: true,     motive: true,      trucker: false,     dat: false },
+  { feature: "Driver Safety Scorecard",         us: true,     motive: "partial", trucker: false,     dat: false },
+  { feature: "Dash Cam / Video Integration",    us: true,     motive: true,      trucker: false,     dat: false },
+  { feature: "Real-Time Violation Alerts",      us: true,     motive: true,      trucker: false,     dat: false },
+  { feature: "$100 Fuel Card Included",        us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Load Profitability Calculator",  us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Traxes Financial AI",            us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Detention Pay Tracker",          us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Weigh Station Bypass (PrePass)", us: true,     motive: "partial", trucker: false,     dat: false },
+  { feature: "Driver Safety Scorecard",        us: true,     motive: "partial", trucker: false,     dat: false },
+  { feature: "Fleet Chief AI (Diagnostics)",   us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Driver Health & DOT Medical",    us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Rig Bucks Rewards",         us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Moviease",           us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "State DOT AI Watcher",           us: true,     motive: "partial", trucker: false,     dat: false },
+  { feature: "HOS / ELD Compliance",           us: true,     motive: true,      trucker: false,     dat: false },
+  { feature: "Factoring Integration",          us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Load Board Access",              us: true,     motive: false,     trucker: "partial", dat: true  },
+  { feature: "No Contracts, Cancel Anytime",   us: true,     motive: false,     trucker: true,      dat: true  },
+  { feature: "Price (Owner-Op / mo)",          us: "$19.99", motive: "$35–99+", trucker: "$35",     dat: "$59+"},
+];
+
+const screenshots = [
+  { src: "/static/01-dashboard.png",     label: "Driver Dashboard" },
+  { src: "/static/02-fleet-map.png",     label: "Live Fleet Map" },
+  { src: "/static/03-hos.png",           label: "HOS Logger" },
+  { src: "/static/04-dvir.png",          label: "Pre-Trip DVIR" },
+  { src: "/static/05-fuel.png",          label: "Fuel Finder" },
+  { src: "/static/06-dot-ai.png",        label: "DOT AI Watcher" },
+  { src: "/static/07-sos-breakdown.png", label: "Breakdown SOS" },
+  { src: "/static/08-fleet-chief.png",   label: "Fleet Chief AI" },
+  { src: "/static/09-tolls.png",         label: "Toll Tracker" },
+];
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+function CompareCell({ v }) {
+  if (v === true)      return <span style={{ color: GREEN,    fontSize: 18, fontWeight: 900 }}>✓</span>;
+  if (v === false)     return <span style={{ color: "#CBD5E1",fontSize: 18, fontWeight: 900 }}>✕</span>;
+  if (v === "partial") return <span style={{ color: "#F59E0B",fontSize: 12, fontWeight: 700 }}>~ limited</span>;
+  return <span style={{ color: "#0F172A", fontSize: 12, fontWeight: 700 }}>{v}</span>;
+}
+
+function useScrollY() {
+  const [y, setY] = useState(0);
+  useEffect(() => {
+    const fn = () => setY(window.scrollY);
+    window.addEventListener("scroll", fn, { passive: true });
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
+  return y;
+}
+
+function useInView(ref) {
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    if (!ref.current) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setSeen(true); }, { threshold: 0.15 });
+    obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+  return seen;
+}
+
+function FadeIn({ children, delay = 0, style = {} }) {
+  const ref = useRef(null);
+  const seen = useInView(ref);
+  return (
+    <div ref={ref} style={{
+      opacity: seen ? 1 : 0,
+      transform: seen ? "translateY(0)" : "translateY(28px)",
+      transition: `opacity 0.6s ease ${delay}ms, transform 0.6s ease ${delay}ms`,
+      ...style,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Router ──────────────────────────────────────────────────────────────────
+function useRoute() {
+  const [path, setPath] = useState(() => {
+    try { return window.location.pathname; } catch { return "/"; }
+  });
+  useEffect(() => {
+    const onPop = () => {
+      try { setPath(window.location.pathname); } catch {}
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  return path;
+}
+
+// ─── Main App ────────────────────────────────────────────────────────────────
+
+function LiveViolationCounter() {
+  const [count, setCount] = useState(103847);
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (Math.random() < 0.4) setCount(v => v + 1);
+    }, 3500);
+    return () => clearInterval(id);
+  }, []);
+  const stats = [
+    { value: '50', label: 'States Covered' },
+    { value: count.toLocaleString() + '+', label: 'Violations Prevented', live: true },
+    { value: '14', label: 'Day Free Trial' },
+    { value: '0', label: 'Contracts Required' },
+  ];
+  return (
+    <>
+      {stats.map(s => (
+        <div key={s.label} style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 'clamp(1.8rem,3vw,2.6rem)', fontWeight: 900, color: 'white', fontFamily: s.live ? "'DM Mono',monospace" : 'inherit' }}>
+            {s.value}
+            {s.live && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#16A34A', display: 'inline-block', marginLeft: 8, animation: 'pulse 2s infinite', verticalAlign: 'middle' }} />}
+          </div>
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 500, marginTop: 4 }}>{s.label}</div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+export default function App() {
+  const path = useRoute();
+  const scrollY = useScrollY();
+  const scrolled = scrollY > 60;
+  const sidebarVisible = scrollY > (typeof window !== "undefined" ? window.innerHeight : 800);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [activeShot, setActiveShot] = useState(0);
+  const [contactForm, setContactForm] = useState({ name: "", email: "", message: "" });
+  const [contactSent, setContactSent] = useState(false);
+  const [userRole, setUserRole] = useState(() => sessionStorage.getItem('user_role') || null);
+
+  // Auto-cycle screenshots — must be before any conditional returns (hooks rule)
+  useEffect(() => {
+    const t = setInterval(() => setActiveShot(s => (s + 1) % screenshots.length), 3000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Silent visitor tracker — logs every page visit to site_visits
+  useEffect(() => {
+    const sessionKey = "twe_session_id";
+    let sid = sessionStorage.getItem(sessionKey);
+    if (!sid) { sid = Math.random().toString(36).slice(2); sessionStorage.setItem(sessionKey, sid); }
+    const ua = navigator.userAgent;
+    const device = /Mobi|Android/i.test(ua) ? "Mobile" : /Tablet|iPad/i.test(ua) ? "Tablet" : "Desktop";
+    const browser = /Chrome/i.test(ua) ? "Chrome" : /Firefox/i.test(ua) ? "Firefox" : /Safari/i.test(ua) ? "Safari" : /Edge/i.test(ua) ? "Edge" : "Other";
+    pb.collection("site_visits").create({
+      page: window.location.pathname,
+      referrer: document.referrer || "",
+      device,
+      browser,
+      session_id: sid,
+    }).catch(() => {});
+  }, [path]);
+
+  // Onboarding redirect: skip if completed
+  useEffect(() => {
+    const onboardingDone = sessionStorage.getItem('onboarding_completed');
+    const isOnOnboarding = path?.includes('onboarding') || path?.includes('setup') || path?.includes('get-started');
+    if (onboardingDone && isOnOnboarding) {
+      window.location.pathname = '/';
+    }
+  }, [path]);
+
+
+
+  if (path === "/" || path === "/home" || path === "/morrishive" || path === "/drivewithease" || path === "/landing" || path === "/launch") return <SimplifiedDashboardPage />;
+  if (path === "/core-breakthroughs" || path === "/live-proof" || path === "/entitled-systems") return <CoreBreakthroughsPage />;
+  if (path === "/dashboard" || path === "/my-dashboard" || path === "/start") return <SimplifiedDashboardPage />;
+  if (path === "/home-old" || path === "/cover") return <CoverPage />;
+  if (path === "/vehicle-select" || path === "/select") return <VehicleSelectorPage />;
+  if (path === "/platform" || path === "/showcase" || path === "/why-us") return <PlatformShowcasePage />;
+  if (path === "/drive-dashboard" || path === "/drive-with-ease") return <DriveWithEasePage />;
+  if (path === "/ride-dashboard" || path === "/ride-with-ease") return <RideWithEasePage />;
+  if (path === "/quantum-routing" || path === "/routing-engine") return <QuantumRoutingEngine />;
+  if (path === "/ad-strategy" || path === "/advertise" || path === "/marketing") return <AdStrategyPage />;
+  if (path === "/social-calendar" || path === "/content-calendar" || path === "/posts") return <SocialCalendarPage />;
+  if (path === "/fleet-safety" || path === "/safety-intel" || path === "/insurance-intel") return <FleetSafetyIntelligencePage />;
+  if (path === "/dual-ai" || path === "/gemini" || path === "/ai-intelligence") return <GeminiIntegrationPage />;
+  if (path === "/code-vault" || path === "/owner-vault" || path === "/source-vault") return <CodeVaultPage />;
+
+  if (path === "/signup") return <AccessibleSignupPage />;
+  if (path === "/signup-original") return <SignupPage />;
+  if (path === "/onboarding") return <OnboardingPage />;
+  if (path === "/demo") return <DemoPage />;
+  if (path === "/subscriber-agent") return <SubscriberAgentPage />;
+  if (path === "/system-maintenance") return <SystemMaintenanceAgentPage />;
+  if (path === "/security-agent") return <SecurityAgentPage />;
+  if (path === "/hos-compliance") return <HOSComplianceAgentPage />;
+  if (path === "/qa-agent") return <QualityAssuranceAgentPage />;
+  if (path === "/fleet-marketing") return <FleetMarketingPage />;
+  if (path === "/api-integrations") return <APIIntegrationDashboard />;
+  if (path === "/advantages") return <CompetitiveAdvantagesPage />;
+  if (path === "/competitors") return <CompetitorAnalysisPage />;
+  if (path === "/traxes") return <TraxesPage />;
+  if (path === "/rig-bucks") return <RigBucksPage />;
+  if (path === "/subscription-seats") return <SubscriptionSeatsPage />;
+  if (path === "/load-board-licenses" || path === "/license-management" || path === "/dat-uber-licenses") return <LoadBoardLicenseManagementPage />;
+  if (path === "/agent-dashboard" || path === "/agents" || path === "/ai-agents") return <AgentDashboardPage />;
+  if (path === "/load-board-options" || path === "/add-networks" || path === "/load-board-networks") return <LoadBoardOptionsPage />;
+  if (path === "/leaderboard") return <LeaderboardPage />;
+  if (path === "/road-agent") return <RoadAgentPage />;
+  if (path === "/onboarding" || path === "/setup" || path === "/get-started") return <OnboardingWizardPage />;
+  if (path === "/road-context") return <RoadContextPage />;
+  if (path === "/driver-intel") return <RoadContextPage />;
+  if (path === "/road-intelligence") return <RoadContextPage />;
+  if (path === "/timezone" || path === "/timezones" || path === "/timezone-intel" || path === "/time-zones") return <TimezoneIntelligencePage />;
+  if (path === "/admin-boundaries" || path === "/compliance-zones" || path === "/regional-rules") return <AdminBoundariesPage />;
+  if (path === "/ip-geolocation" || path === "/geo-ip" || path === "/location-lookup") return <IPGeolocationPage />;
+  if (path === "/ip-whois" || path === "/whois-lookup" || path === "/registry-lookup") return <IPWhoisPage />;
+  if (path === "/launch") return <LaunchChecklistPage />;
+  if (path === "/refer") return <ReferralPage />;
+  if (path === "/design") return <FontPreviewPage />;
+  if (path === "/cinema") return <EntertainmentAgentPage />;
+
+  if (path === "/command") return <CommandCenterPage />;
+  if (path === "/driver") return <DriverProfilePage />;
+  if (path === "/trip-planner") return <TripPlannerPage />;
+  if (path === "/hos") return <HOSLoggerPage />;
+  if (path === "/dvir") return <DVIRPage />;
+  if (path === "/ai-team") return <AICharactersPage />;
+  if (path === "/api-agent" || path === "/twilio-setup" || path === "/twillo-setup" || path === "/api-keys" || path === "/apis" || path === "/activate-voice") return <APIAgentPage />;
+  if (path === "/api-diagnostic" || path === "/api-audit") return <APIDiagnosticPage />;
+  if (path === "/safety-meetings" || path === "/safety-compliance" || path === "/meetings") return <SafetyMeetingsPage />;
+  if (path === "/driver-scorecard" || path === "/scorecard" || path === "/driver-scores") return <DriverScorecardPage />;
+  if (path === "/predictive-maintenance" || path === "/maintenance-ai" || path === "/truck-health") return <PredictiveMaintenancePage />;
+  if (path === "/live-compliance" || path === "/compliance-monitor" || path === "/phantom-compliance") return <LiveComplianceMonitorPage />;
+  if (path === "/fleet-comms" || path === "/communication-hub" || path === "/fleet-chat") return <FleetCommunicationHubPage />;
+  if (path === "/outreach-agent" || path === "/outreach") return <OutreachAgentPage />;
+  if (path === "/safety-hr-fusion" || path === "/fusion") return <SafetyHRFusionPage />;
+  if (path === "/phone-assistant" || path === "/auto-phone") return <PhoneAssistantPage />;
+  if (path === "/my-index" || path === "/personal-index" || path === "/my-features") return <PersonalIndexPage />;
+  if (path === "/scan-bill") return <BillingScanAgentPage />;
+  if (path === "/scan-bill-classic") return <ScanBillPage />;
+  if (path === "/humanai") return <HRPlatformPage />;
+  if (path === "/humanai-classic") return <HReaseAgentPage />;
+  if (path === "/hr") return <HRPlatformPage />;
+  if (path === "/hiring") return <HRPlatformPage />;
+  if (path === "/maintenance") return <VehicleMaintenanceAgentPage />;
+  if (path === "/load-profit") return <LoadProfitPage />;
+  if (path === "/fuel-finder" || path === "/fuel") return <FuelFinderPage />;
+  if (path === "/loads") return <LoadBoardMapAgentPage />;
+  if (path === "/quantum-nexus" || path === "/nexus" || path === "/dispatch-nexus") return <QuantumNexusPage />;
+  if (path === "/freight-nexus" || path === "/freight" || path === "/broker-nexus" || path === "/shipper-connect") return <FreightNexusPage />;
+  if (path === "/client-builder" || path === "/clients" || path === "/shipper-network" || path === "/client-book") return <ClientBuilderPage />;
+  if (path === "/load-rework" || path === "/overweight" || path === "/lumper" || path === "/rework") return <LoadReworkPage />;
+  if (path === "/a2p" || path === "/a2p-registration" || path === "/text-registration" || path === "/sms-registration") return <A2PRegistrationPage />;
+  if (path === "/mechanic" || path === "/index-mechanic" || path === "/the-mechanic" || path === "/truck-mechanic") return <IndexMechanicPage />;
+  if (path === "/agent-test" || path === "/agent-command" || path === "/agents-test") return <AgentCommandTestPage />;
+  if (path === "/forecast" || path === "/revenue-forecast" || path === "/index-forecast") return <RevenueForecastPage />;
+  if (path === "/catscales" || path === "/cat-scales" || path === "/index-catscales" || path === "/scales" || path === "/weigh-station") return <CatScalesPage />;
+  if (path === "/fleet-load-board" || path === "/fleet-loads" || path === "/load-index") return <FleetLoadBoardPage />;
+  if (path === "/expenses") return <ExpensesPage />;
+  if (path === "/reports") return <ReportsPage />;
+  if (path === "/tolls") return <TollsPage />;
+  if (path === "/walkie-talk") return <DriverChatPage />;
+  if (path === "/growth") return <GrowthCommandPage />;
+  if (path === "/locations") return <LocationMemoryPage />;
+  if (path === "/week-review") return <WeekInReviewPage />;
+  if (path === "/news") return <TruckingNewsPage />;
+  if (path === "/dispatch") return <DispatchRoutingAgentPage />;
+  if (path === "/weather") return <WeatherPage />;
+  if (path === "/breakdown") return <BreakdownPage />;
+  if (path === "/dot-scorecard") return <ScorecardPage />;
+  if (path === "/permit-book") return <PermitBookPage />;
+  if (path === "/factoring") return <FactoringPage />;
+  if (path === "/fuel-card") return <FuelCardPage />;
+  if (path === "/parking" || path === "/parking-finder") return <ParkingPage />;
+  if (path === "/pricing") return <PricingPage />;
+  if (path === "/checkout") return <CheckoutPage />;
+  if (path === "/finance-alert-agent") return <FinanceAlertAgentPage />;
+  if (path === "/fleet-profile") return <FleetProfilePage />;
+  if (path === "/memory-management-agent") return <MemoryManagementAgentPage />;
+  if (path === "/health") return <HealthPage />;
+  if (path === "/state-patrol") return <StatePatrolPage />;
+  if (path === "/bypass") return <BypassPage />;
+  if (path === "/detention") return <DetentionPage />;
+  if (path === "/voice") return <VoicePage />;
+  if (path === "/voice-clone" || path === "/voice-ai" || path === "/agent-voice") return <VoiceClonePage />;
+  if (path === "/hardware-inventory-agent") return <HardwareInventoryAgentPage />;
+  if (path === "/payroll") return <PayrollPage />;
+  if (path === "/branding") return <BrandingCenter />;
+  if (path === "/brand") return <BrandIdentity />;
+  if (path === "/fmcsa-eld") return <FMCSAELDIntegration />;
+  if (path === "/morrishive-eld" || path === "/eld-revolution" || path === "/eld-hardware") return <MorrishiveELDRevolutionPage />;
+  if (path === "/quantum-hos" || path === "/hos-analytics" || path === "/fatigue-analysis") return <QuantumHOSAnalyticsDashboard />;
+  if (path === "/eld-hardware" || path === "/eld-marketing" || path === "/hardware-bundle") return <ELDHardwareMarketingPage />;
+  if (path === "/twe-eld" || path === "/eld" || path === "/eld-system" || path === "/hardware") return <TruckWithEaseELDPage />;
+  if (path === "/switch-from-samsara" || path === "/switch" || path === "/vs-samsara-switch") return <SwitchFromSamsaraPage />;
+  if (path === "/fmcsa-registration") return <FMCSARegistrationPage />;
+  if (path === "/hardware-bundle") return <HardwareSoftwareBundle />;
+  if (path === "/pricing-strategy") return <PricingStrategy />;
+
+  if (path === "/qa-testing") return <QATestingAgent />;
+  if (path === "/feature-completion") return <FeatureCompletionAudit />;
+  if (path === "/roi-calculator") return <MigrationROICalculator />;
+  if (path === "/sales-collateral") return <SalesCollateral />;
+  if (path === "/compliance") return <ComplianceAudit />;
+  if (path === "/poc") return <ProofOfConceptSandbox />;
+  if (path === "/integrations") return <IntegrationVerification />;
+  if (path === "/customer-memory") return <CustomerMemorySystem />;
+  if (path === "/documents") return <DocumentScanningSystem />;
+  if (path === "/operations-health") return <OperationsHealthDashboard />;
+  if (path === "/support-technical") return <SupportAgentTechnical />;
+  if (path === "/support-billing") return <SupportAgentBilling />;
+  if (path === "/financial-model") return <FinancialModelDashboard />;
+  if (path === "/tutorials") return <TutorialsPage />;
+  if (path === "/daily-maintenance") return <DailyMaintenanceAgent />;
+  if (path === "/staff" || path === "/staff-appointed" || path === "/appointed") return <StaffAppointedPage />;
+  if (path === "/entitled-index" || path === "/index" || path === "/master-hub" || path === "/entitled") return <EntitledIndexPage />;
+  if (path === "/pre-launch" || path === "/assurance" || path === "/launch-assurance" || path === "/error-scenarios") return <PreLaunchAssurancePage />;
+  if (path === "/scenarios" || path === "/launch-scenarios" || path === "/scenario-center" || path === "/coverage") return <LaunchScenarioCenterPage />;
+  if (path === "/fleet-payments" || path === "/payments" || path === "/fuel-finance" || path === "/factoring-hub") return <FleetPaymentsPage />;
+  if (path === "/factoring-log" || path === "/invoice-log" || path === "/load-log") return <FactoringLogPage />;
+  if (path === "/fleetio" || path === "/fleetio-import" || path === "/fleet-import" || path === "/fleetio-connect") return <FleetioImportPage />;
+  if (path === "/google-apis" || path === "/google-status" || path === "/google-integration") return <GoogleAPIsPage />;
+  if (path === "/journey" || path === "/our-story" || path === "/platform-story") return <JourneyPage />;
+  if (path === "/fleet-memory" || path === "/fleet-intelligence" || path === "/memory") return <FleetMemoryPage />;
+  if (path === "/broker-arrival" || path === "/driver-notification" || path === "/arrival-alert") return <BrokerArrivalNotificationPage />;
+  if (path === "/fleet-templates" || path === "/templates" || path === "/doc-builder" || path === "/document-builder") return <FleetTemplatePage />;
+  if (path === "/dot-portal" || path === "/dot" || path === "/dot-mail" || path === "/random-pool") return <DOTPortalPage />;
+  if (path === "/medical-cdl" || path === "/medical" || path === "/cdl-testing" || path === "/driver-compliance") return <MedicalCDLPage />;
+  if (path === "/charging" || path === "/charging-stations" || path === "/ev-charging" || path === "/bike-charging") return <ChargingStationsPage />;
+  if (path === "/operation-model" || path === "/ops-model") return <OperationModelPage />;
+  if (path === "/workflow-streamliner" || path === "/workflow-builder" || path === "/operations" || path === "/streamliner") return <WorkflowStreamlinerPage />;
+  if (path === "/astronomy" || path === "/star-navigation" || path === "/celestial-navigation" || path === "/night-driving") return <AstronomyNavigationPage />;
+  if (path === "/api-freaks" || path === "/api-hub" || path === "/integrations" || path === "/api-marketplace") return <APIFreaksHubPage />;
+  if (path === "/accessibility" || path === "/accessible" || path === "/inclusion" || path === "/inclusive-trucking") return <AccessibilityLandingPage />;
+  if (path === "/tax-rates" || path === "/tax-intelligence" || path === "/fuel-tax" || path === "/tax-compliance") return <TaxRatesIntelligencePage />;
+  if (path === "/rewards") return <RigBucksPage />;
+  if (path === "/compliance-dvir") return <DVIRPage />;
+  if (path === "/dashboard") return <CommandCenterPage />;
+  if (path === "/fleet") return <CommandCenterPage />;
+  if (path === "/fleet-chief") return <AICharactersPage />;
+  if (path === "/fleet-tracking") return <CommandCenterPage />;
+  if (path === "/command-docs") return <CommandRepository />;
+  if (path === "/quantum-integration") return <QuantumIntegrationHub />;
+  if (path === "/microsoft-integration" || path === "/azure") return <MicrosoftIntegration />;
+  if (path === "/satellite-maps" || path === "/maps") return <SatelliteMapsIntegration />;
+  if (path === "/sign-in") return <TraxesPage />;
+  if (path === "/commands") return <CommandOptimizer />;
+  if (path === "/health-monitor") return <FeatureHealthMonitor />;
+  if (path === "/fleet-dashboard-customizer") return <FleetDashboardCustomizer />;
+  if (path === "/fleet-quick-actions") return <FleetQuickActions />;
+  if (path === "/location-data-agent") return <LocationDataAgent />;
+  if (path === "/vehicle-vin-agent") return <VehicleVINAgent />;
+  if (path === "/hardware-suppliers") return <HardwareSupplierIntegration />;
+  if (path === "/onboarding-glossary") return <OnboardingGlossary />;
+  if (path === "/dot-compliance-vault") return <DOTComplianceVault />;
+  if (path === "/contact-inbox") return <ContactMessagesInbox />;
+  if (path === "/share-and-onboard") return <ShareAndOnboardPage />;
+  if (path === "/driver-gala") return <DriverGalaAndroid />;
+  if (path === "/walkie-talkie" || path === "/traces") return <WalkieTalkieTraces />;
+  if (path === "/admin/dream-team") return <DreamTeamAdmin />;
+  if (path === "/admin/suppliers") return <SupplierAdminPanel />;
+  if (path === "/admin/subscriptions" || path === "/subscriber-inbox") return <SubscriptionsAdminPage />;
+  if (path === "/accident-report") return <AccidentReportPage />;
+  if (path === "/dot-connect") return <DOTConnectPage />;
+  if (path === "/safety-sos") return <SafetySOSPage />;
+  if (path === "/customer-book") return <CustomerBookPage />;
+  if (path === "/competitive-intelligence" || path === "/vs-samsara" || path === "/compete") return <CompetitiveIntelligencePage />;
+  if (path === "/samsara-connect" || path === "/samsara") return <SamsaraConnectPage />;
+  if (path === "/fleet-voice" || path === "/voice-calls" || path === "/hands-free") return <FleetVoicePage />;
+  if (path === "/twilio-setup-legacy") return <TwilioSetupPage />;
+  if (path === "/page-guardian" || path === "/guardian" || path === "/page-monitor") return <PageGuardianAgent />;
+  if (path === "/neural-safety" || path === "/safety-core" || path === "/trucking-guru") return <NeuralSafetyCore />;
+  if (path === "/quantum-core" || path === "/dispatch-core" || path === "/vs-autocab") return <QuantumDispatchCore />;
+  if (path === "/user-guide" || path === "/guides" || path === "/help" || path === "/cheat-sheet") return <UserGuideHub />;
+  if (path === "/orchestrator" || path === "/agent-council" || path === "/nofail") return <AgentOrchestrator />;
+  if (path === "/profitable-lanes" || path === "/lane-intelligence" || path === "/telematics") return <ProfitableLanesPage />;
+  if (path === "/app-maintenance" || path === "/maintenance-agent" || path === "/system-health") return <AppMaintenanceAgentPage />;
+  if (path === "/ghost-nerve" || path === "/quantum-nerve" || path === "/nerve") return <QuantumNervePage />;
+  if (path === "/quantum-mind" || path === "/mind" || path === "/unified" || path === "/quantummind" || path === "/quantummond" || path === "/quantum-mond" || path === "/qmind") return <QuantumMindPage />;
+  if (path === "/game-up" || path === "/gameup" || path === "/training") return <GameUpPage />;
+  if (path === "/privacy" || path === "/privacy-policy" || path === "/privacy-notice" || path === "/terms" || path === "/terms-of-service" || path === "/legal") return <PrivacyPolicyPage />;
+  if (path === "/documents" || path === "/docs" || path === "/document-center") return <DocumentsPage />;
+  if (path === "/privacy-detailed" || path === "/privacy-full" || path === "/data-privacy") return <PrivacyDetailPage />;
+  if (path === "/compliance-auth" || path === "/audit-access" || path === "/token-management") return <ComplianceAuthPage />;
+  if (path === "/my-documents" || path === "/user-docs" || path === "/document-access") return <UserDocumentAccessPage />;
+  if (path === "/cloud-usage" || path === "/health-monitor" || path === "/system-status") return <CloudUsageMonitorPage />;
+  if (path === "/storage-growth" || path === "/scalability" || path === "/growth-intelligence") return <StorageGrowthScalabilityPage />;
+  if (path === "/haptic-language" || path === "/vibration-communication" || path === "/touch-language") return <HapticLanguagePage />;
+  if (path === "/multi-device-haptics" || path === "/device-sync" || path === "/haptic-broadcast") return <MultiDeviceHapticsPage />;
+  if (path === "/jj-keller" || path === "/compliance-training" || path === "/vehicle-compliance") return <JJKellerCompliancePage />;
+  if (path === "/sign-language" || path === "/asl-learning" || path === "/deaf-communication") return <SignLanguageLearningPage />;
+  if (path === "/agent-technician" || path === "/system-monitor" || path === "/test-dashboard") return <AgentTechnicianPage />;
+  if (path === "/responsible-use" || path === "/onboarding" || path === "/community-pledge") return <ResponsibleUseOnboardingPage />;
+  if (path === "/health-recovery" || path === "/physical-failure" || path === "/driver-health") return <DriverHealthRecoveryPage />;
+  if (path === "/medical-examiners" || path === "/examiner-locator" || path === "/dot-physicals") return <MedicalExaminerLocatorPage />;
+  if (path === "/support" || path === "/help" || path === "/customer-service") return <CustomerSupportPage />;
+  if (path === "/android" || path === "/android-native" || path === "/android-setup") return <AndroidNativeSetupPage />;
+  if (path === "/accessibility-deaf" || path === "/deaf-access" || path === "/asl") return <AccessibilityDeafPage />;
+  if (path === "/deaf-bridge" || path === "/deaf-community" || path === "/communication-bridge") return <DeafCommunityBridgePage />;
+  if (path === "/accessibility-blind" || path === "/blind-access" || path === "/audio-nav") return <AccessibilityBlindPage />;
+  if (path === "/human-support" || path === "/support-network" || path === "/community") return <HumanSupportNetworkPage />;
+  if (path === "/maintenance" || path === "/maintenance-scheduler" || path === "/system-maintenance") return <MaintenanceSchedulerPage />;
+  if (path === "/universal-access" || path === "/all-drivers" || path === "/accessibility") return <UniversalAccessibilityPage />;
+  if (path === "/accessibility-agents" || path === "/agent-teams" || path === "/team-focus") return <AccessibilityAgentsPage />;
+  if (path === "/accessibility-legacy" || path === "/how-we-changed-lives" || path === "/impact-story") return <AccessibilityLegacyPage />;
+  if (path === "/" || path === "/revolution" || path === "/the-moment") return <RevolutionPage />;
+  if (path === "/driver-assistance" || path === "/universal-driver" || path === "/multilingual-support") return <DriverAssistanceQuantumPage />;
+  if (path === "/agent-verification" || path === "/exclusive-lock" || path === "/agent-security") return <ExclusiveAgentVerificationPage />;
+  if (path === "/api-key-security" || path === "/key-vault" || path === "/secure-keys") return <ApiKeySecurityPage />;
+  if (path === "/google-play" || path === "/play-submit" || path === "/android-submit") return <GooglePlaySubmitPage />;
+  if (path === "/asset-ease" || path === "/assets" || path === "/fleet-assets" || path === "/vehicle-assets" || path === "/trailer-assets") return <AssetEasePage />;
+  if (path === "/live-gps" || path === "/gps" || path === "/fleet-map" || path === "/track") return <LiveGPSPage />;
+  if (path === "/quantum-fleet" || path === "/quantum-intelligence" || path === "/industry-ai") return <QuantumFleetIntelligencePage />;
+
+  // ── Catch-all: unknown path → redirect home ────────────────────────────
+  if (path !== "/" && path !== "/home" && !path.startsWith("/static")) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "sans-serif", padding: 24 }}>
+        <img src="/static/twe-logo.png" alt="TruckWithEase" style={{ maxWidth: 280, marginBottom: 32, animation: "tweLogoFade 1s ease forwards" }} />
+        <div style={{ color: "#c9a84c", fontSize: 28, fontWeight: 900, marginBottom: 12, textAlign: "center" }}>Taking you home…</div>
+        <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 16, marginBottom: 32, textAlign: "center" }}>That page doesn't exist — let's get you back to TruckWithEase.</div>
+        <a href="/" style={{ background: "linear-gradient(135deg,#c9a84c,#f5d78e)", color: "#0a0a0a", padding: "14px 36px", borderRadius: 8, fontWeight: 900, fontSize: 16, textDecoration: "none" }}>← Back to TruckWithEase</a>
+        <div style={{ marginTop: 24, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Need something specific? <a href="/command" style={{ color: "#c9a84c" }}>Open Command Center →</a></div>
+        <script dangerouslySetInnerHTML={{ __html: `setTimeout(()=>{ window.location.href='/'; }, 4000);` }} />
+      </div>
+    );
+  }
+
+  const navLinks = [
+    { label: "Traxes", href: "/traxes" },
+    { label: "Rig Bucks", href: "/rig-bucks" },
+    { label: "Refer a Driver", href: "/refer" },
+    { label: "📡 Walkie Talk", href: "/walkie-talk" },
+    { label: "🎯 Command Center", href: "/command" },
+    { label: "🐺 The Dream Team", href: "/ai-team" },
+    { label: "📄 Scan & Bill", href: "/scan-bill" },
+    { label: "🤝 HRease (Fleet)", href: "/humanai" },
+    { label: "⚡ EV Charging", href: "/charging-stations" },
+    { label: "📡 TruckWithEase ELD", href: "/twe-eld" },
+    { label: "🔄 Switch from Samsara", href: "/switch-from-samsara" },
+    { label: "App Preview", href: "#preview" },
+    { label: "📰 News", href: "/news" },
+    { label: "Pricing", href: "#pricing" },
+    { label: "Contact", href: "#contact" },
+  ];
+
+  return (
+    <div style={{ fontFamily: "'Poppins', sans-serif", color: "#0F172A", overflowX: "hidden" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #F8FAFC; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+        .nav-link:hover { color: ${AMBER} !important; }
+        .cta-pulse { animation: ctaPulse 2.5s ease-in-out infinite; }
+        @keyframes ctaPulse {
+          0%, 100% { box-shadow: 0 8px 24px rgba(255,107,0,0.4); }
+          50%       { box-shadow: 0 8px 40px rgba(255,107,0,0.65); }
+        }
+        @keyframes tweLogoFade {
+          from { opacity: 0; transform: scale(0.88); filter: drop-shadow(0 0 0px rgba(201,168,76,0)); }
+          to   { opacity: 1; transform: scale(1);    filter: drop-shadow(0 0 8px rgba(201,168,76,0.4)); }
+        }
+        .card-hover { transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; }
+        .card-hover:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(11,42,107,0.13); border-color: #BFDBFE !important; }
+        .plan-card { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+        .plan-card:hover { transform: translateY(-4px); }
+        .shot-thumb { transition: all 0.2s ease; cursor: pointer; opacity: 0.55; }
+        .shot-thumb:hover, .shot-thumb.active { opacity: 1; outline: 2px solid ${AMBER}; }
+        @media (max-width: 767px) {
+          .hero-grid { flex-direction: column !important; }
+          .hero-float { display: none !important; }
+          .two-col { grid-template-columns: 1fr !important; }
+          .hide-mobile { display: none !important; }
+          .nav-desktop { display: none !important; }
+          .compare-wrap { overflow-x: auto; }
+          .plans-grid { grid-template-columns: 1fr !important; }
+          .hero-btns { flex-direction: column !important; }
+        }
+        @media (min-width: 768px) {
+          .nav-mobile-btn { display: none !important; }
+          .mobile-menu { display: none !important; }
+        }
+        .sidebar-nav { position: fixed; left: 0; top: 70px; bottom: 0; width: 220px; background: #0B1929; z-index: 150; overflow-y: auto; display: flex; flex-direction: column; padding: 20px 0 32px; border-right: 1px solid rgba(255,255,255,0.08); }
+        .sidebar-link { display: flex; align-items: center; gap: 9px; padding: 7px 18px; color: rgba(255,255,255,0.65); font-size: 13px; font-weight: 500; text-decoration: none; border-radius: 0; transition: background 0.15s, color 0.15s; cursor: pointer; }
+        .sidebar-link:hover { background: rgba(255,255,255,0.08); color: white; }
+        .sidebar-section-label { font-size: 9px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 18px 6px; }
+        .sidebar-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 10px 0; }
+        @media (max-width: 1023px) {
+          .sidebar-nav { display: none !important; }
+          .sidebar-offset { padding-left: 0 !important; }
+        }
+      `}</style>
+
+      {/* ── NAV ──────────────────────────────────────────────────────────────── */}
+      <nav style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
+        background: scrolled ? "rgba(255,255,255,0.97)" : "transparent",
+        backdropFilter: scrolled ? "blur(14px)" : "none",
+        borderBottom: scrolled ? "1px solid #E2E8F0" : "none",
+        transition: "all 0.35s",
+        padding: "0 5%", display: "flex", alignItems: "center",
+        justifyContent: "space-between", height: 70,
+      }}>
+        {/* Logo */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <img
+            src="/static/twe-full-logo.jpg"
+            alt="TruckWithEase @ Morrishive"
+            style={{ height: 44, objectFit: 'contain', borderRadius: 8, filter: 'drop-shadow(0 0 6px rgba(201,168,76,0.35))', animation: 'tweLogoFade 1s ease both' }}
+          />
+        </div>
+
+        {/* Desktop Nav */}
+        <div className="nav-desktop" style={{ display: "flex", gap: 28, alignItems: "center" }}>
+          {navLinks.map(l => (
+            <a key={l.label} href={l.href} className="nav-link"
+              style={{ color: scrolled ? "#64748B" : "rgba(255,255,255,0.82)", fontWeight: 500, fontSize: 14, textDecoration: "none", transition: "color 0.2s" }}>
+              {l.label}
+            </a>
+          ))}
+          <div style={{ position: "relative" }}>
+            <button onClick={() => setDropdownOpen(!dropdownOpen)} style={{
+              background: "transparent", border: "none", cursor: "pointer",
+              color: scrolled ? "#64748B" : "rgba(255,255,255,0.82)", fontWeight: 500, fontSize: 14,
+              display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s"
+            }}>
+              More <span style={{ fontSize: 12 }}>{dropdownOpen ? "▲" : "▼"}</span>
+            </button>
+            {dropdownOpen && (
+              <div style={{
+                position: "absolute", top: "100%", right: 0, marginTop: 8,
+                background: "white", border: "1px solid #E2E8F0", borderRadius: 10,
+                boxShadow: "0 10px 28px rgba(0,0,0,0.12)", zIndex: 300, minWidth: 200,
+              }}>
+                {[
+                  { label: "Profile Agent", href: "/subscriber-agent" },
+                  { label: "HOS Compliance", href: "/hos-compliance" },
+                  { label: "System Maintenance", href: "/system-maintenance" },
+                  { label: "Security Agent", href: "/security-agent" },
+                  { label: "QA Agent", href: "/qa-agent" },
+                  { label: "Refer a Trucker", href: "/refer" },
+                  { label: "Rig Bucks", href: "/rig-bucks" },
+                  { label: "Contact", href: "#contact" },
+                ].map((link) => (
+                  <a key={link.label} href={link.href} onClick={() => setDropdownOpen(false)}
+                    style={{ display: "block", padding: "12px 16px", color: "#0F172A", textDecoration: "none", fontSize: 13, fontWeight: 500, borderBottom: "1px solid #F1F5F9", transition: "background 0.2s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#F8FAFC"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    {link.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+          <a href="#pricing" style={{
+            background: ORANGE, color: "white",
+            padding: "10px 22px", borderRadius: 8, fontWeight: 700, fontSize: 14,
+            textDecoration: "none", transition: "opacity 0.2s",
+          }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+            Start Free Trial
+          </a>
+        </div>
+
+        {/* Mobile Hamburger */}
+        <button className="nav-mobile-btn" onClick={() => setMenuOpen(!menuOpen)}
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 8, color: scrolled ? NAVY : "white", fontSize: 22 }}>
+          {menuOpen ? "✕" : "☰"}
+        </button>
+      </nav>
+
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="mobile-menu" style={{
+          position: "fixed", top: 70, left: 0, right: 0, zIndex: 199,
+          background: "white", borderBottom: "1px solid #E2E8F0",
+          padding: "16px 5% 24px", display: "flex", flexDirection: "column", gap: 4,
+        }}>
+          {navLinks.map(l => (
+            <a key={l.label} href={l.href} onClick={() => setMenuOpen(false)}
+              style={{ color: "#0F172A", fontWeight: 600, fontSize: 16, textDecoration: "none", padding: "12px 0", borderBottom: "1px solid #F1F5F9" }}>
+              {l.label}
+            </a>
+          ))}
+          <a href="#pricing" onClick={() => setMenuOpen(false)} style={{
+            marginTop: 12, background: ORANGE, color: "white",
+            padding: "14px", borderRadius: 10, fontWeight: 700, fontSize: 16,
+            textDecoration: "none", textAlign: "center",
+          }}>
+            Start Free Trial
+          </a>
+        </div>
+      )}
+
+      {/* ── STICKY SIDEBAR ────────────────────────────────────────────────── */}
+      {sidebarVisible && (
+        <aside className="sidebar-nav">
+          <div style={{ padding: "0 18px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+            <img src="/static/twe-full-logo.jpg" alt="TruckWithEase" style={{ height: 32, objectFit: "contain", borderRadius: 6 }} />
+            <span style={{ fontWeight: 900, fontSize: 13, color: "white" }}>Truck<span style={{ color: "#FFB400" }}>WithEase</span></span>
+          </div>
+          <div className="sidebar-divider" />
+
+          <div className="sidebar-section-label">Explore</div>
+          {[
+            { label: "App Preview", href: "#preview" },
+            { label: "Pricing", href: "#pricing" },
+            { label: "Contact", href: "#contact" },
+          ].map(l => (
+            <a key={l.label} href={l.href} className="sidebar-link">→ {l.label}</a>
+          ))}
+
+          <div className="sidebar-divider" />
+          {/* ── DRIVER TOOLS (most-used, always visible) ── */}
+          <div className="sidebar-section-label">Driver Tools</div>
+          {[
+            { label: "HOS / ELD Logger", href: "/hos",         icon: "⏱️" },
+            { label: "Pre-Trip DVIR",    href: "/dvir",        icon: "✅" },
+            { label: "Breakdown SOS",    href: "/breakdown",   icon: "🆘" },
+            { label: "Fuel Finder",      href: "/fuel-finder", icon: "⛽" },
+            { label: "Parking",          href: "/parking",     icon: "🅿️" },
+            { label: "Weather",          href: "/weather",     icon: "🌧️" },
+          ].map(l => (
+            <a key={l.label} href={l.href} className="sidebar-link"><span>{l.icon}</span>{l.label}</a>
+          ))}
+
+          <div className="sidebar-divider" />
+
+          {/* ── MONEY TOOLS ── */}
+          <div className="sidebar-section-label">Money</div>
+          {[
+            { label: "Load Profit",  href: "/load-profit", icon: "💰" },
+            { label: "Load Board",   href: "/loads",        icon: "📦" },
+            { label: "Scan & Bill",  href: "/scan-bill",    icon: "📄" },
+            { label: "Expenses",     href: "/expenses",     icon: "🧾" },
+            { label: "Detention",    href: "/detention",    icon: "⏳" },
+            { label: "Traxes",    href: "/traxes",       icon: "💎" },
+          ].map(l => (
+            <a key={l.label} href={l.href} className="sidebar-link"><span>{l.icon}</span>{l.label}</a>
+          ))}
+
+          <div className="sidebar-divider" />
+
+          {/* ── COMPLIANCE ── */}
+          <div className="sidebar-section-label">Compliance</div>
+          {[
+            { label: "Weigh Bypass",  href: "/bypass",       icon: "⚡" },
+            { label: "State Patrol",  href: "/state-patrol", icon: "🚔" },
+            { label: "Permit Book",   href: "/permit-book",  icon: "📑" },
+            { label: "Tolls",         href: "/tolls",        icon: "🛣️" },
+            { label: "Scorecard",     href: "/scorecard",    icon: "🏅" },
+            { label: "Maintenance",   href: "/maintenance",  icon: "🔧" },
+          ].map(l => (
+            <a key={l.label} href={l.href} className="sidebar-link"><span>{l.icon}</span>{l.label}</a>
+          ))}
+
+          <div className="sidebar-divider" />
+
+          {/* ── FLEET & EXTRAS ── */}
+          <div className="sidebar-section-label">Fleet & More</div>
+          {[
+            { label: "Command Center", href: "/command",      icon: "🎯" },
+            { label: "Trip Planner",   href: "/trip-planner", icon: "🗺️" },
+            { label: "Dispatch",       href: "/dispatch",     icon: "💬" },
+            { label: "Location Memory",href: "/locations",    icon: "📍" },
+            { label: "Walkie Talk",    href: "/walkie-talk",  icon: "📡" },
+            { label: "HRease (Fleet)",     href: "/humanai",      icon: "👩‍💼" },
+            { label: "Rig Bucks", href: "/rig-bucks",icon: "🏆" },
+
+            { label: "The Dream Team",   href: "/ai-team",      icon: "🤖" },
+            { label: "Trucking News",  href: "/news",         icon: "📰" },
+            { label: "Growth Command", href: "/growth",       icon: "⚡" },
+            { label: "Week in Review", href: "/week-review",  icon: "📊" },
+          ].map(l => (
+            <a key={l.label} href={l.href} className="sidebar-link"><span>{l.icon}</span>{l.label}</a>
+          ))}
+        </aside>
+      )}
+
+      {/* ── MAIN CONTENT WRAPPER ──────────────────────────────────────────── */}
+      <div className="sidebar-offset" style={{ paddingLeft: sidebarVisible ? 220 : 0, transition: "padding-left 0.3s ease" }}>
+
+      {/* ── HERO ─────────────────────────────────────────────────────────────── */}
+      <section style={{
+        minHeight: "100vh",
+        background: `linear-gradient(135deg, #0B1929 0%, #050C12 45%, #0B1929 100%)`,
+        display: "flex", alignItems: "center",
+        padding: "0 5%", paddingTop: 70,
+        position: "relative", overflow: "hidden",
+      }}>
+        {/* Decorative orbs */}
+        <div style={{ position: "absolute", top: -120, right: -120, width: 600, height: 600, borderRadius: "50%", background: "rgba(255,107,0,0.07)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -180, left: -180, width: 520, height: 520, borderRadius: "50%", background: "rgba(255,255,255,0.04)", pointerEvents: "none" }} />
+        {/* Road lines */}
+        {[0,1,2,3,4].map(i => (
+          <div key={i} style={{ position: "absolute", bottom: 50, left: `${i * 22}%`, width: "14%", height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2 }} />
+        ))}
+
+        <div className="hero-grid" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", gap: 48, maxWidth: 1300, margin: "0 auto" }}>
+          {/* Left */}
+          <div style={{ maxWidth: 620, zIndex: 2 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,107,0,0.18)", border: "1px solid rgba(255,107,0,0.4)", borderRadius: 20, padding: "6px 16px", marginBottom: 24 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: ORANGE, display: "inline-block" }} />
+              <span style={{ color: "#FFB366", fontSize: 12, fontWeight: 700 }}>All 50 States • No Contracts</span>
+            </div>
+            <h1 style={{ fontSize: "clamp(2.4rem, 5.5vw, 4.2rem)", fontWeight: 900, color: "white", lineHeight: 1.08, marginBottom: 22 }}>
+              Drive Smart<br />
+              <span style={{ color: ORANGE }}>Earn More</span><br />
+              <span style={{ color: AMBER }}>TruckWithEase</span>
+            </h1>
+            <p style={{ color: "rgba(255,255,255,0.72)", fontSize: 18, lineHeight: 1.75, marginBottom: 12, maxWidth: 540 }}>
+              The all-in-one platform built for owner-operators and fleets — FMCSA-registered ELDs, live HOS compliance, DOT AI, load board, fuel card, factoring, expense tracking, and dashcam, all in one app.
+            </p>
+            <p style={{ color: AMBER, fontSize: 16, lineHeight: 1.6, marginBottom: 40, maxWidth: 540, fontWeight: 700, fontStyle: "italic" }}>
+              A friend on the road.
+            </p>
+            <div className="hero-btns" style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              <a href="/signup" className="cta-pulse" style={{
+                background: ORANGE, color: "white",
+                padding: "16px 36px", borderRadius: 12,
+                fontWeight: 800, fontSize: 16, textDecoration: "none",
+              }}>
+                Start 14-Day Free Trial
+              </a>
+              <a href="#preview" style={{
+                background: "rgba(255,255,255,0.1)", color: "white",
+                padding: "16px 36px", borderRadius: 12,
+                fontWeight: 600, fontSize: 16, textDecoration: "none",
+                border: "1px solid rgba(255,255,255,0.25)", backdropFilter: "blur(8px)",
+              }}>
+                See the App →
+              </a>
+            </div>
+            <div style={{ marginTop: 36, display: "flex", gap: 28, flexWrap: "wrap" }}>
+              {["✓ No contracts, cancel anytime", "✓ 14-day free trial", "✓ iOS & Android"].map(t => (
+                <span key={t} style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 500 }}>{t}</span>
+              ))}
+            </div>
+
+            {/* Quick-access feature tiles */}
+            <div style={{ marginTop: 36, display: "flex", gap: 12, flexWrap: "wrap" }}>
+              {[
+                { label: "⚡ EV & Bike Charging", href: "/charging-stations", color: "#00E5FF" },
+                { label: "📡 TruckWithEase ELD", href: "/twe-eld", color: "#c9a84c" },
+                { label: "🔄 Switch from Samsara", href: "/switch-from-samsara", color: "#ff4757" },
+              ].map(tile => (
+                <a key={tile.label} href={tile.href} style={{
+                  display: "inline-block", padding: "10px 18px", borderRadius: 24,
+                  background: tile.color + "18", border: `1px solid ${tile.color}50`,
+                  color: tile.color, fontWeight: 700, fontSize: 13, textDecoration: "none",
+                  transition: "all 0.2s",
+                }}>{tile.label}</a>
+              ))}
+            </div>
+          </div>
+
+
+        </div>
+      </section>
+
+      {/* ── STATS BAR ────────────────────────────────────────────────────────── */}
+      <section style={{ background: NAVY, padding: "30px 5%" }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: "clamp(28px,6vw,80px)", flexWrap: "wrap", maxWidth: 1000, margin: "0 auto" }}>
+          <LiveViolationCounter />
+        </div>
+      </section>
+
+      {/* ── BRANDED TRUCK GRAPHIC ──────────────────────────────────────────────── */}
+      <section style={{ background: "#0F172A", padding: "0", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "relative", width: "100%", lineHeight: 0 }}>
+          <img src="/static/gen_truck-branded-hero-a44a85.webp" alt="TruckWithEase branded semi truck on the open road" style={{ width: "100%", display: "block", maxHeight: 460, objectFit: "cover", objectPosition: "center 60%" }} />
+          {/* Dark gradient top + bottom */}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(15,23,42,0.55) 0%, transparent 30%, transparent 55%, rgba(15,23,42,0.8) 100%)", pointerEvents: "none" }} />
+          {/* Trailer branding overlay — positioned on the trailer side */}
+          <div style={{ position: "absolute", top: "38%", left: "50%", transform: "translate(-50%, -50%)", display: "flex", alignItems: "center", gap: 0, pointerEvents: "none" }}>
+            {/* Trailer branding lettering */}
+            <div style={{
+              fontFamily: "'Poppins', 'Arial Black', sans-serif",
+              fontWeight: 900,
+              fontSize: "clamp(2.2rem, 5vw, 4.8rem)",
+              letterSpacing: "-0.02em",
+              color: "white",
+              textShadow: "0 2px 12px rgba(0,0,0,0.5), 0 0 40px rgba(11,42,107,0.6)",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.08em",
+              lineHeight: 1,
+            }}>
+              <span style={{ color: "white" }}>Truck</span>
+              <span style={{ color: "white" }}>With</span>
+              <span style={{ color: AMBER }}>Ease</span>
+            </div>
+          </div>
+          {/* Bottom tagline */}
+          <div style={{ position: "absolute", bottom: 28, left: 0, right: 0, textAlign: "center", pointerEvents: "none" }}>
+            <div style={{ color: "rgba(255,255,255,0.75)", fontSize: "clamp(0.75rem, 1.5vw, 1rem)", fontWeight: 600, letterSpacing: 3, textTransform: "uppercase", fontFamily: "'Poppins', sans-serif", textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}>
+              HOS · FMCSA-Registered ELDs · DOT AI · Traxes · Rig Bucks
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── PLATFORM SHOWCASE: 3 PILLARS ─────────────────────────────────────── */}
+      <section id="platform" style={{ background: "#060b0f", padding: "72px 5%", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(0,230,118,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,230,118,0.025) 1px, transparent 1px)", backgroundSize: "60px 60px", pointerEvents: "none" }} />
+        <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative" }}>
+          <div style={{ textAlign: "center", marginBottom: 56 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,230,118,0.12)", border: "1px solid rgba(0,230,118,0.3)", borderRadius: 20, padding: "6px 18px", marginBottom: 18 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#00e676", display: "inline-block", animation: "pulse 1.6s ease-in-out infinite" }} />
+              <span style={{ color: "#00e676", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Platform Intelligence</span>
+            </div>
+            <h2 style={{ fontSize: "clamp(2rem, 4.5vw, 3.2rem)", fontWeight: 900, color: "#fff", margin: "0 0 16px", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+              Three systems.<br /><span style={{ color: "#ffab00" }}>One platform. Zero guesswork.</span>
+            </h2>
+            <p style={{ color: "#4a6070", fontSize: 17, maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>
+              TruckWithEase runs your entire operation — from the first mile to the last driver. Every decision, automated.
+            </p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24 }}>
+            {/* Pillar 1 — Quantum Dispatch */}
+            <a href="/dispatch" style={{ textDecoration: "none", display: "block" }}>
+              <div style={{ background: "#0a1219", border: "1px solid #162436", borderRadius: 20, padding: 32, height: "100%", transition: "transform 0.2s, border-color 0.2s", cursor: "pointer" }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.borderColor = "#00e676"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = "#162436"; }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(0,230,118,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, marginBottom: 20 }}>🗺️</div>
+                <div style={{ color: "#00e676", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Quantum Dispatch</div>
+                <h3 style={{ color: "#fff", fontSize: 22, fontWeight: 900, margin: "0 0 14px", lineHeight: 1.2 }}>Live Mission Control. Every load. Every driver. Real time.</h3>
+                <p style={{ color: "#4a6070", fontSize: 14, lineHeight: 1.7, margin: "0 0 20px" }}>
+                  12-layer optimization runs 24/7. Satellite map shows every truck live. Category-filtered load board. Dispatch chat built in. The fleet never misses a dollar.
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {["Live GPS Map","Auto Load Match","Driver Chat","Fuel Routing","Hazmat Routing","Quantum AI"].map(tag => (
+                    <span key={tag} style={{ background: "rgba(0,230,118,0.1)", border: "1px solid rgba(0,230,118,0.2)", borderRadius: 20, padding: "4px 12px", fontSize: 11, color: "#00e676", fontWeight: 600 }}>{tag}</span>
+                  ))}
+                </div>
+                <div style={{ marginTop: 24, color: "#00e676", fontSize: 14, fontWeight: 700 }}>Open Dispatch →</div>
+              </div>
+            </a>
+
+            {/* Pillar 2 — HOS & ELD */}
+            <a href="/hos" style={{ textDecoration: "none", display: "block" }}>
+              <div style={{ background: "#0a1219", border: "1px solid #162436", borderRadius: 20, padding: 32, height: "100%", transition: "transform 0.2s, border-color 0.2s", cursor: "pointer" }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.borderColor = "#ffab00"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = "#162436"; }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(255,171,0,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, marginBottom: 20 }}>📱</div>
+                <div style={{ color: "#ffab00", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>HOS & ELD Platform</div>
+                <h3 style={{ color: "#fff", fontSize: 22, fontWeight: 900, margin: "0 0 14px", lineHeight: 1.2 }}>FMCSA-registered. DOT-ready. Built into every tier.</h3>
+                <p style={{ color: "#4a6070", fontSize: 14, lineHeight: 1.7, margin: "0 0 20px" }}>
+                  Hours of Service logging certified to FMCSA standards. Pre-trip and post-trip DVIR. Automatic violations alerts. Daily certifications. Available on iOS, Android, and Mac.
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {["FMCSA Certified","Daily DVIR","Violation Alerts","HOS Dashboard","Log Review","All Tiers"].map(tag => (
+                    <span key={tag} style={{ background: "rgba(255,171,0,0.1)", border: "1px solid rgba(255,171,0,0.2)", borderRadius: 20, padding: "4px 12px", fontSize: 11, color: "#ffab00", fontWeight: 600 }}>{tag}</span>
+                  ))}
+                </div>
+                <div style={{ marginTop: 24, color: "#ffab00", fontSize: 14, fontWeight: 700 }}>Open HOS Logger →</div>
+              </div>
+            </a>
+
+            {/* Pillar 3 — HR & Hiring */}
+            <a href="/humanai" style={{ textDecoration: "none", display: "block" }}>
+              <div style={{ background: "#0a1219", border: "1px solid #162436", borderRadius: 20, padding: 32, height: "100%", transition: "transform 0.2s, border-color 0.2s", cursor: "pointer" }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.borderColor = "#06b6d4"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = "#162436"; }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(6,182,212,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, marginBottom: 20 }}>👩‍💼</div>
+                <div style={{ color: "#06b6d4", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>HRease — Driver Intelligence</div>
+                <h3 style={{ color: "#fff", fontSize: 22, fontWeight: 900, margin: "0 0 14px", lineHeight: 1.2 }}>Hire. Onboard. Retain. The fleet never makes a decision alone.</h3>
+                <p style={{ color: "#4a6070", fontSize: 14, lineHeight: 1.7, margin: "0 0 20px" }}>
+                  Post driver ads, screen applicants, verify CDL and medical cards, schedule drug tests, run background checks, and monitor retention risk — all automated. You just approve.
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {["Driver Ads","Background Check","CDL Verify","Onboarding Flow","Retention AI","Pay Benchmarks"].map(tag => (
+                    <span key={tag} style={{ background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.2)", borderRadius: 20, padding: "4px 12px", fontSize: 11, color: "#06b6d4", fontWeight: 600 }}>{tag}</span>
+                  ))}
+                </div>
+                <div style={{ marginTop: 24, color: "#06b6d4", fontSize: 14, fontWeight: 700 }}>Open HRease →</div>
+              </div>
+            </a>
+          </div>
+
+          {/* Bottom trust bar */}
+          <div style={{ marginTop: 48, padding: "24px 32px", background: "rgba(255,171,0,0.06)", border: "1px solid rgba(255,171,0,0.15)", borderRadius: 16, display: "flex", justifyContent: "center", gap: "clamp(20px,5vw,60px)", flexWrap: "wrap" }}>
+            {[
+              { icon: "🛡️", text: "FMCSA Registered ELD" },
+              { icon: "📡", text: "Live Satellite Tracking" },
+              { icon: "⚡", text: "Quantum Load Optimization" },
+              { icon: "🤖", text: "AI HR + Retention Agent" },
+              { icon: "📱", text: "iOS · Android · Mac" },
+            ].map(item => (
+              <div key={item.text} style={{ display: "flex", alignItems: "center", gap: 8, color: "#4a6070", fontSize: 13, fontWeight: 600 }}>
+                <span>{item.icon}</span>
+                <span>{item.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── TRAXES AI ────────────────────────────────────────────────────────── */}
+      <section id="traxes" style={{ padding: "64px 5%", background: `linear-gradient(160deg, #001229 0%, ${NAVY2} 50%, #0D3060 100%)`, position: "relative", overflow: "hidden" }}>
+        {/* Decorative grid lines */}
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,180,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,180,0,0.04) 1px, transparent 1px)", backgroundSize: "48px 48px", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -160, right: -160, width: 500, height: 500, borderRadius: "50%", background: "rgba(255,180,0,0.06)", pointerEvents: "none" }} />
+
+        <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 2 }}>
+          <FadeIn>
+            <div style={{ textAlign: "center", marginBottom: 60 }}>
+              {/* Traxes badge */}
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "rgba(255,180,0,0.12)", border: "1px solid rgba(255,180,0,0.4)", borderRadius: 24, padding: "8px 20px", marginBottom: 24 }}>
+                <span style={{ fontSize: 20 }}>💼</span>
+                <span style={{ color: AMBER, fontSize: 13, fontWeight: 800, letterSpacing: 1 }}>MEET YOUR NEW FINANCIAL CO-PILOT</span>
+              </div>
+              {/* Traxes wordmark */}
+              <div style={{ marginBottom: 16 }}>
+                <span style={{ fontSize: "clamp(3rem,7vw,5.5rem)", fontWeight: 900, color: "white", letterSpacing: -2, lineHeight: 1 }}>Trax</span>
+                <span style={{ fontSize: "clamp(3rem,7vw,5.5rem)", fontWeight: 900, color: AMBER, letterSpacing: -2, lineHeight: 1 }}>es</span>
+                <span style={{ display: "block", fontSize: "clamp(0.9rem,1.5vw,1.1rem)", color: "rgba(255,255,255,0.5)", fontWeight: 500, letterSpacing: 3, textTransform: "uppercase", marginTop: 6 }}>AI · Finance · Tax · Mileage</span>
+              </div>
+              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 18, maxWidth: 580, margin: "0 auto", lineHeight: 1.8 }}>
+                Traxes is your always-on financial AI — built specifically for truck drivers. It tracks every mile, logs every expense, and has your tax return ready before your accountant even answers the phone.
+              </p>
+            </div>
+          </FadeIn>
+
+          {/* Two-col: features + chat */}
+          <div className="two-col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, alignItems: "start" }}>
+
+            {/* Left — what Traxes does */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {[
+                { icon: "📍", title: "Automatic Mileage Tracking", desc: "Every mile recorded in the background — business miles separated from personal without you lifting a finger. IRS-compliant logs, always ready." },
+                { icon: "🧾", title: "Expense Logging on the Go", desc: "Snap a receipt, say what it's for, and Traxes categorizes it instantly — fuel, tolls, meals, maintenance, permits. Nothing falls through the cracks." },
+                { icon: "📊", title: "Real-Time Financial Reports", desc: "See your gross income, net take-home, deductible expenses, and profit per load — updated live as you drive, not just at year end." },
+                { icon: "📁", title: "Year-End Tax Preparation", desc: "Traxes compiles your Schedule C, mileage deductions, per-diem, and all business expenses into a clean tax package — ready to hand off or file directly." },
+                { icon: "💡", title: "Proactive Tax-Saving Tips", desc: "Traxes flags deductions you might have missed and reminds you of quarterly estimated payments before penalties kick in. Your money stays yours." },
+                { icon: "🏦", title: "Integrated with Factoring & Expenses", desc: "Works hand-in-hand with your factoring invoices and expense tracker inside TruckWithEase — one platform, your complete financial picture." },
+              ].map((item, i) => (
+                <FadeIn key={item.title} delay={i * 50}>
+                  <div style={{ display: "flex", gap: 16, alignItems: "flex-start", background: "rgba(255,255,255,0.05)", borderRadius: 14, padding: "18px 20px", border: "1px solid rgba(255,255,255,0.08)", transition: "background 0.2s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
+                    <div style={{ fontSize: 26, flexShrink: 0, marginTop: 2 }}>{item.icon}</div>
+                    <div>
+                      <div style={{ color: "white", fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{item.title}</div>
+                      <div style={{ color: "rgba(255,255,255,0.62)", fontSize: 13.5, lineHeight: 1.7 }}>{item.desc}</div>
+                    </div>
+                  </div>
+                </FadeIn>
+              ))}
+            </div>
+
+            {/* Right — Traxes chat UI */}
+            <FadeIn delay={80}>
+              <div style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(20px)", borderRadius: 22, border: "1px solid rgba(255,180,0,0.25)", overflow: "hidden" }}>
+                {/* Chat header */}
+                <div style={{ background: "rgba(255,180,0,0.12)", borderBottom: "1px solid rgba(255,180,0,0.2)", padding: "18px 22px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 42, height: 42, borderRadius: 12, background: `linear-gradient(135deg, ${AMBER}, #E09000)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: "0 4px 14px rgba(255,180,0,0.35)" }}>💼</div>
+                  <div>
+                    <div style={{ color: "white", fontWeight: 800, fontSize: 15 }}>Traxes</div>
+                    <div style={{ color: AMBER, fontSize: 11, fontWeight: 600 }}>● Your Financial AI · Always On</div>
+                  </div>
+                </div>
+                {/* Messages */}
+                <div style={{ padding: "22px 18px", display: "flex", flexDirection: "column", gap: 14 }}>
+                  {[
+                    { role: "ai",   text: "Good morning! You drove 487 miles yesterday across 3 states. I've logged them all — $323.82 in deductible business mileage at the current IRS rate. Your running total for Q2 is $8,241." },
+                    { role: "user", text: "What's my take-home looking like this month?" },
+                    { role: "ai",   text: "This month: $11,840 gross revenue from 6 loads. After fuel ($1,920), tolls ($340), your Solo plan, and estimated quarterly tax set-aside — your net take-home is $8,105. You're on pace for your best month yet." },
+                    { role: "user", text: "Am I ready for tax time?" },
+                    { role: "ai",   text: "Yes! Your Schedule C is 94% complete. I still need your January fuel receipts — once those are uploaded, your full year-end package is ready to file. I've identified $4,200 in deductions most drivers miss. Want a summary?" },
+                  ].map((m, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                      <div style={{
+                        maxWidth: "88%",
+                        background: m.role === "ai" ? "rgba(255,255,255,0.08)" : `linear-gradient(135deg, ${AMBER}, #D97F00)`,
+                        borderRadius: m.role === "ai" ? "16px 16px 16px 4px" : "16px 16px 4px 16px",
+                        padding: "11px 15px",
+                      }}>
+                        <p style={{ color: m.role === "ai" ? "rgba(255,255,255,0.88)" : "white", fontSize: 13, lineHeight: 1.65, margin: 0 }}>{m.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {/* Input */}
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    <div style={{ flex: 1, background: "rgba(255,255,255,0.08)", borderRadius: 24, padding: "11px 16px", border: "1px solid rgba(255,255,255,0.12)" }}>
+                      <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 13 }}>Ask Traxes anything about your finances…</span>
+                    </div>
+                    <div style={{ width: 42, height: 42, borderRadius: "50%", background: AMBER, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, cursor: "pointer" }}>→</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stat pills under the card */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
+                {[
+                  { label: "Avg. deductions found", value: "$4,200+" },
+                  { label: "Mileage logs auto-filed", value: "100%" },
+                  { label: "Minutes to tax package", value: "< 5 min" },
+                  { label: "Works with", value: "Solo & Pro" },
+                ].map(stat => (
+                  <div key={stat.label} style={{ background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: "14px 16px", border: "1px solid rgba(255,255,255,0.08)", textAlign: "center" }}>
+                    <div style={{ color: AMBER, fontWeight: 900, fontSize: 18 }}>{stat.value}</div>
+                    <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 12, marginTop: 3 }}>{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            </FadeIn>
+          </div>
+
+          {/* CTA */}
+          <FadeIn>
+            <div style={{ textAlign: "center", marginTop: 64, display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+              <a href="/traxes" style={{ display: "inline-block", background: AMBER, color: "#0F172A", padding: "16px 36px", borderRadius: 12, fontWeight: 900, fontSize: 16, textDecoration: "none", boxShadow: "0 8px 28px rgba(255,180,0,0.35)" }}
+                onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+                onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+                Meet Traxes — Full Walkthrough →
+              </a>
+              <a href="#pricing" style={{ display: "inline-block", background: "rgba(255,255,255,0.1)", color: "white", padding: "16px 28px", borderRadius: 12, fontWeight: 600, fontSize: 16, textDecoration: "none", border: "1px solid rgba(255,255,255,0.2)" }}>
+                Start Free Trial
+              </a>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ── RIG BUCKS CALLOUT ────────────────────────────────────────────── */}
+      <FadeIn>
+        <div style={{ background: `linear-gradient(135deg, ${NAVY2}, #0D2E5C)`, padding: "28px 5%", borderTop: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 28 }}>🏆</span>
+              <div>
+                <div style={{ color: AMBER, fontWeight: 800, fontSize: 15 }}>Rig Bucks — Safe driving pays off.</div>
+                <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, marginTop: 2 }}>Earn at Pilot Flying J, Love's, CAT Scale, TA Petro · Refer a driver = 1–2 free months</div>
+              </div>
+            </div>
+            <a href="/rig-bucks" style={{ background: AMBER, color: DARK, padding: "10px 22px", borderRadius: 9, fontWeight: 800, fontSize: 14, textDecoration: "none", flexShrink: 0 }}>See Rewards →</a>
+          </div>
+        </div>
+      </FadeIn>
+
+      {/* ── APP PREVIEW (Screenshots) ────────────────────────────────────────── */}
+      <section id="preview" style={{ padding: "64px 5%", background: `linear-gradient(135deg, #001A3D 0%, ${NAVY2} 100%)` }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign: "center", marginBottom: 56 }}>
+              <div style={{ color: AMBER, fontWeight: 700, fontSize: 12, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 12 }}>Real App Screens</div>
+              <h2 style={{ fontSize: "clamp(2rem,4vw,2.8rem)", fontWeight: 900, color: "white" }}>See It in Action</h2>
+              <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 16, marginTop: 14, maxWidth: 460, margin: "14px auto 0" }}>
+                Every screen you need — clean, fast, and built for drivers who can't afford downtime.
+              </p>
+            </div>
+          </FadeIn>
+          <div style={{ display: "flex", gap: 40, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+            {/* Main phone mockup */}
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              <div style={{
+                width: 240, height: 490,
+                borderRadius: 36, overflow: "hidden",
+                border: "3px solid rgba(255,255,255,0.18)",
+                boxShadow: "0 32px 80px rgba(0,0,0,0.5)",
+                background: "#0F172A",
+              }}>
+                <img src={screenshots[activeShot].src} alt={screenshots[activeShot].label}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transition: "opacity 0.4s" }} />
+              </div>
+              <div style={{
+                position: "absolute", bottom: -14, left: "50%", transform: "translateX(-50%)",
+                background: "rgba(255,255,255,0.12)", borderRadius: 20, padding: "5px 14px",
+                fontSize: 12, color: "white", fontWeight: 600, whiteSpace: "nowrap", backdropFilter: "blur(8px)",
+              }}>
+                {screenshots[activeShot].label}
+              </div>
+            </div>
+            {/* Thumbnails grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 90px)", gap: 12 }}>
+              {screenshots.map((s, i) => (
+                <div key={i} className={`shot-thumb${i === activeShot ? " active" : ""}`}
+                  onClick={() => setActiveShot(i)}
+                  style={{
+                    width: 90, height: 160,
+                    borderRadius: 14, overflow: "hidden",
+                    border: "2px solid transparent",
+                    background: "#1E293B",
+                  }}>
+                  <img src={s.src} alt={s.label} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      {/* ── AI CHARACTERS TEASER ─────────────────────────────────────────────── */}
+      <section style={{ padding: "64px 5%", background: "#0F172A", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,180,0,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,180,0,0.025) 1px, transparent 1px)", backgroundSize: "52px 52px", pointerEvents: "none" }} />
+        <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 2 }}>
+          <FadeIn>
+            <div style={{ textAlign: "center", marginBottom: 56 }}>
+              <div style={{ color: AMBER, fontWeight: 700, fontSize: 11, letterSpacing: 3, textTransform: "uppercase", marginBottom: 14 }}>Your The Dream Team</div>
+              <h2 style={{ fontSize: "clamp(2rem,4vw,2.9rem)", fontWeight: 900, color: "white", lineHeight: 1.1, marginBottom: 16 }}>
+                Seven agents in The Dream Team. One platform.<br /><span style={{ color: AMBER }}>All working for you.</span>
+              </h2>
+              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 16, maxWidth: 520, margin: "0 auto", lineHeight: 1.8 }}>
+                TruckWithEase ships with seven specialists — each with a job, a personality, and a reason to earn your trust. Not chatbots. Specialists.
+              </p>
+            </div>
+          </FadeIn>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px,1fr))", gap: 16, marginBottom: 48 }}>
+            {[
+              { emoji: "🗺️", name: "Routing Robbie",       role: "Routing & Navigation AI",  desc: "Plans every mile before you turn the key — HOS-aware, weight-compliant, fuel-optimized. Not just the shortest route, the smartest one.", color: "#38BDF8", badge: "All Plans" },
+              { emoji: "📋", name: "Compliant Kathy",     role: "Compliance AI",            desc: "HOS clock, DVIR, expiring docs, oversize permits, IFTA filings — Kathy tracks every deadline and reminds you before it's a problem.", color: "#FB923C", badge: "All Plans" },
+              { emoji: "📡", name: "Dispatch Darryl",     role: "Dispatch AI",              desc: "Load board, rates, cost-per-mile, ETA updates, and detention billing — all without you picking up the phone.", color: "#34D399", badge: "Pro & Fleet" },
+              { emoji: "💎", name: "Money Marisol",       role: "Revenue & Tax AI",         desc: "TRAXES tie-in: settlements, per diem, deductions, tax estimates. Looks at every load and tells you if it's actually worth taking.", color: "#A3E635", badge: "All Plans" },
+              { emoji: "🪖", name: "Safety Sarge",        role: "Safety & Health Coach",    desc: "Gruff on the outside, genuinely cares. Coaches your safety score, flags speeding before it costs you, and preps you for your DOT physical.", color: "#F87171", badge: "All Plans" },
+              { emoji: "🌧️", name: "Weather Wanda",       role: "Weather Intelligence AI",  desc: "Storms, ice, chain laws, and crosswind warnings — surfaced before you reach the danger, not after. Calm as a broadcaster, always right.", color: "#7DD3FC", badge: "All Plans" },
+              { emoji: "🤝", name: "HRease",  role: "Human Resources AI",       desc: "Driver records, payroll, applicant screening, background checks, CDL renewals, AB5 compliance — masters-level HR knowledge built in.", color: "#C084FC", badge: "Fleet" },
+            ].map((ai, i) => (
+              <FadeIn key={ai.name} delay={i * 50}>
+                <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "22px 20px", height: "100%" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.transition = "all 0.2s"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                    <div style={{ fontSize: 28 }}>{ai.emoji}</div>
+                    <div>
+                      <div style={{ color: "white", fontWeight: 800, fontSize: 14 }}>{ai.name}</div>
+                      <div style={{ color: ai.color, fontSize: 10, fontWeight: 700 }}>{ai.role}</div>
+                    </div>
+                    <div style={{ marginLeft: "auto", background: `${ai.color}18`, border: `1px solid ${ai.color}35`, color: ai.color, fontSize: 9, fontWeight: 800, padding: "2px 8px", borderRadius: 20, flexShrink: 0 }}>{ai.badge}</div>
+                  </div>
+                  <p style={{ color: "rgba(255,255,255,0.58)", fontSize: 13, lineHeight: 1.75 }}>{ai.desc}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+          <FadeIn delay={100}>
+            <div style={{ textAlign: "center" }}>
+              <a href="/ai-team" style={{ display: "inline-block", background: AMBER, color: "#0F172A", padding: "15px 36px", borderRadius: 12, fontWeight: 900, fontSize: 15, textDecoration: "none", boxShadow: "0 8px 28px rgba(255,180,0,0.35)" }}>
+                Meet The Dream Team →
+              </a>
+              <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: 14 }}>All seven included in your 14-day free trial · No setup required</p>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ── WHY US ───────────────────────────────────────────────────────────── */}
+      <section id="why-us" style={{ padding: "64px 5%", background: NAVY, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -120, right: -120, width: 480, height: 480, borderRadius: "50%", background: "rgba(255,107,0,0.07)", pointerEvents: "none" }} />
+        <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 2 }}>
+          <FadeIn>
+            <div style={{ textAlign: "center", marginBottom: 56 }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,107,0,0.15)", border: "1px solid rgba(255,107,0,0.4)", borderRadius: 20, padding: "6px 16px", marginBottom: 20 }}>
+                <span style={{ color: ORANGE, fontSize: 13 }}>⚡</span>
+                <span style={{ color: "#FFB366", fontSize: 12, fontWeight: 700 }}>THE HARD TRUTH</span>
+              </div>
+              <h2 style={{ fontSize: "clamp(2rem,4vw,3rem)", fontWeight: 900, color: "white", lineHeight: 1.1, marginBottom: 16 }}>
+                Every other app was built<br /><span style={{ color: ORANGE }}>for the fleet office.</span><br />We built ours for you.
+              </h2>
+              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 17, maxWidth: 660, margin: "0 auto", lineHeight: 1.8 }}>
+                Samsara, Motive, KeepTruckin — built for fleet compliance officers, sold on 3-year contracts, priced per truck. TruckWithEase does everything they do — live GPS, ELD, DVIR, driver scoring, violation alerts — plus the tools they never built: fuel cards, load boards, factoring, tax tracking, driver rewards, and an AI that actually talks to your drivers. No contracts. Fraction of the price.
+              </p>
+            </div>
+          </FadeIn>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 20, marginBottom: 60 }}>
+            {[
+              { icon: "📡", title: "Samsara does GPS & ELD. So do we — plus everything else.", desc: "Live truck tracking, HOS logging, DVIR, driver scoring, violation alerts — TruckWithEase does all of it. Then adds fuel cards, load board, factoring, and Traxes. Samsara stops at the cab door. We don't." },
+              { icon: "🏢", title: "Built for fleet safety offices, not solo drivers", desc: "Samsara and Motive sell compliance dashboards on 3-year contracts. Owner-ops rate them 3.4/5 — great for fleet managers, hard for solo drivers who just want to run loads." },
+              { icon: "🏦", title: "Hardware costs on top of monthly fees", desc: "Samsara charges $25–$50/truck/month PLUS hardware you have to buy. TruckWithEase is software-first — no hardware required, no per-truck markup, one flat price." },
+              { icon: "🔒", title: "No contracts — ever. That's the whole point.", desc: "3-year lock-ins aren't a tech limitation — they're a revenue model. We built TruckWithEase so drivers can cancel anytime. Confidence that you'll stay is the only contract we want." },
+            ].map((item, i) => (
+              <FadeIn key={item.title} delay={i * 60}>
+                <div style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(10px)", borderRadius: 16, padding: 26, border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div style={{ fontSize: 28, marginBottom: 12 }}>{item.icon}</div>
+                  <h3 style={{ color: "white", fontSize: 15, fontWeight: 800, marginBottom: 10, lineHeight: 1.4 }}>{item.title}</h3>
+                  <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 13.5, lineHeight: 1.75 }}>{item.desc}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+
+          {/* Comparison table */}
+          <FadeIn>
+            <div className="compare-wrap">
+              <div style={{ background: "white", borderRadius: 20, padding: 8, minWidth: 640 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: "left", padding: "18px 20px", fontSize: 13, color: "#64748B", fontWeight: 700 }}>What matters to drivers</th>
+                      {["TruckWithEase","Samsara","Motive","DAT"].map((h, i) => (
+                        <th key={h} style={{ padding: "18px 10px", textAlign: "center", fontSize: 12, fontWeight: 800, color: i === 0 ? NAVY : "#64748B" }}>
+                          {i === 0 ? <><span style={{ color: NAVY }}>Truck</span><span style={{ color: ORANGE }}>WithEase</span></> : h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {compareRows.map((row, i) => (
+                      <tr key={row.feature} style={{ background: i % 2 === 0 ? "#F8FAFC" : "white" }}>
+                        <td style={{ padding: "13px 20px", fontSize: 13, fontWeight: 600, color: "#0F172A" }}>{row.feature}</td>
+                        <td style={{ padding: "13px 10px", textAlign: "center", background: "rgba(255,180,0,0.07)" }}><CompareCell v={row.us} /></td>
+                        <td style={{ padding: "13px 10px", textAlign: "center" }}><CompareCell v={row.motive} /></td>
+                        <td style={{ padding: "13px 10px", textAlign: "center" }}><CompareCell v={row.trucker} /></td>
+                        <td style={{ padding: "13px 10px", textAlign: "center" }}><CompareCell v={row.dat} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <p style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 14 }}>
+              Comparison based on publicly listed features and pricing as of 2026. Competitor pricing varies by plan/fleet size.
+            </p>
+          </FadeIn>
+
+          <div style={{ textAlign: "center", marginTop: 56 }}>
+            <h3 style={{ color: "white", fontSize: "clamp(1.4rem,2.5vw,1.9rem)", fontWeight: 800, marginBottom: 24 }}>
+              We're here to make your life easier.<br />No one's built this before. We just did.
+            </h3>
+            <a href="#pricing" style={{
+              display: "inline-block", background: ORANGE, color: "white",
+              padding: "16px 40px", borderRadius: 12, fontWeight: 800, fontSize: 16,
+              textDecoration: "none", boxShadow: "0 8px 28px rgba(255,107,0,0.4)",
+            }}>
+              Start Your Free 14-Day Trial →
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── PRICING ──────────────────────────────────────────────────────────── */}
+      <section id="pricing" style={{ padding: "64px 5%", background: "#F8FAFC" }}>
+        <div style={{ maxWidth: 1050, margin: "0 auto" }}>
+
+          <FadeIn>
+            <div style={{ textAlign: "center", marginBottom: 60 }}>
+              <div style={{ color: ORANGE, fontWeight: 700, fontSize: 12, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 12 }}>Simple Pricing</div>
+              <h2 style={{ fontSize: "clamp(2rem,4vw,2.9rem)", fontWeight: 900, color: "#0F172A" }}>No Contracts. No Surprises.</h2>
+              <p style={{ color: "#64748B", fontSize: 17, maxWidth: 460, margin: "14px auto 0", lineHeight: 1.7 }}>
+                Start with a 14-day free trial. Cancel anytime, no questions asked.
+              </p>
+            </div>
+          </FadeIn>
+          <div className="plans-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 22 }}>
+            {plans.map((plan, i) => (
+              <FadeIn key={plan.id} delay={i * 80}>
+                <div className="plan-card" style={{
+                  background: plan.highlight ? plan.color : "white",
+                  borderRadius: 22, padding: "36px 30px",
+                  border: `2px solid ${plan.highlight ? plan.color : "#E2E8F0"}`,
+                  transform: plan.highlight ? "scale(1.03)" : "scale(1)",
+                  boxShadow: plan.highlight ? "0 24px 56px rgba(255,107,0,0.25)" : "0 4px 16px rgba(0,0,0,0.05)",
+                  position: "relative", height: "100%",
+                }}>
+                  {plan.highlight && (
+                    <div style={{
+                      position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)",
+                      background: "white", color: plan.color, fontSize: 11, fontWeight: 800,
+                      padding: "4px 16px", borderRadius: 20, border: `2px solid ${plan.color}`,
+                      whiteSpace: "nowrap",
+                    }}>⭐ MOST POPULAR</div>
+                  )}
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: plan.highlight ? "rgba(255,255,255,0.75)" : plan.color, marginBottom: 10 }}>{plan.tag}</div>
+                  <h3 style={{ fontSize: 26, fontWeight: 900, color: plan.highlight ? "white" : "#0F172A", marginBottom: 4 }}>{plan.name}</h3>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 26 }}>
+                    <span style={{ fontSize: 38, fontWeight: 900, color: plan.highlight ? "white" : plan.color }}>{plan.price}</span>
+                    <span style={{ color: plan.highlight ? "rgba(255,255,255,0.6)" : "#94A3B8", fontSize: 13 }}>{plan.period}</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 30 }}>
+                    {plan.features.map(f => (
+                      <div key={f} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                        <span style={{ color: plan.highlight ? "rgba(255,255,255,0.8)" : GREEN, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                        <span style={{ color: plan.highlight ? "rgba(255,255,255,0.85)" : "#475569", fontSize: 14, lineHeight: 1.5 }}>{f}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <a href="#contact" style={{
+                    display: "block", textAlign: "center", padding: "14px",
+                    borderRadius: 10, fontWeight: 700, fontSize: 15, textDecoration: "none",
+                    background: plan.highlight ? "white" : plan.color,
+                    color: plan.highlight ? plan.color : "white",
+                  }}>
+                    {plan.cta}
+                  </a>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+          <p style={{ textAlign: "center", color: "#94A3B8", fontSize: 13, marginTop: 28 }}>
+            All plans include 14-day free trial · No credit card required · Cancel anytime
+          </p>
+        </div>
+      </section>
+
+      {/* ── DASHCAM ──────────────────────────────────────────────────────────── */}
+      <section style={{ padding: "64px 5%", background: `linear-gradient(135deg, #0F172A 0%, #1E293B 100%)` }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign: "center", marginBottom: 56 }}>
+              <div style={{ color: ORANGE, fontWeight: 700, fontSize: 12, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 12 }}>Optional Hardware</div>
+              <h2 style={{ fontSize: "clamp(2rem,4vw,2.8rem)", fontWeight: 900, color: "white" }}>TruckEase Cam</h2>
+              <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 16, maxWidth: 460, margin: "14px auto 0", lineHeight: 1.7 }}>
+                Subscribe → we ship your dashcam. No separate purchase. Integrated with your app from day one.
+              </p>
+            </div>
+          </FadeIn>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 22 }}>
+            {[
+              {
+                name: "TruckEase Cam Basic", price: "$149",
+                specs: ["Front-facing 1080p HD","GPS-stamped footage","Incident auto-clip","App integration","Loop recording","G-sensor impact detection"],
+                color: AMBER, highlight: false,
+              },
+              {
+                name: "TruckEase Cam Pro", price: "$249",
+                specs: ["Dual-channel 4K (front + cab)","AI fatigue detection","Lane departure alerts","Forward collision warning","Live fleet view","Cloud storage included"],
+                color: ORANGE, highlight: true,
+              },
+            ].map(cam => (
+              <FadeIn key={cam.name}>
+                <div style={{ background: cam.highlight ? "rgba(255,107,0,0.1)" : "rgba(255,255,255,0.05)", border: `1px solid ${cam.highlight ? "rgba(255,107,0,0.4)" : "rgba(255,255,255,0.1)"}`, borderRadius: 20, padding: 32 }}>
+                  <div style={{ fontSize: 36, marginBottom: 14 }}>📹</div>
+                  <h3 style={{ color: "white", fontSize: 19, fontWeight: 800, marginBottom: 6 }}>{cam.name}</h3>
+                  <div style={{ color: cam.color, fontSize: 26, fontWeight: 900, marginBottom: 22 }}>{cam.price} <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", fontWeight: 400 }}>one-time with subscription</span></div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {cam.specs.map(s => (
+                      <div key={s} style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        <span style={{ color: cam.color, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                        <span style={{ color: "rgba(255,255,255,0.75)", fontSize: 14 }}>{s}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CONTACT ──────────────────────────────────────────────────────────── */}
+      <section id="contact" style={{ padding: "64px 5%", background: "#F8FAFC" }}>
+        <div style={{ maxWidth: 600, margin: "0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign: "center", marginBottom: 48 }}>
+              <div style={{ color: ORANGE, fontWeight: 700, fontSize: 12, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 12 }}>Get in Touch</div>
+              <h2 style={{ fontSize: "clamp(2rem,4vw,2.6rem)", fontWeight: 900, color: "#0F172A" }}>Ready to roll?</h2>
+              <p style={{ color: "#64748B", fontSize: 16, marginTop: 12, lineHeight: 1.7 }}>
+                Start your free trial, ask about Fleet pricing, or just say hello — we're real people who understand the road.
+              </p>
+              <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                <a href="tel:636-706-8338" style={{ color: ORANGE, fontSize: 14, fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+                  📞 636-706-8338
+                </a>
+                <a href="mailto:truckwithease@gmail.com" style={{ color: AMBER, fontSize: 14, fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+                  📧 truckwithease@gmail.com
+                </a>
+              </div>
+            </div>
+          </FadeIn>
+          {contactSent ? (
+            <FadeIn>
+              <div style={{ background: "white", borderRadius: 20, padding: 48, textAlign: "center", border: "1px solid #E2E8F0", boxShadow: "0 8px 32px rgba(0,87,184,0.07)" }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>🚛</div>
+                <h3 style={{ fontSize: 22, fontWeight: 800, color: "#0F172A", marginBottom: 10 }}>Message received!</h3>
+                <p style={{ color: "#64748B", fontSize: 15, lineHeight: 1.7 }}>We'll be in touch shortly. Keep the wheels turning.</p>
+              </div>
+            </FadeIn>
+          ) : (
+            <FadeIn>
+              <form onSubmit={async e => { e.preventDefault(); try { await pb.collection("contact_messages").create({ name: contactForm.name, email: contactForm.email, message: contactForm.message }); } catch {} setContactSent(true); }}
+                style={{ background: "white", borderRadius: 20, padding: "40px 36px", border: "1px solid #E2E8F0", boxShadow: "0 8px 32px rgba(0,87,184,0.07)", display: "flex", flexDirection: "column", gap: 18 }}>
+                {[
+                  { label: "Your Name", key: "name", type: "text", placeholder: "James Miller" },
+                  { label: "Email", key: "email", type: "email", placeholder: "james@yourcompany.com" },
+                ].map(field => (
+                  <div key={field.key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>{field.label}</label>
+                    <input type={field.type} placeholder={field.placeholder} required value={contactForm[field.key]}
+                      onChange={e => setContactForm(f => ({ ...f, [field.key]: e.target.value }))}
+                      style={{ padding: "12px 14px", borderRadius: 10, border: "1.5px solid #E2E8F0", fontSize: 15, fontFamily: "inherit", outline: "none", transition: "border-color 0.2s" }}
+                      onFocus={e => e.currentTarget.style.borderColor = NAVY}
+                      onBlur={e => e.currentTarget.style.borderColor = "#E2E8F0"} />
+                  </div>
+                ))}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Message</label>
+                  <textarea placeholder="Tell us about your fleet size, questions, or anything else..." required rows={4}
+                    value={contactForm.message}
+                    onChange={e => setContactForm(f => ({ ...f, message: e.target.value }))}
+                    style={{ padding: "12px 14px", borderRadius: 10, border: "1.5px solid #E2E8F0", fontSize: 15, fontFamily: "inherit", outline: "none", resize: "vertical", transition: "border-color 0.2s" }}
+                    onFocus={e => e.currentTarget.style.borderColor = NAVY}
+                    onBlur={e => e.currentTarget.style.borderColor = "#E2E8F0"} />
+                </div>
+                <button type="submit" style={{
+                  background: ORANGE, color: "white",
+                  padding: "15px", borderRadius: 10, fontWeight: 800, fontSize: 16,
+                  border: "none", cursor: "pointer", fontFamily: "inherit",
+                  boxShadow: "0 6px 20px rgba(255,107,0,0.35)", transition: "opacity 0.2s",
+                }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+                  onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+                  Send Message →
+                </button>
+              </form>
+            </FadeIn>
+          )}
+        </div>
+      </section>
+
+      {/* ── FOOTER ───────────────────────────────────────────────────────────── */}
+      <footer style={{ background: "#0F172A", padding: "60px 5% 32px", color: "rgba(255,255,255,0.55)", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 32, marginBottom: 40 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <img src="/static/twe-full-logo.jpg" alt="TruckWithEase" style={{ height: 38, objectFit: "contain", borderRadius: 7 }} />
+                <span style={{ fontWeight: 900, fontSize: 17, color: "white" }}>TruckWith<span style={{ color: AMBER }}>Ease</span></span>
+              </div>
+              <p style={{ fontSize: 13, lineHeight: 1.75, maxWidth: 240 }}>Drive Smart. Stay Compliant. Built for Class A drivers who demand the best.</p>
+              <p style={{ fontSize: 13, marginTop: 10, color: "rgba(255,255,255,0.4)" }}>Morrishive.com</p>
+            </div>
+            <div style={{ display: "flex", gap: 56, flexWrap: "wrap" }}>
+              {[
+                { title: "Product",    links: ["Traxes","Command Center","The Dream Team","HRease","Pricing","Dashcam","Load Board"] },
+                { title: "Compliance", links: ["DOT AI","HOS Logger","DVIR","IFTA"] },
+                { title: "Company",    links: ["About","Road Agent","Launch Checklist","Contact","Privacy","Terms"] },
+              ].map(col => (
+                <div key={col.title}>
+                  <div style={{ color: "white", fontWeight: 700, fontSize: 14, marginBottom: 16 }}>{col.title}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {col.links.map(link => (
+                      <a key={link}
+                        href={link === "Road Agent" ? "/road-agent" : link === "Launch Checklist" ? "/launch" : link === "Command Center" ? "/command" : link === "Cinema" ? "/cinema" : link === "HOS Logger" ? "/hos" : link === "Trip Planner" ? "/trip-planner" : link === "DVIR" ? "/dvir" : link === "The Dream Team" ? "/ai-team" : link === "HRease" ? "/humanai" : link === "Scan &amp; Bill" ? "/scan-bill" : link === "Scan & Bill" ? "/scan-bill" : link === "Privacy" ? "/privacy" : link === "Terms" ? "#" : "#"}
+                        style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, textDecoration: "none" }}
+                        onMouseEnter={e => e.currentTarget.style.color = AMBER}
+                        onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.45)"}>
+                        {link === "Road Agent" ? "🛣️ Road Agent" : link === "Launch Checklist" ? "🗓️ Launch Checklist" : link === "Command Center" ? "🎯 Command Center" : link}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* App Store Badges in footer */}
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+              <a href="https://apps.apple.com" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 8, background: "#000", border: "1.5px solid rgba(201,168,76,0.35)", borderRadius: 8, padding: "8px 16px", textDecoration: "none" }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                <div><div style={{ color: "rgba(255,255,255,0.5)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em" }}>Download on the</div><div style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>App Store</div></div>
+              </a>
+              <a href="https://play.google.com" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 8, background: "#000", border: "1.5px solid rgba(201,168,76,0.35)", borderRadius: 8, padding: "8px 16px", textDecoration: "none" }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3.18 23.76c.3.16.64.19.96.08l.1-.06 11.05-6.37-2.35-2.35-9.76 8.7z" fill="#EA4335"/><path d="M20.93 10.03l-2.94-1.7-2.62 2.36 2.62 2.6 2.96-1.71c.84-.49.84-1.07-.02-1.55z" fill="#FBBC04"/><path d="M4.14.22C3.82.1 3.47.14 3.18.3l9.76 9.77 2.35-2.35L4.24.28l-.1-.06z" fill="#4285F4"/><path d="M3.18.3c-.54.31-.88.9-.88 1.63v20.14c0 .73.34 1.32.88 1.63l.06.03 11.27-11.27v-.27L3.24.27l-.06.03z" fill="#34A853"/></svg>
+                <div><div style={{ color: "rgba(255,255,255,0.5)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em" }}>Get it on</div><div style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>Google Play</div></div>
+              </a>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, fontSize: 12 }}>
+              <span>© 2026 TruckWithEase. All rights reserved.</span>
+              <span>No contracts · No lock-in · Cancel anytime</span>
+            </div>
+          </div>
+        </div>
+      </footer>
+      </div>{/* end sidebar-offset wrapper */}
+    </div>
+  );
+}
+

@@ -1,0 +1,76 @@
+import React from 'react';
+import { Award, Zap, Target, TrendingUp, Flame, Shield, Truck, DollarSign } from 'lucide-react';
+
+const C = {
+  gold: '#c9a84c',
+  white: '#f0ede8',
+  white60: 'rgba(240, 237, 232, 0.6)',
+  card: '#0f1419',
+  green: '#4ade80',
+  blue: '#3b82f6',
+  orange: '#ff6b00',
+  red: '#f87171',
+};
+
+const badgeDefinitions = {
+  'first-load-assigned': { icon: Truck, label: 'First Load', color: C.blue, desc: 'Assigned your first load' },
+  'first-route-saved': { icon: Target, label: 'Route Master', color: C.green, desc: 'Saved your first route' },
+  'five-routes-saved': { icon: TrendingUp, label: 'Navigator', color: C.orange, desc: 'Saved 5+ routes' },
+  'ten-stops-rated': { icon: Award, label: 'Scout', color: C.gold, desc: 'Rated 10+ charge stops' },
+  'danger-report-filed': { icon: Flame, label: 'Alert Keeper', color: C.red, desc: 'Filed a danger report' },
+  'broker-warned': { icon: Shield, label: 'Fleet Protector', color: C.orange, desc: 'Warned fleet about bad broker' },
+  'one-week-user': { icon: Zap, label: 'Week One', color: C.green, desc: 'Active for 1 week' },
+  'fifty-actions': { icon: DollarSign, label: 'Platform Power User', color: C.gold, desc: 'Completed 50+ actions' },
+};
+
+export default function BadgeShowcase({ achievements = [] }) {
+  if (!achievements || achievements.length === 0) {
+    return (
+      <div style={{
+        padding: '24px',
+        background: C.card,
+        border: `1px solid rgba(201, 168, 76, 0.2)`,
+        borderRadius: 8,
+        textAlign: 'center',
+        color: C.white60,
+      }}>
+        <div style={{ fontSize: 13 }}>🏆 Earn badges as you use TruckWithEase</div>
+        <div style={{ fontSize: 11, marginTop: 8, color: 'rgba(240, 237, 232, 0.4)' }}>
+          Save routes, file reports, help your fleet — every action unlocks a badge.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+      gap: '16px',
+    }}>
+      {achievements.map(badgeKey => {
+        const badge = badgeDefinitions[badgeKey];
+        if (!badge) return null;
+        const Icon = badge.icon;
+        return (
+          <div key={badgeKey} style={{
+            padding: '16px',
+            background: C.card,
+            border: `2px solid ${badge.color}`,
+            borderRadius: 8,
+            textAlign: 'center',
+            transition: 'all 0.3s',
+          }}>
+            <Icon size={32} style={{ color: badge.color, margin: '0 auto 8px' }} />
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.white }}>
+              {badge.label}
+            </div>
+            <div style={{ fontSize: 11, color: C.white60, marginTop: 4 }}>
+              {badge.desc}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

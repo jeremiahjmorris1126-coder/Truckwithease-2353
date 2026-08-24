@@ -1,0 +1,442 @@
+
+import { useState } from "react";
+
+const NAVY = "#0B2A6B";
+const NAVY2 = "#081E4D";
+const ORANGE = "#FF6B00";
+const AMBER = "#FFB400";
+const GREEN = "#16A34A";
+const RED = "#DC2626";
+const DARK = "#06090F";
+const DARK_BG = "#0B1120";
+
+const STATES = ["Missouri (MO)","Texas (TX)","California (CA)","Illinois (IL)","Oklahoma (OK)","Tennessee (TN)","Arkansas (AR)","Kansas (KS)","Colorado (CO)","Arizona (AZ)","Nevada (NV)","Georgia (GA)","North Carolina (NC)","Ohio (OH)","Indiana (IN)"];
+
+const STATE_DATA = {
+  "Missouri (MO)": {
+    speed: { interstate:65, urban:60, rural:65 },
+    weight: { max:80000, single:20000, tandem:34000 },
+    hos: "Standard federal rules apply",
+    stations: ["Joplin (I-44 EB/WB)","Wentzville (I-70 EB)","Concordia (I-70 WB)"],
+    restrictions: ["No trucks over 26,000 lbs on I-270 inner loop after 7am weekdays","Oversize load escort required on I-44 through Springfield during peak hours"],
+    permitUrl: "modot.org/permits"
+  },
+  "Texas (TX)": {
+    speed: { interstate:75, urban:65, rural:70 },
+    weight: { max:80000, single:20000, tandem:34000 },
+    hos: "Texas permits certain agricultural exemptions within 150 air miles",
+    stations: ["Amarillo (I-40 EB/WB)","Dallas (I-20 WB)","Laredo (I-35 NB)","El Paso (I-10 EB)"],
+    restrictions: ["No commercial vehicles on Loop 12 Dallas during AM/PM rush","Oversize permits required for loads over 8.5ft wide"],
+    permitUrl: "txdmv.gov/motor-carriers"
+  },
+  "California (CA)": {
+    speed: { interstate:55, urban:55, rural:55 },
+    weight: { max:80000, single:20000, tandem:34000 },
+    hos: "California mandates 30-min rest break after 8 hrs for certain operations — stricter than federal",
+    stations: ["Truckee (I-80 EB)","Cajon Pass (I-15 SB)","Fort Tejon (I-5 SB)","Yermo (I-15 NB)"],
+    restrictions: ["No trucks over 55 mph statewide on all highways","Mandatory chain controls during snow season on I-80 and I-5","CARB emissions compliance required for all diesel trucks"],
+    permitUrl: "dmv.ca.gov/portal/trucks"
+  },
+  "Illinois (IL)": {
+    speed: { interstate:65, urban:55, rural:65 },
+    weight: { max:80000, single:20000, tandem:34000 },
+    hos: "Standard federal rules apply",
+    stations: ["Chicago (I-94 SB)","Collinsville (I-64 EB)","Pontiac (I-55 NB)"],
+    restrictions: ["Chicago city limits: no trucks over 26,000 lbs on many arterials without permit","I-290 (Eisenhower Expressway): trucks restricted to right two lanes"],
+    permitUrl: "idot.illinois.gov/transportation"
+  },
+  "Oklahoma (OK)": {
+    speed: { interstate:70, urban:65, rural:70 },
+    weight: { max:90000, single:20000, tandem:34000 },
+    hos: "Oklahoma allows 90,000 lbs GVW on designated TP turnpike routes",
+    stations: ["Okemah (I-40 WB)","Turner Turnpike (I-44 NB)","Vinita (I-44 NB)"],
+    restrictions: ["Special permit required for loads over 90,000 lbs on turnpikes","Width over 14ft requires escort on I-44"],
+    permitUrl: "ok.gov/omes/transportation"
+  },
+};
+
+const INCIDENTS = [
+  { id:1, type:"Speed Trap",    severity:"HIGH", route:"I-44 EB · Mile 190",    reported:"Trucker Mike",   time:"18 min ago",  mile:190, highway:"I-44", verified:3, desc:"MHP laser enforcement — 3 stops confirmed. Slow to 65 before mile 185. Known hotspot near Waynesville exit." },
+  { id:2, type:"Speed Trap",    severity:"HIGH", route:"I-70 EB · Mile 128",    reported:"Ray Davis",     time:"34 min ago",  mile:128, highway:"I-70", verified:2, desc:"Unmarked trooper in median. Multiple trucks cited for 73 in 65 zone. Enforcement running both directions." },
+  { id:3, type:"Construction",  severity:"MED",  route:"I-70 WB · Exit 175",   reported:"MODOT",         time:"1h 10m ago",  mile:175, highway:"I-70", verified:5, desc:"Lane reduction 1 lane, 15-20 min delays. 45 MPH construction zone in effect 6am-6pm. Watch for workers." },
+  { id:4, type:"Weigh Station", severity:"INFO", route:"I-44 WB · Joplin",      reported:"System",        time:"5 min ago",   mile:8,   highway:"I-44", verified:1, desc:"Open. 12-minute average wait. PrePass bypass active for eligible carriers. All lanes operating." },
+  { id:5, type:"Road Closure",  severity:"HIGH", route:"I-55 NB · Mile 82",     reported:"MODOT Alert",   time:"3h ago",      mile:82,  highway:"I-55", verified:4, desc:"Bridge work overnight — detour via US-61. Reopen expected 6am. Add 22 minutes to northbound routes." },
+  { id:6, type:"Speed Trap",    severity:"MED",  route:"US-63 SB · Mile 44",    reported:"James Miller",  time:"47 min ago",  mile:44,  highway:"US-63",verified:1, desc:"Single patrol unit observed. Unconfirmed — use caution in 55 zone near Rolla." },
+  { id:7, type:"Weather",       severity:"MED",  route:"I-70 WB · Mile 220",    reported:"Weather Wayne", time:"22 min ago",  mile:220, highway:"I-70", verified:2, desc:"Wet roads, visibility 6 miles. Wind gusts to 28 mph — crosswind risk on exposed overpass sections. Reduce speed." },
+];
+
+const SEVERITY_COLORS = { HIGH: RED, MED: AMBER, LOW: GREEN };
+
+export default function StatePatrolPage() {
+  const [selectedState, setSelectedState] = useState("Missouri (MO)");
+  const [tab, setTab] = useState("intel");
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState([
+    { role:"ai", text:"I-44 through Missouri — 2 verified speed enforcement reports near mile 190 EB in the last hour. Weigh station at Joplin is open, 12-minute wait. All clear on permits for standard 80K GVW." }
+  ]);
+  const [showReport, setShowReport] = useState(false);
+  const [reportForm, setReportForm] = useState({ type:"Speed Trap", severity:"MED", route:"", description:"" });
+  const [aiTyping, setAiTyping] = useState(false);
+
+  const stateInfo = STATE_DATA[selectedState] || STATE_DATA["Missouri (MO)"];
+  const stateCode = selectedState.match(/\((\w+)\)/)?.[1] || "MO";
+
+  const QUICK_PROMPTS = [
+    `Speed limits for ${stateCode}`,
+    `Weigh stations in ${stateCode}`,
+    `Any restrictions I should know?`,
+    `Permit requirements for ${stateCode}`
+  ];
+
+  function sendChat(e, override) {
+    if (e && e.preventDefault) e.preventDefault();
+    const text = override || chatInput.trim();
+    if (!text) return;
+    setChatMessages(prev => [...prev, { role:"user", text }]);
+    setChatInput("");
+    setAiTyping(true);
+    setTimeout(() => {
+      setAiTyping(false);
+      setChatMessages(prev => [...prev, { role:"ai", text:`Checking live state patrol data for ${stateCode}... ${stateInfo.hos}. Speed limit for commercial vehicles is ${stateInfo.speed.interstate}mph interstate. Max GVW ${stateInfo.weight.max.toLocaleString()} lbs. ${stateInfo.restrictions[0] || "No unusual restrictions active right now."}` }]);
+    }, 1400);
+  }
+
+  return (
+    <div style={{ fontFamily:"'Poppins',sans-serif", background:DARK_BG, minHeight:"100vh", color:"#e2e8f0" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+        * { box-sizing:border-box; margin:0; padding:0; }
+        ::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-track { background:${DARK_BG}; } ::-webkit-scrollbar-thumb { background:#1e3a6e; border-radius:3px; }
+        .nav-link { color:#94a3b8; text-decoration:none; font-size:14px; font-weight:500; transition:color 0.2s; }
+        .nav-link:hover { color:${AMBER}; }
+        .tab-btn { background:transparent; border:none; padding:12px 20px; font-family:'Poppins',sans-serif; font-size:14px; font-weight:500; cursor:pointer; color:#64748b; border-bottom:2px solid transparent; transition:all 0.2s; }
+        .tab-btn.active { color:${ORANGE}; border-bottom-color:${ORANGE}; font-weight:600; }
+        .tab-btn:hover:not(.active) { color:#e2e8f0; }
+        .card { background:#111c2e; border-radius:12px; padding:20px; border:1px solid #1e3a6e; margin-bottom:16px; }
+        .state-select { background:#111c2e; border:1px solid #1e3a6e; color:#e2e8f0; font-family:'Poppins',sans-serif; font-size:15px; font-weight:600; padding:10px 16px; border-radius:10px; cursor:pointer; outline:none; min-width:220px; }
+        .state-select:focus { border-color:${ORANGE}; }
+        .btn-primary { background:${ORANGE}; color:#fff; border:none; border-radius:8px; padding:10px 20px; font-family:'Poppins',sans-serif; font-weight:600; cursor:pointer; font-size:14px; transition:background 0.2s; }
+        .btn-primary:hover { background:#e05a00; }
+        .btn-outline { background:transparent; border:1px solid ${ORANGE}; color:${ORANGE}; border-radius:8px; padding:8px 16px; font-family:'Poppins',sans-serif; font-weight:600; cursor:pointer; font-size:13px; transition:all 0.2s; }
+        .btn-outline:hover { background:${ORANGE}; color:#fff; }
+        .info-box { background:#0a1628; border:1px solid #1e3a6e; border-radius:8px; padding:14px 18px; }
+        .chat-input { background:#111c2e; border:1px solid #1e3a6e; color:#e2e8f0; font-family:'Poppins',sans-serif; font-size:13px; border-radius:8px; padding:10px 14px; flex:1; outline:none; }
+        .chat-input:focus { border-color:${ORANGE}; }
+        .quick-prompt { background:#0a1628; border:1px solid #1e3a6e; color:#94a3b8; border-radius:20px; padding:7px 14px; font-family:'Poppins',sans-serif; font-size:12px; cursor:pointer; transition:all 0.2s; }
+        .quick-prompt:hover { border-color:${ORANGE}; color:${ORANGE}; }
+        .form-input { width:100%; background:#0a1628; border:1px solid #1e3a6e; border-radius:8px; padding:9px 14px; font-family:'Poppins',sans-serif; font-size:13px; color:#e2e8f0; outline:none; }
+        .form-input:focus { border-color:${ORANGE}; }
+        @media(max-width:768px){.stats-grid{grid-template-columns:1fr 1fr!important;}.page-content{padding:16px!important;}}
+      `}</style>
+
+      {/* Nav */}
+      <nav style={{ background:NAVY2, padding:"0 24px", height:60, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:100, borderBottom:"1px solid #1e3a6e" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <img src="/static/truckwithease-icon.png" alt="TruckWithEase" style={{ height:36 }} />
+          <span style={{ fontWeight:700, fontSize:17, color:"#fff" }}>TruckWithEase</span>
+        </div>
+        <div style={{ display:"flex", gap:20, alignItems:"center" }}>
+          <a href="/" className="nav-link">Dashboard</a>
+          <a href="/fuel" className="nav-link">⛽ Fuel</a>
+          <a href="/parking" className="nav-link">🅿️ Parking</a>
+          <a href="/command" className="nav-link">🎯 Dashboard</a>
+          <a href="/bypass" className="nav-link">⚡ Bypass</a>
+          <a href="/parking" className="nav-link">🅿️ Parking</a>
+          <a href="/#pricing" style={{ background:AMBER, color:DARK, padding:"7px 14px", borderRadius:7, fontWeight:800, fontSize:12, textDecoration:"none" }}>Free Trial</a>
+          <a href="/" className="nav-link" style={{ opacity:0.4, fontSize:12 }}>← Back</a>
+        </div>
+      </nav>
+
+      {/* Header */}
+      <div style={{ background:"#0d1828", borderBottom:"1px solid #1e3a6e", padding:"16px 24px 0" }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12, marginBottom:12 }}>
+          <div>
+            <h1 style={{ fontSize:22, fontWeight:800, color:"#fff", display:"flex", alignItems:"center", gap:8 }}>
+              🚔 State Patrol Intelligence
+              <span style={{ background:RED, color:"#fff", fontSize:11, fontWeight:700, padding:"3px 9px", borderRadius:20 }}>LIVE</span>
+            </h1>
+            <p style={{ color:"#64748b", fontSize:13, marginTop:2 }}>Speed limits, weigh stations, restrictions & live incidents</p>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ fontSize:13, color:"#64748b" }}>Viewing:</span>
+            <select className="state-select" value={selectedState} onChange={e=>setSelectedState(e.target.value)}>
+              {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:0 }}>
+          {[{id:"intel",label:"State Intel"},{id:"incidents",label:"Live Incidents"},{id:"ai",label:"AI Advisor"}].map(t => (
+            <button key={t.id} className={`tab-btn${tab===t.id?" active":""}`} onClick={()=>setTab(t.id)}>{t.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="page-content" style={{ padding:"24px", maxWidth:1000, margin:"0 auto" }}>
+
+        {/* State Intel Tab */}
+        {tab === "intel" && (
+          <div>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
+              <div style={{ width:44, height:44, background:"linear-gradient(135deg,#1e3a6e,#0B2A6B)", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:16, color:"#fff" }}>{stateCode}</div>
+              <div>
+                <div style={{ fontWeight:800, fontSize:18, color:"#fff" }}>{selectedState}</div>
+                <div style={{ fontSize:12, color:"#64748b" }}>Commercial Vehicle Regulations</div>
+              </div>
+            </div>
+
+            <div className="stats-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:16, marginBottom:20 }}>
+              {/* Speed Limits */}
+              <div className="card">
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
+                  <span style={{ fontSize:20 }}>🚀</span>
+                  <div style={{ fontWeight:700, fontSize:14, color:ORANGE }}>Speed Limits (Trucks)</div>
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {[
+                    { label:"Interstate", value:`${stateInfo.speed.interstate} mph` },
+                    { label:"Urban/City", value:`${stateInfo.speed.urban} mph` },
+                    { label:"Rural", value:`${stateInfo.speed.rural} mph` },
+                  ].map(r => (
+                    <div key={r.label} style={{ display:"flex", justifyContent:"space-between", padding:"6px 10px", background:"#0a1628", borderRadius:6 }}>
+                      <span style={{ fontSize:12, color:"#94a3b8" }}>{r.label}</span>
+                      <span style={{ fontSize:13, fontWeight:700, color:"#fff", fontFamily:"'DM Mono',monospace" }}>{r.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Weight Limits */}
+              <div className="card">
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
+                  <span style={{ fontSize:20 }}>⚖️</span>
+                  <div style={{ fontWeight:700, fontSize:14, color:AMBER }}>Weight Limits</div>
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {[
+                    { label:"Max GVW", value:`${stateInfo.weight.max.toLocaleString()} lbs` },
+                    { label:"Single Axle", value:`${stateInfo.weight.single.toLocaleString()} lbs` },
+                    { label:"Tandem Axle", value:`${stateInfo.weight.tandem.toLocaleString()} lbs` },
+                  ].map(r => (
+                    <div key={r.label} style={{ display:"flex", justifyContent:"space-between", padding:"6px 10px", background:"#0a1628", borderRadius:6 }}>
+                      <span style={{ fontSize:12, color:"#94a3b8" }}>{r.label}</span>
+                      <span style={{ fontSize:13, fontWeight:700, color:"#fff", fontFamily:"'DM Mono',monospace" }}>{r.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* HOS Rules */}
+              <div className="card">
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
+                  <span style={{ fontSize:20 }}>⏱️</span>
+                  <div style={{ fontWeight:700, fontSize:14, color:GREEN }}>HOS Rules</div>
+                </div>
+                <div style={{ background:"#0a1628", borderRadius:6, padding:"10px 12px" }}>
+                  <div style={{ fontSize:12, color:"#94a3b8", lineHeight:1.6 }}>{stateInfo.hos}</div>
+                </div>
+                <div style={{ marginTop:10 }}>
+                  <a href={`https://${stateInfo.permitUrl}`} target="_blank" rel="noreferrer" style={{ color:ORANGE, fontSize:12, fontWeight:600, textDecoration:"none" }}>📋 {stateCode} Permit Info ↗</a>
+                </div>
+              </div>
+            </div>
+
+            {/* Weigh Stations */}
+            <div className="card" style={{ marginBottom:16 }}>
+              <div style={{ fontWeight:700, fontSize:14, color:"#fff", marginBottom:14 }}>⚖️ Weigh Stations</div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:10 }}>
+                {stateInfo.stations.map((s,i) => (
+                  <div key={i} style={{ background:"#0a1628", border:"1px solid #1e3a6e", borderRadius:8, padding:"8px 16px", fontSize:13, fontWeight:500, display:"flex", alignItems:"center", gap:8 }}>
+                    <div style={{ width:8, height:8, borderRadius:"50%", background:GREEN }} />
+                    {s}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Restrictions */}
+            <div className="card">
+              <div style={{ fontWeight:700, fontSize:14, color:"#fff", marginBottom:14 }}>🚫 Truck Restrictions</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                {stateInfo.restrictions.map((r,i) => (
+                  <div key={i} style={{ background:"#1a0a0a", border:"1px solid #4a1818", borderRadius:8, padding:"10px 14px", display:"flex", gap:10, alignItems:"flex-start" }}>
+                    <span style={{ color:RED, fontSize:14, marginTop:1 }}>⚠️</span>
+                    <span style={{ fontSize:13, color:"#fca5a5", lineHeight:1.5 }}>{r}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Incidents Tab */}
+        {tab === "incidents" && (
+          <div>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <div>
+                <h2 style={{ fontSize:18, fontWeight:700, color:"#fff" }}>Live Incidents</h2>
+                <div style={{ fontSize:12, color:"#64748b" }}>Crowdsourced + official data · Updates every 5 min</div>
+              </div>
+              <button className="btn-primary" onClick={()=>setShowReport(!showReport)}>+ Report Incident</button>
+            </div>
+
+            {/* Real Google Map showing the corridor */}
+            <div style={{ borderRadius:12, overflow:"hidden", marginBottom:20, position:"relative" }}>
+              <iframe
+                title="State Patrol Map"
+                width="100%"
+                height="260"
+                style={{ border:0, display:"block" }}
+                loading="lazy"
+                allowFullScreen
+                src={`https://www.google.com/maps/embed/v1/search?key=AIzaSyAtgo9lKS-aCevpsgeda7VYgodpYPqbboE&q=highways+in+${encodeURIComponent(stateCode)}&zoom=7`}
+              />
+              <div style={{ position:"absolute", top:10, left:10, background:"rgba(8,30,64,0.9)", borderRadius:8, padding:"5px 12px", display:"flex", alignItems:"center", gap:6 }}>
+                <div style={{ width:7, height:7, borderRadius:"50%", background:"#DC2626", boxShadow:"0 0 6px #DC2626" }} />
+                <span style={{ color:"white", fontSize:11, fontWeight:700 }}>LIVE PATROL MAP — {stateCode}</span>
+              </div>
+            </div>
+
+            {showReport && (
+              <div className="card" style={{ marginBottom:20, borderTop:`3px solid ${ORANGE}` }}>
+                <div style={{ fontWeight:700, fontSize:15, color:"#fff", marginBottom:16 }}>Report an Incident</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+                  <div>
+                    <label style={{ fontSize:12, color:"#64748b", fontWeight:600, display:"block", marginBottom:4 }}>Type</label>
+                    <select className="form-input" value={reportForm.type} onChange={e=>setReportForm({...reportForm,type:e.target.value})}>
+                      {["Speed Trap","Road Closure","Construction","Weather","Accident","Weigh Station"].map(t=><option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:12, color:"#64748b", fontWeight:600, display:"block", marginBottom:4 }}>Severity</label>
+                    <select className="form-input" value={reportForm.severity} onChange={e=>setReportForm({...reportForm,severity:e.target.value})}>
+                      {["LOW","MED","HIGH"].map(s=><option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:12, color:"#64748b", fontWeight:600, display:"block", marginBottom:4 }}>Route / Location</label>
+                    <input className="form-input" placeholder="e.g. I-44 EB · Mile 190" value={reportForm.route} onChange={e=>setReportForm({...reportForm,route:e.target.value})} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:12, color:"#64748b", fontWeight:600, display:"block", marginBottom:4 }}>Description</label>
+                    <input className="form-input" placeholder="What's happening?" value={reportForm.description} onChange={e=>setReportForm({...reportForm,description:e.target.value})} />
+                  </div>
+                </div>
+                <button className="btn-primary" style={{ marginTop:14 }} onClick={()=>setShowReport(false)}>Submit Report</button>
+              </div>
+            )}
+
+            {/* Corridor alert strip */}
+            <div style={{ background:"#07111f", border:"1px solid #1a2e50", borderRadius:12, padding:"14px 16px", marginBottom:16 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:AMBER, marginBottom:10 }}>🛣️ CORRIDOR PLOT — Active Alerts on Your Route</div>
+              <div style={{ position:"relative", height:44, marginBottom:8 }}>
+                <div style={{ position:"absolute", top:"50%", left:0, right:0, height:6, background:"#1e3a6e", borderRadius:3, transform:"translateY(-50%)" }} />
+                {INCIDENTS.map((inc, idx) => {
+                  const pct = Math.min(93, Math.max(4, ((inc.mile || 50) / 200) * 100));
+                  const color = SEVERITY_COLORS[inc.severity] || ORANGE;
+                  const icon = inc.type === "Speed Trap" ? "🚔" : inc.type === "Weigh Station" ? "⚖️" : inc.type === "Weather" ? "🌧️" : inc.type === "Construction" ? "🚧" : "⚠️";
+                  return (
+                    <div key={inc.id} title={inc.route + ": " + inc.desc}
+                      style={{ position:"absolute", left:pct+"%", top:"50%", transform:"translate(-50%,-50%)", zIndex:5, cursor:"pointer" }}>
+                      <div style={{ width:22, height:22, borderRadius:"50%", background:color, border:"2px solid #0a1628", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, boxShadow:`0 0 8px ${color}66` }}>
+                        {icon}
+                      </div>
+                      {inc.severity === "HIGH" && (
+                        <div style={{ position:"absolute", top:-18, left:"50%", transform:"translateX(-50%)", fontSize:8, fontWeight:800, color:color, whiteSpace:"nowrap" }}>MI {inc.mile}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display:"flex", gap:14, flexWrap:"wrap" }}>
+                {[{c:RED,l:"HIGH — Avoid/Caution"},{c:AMBER,l:"MED — Aware"},{c:GREEN,l:"INFO — Clear"}].map(s=>(
+                  <div key={s.l} style={{ display:"flex", alignItems:"center", gap:5 }}>
+                    <div style={{ width:8, height:8, borderRadius:"50%", background:s.c }} />
+                    <span style={{ fontSize:10, color:"#64748b" }}>{s.l}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              {INCIDENTS.map(inc => (
+                <div key={inc.id} className="card" style={{ borderLeft:`4px solid ${SEVERITY_COLORS[inc.severity] || ORANGE}` }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12 }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6, flexWrap:"wrap" }}>
+                        <span style={{ fontWeight:800, fontSize:14, color:"#fff" }}>{inc.type}</span>
+                        <span style={{ background:(SEVERITY_COLORS[inc.severity]||ORANGE)+"22", color:SEVERITY_COLORS[inc.severity]||ORANGE, fontSize:10, fontWeight:700, padding:"2px 9px", borderRadius:20 }}>{inc.severity}</span>
+                        {inc.verified > 1 && <span style={{ background:"rgba(22,163,74,0.15)", color:"#86efac", fontSize:10, fontWeight:700, padding:"2px 9px", borderRadius:20 }}>✓ {inc.verified} drivers confirmed</span>}
+                      </div>
+                      <div style={{ fontSize:12, color:ORANGE, fontWeight:700, marginBottom:4 }}>📍 {inc.route}</div>
+                      <div style={{ fontSize:12, color:"#94a3b8", lineHeight:1.6 }}>{inc.desc}</div>
+                    </div>
+                    <div style={{ textAlign:"right", flexShrink:0 }}>
+                      <div style={{ fontSize:11, color:"#64748b" }}>{inc.time}</div>
+                      <div style={{ fontSize:10, color:"#475569", marginTop:2 }}>by {inc.reported}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* AI Advisor Tab */}
+        {tab === "ai" && (
+          <div>
+            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
+              <div style={{ width:48, height:48, background:"linear-gradient(135deg,#FF6B00,#c45000)", borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>🚔</div>
+              <div>
+                <div style={{ fontWeight:800, fontSize:16, color:"#fff" }}>State Patrol Intel AI</div>
+                <div style={{ fontSize:12, color:"#64748b" }}>Live enforcement data · State regulations · Permit guidance</div>
+              </div>
+              <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:6 }}>
+                <div style={{ width:8, height:8, borderRadius:"50%", background:GREEN }} />
+                <span style={{ fontSize:12, color:GREEN, fontWeight:600 }}>Live</span>
+              </div>
+            </div>
+
+            <div style={{ background:"#111c2e", border:"1px solid #1e3a6e", borderRadius:12, padding:16, minHeight:360, marginBottom:16, display:"flex", flexDirection:"column", gap:10 }}>
+              {chatMessages.map((m,i) => (
+                <div key={i} style={{ display:"flex", justifyContent: m.role==="user"?"flex-end":"flex-start" }}>
+                  <div style={{
+                    maxWidth:"78%",
+                    background: m.role==="user" ? NAVY : "#0a1628",
+                    border: m.role==="ai" ? `1px solid ${ORANGE}33` : "none",
+                    color:"#e2e8f0",
+                    borderRadius: m.role==="user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
+                    padding:"10px 14px",
+                    fontSize:13,
+                    lineHeight:1.6
+                  }}>
+                    {m.role==="ai" && <span style={{ fontWeight:700, color:ORANGE }}>State Patrol Intel: </span>}
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+              {aiTyping && (
+                <div style={{ display:"flex" }}>
+                  <div style={{ background:"#0a1628", border:`1px solid ${ORANGE}33`, borderRadius:"12px 12px 12px 2px", padding:"10px 14px", fontSize:13, color:"#64748b" }}>
+                    <span style={{ fontWeight:700, color:ORANGE }}>State Patrol Intel: </span>Checking enforcement data...
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:14 }}>
+              {QUICK_PROMPTS.map(p => (
+                <button key={p} className="quick-prompt" onClick={()=>sendChat(null, p)}>{p}</button>
+              ))}
+            </div>
+
+            <form onSubmit={sendChat} style={{ display:"flex", gap:10 }}>
+              <input className="chat-input" value={chatInput} onChange={e=>setChatInput(e.target.value)} placeholder={`Ask about ${stateCode} enforcement, permits, restrictions...`} />
+              <button type="submit" className="btn-primary">Send</button>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

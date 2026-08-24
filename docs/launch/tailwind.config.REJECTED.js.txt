@@ -1,0 +1,4 @@
+/** REJECTED — kept for reference only. This project is Tailwind CSS 4.
+ *  Tokens live in packages/web/src/web/styles.css under @theme.
+ *  Do NOT restore this file: a tailwind.config.js + @config directive is what
+ *  broke the legacy build. Hex values here are already identical to @theme. */

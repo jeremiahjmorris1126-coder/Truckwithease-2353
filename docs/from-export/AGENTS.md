@@ -1,0 +1,163 @@
+# Project Setup
+
+Last updated: 2026-08-03
+
+## Stack
+
+A **Vite + React** single-page app (JSX), styled with **Tailwind CSS v4**. The dev server runs with live reload, so edits appear in the preview immediately.
+
+Provided by the platform (available at runtime): React, react-dom, react-router, Vite, @vitejs/plugin-react, lucide-react, pocketbase, tailwind-merge, and the Tailwind v4 engine. This project has **no dependencies of its own**.
+
+## Build Protection
+
+A validator runs before every build: `scripts/validate-build.cjs`
+- Checks all pages exist in src/
+- Checks all pages are imported in App.jsx
+- Checks all routes are present in App.jsx
+- If any check fails, build is aborted
+
+## All Pages (42 total + 7 legal/docs)
+
+Routes live in App.jsx. Pages:
+TraxesPage, BigRigPointsPage, LeaderboardPage, RoadAgentPage, LaunchChecklistPage, ReferralPage, FontPreviewPage, CinemaPage, CommandCenterPage, DriverProfilePage, TripPlannerPage, HOSLoggerPage, DVIRPage, AICharactersPage, ScanBillPage, HumanAIPage, MaintenancePage, LoadProfitPage, FuelFinderPage, LoadBoardPage, ExpensesPage, ReportsPage, TollsPage, DispatchPage, WeatherPage, BreakdownPage, ScorecardPage, PermitBookPage, FactoringPage, FuelCardPage, ParkingPage, HealthPage, StatePatrolPage, BypassPage, DetentionPage, VoicePage, SignupPage, CheckoutPage, FleetProfilePage, FinanceAlertAgentPage, MemoryManagementAgentPage, HardwareInventoryAgentPage, A2PRegistrationPage, IndexMechanicPage, SubscriptionSeatsPage.
+
+Legal & Compliance Pages:
+- `PrivacyPolicyPage` — `/privacy`, `/privacy-policy`, `/privacy-notice`, `/terms`, `/terms-of-service`, `/legal` — 16-section comprehensive liability waiver, user responsibility disclaimer, community intelligence disclaimer, load board broker matching liability, route planning limits, payment/subscription disclaimers, data collection & privacy policy, third-party integration limits, no-warranty clause, indemnification, prohibited uses, account termination rights, legal compliance expectations, modification rights, Missouri law/arbitration clause
+- `DocumentsPage` — `/documents`, `/docs`, `/document-center` — 12-doc center covering privacy, terms, DPA, acceptable use, third-party terms, cookies, accessibility, broker ratings disclaimer, incident response, data retention, subprocessor list, compliance checklist. All audit-ready.
+- `PrivacyDetailPage` — `/privacy-detailed`, `/privacy-full`, `/data-privacy` — 8-section extended privacy policy with human-readable explanations: data collection categories with retention schedules, GDPR/CCPA rights, data retention & deletion procedures, cookies & tracking tech, security measures, third-party sharing, jurisdiction/compliance standards, policy updates & contact info. Every endpoint explained.
+
+## Google APIs Status & Voice Clone Integration
+
+All 11 Google APIs enabled, tested, and active:
+- **Maps JavaScript API** — real-time routing, charge stops, fleet tracking
+- **Directions API** — trip planning, route optimization
+- **Distance Matrix API** — fleet dispatch cost calculation
+- **Geocoding API** — address validation, stop lookup
+- **Places API** — charge stop discovery, fuel finder
+- **Elevation API** — terrain analysis, truck gradeability
+- **Vision API** (REST) — DVIR photo analysis, document OCR
+- **Speech-to-Text API** (REST) — voice commands, voice clone training
+- **Natural Language API** (REST) — broker rating sentiment analysis
+- **Text-to-Speech API** (REST) — **CRITICAL for Voice Clone** — converts agent responses to natural speech
+- **Translation API** (REST) — multi-language driver communications
+- **Roads API** — route snapping, speed limit alerts
+
+API status dashboard at `/google-apis`, `/google-status`, `/google-integration` — check status, test connectivity, manage keys.
+
+## Routing & asset paths
+
+The published `dist/` is served from more than one base path:
+- Never hardcode root-absolute URLs for in-app assets or links
+- Exception: `/static/<filename>` is always valid (served outside the app)
+- Router: useRoute() hook using window.location.pathname + popstate
+- All hooks must be called before any conditional returns in App()
+
+## New Pages Added (2026-08-19)
+- `FleetTemplatePage` — `/fleet-templates` — Top Tier fleet document builder: 10 template types (letterhead, rate confirmation, BOL, load confirmation, driver checklist, safety policy, DVIR, accident report, lease agreement, invoice), logo upload, brand colors, print preview, print intelligence log
+- `DOTPortalPage` — `/dot-portal` — DOT/FMCSA messaging hub: compose compliance notices, random drug test pool selection (49 CFR Part 382), document vault with 32 FMCSA required docs
+- `MedicalCDLPage` — `/medical-cdl` — Medical card and CDL testing tracker: expiry alerts, test score logging, 8 CDL test centers, medical examiner directory, endorsement guide
+
+## Collections Added (2026-08-19)
+- `fleet_templates` — Top Tier fleet branded document templates (fleet_id, template_type, content JSON, logo_url, brand_color, contact_info)
+- `document_print_log` — Every document printed tracked for logistics intelligence (document_type, fleet_name, driver, load, module_source, metadata)
+- `dot_portal_mail` — DOT to fleet messaging (sender_type, message_type, is_random_pool, selected_drivers, response_deadline, priority)
+- `medical_cdl_records` — Driver medical card and CDL test records (cdl_expiry, medical_card_expiry, test_score, test_result, endorsements, restrictions)
+
+## New Pages Added (2026-08-21 — Workflow Streamliner)
+- `WorkflowStreamlinerPage` — `/workflow-streamliner` — Full company operations intelligence tool: 3-step wizard, 8 pre-built domain templates (dispatch, driver ops, compliance, finance, maintenance, sales, HR, custom), step-by-step modeling with KPIs/owners/frequency/bottleneck risk tags, model score ring (0–100), AI analysis with bottleneck/automation/KPI/revenue insights, mark-done tracking
+- `OperationModelPage` — `/operation-model` — Original operation model builder (legacy, still active)
+
+## New Pages Added (2026-08-21 — Road Context)
+- `RoadContextPage` — `/road-context`, `/driver-intel`, `/road-intelligence` — Real-time driver intelligence on the road: live GPS location + speed + bearing, current load display, danger reports nearby with confidence votes, broker flag alerts (pulls shipper rating from load), top-rated charge stops ahead ranked by vehicle type, weather & road condition alerts, broker messages, recent fleet activity nearby, active alerts sidebar (sorted by severity), support call + issue report buttons
+
+## New Pages Added (2026-08-21 — Voice Clone Agent & Compliance)
+- `VoiceClonePage` — `/voice-clone`, `/voice-ai`, `/agent-voice` — Voice personality cloning for AI agent: upload 30–60 sec speech sample, system learns voice characteristics (pace/tone/pitch), communication style (formality/humor/directness), tendencies (how you open, ask questions), emotional signature (confidence/warmth/authenticity), quantum profile (128D voice vector + emotion quanta), text-to-speech generates agent responses sounding like you, saves multiple clones, activate per context
+- `GoogleAPIsPage` — `/google-apis`, `/google-status`, `/google-integration` — Full Google API control center: status dashboard for all 11 APIs (Maps, Directions, Distance Matrix, Geocoding, Places, Elevation, Vision, Speech, NLP, Text-to-Speech, Translation, Roads), test connectivity, monitor quota usage, manage API keys, critical note for Text-to-Speech (powers voice clone)
+
+## Accessibility Agent Teams (2026-08-21 — Specialized Teams for Every Demographic)
+- `AccessibilityAgentsPage` — `/accessibility-agents`, `/agent-teams`, `/team-focus` — Dedicated AI agent teams specializing in deaf, blind, elderly, and crisis support: 6 specialized agents with dedicated teams, deaf & hearing impaired agent (real-time captions 99.8% accuracy, visual alerts, haptic patterns, ASL videos, emergency captions, phone transcription, message urgency indicators, traffic light status), blind & low vision agent (128D spatial audio, vehicle positioning stereo, traffic hazard audio, voice commands 24+, screen reader optimization NVDA/JAWS/VoiceOver/TalkBack, haptic lane guidance, predictive obstacle warnings), elderly & senior driver agent (18pt+ large text, simplified navigation, voice-first interface, medication reminders, fall detection, family notifications, cognitive load reduction), accessibility coordinator agent (WCAG 2.1 AAA audits, ADA compliance, user testing 12 sessions/month, cross-team coordination, vendor requirements, feedback loop), crisis support agent (24/7 emergency response 2-5min, accident coordination, medical emergency protocols, mental health de-escalation, suicide prevention, domestic violence safe house, financial hardship), community mentor agent (2,847 active mentors, 27 peer groups, 34,291 community members, 156 resource guides, 432 recovery stories, mentor matching algorithm)
+
+## Universal Accessibility (2026-08-21 — Every Driver, Every Vehicle, No Exceptions)
+- `UniversalAccessibilityPage` — `/universal-access`, `/all-drivers`, `/accessibility` — Platform for every driver and commuter regardless of ability: works in truck/car/motorcycle/bicycle, selector for vehicle type, 5 core feature areas (real-time captions on all sound, spatial audio navigation in 3D, haptic alerts with vibration patterns, voice commands across all functions, human support 24/7), deaf & hearing impaired features (GPS captions for turns, emergency alert text with visual + haptic, phone call live captions, message notifications with urgency patterns, traffic light status visual alerts, ASL video instructions), blind & low vision features (spatial audio navigation with directional sound, traffic awareness 3D audio, full voice command control, hazard audio alerts with tone coding, screen reader full support NVDA/JAWS/VoiceOver, haptic lane guidance), daily life assistance (commute alerts & alternatives, location search "gas station nearby", drowsy driving detection, safe rest area finder, eating & hydration reminders, social connection with voice messaging, health monitoring with privacy-first, child/pet transport safety), 6 emergency response types (accident with 911/photos/fleet notification, breakdown with towing/lodging, medical emergency with hospital prep, mental health crisis with trained counselor 5min, dangerous driver reporting with police/dashcam, sexual assault with safe house/confidential support)
+
+## Human Support Network (2026-08-21 — Real Connection for Every Driver)
+- `HumanSupportNetworkPage` — `/human-support`, `/support-network`, `/community` — Real human connection platform built for driver loneliness and crisis: 6 core programs (peer mentorship with 2,847 active mentors across 6 focus areas, 24/7/365 crisis support with 2-5min human response, financial hardship assistance with 6 programs up to $10K interest-free, community belonging with anonymous confession board/27 peer groups/156 resource guides, mentor network across onboarding/owner-op transition/mental health/financial recovery/accident recovery/family relationships, crisis response for accidents/breakdown/medical/mental health/job loss/domestic violence), financial assistance programs (emergency bridge loan up to $5K 0%, medical grant $3K, vehicle recovery $10K, family care grant $2K, job loss fund $6K, education grant $1.5K), community features (anonymous confession board, 27 peer groups by life stage, 156 video/guide library, community giveback mentor program, 432 driver recovery stories, family support programming)
+
+## Blind & Visually Impaired Accessibility (2026-08-21 — Audio-First Fleet Operations)
+- `AccessibilityBlindPage` — `/accessibility-blind`, `/blind-access`, `/audio-nav` — Complete audio-first platform for blind drivers, cyclists, couriers: quantum spatial audio (3D soundscape describing full environment, 128D audio vectors, real-time 3D positioning updated 200ms), 6 core features (quantum spatial audio for vehicle/hazard/road positioning, voice commands for all functions, full screen reader support NVDA/JAWS/VoiceOver/TalkBack, haptic feedback patterns, quantum AI predictive awareness, audio turn-by-turn navigation), 24 voice commands across 6 categories (Navigation, Load Management, HOS Logging, Safety/Alerts, Messages, Rig Bucks), screen reader technical features (ARIA landmarks, semantic HTML5, proper heading hierarchy, form labels, button roles, image alt text, meaningful link text, live regions, focus indicators, 100% keyboard navigation, WCAG 2.1 AAA), 6 supported screen readers fully compatible, settings panel (screen reader mode, spatial audio toggle, haptic feedback toggle)
+
+## Deaf Community Communication Bridge (2026-08-21 — Zero Communication Gaps)
+- `DeafCommunityBridgePage` — `/deaf-bridge`, `/deaf-community`, `/communication-bridge` — Real-time translation layer between hearing & deaf drivers: 3 translation modes (text-to-sign video 99.2% fluency, sign-to-text transcription 95% accuracy, voice bridge: hearing driver speaks → AI transcribes to text + generates sign video simultaneously), 6 core features (text-to-sign with AI interpreter video, sign-to-text for deaf responses, instant voice-to-sign bridge, fleet-wide integration in Dispatch/Load Board/Road Context, accuracy audited by deaf community, continuous AI improvement), 8-step breakdown showing exact flow (hearing input → NLP context detection → ASL generation → delivery to deaf user), live chat demo with mixed text/video messages, integration points everywhere
+
+## Accessibility Suite (2026-08-21 — Deaf & Hard of Hearing First)
+- `AccessibilityDeafPage` — `/accessibility-deaf`, `/deaf-access`, `/asl` — Complete accessibility for deaf drivers, cyclists, couriers: 6 core features (real-time captions 99.8% accuracy via Google Cloud Speech-to-Text on all audio, visual alert system with color-coded alerts + on-screen text, haptic notification patterns for load/danger/message/emergency, 6 ASL video guides with professional interpreters, silent GPS navigation with text route steps, text-first messaging + captioned video calls), 6 alert types with visual/haptic codes (load: blue pulse + 2 bursts, danger: red + 3 pulses, weather: orange + 1 buzz, emergency: red strobe + continuous), caption sources (dispatch voice messages, broker calls, voice command responses, emergencies, co-driver speech, messages), ASL library (Road Context, Dispatch, Emergency Procedures, Rig Bucks, Fleet Memory, Workflow Streamliner), settings panel (toggle captions, haptic, alert style)
+
+## Android Native App (2026-08-21 — Mobile-First Fleet Operations)
+- `AndroidNativeSetupPage` — `/android`, `/android-native`, `/android-setup` — Complete Android native app guide: build with React Native/Flutter (0.72+), 6 core native features (GPS tracking, camera integration, voice clone agent, push notifications, offline-first sync, biometric auth), full feature breakdown, step-by-step setup (prerequisites, clone template, env config), release build process, Google Play deployment (internal test → closed beta → production review), pre-launch checklist (12-point verification), battery optimization (5% per hour), offline data queue, automatic sync on reconnect
+
+## Compliance & Operational Pages (2026-08-21 — Enterprise Audit Readiness)
+- `ComplianceAuthPage` — `/compliance-auth`, `/audit-access`, `/token-management` — API authentication layer for compliance teams: generate time-limited tokens (90-day expiration), role-based access control (Compliance Officer, Audit Firm, Legal, Regulator), document access matrix (public, compliance-team, internal-only), full access log with timestamp/IP/user/action, cloud usage dashboard (storage 45GB/500GB, API requests 2.3M/10M, database, bandwidth), automatic alerts at 70%/85% thresholds with email/SMS/Slack, 99.99% uptime SLA, backup/recovery documentation
+- `UserDocumentAccessPage` — `/my-documents`, `/user-docs`, `/document-access` — Role-based document access for all users: drivers, dispatchers, fleet managers, owner-ops see only documents relevant to them, download history tracking (timestamp, device, IP), role-locked documents with clear "Access Restricted" messaging, all downloads encrypted in transit (TLS 1.3) and at rest (AES-256), access logs available for compliance audit
+- `CloudUsageMonitorPage` — `/cloud-usage`, `/health-monitor`, `/system-status` — Real-time platform health & cloud resource monitoring: 4 usage metrics (storage, API quota, database, bandwidth) with live percentages and growth rates, automatic projections showing "days to limit," alert system triggering at 70%/85% thresholds, platform uptime 99.99% SLA (24h: 100%, 7d: 99.99%, 30d: 99.98%), response time 85ms, backup/disaster recovery status (7-day rolling backups, hourly snapshots, < 15min RTO, < 1min RPO)
+
+## Personalization & Onboarding Engine (2026-08-21)
+- `src/lib/truckWithEase.js` (446 lines) — TruckWithEase Personal Intelligence Engine:
+  - `buildUserProfile(userId)` — complete user profile from activity, performance, preferences
+  - `generatePersonalizedDashboard(userProfile)` — role-based dashboard cards (driver alerts, rig bucks, subscription, workflow)
+  - `getPersonalizedTips(userId, userType)` — role-specific onboarding tips
+  - `getContextualHelp(module, userType, isFirstTime)` — in-context help text for every module
+  - `getPerformanceInsights(userId)` — personalized metrics and recommendations
+  - `generateSmartAlerts(userId, userProfile)` — role-based critical alerts (danger reports, broker flags)
+  - `suggestNextFeatures(userProfile, userType)` — AI feature discovery
+  - `loadPersonalizationContext(userId, userType)` — load complete personalization context with caching
+
+- `src/lib/tutorials.js` (346 lines) — Platform Tutorials & Onboarding:
+  - Role-based, in-context tutorials for 9 modules: Road Context, Fleet Memory, Rig Bucks, Subscription Seats, Dispatch, Workflow Streamliner, Command Center, Load Board, Load Profit
+  - Custom help text for dispatcher, owner-op, fleet-manager
+  - Section-based navigation with progress tracking
+  - `getTutorial(module, userType, section)` — get specific tutorial
+  - `getTutorialSections(module, userType)` — get all sections for navigation
+
+- `src/lib/onboarding.js` (349 lines) — Onboarding Integration Layer (one-touch wiring):
+  - `hasCompletedOnboarding(userId)` — check first-time user status
+  - `markOnboardingComplete(userId)` — flag onboarding as done
+  - `getOnboardingState(userId)` — retrieve user's setup state (user_type, fleet_size)
+  - `getModuleOnboardingTooltip(module, userType, isFirstVisit)` — first-visit tooltips for any page
+  - `getInlineTutorial(module, userType, sectionIndex)` — contextual help banners wired into components
+  - `recordAchievement(userId, achievementType, detail)` — badge system (first-load-assigned, first-route-saved, etc.)
+  - `getAchievements(userId)` — retrieve user's unlocked badges
+  - `getNextOnboardingStep(userId, userType, completedActions)` — AI-guided next steps
+  - `getFirstWeekChecklist(userType)` — role-specific 7-day roadmap
+
+- `src/pages/OnboardingWizardPage.jsx` (393 lines) — 3-step onboarding wizard at `/onboarding`, `/setup`, `/get-started`:
+  - Step 0: Role selection (Solo Driver, Dispatcher, Fleet Manager)
+  - Step 1: Fleet size (fleet managers only)
+  - Step 2: Personalized feature suggestions based on role + activity
+  - Completion screen with redirects to user dashboard
+  - Logs all selections to `user_activity_index` for personalization engine
+  - One-touch entry point: all onboarding flows wired through single `OnboardingWizardPage` component
+
+## Platform Selling Points (wired into every module via truckWithEase + tutorials)
+1. **Road Context** — Real-time driver intelligence on the road: danger reports, broker flags, top charge stops, weather
+2. **Fleet Memory** — Cross-fleet intelligence: broker ratings, danger reports, community wisdom
+3. **Rig Bucks** — Owner-operator rewards: fuel credits, maintenance rebates, cash back (owner-ops only)
+4. **Broker Flags in Dispatch** — Assignments show instant warnings about flagged brokers
+5. **Workflow Streamliner** — Model any operation, get AI insights on bottlenecks and automation
+6. **Subscription Seat Management** — Control DAT/Uber Freight access (2 seats included, $15/seat/month upgrades)
+7. **Load Board Follow-Up** — No-response loads get ready-to-send scripts and broker alerts
+8. **Personal Performance Index** — Every action logged, personal and fleet-wide activity feed
+9. **Entitled Index** — Master platform hub connecting 55+ modules with staff alerts and activity logs
+
+## Collections (already created, dev + prod)
+- `workflow_operations` — title, description, category, status, steps_json, model_score, revenue_potential, session_id
+- `workflow_steps` — operation_id, step_order, step_title, step_type, owner, duration_days, freq, kpi, automation, notes, status, bottleneck_risk
+- `workflow_ai_insights` — operation_id, insight_type, insight_text, priority, impact_score, action_taken
+- `subscription_seats` — plan, user_type, max_dat_logins, max_uber_logins, dat_users[], uber_users[], active_users[]
+- `signups` — name, email, phone, plan, user_type (owner-op/fleet-manager/company-driver), fleet_size, rig_bucks_enabled, source
+- `rig_bucks_accounts` — user_name, email, account_type, balance, lifetime_earnings, signup_id (auto-created for owner-ops on signup)
+
+## Subscription Access & Rig Bucks Restrictions (2026-08-21)
+- **Rig Bucks** (`/rig-bucks`) — **Owner-Operators Only**: Solo 1099 independent drivers receive automatic Rig Bucks account creation on signup; fleet managers and company drivers are blocked with a clear "access denied" message
+- **Load Board Logins** — Each fleet subscription includes **2 seats per service** (DAT and Uber Freight). Fleet managers manage additional driver access at `/subscription-seats`; going over the limit prompts upgrade to additional seats at $15/seat/month
+- **User Types**: `owner-op` (1099 independent), `fleet-manager` (runs company drivers), `company-driver` (drives for fleet)
+- **Signup Flow**: Added user type selector to `AccessibleSignupPage.jsx`; Solo drivers must be owner-ops; fleet plan + company driver combo rejected at signup
