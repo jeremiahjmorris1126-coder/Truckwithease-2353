@@ -147,7 +147,7 @@ export default function SupportAgentTechnical() {
           "Double-check email and password (case-sensitive)",
           "Try 'Forgot Password' to reset",
           "Clear app cache and login again",
-          "If account locked: Contact truckwithease@gmail.com",
+          "If account locked: Contact truckeasecare@gmail.com",
           "Check server status: status.truckwithease.com"
         ]
       },

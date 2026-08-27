@@ -1,458 +1,675 @@
-import React, { useState, useEffect } from 'react';
-import { Star, Moon, AlertTriangle, Eye, Navigation2, BookOpen, Compass } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from "react";
+
+/**
+ * Celestial Navigation & Night Driving.
+ *
+ * What was removed from the previous version:
+ *   - Hardcoded sunrise/sunset. The old calculateTwilightTimes() returned
+ *     05:30/20:30 in "spring/summer" and 07:00/17:30 otherwise — the same two
+ *     pairs of times for every location on earth, and `isNight` (and the night
+ *     driving banner) was derived from them. Sunrise/sunset is now computed
+ *     from real latitude/longitude with the NOAA solar position equations, for
+ *     the location the driver picks.
+ *   - driverLocation hardcoded to New York City (40.7128, -74.0060). The page
+ *     now uses browser geolocation, falling back to the same ten city presets
+ *     the weather service exposes at GET /api/weather/cities.
+ *   - The entire "James Webb Space Telescope Views" tab. It published invented
+ *     findings under a real telescope's name — "3 new stellar nurseries
+ *     detected", "over 1000 young stellar objects catalogued", stellar
+ *     temperature ranges — none of which came from any data source.
+ *   - The "Night Driving Alerts" live readings, which were all constants:
+ *     "next safe rest area: 14 miles ahead", "current visibility: 150 feet",
+ *     "hours remaining: 6 hours 23 minutes", "next mandatory break: 1 hour 37
+ *     minutes", dew point, and "wind: gusts 12-18 mph". Nothing measured any of
+ *     them. That tab is now general night-driving guidance, labelled as
+ *     guidance, with links to the pages that hold the real numbers.
+ *   - Invented per-constellation "brightness" percentages (0.7-1.0).
+ *   - Slate/blue/cyan/purple palette, replaced with gold on black.
+ *
+ * The star-field dots are decoration only and are positioned from a fixed seed
+ * so they do not move between renders.
+ */
+
+const GOLD = "#C9A84C";
+const GOLDBR = "#FFD700";
+const BLACK = "#0a0a0a";
+const CARD = "#161616";
+const CARD2 = "#111111";
+const BORDER = "#222222";
+const MUTED = "#8a8a8a";
+const DIM = "#666666";
+const WARN = "#c96a4c";
+
+const CITY_FALLBACK = [
+  { name: "Springfield, MO", lat: 37.209, lon: -93.2923, tz: "America/Chicago" },
+  { name: "St. Louis, MO", lat: 38.627, lon: -90.1994, tz: "America/Chicago" },
+  { name: "Kansas City, MO", lat: 39.0997, lon: -94.5786, tz: "America/Chicago" },
+  { name: "Dallas, TX", lat: 32.7767, lon: -96.797, tz: "America/Chicago" },
+  { name: "Chicago, IL", lat: 41.8781, lon: -87.6298, tz: "America/Chicago" },
+  { name: "Denver, CO", lat: 39.7392, lon: -104.9903, tz: "America/Denver" },
+  { name: "Atlanta, GA", lat: 33.749, lon: -84.388, tz: "America/New_York" },
+  { name: "Phoenix, AZ", lat: 33.4484, lon: -112.074, tz: "America/Phoenix" },
+  { name: "Indianapolis, IN", lat: 39.7684, lon: -86.1581, tz: "America/Indiana/Indianapolis" },
+  { name: "Salt Lake City, UT", lat: 40.7608, lon: -111.891, tz: "America/Denver" },
+];
+
+const deviceTz = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+};
+
+/* ------------------------------------------------------------------ *
+ * NOAA solar position — sunrise, sunset, civil twilight.
+ * Source: NOAA Global Monitoring Laboratory solar calculation equations
+ * (https://gml.noaa.gov/grad/solcalc/calcdetails.html). No API key, no
+ * network call, accurate to about a minute at these latitudes.
+ * ------------------------------------------------------------------ */
+
+const rad = (d) => (d * Math.PI) / 180;
+const deg = (r) => (r * 180) / Math.PI;
+
+function julianDay(date) {
+  return date.getTime() / 86400000 + 2440587.5;
+}
+
+function solarEventUTC(date, lat, lon, zenithDeg, rising) {
+  // Iterate twice: the equation of time depends on the event time itself.
+  let jd = Math.floor(julianDay(date) - 0.5) + 0.5;
+  let minutes = 720;
+  for (let i = 0; i < 3; i++) {
+    const t = (jd + minutes / 1440 - 2451545) / 36525;
+    const gml = (280.46646 + t * (36000.76983 + t * 0.0003032)) % 360;
+    const gma = 357.52911 + t * (35999.05029 - 0.0001537 * t);
+    const ecc = 0.016708634 - t * (0.000042037 + 0.0000001267 * t);
+    const ctr =
+      Math.sin(rad(gma)) * (1.914602 - t * (0.004817 + 0.000014 * t)) +
+      Math.sin(rad(2 * gma)) * (0.019993 - 0.000101 * t) +
+      Math.sin(rad(3 * gma)) * 0.000289;
+    const trueLong = gml + ctr;
+    const appLong = trueLong - 0.00569 - 0.00478 * Math.sin(rad(125.04 - 1934.136 * t));
+    const oblique =
+      23 +
+      (26 + (21.448 - t * (46.815 + t * (0.00059 - t * 0.001813))) / 60) / 60 +
+      0.00256 * Math.cos(rad(125.04 - 1934.136 * t));
+    const declin = deg(Math.asin(Math.sin(rad(oblique)) * Math.sin(rad(appLong))));
+    const vary = Math.tan(rad(oblique / 2)) ** 2;
+    const eqTime =
+      4 *
+      deg(
+        vary * Math.sin(2 * rad(gml)) -
+          2 * ecc * Math.sin(rad(gma)) +
+          4 * ecc * vary * Math.sin(rad(gma)) * Math.cos(2 * rad(gml)) -
+          0.5 * vary * vary * Math.sin(4 * rad(gml)) -
+          1.25 * ecc * ecc * Math.sin(2 * rad(gma)),
+      );
+    const cosHa =
+      (Math.cos(rad(zenithDeg)) - Math.sin(rad(lat)) * Math.sin(rad(declin))) /
+      (Math.cos(rad(lat)) * Math.cos(rad(declin)));
+    if (cosHa > 1 || cosHa < -1) return null; // sun never reaches that angle today
+    const ha = deg(Math.acos(cosHa)) * (rising ? 1 : -1);
+    minutes = 720 - 4 * (lon + ha) - eqTime;
+  }
+  const utcMidnight = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  return new Date(utcMidnight + minutes * 60000);
+}
+
+function solarTimes(date, lat, lon) {
+  return {
+    sunrise: solarEventUTC(date, lat, lon, 90.833, true),
+    sunset: solarEventUTC(date, lat, lon, 90.833, false),
+    dawn: solarEventUTC(date, lat, lon, 96, true),
+    dusk: solarEventUTC(date, lat, lon, 96, false),
+  };
+}
+
+const fmt = (d, tz) =>
+  d
+    ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: tz })
+    : "—";
+
+/* ------------------------------------------------------------------ *
+ * Constellation reference. Astronomy reference content, not measurement.
+ * ------------------------------------------------------------------ */
+
+const CONSTELLATIONS = {
+  "ursa-major": {
+    name: "The Big Dipper (Ursa Major)",
+    season: "Circumpolar",
+    visibility: "Year-round from the northern US, all night.",
+    navigation:
+      "The two stars at the end of the bowl point to Polaris — extend that line about five times the gap between them.",
+  },
+  "ursa-minor": {
+    name: "The Little Dipper (Ursa Minor)",
+    season: "Circumpolar",
+    visibility: "Year-round, circles the pole.",
+    navigation: "Polaris is the last star in the handle. It sits over true north.",
+  },
+  cassiopeia: {
+    name: "Cassiopeia",
+    season: "Circumpolar",
+    visibility: "Year-round; a W or M shape depending on the hour.",
+    navigation:
+      "Sits on the opposite side of Polaris from the Big Dipper — useful when the Dipper is low or blocked.",
+  },
+  orion: {
+    name: "Orion",
+    season: "Winter",
+    visibility: "December through March, best in January.",
+    navigation:
+      "The three belt stars rise close to due east and set close to due west.",
+  },
+  leo: {
+    name: "Leo",
+    season: "Spring",
+    visibility: "March through May.",
+    navigation: "Regulus sits near the ecliptic — a rough east-west reference.",
+  },
+  scorpius: {
+    name: "Scorpius",
+    season: "Summer",
+    visibility: "June through August, low in the south.",
+    navigation:
+      "From the northern US it stays low and southerly — when Antares is at its highest, you are looking near due south.",
+  },
+};
+
+// Fixed decorative star positions (no randomness, so they never jump).
+const DECOR_STARS = [
+  [12, 18, 2], [27, 9, 3], [41, 24, 2], [58, 14, 2], [73, 28, 3],
+  [86, 11, 2], [19, 44, 3], [33, 61, 2], [49, 52, 2], [64, 68, 3],
+  [79, 47, 2], [91, 63, 2], [8, 77, 3], [24, 88, 2], [44, 82, 2],
+  [61, 91, 3], [77, 84, 2], [93, 79, 2],
+];
+
+const TABS = [
+  { id: "navigation", label: "Navigate by Stars" },
+  { id: "night", label: "Night Driving" },
+  { id: "constellations", label: "Constellation Guide" },
+];
 
 const AstronomyNavigationPage = () => {
-  const [activeTab, setActiveTab] = useState('navigation');
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [driverLocation, setDriverLocation] = useState({ lat: 40.7128, lng: -74.0060 });
-  const [nightDrivingAlert, setNightDrivingAlert] = useState(false);
-  const [constellationView, setConstellationView] = useState('ursa-major');
-  const [skyBrightness, setSkyBrightness] = useState(0.3);
-
-  // Major constellations visible from North America
-  const constellations = {
-    'ursa-major': {
-      name: 'The Big Dipper (Ursa Major)',
-      visibility: 'Year-round, visible all night',
-      navigation: 'Points to North Star (Polaris) - for true north navigation',
-      stars: 7,
-      brightness: 0.9,
-      season: 'Circumpolar',
-    },
-    'ursa-minor': {
-      name: 'The Little Dipper (Ursa Minor)',
-      visibility: 'Year-round, circumpolar',
-      navigation: 'Contains Polaris - the exact north point',
-      stars: 7,
-      brightness: 0.7,
-      season: 'Circumpolar',
-    },
-    'cassiopeia': {
-      name: 'Cassiopeia (The Queen)',
-      visibility: 'Year-round',
-      navigation: 'Opposite the Big Dipper, across Polaris',
-      stars: 5,
-      brightness: 0.85,
-      season: 'Circumpolar',
-    },
-    'orion': {
-      name: 'Orion (The Hunter)',
-      visibility: 'Winter (Dec-Mar), best Dec-Feb',
-      navigation: 'Belt points to sunrise direction (East)',
-      stars: 10,
-      brightness: 1.0,
-      season: 'Winter',
-    },
-    'leo': {
-      name: 'Leo (The Lion)',
-      visibility: 'Spring (Mar-May), best Mar-Apr',
-      navigation: 'Bright Regulus marks East-West line',
-      stars: 15,
-      brightness: 0.95,
-      season: 'Spring',
-    },
-    'scorpius': {
-      name: 'Scorpius (The Scorpion)',
-      visibility: 'Summer (Jun-Aug), best Jul',
-      navigation: 'Red star Antares marks South direction',
-      stars: 18,
-      brightness: 0.9,
-      season: 'Summer',
-    },
-  };
-
-  // James Webb infrared constellation views (simulated high-resolution data)
-  const jamesWebbViews = {
-    'ursa-major': {
-      description: 'Reveals hidden star birth regions and nebulae within the Big Dipper',
-      temperature: '6000-50000 K',
-      discovery: '3 new stellar nurseries detected',
-      imageDesc: 'Infrared heat signature showing stellar formation',
-    },
-    'orion': {
-      description: 'Orion Nebula revealed in stunning detail - newborn stars and dust clouds',
-      temperature: '7000-60000 K',
-      discovery: 'Over 1000 young stellar objects catalogued',
-      imageDesc: 'Deep infrared revealing star birth factory',
-    },
-    'leo': {
-      description: 'Distant galaxies revealed behind Leo constellation',
-      temperature: '3000-40000 K',
-      discovery: 'Hubble Deep Field regions visible',
-      imageDesc: 'Infrared penetrating dust to reveal ancient light',
-    },
-  };
-
-  // Calculate twilight times based on location and season
-  const calculateTwilightTimes = () => {
-    const now = new Date();
-    const month = now.getMonth();
-    
-    // Simplified twilight calculation (varies by latitude)
-    let sunrise, sunset;
-    if (month >= 2 && month <= 9) { // Spring/Summer/Early Fall
-      sunrise = new Date(now);
-      sunrise.setHours(5, 30);
-      sunset = new Date(now);
-      sunset.setHours(20, 30);
-    } else { // Fall/Winter
-      sunrise = new Date(now);
-      sunrise.setHours(7, 0);
-      sunset = new Date(now);
-      sunset.setHours(17, 30);
-    }
-    
-    return { sunrise, sunset };
-  };
-
-  const { sunrise, sunset } = calculateTwilightTimes();
-  const isNight = currentTime < sunrise || currentTime > sunset;
+  const [activeTab, setActiveTab] = useState("navigation");
+  const [now, setNow] = useState(new Date());
+  const [cityIdx, setCityIdx] = useState(0);
+  const [coords, setCoords] = useState(null); // {lat, lon} from the browser
+  const [geoState, setGeoState] = useState("idle"); // idle | asking | ok | denied
+  const [constellationView, setConstellationView] = useState("ursa-major");
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-      setNightDrivingAlert(isNight);
-    }, 60000); // Update every minute
-    return () => clearInterval(timer);
-  }, [isNight]);
+    const t = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
 
-  const constellation = constellations[constellationView];
-  const jamesWeb = jamesWebbViews[constellationView] || {};
+  const city = CITY_FALLBACK[cityIdx];
+  const lat = coords ? coords.lat : city.lat;
+  const lon = coords ? coords.lon : city.lon;
+  const locLabel = coords
+    ? `Your device location (${coords.lat.toFixed(3)}, ${coords.lon.toFixed(3)})`
+    : city.name;
+  const tz = coords ? deviceTz() : city.tz;
+
+  function askForLocation() {
+    if (!navigator.geolocation) {
+      setGeoState("denied");
+      return;
+    }
+    setGeoState("asking");
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setCoords({ lat: p.coords.latitude, lon: p.coords.longitude });
+        setGeoState("ok");
+      },
+      () => setGeoState("denied"),
+      { timeout: 10000 },
+    );
+  }
+
+  const times = useMemo(() => solarTimes(now, lat, lon), [now, lat, lon]);
+  const isNight =
+    times.sunrise && times.sunset ? now < times.sunrise || now > times.sunset : null;
+
+  const constellation = CONSTELLATIONS[constellationView];
+
+  const label = {
+    fontFamily: "Oswald, sans-serif",
+    fontSize: ".72rem",
+    letterSpacing: ".1em",
+    textTransform: "uppercase",
+    color: DIM,
+  };
+  const card = {
+    background: CARD,
+    border: `1px solid ${BORDER}`,
+    borderRadius: 10,
+    padding: 18,
+  };
+  const h2 = {
+    fontFamily: "Oswald, sans-serif",
+    fontSize: "1.05rem",
+    fontWeight: 600,
+    letterSpacing: ".07em",
+    textTransform: "uppercase",
+    color: GOLD,
+    margin: "0 0 14px",
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-blue-950 to-slate-900 text-white p-6">
+    <div
+      style={{
+        background: BLACK,
+        minHeight: "100vh",
+        color: "#e8e8e8",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
       {/* Header */}
-      <div className="max-w-6xl mx-auto mb-8">
-        <div className="flex items-center gap-3 mb-6">
-          <Star className="w-8 h-8 text-yellow-300" />
-          <h1 className="text-4xl font-bold">Celestial Navigation & Night Driving Intelligence</h1>
+      <div style={{ background: CARD2, padding: "30px 24px", borderBottom: `1px solid ${BORDER}` }}>
+        <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+          <h1
+            style={{
+              fontFamily: "Bebas Neue, sans-serif",
+              fontSize: "2.4rem",
+              letterSpacing: ".04em",
+              margin: 0,
+              color: GOLDBR,
+            }}
+          >
+            CELESTIAL NAVIGATION &amp; NIGHT DRIVING
+          </h1>
+          <p style={{ margin: "6px 0 0", color: MUTED, fontSize: ".95rem" }}>
+            Real sunrise, sunset and twilight for where you are, plus how to find true north
+            without a signal.
+          </p>
         </div>
-        <p className="text-slate-300 text-lg">Navigate by the stars. Stay safe in the dark.</p>
       </div>
 
-      {/* Night Driving Alert */}
-      {nightDrivingAlert && (
-        <div className="max-w-6xl mx-auto mb-6 bg-gradient-to-r from-orange-900/40 to-red-900/40 border border-orange-500/50 rounded-lg p-4 flex items-start gap-4">
-          <AlertTriangle className="w-6 h-6 text-orange-400 flex-shrink-0 mt-1" />
-          <div>
-            <h3 className="font-bold text-orange-300 mb-1">Night Driving Active</h3>
-            <p className="text-slate-300 text-sm">Sunrise: {sunrise.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} | Sunset: {sunset.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-            <p className="text-slate-400 text-sm mt-1">Celestial navigation aids and fatigue alerts are now active.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Tab Navigation */}
-      <div className="max-w-6xl mx-auto mb-8 flex gap-2 border-b border-slate-700">
-        {[
-          { id: 'navigation', label: 'Navigation by Stars', icon: Navigation2 },
-          { id: 'alerts', label: 'Night Driving Alerts', icon: AlertTriangle },
-          { id: 'constellations', label: 'Constellation Guide', icon: Compass },
-          { id: 'james-webb', label: 'James Webb Views', icon: Eye },
-        ].map(tab => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 border-b-2 transition ${
-                activeTab === tab.id
-                  ? 'border-cyan-400 text-cyan-300'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Content */}
-      <div className="max-w-6xl mx-auto">
-        {/* Navigation by Stars */}
-        {activeTab === 'navigation' && (
-          <div className="grid md:grid-cols-2 gap-8">
+      <div style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 24px 64px" }}>
+        {/* Location + solar times */}
+        <div style={{ ...card, marginBottom: 22 }}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 14,
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 16,
+            }}
+          >
             <div>
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                <Compass className="w-6 h-6 text-cyan-400" />
-                Navigate Using Constellations
-              </h2>
-              <div className="space-y-4">
-                <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                  <h3 className="font-bold text-cyan-300 mb-2">How It Works</h3>
-                  <ul className="space-y-2 text-sm text-slate-300">
-                    <li>✦ Find Polaris (North Star) using the Big Dipper or Cassiopeia</li>
-                    <li>✦ Polaris is directly above true north - never moves</li>
-                    <li>✦ Use constellations to orient yourself when GPS unavailable</li>
-                    <li>✦ Backup navigation for remote highways and truck stops</li>
+              <div style={label}>Location</div>
+              <div style={{ fontSize: "1.05rem", color: GOLDBR, fontWeight: 700, marginTop: 4 }}>
+                {locLabel}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              {!coords && (
+                <select
+                  value={cityIdx}
+                  onChange={(e) => setCityIdx(Number(e.target.value))}
+                  style={{
+                    background: CARD2,
+                    color: "#e8e8e8",
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: 8,
+                    padding: "9px 12px",
+                    fontSize: ".88rem",
+                  }}
+                >
+                  {CITY_FALLBACK.map((c, i) => (
+                    <option key={c.name} value={i}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                onClick={coords ? () => { setCoords(null); setGeoState("idle"); } : askForLocation}
+                style={{
+                  background: "transparent",
+                  border: `1px solid ${GOLD}`,
+                  color: GOLD,
+                  borderRadius: 8,
+                  padding: "9px 16px",
+                  fontFamily: "Oswald, sans-serif",
+                  letterSpacing: ".06em",
+                  textTransform: "uppercase",
+                  fontSize: ".8rem",
+                  cursor: "pointer",
+                }}
+              >
+                {coords ? "Use a city instead" : geoState === "asking" ? "Locating…" : "Use my location"}
+              </button>
+            </div>
+          </div>
+
+          {geoState === "denied" && (
+            <p style={{ color: WARN, fontSize: ".84rem", margin: "0 0 14px" }}>
+              Location was blocked or unavailable, so times below are for the selected city — not
+              for where you are.
+            </p>
+          )}
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+              gap: 12,
+            }}
+          >
+            {[
+              ["First light (civil dawn)", fmt(times.dawn, tz)],
+              ["Sunrise", fmt(times.sunrise, tz)],
+              ["Sunset", fmt(times.sunset, tz)],
+              ["Full dark (civil dusk)", fmt(times.dusk, tz)],
+            ].map(([k, v]) => (
+              <div key={k} style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 14 }}>
+                <div style={label}>{k}</div>
+                <div
+                  style={{
+                    fontFamily: "JetBrains Mono, monospace",
+                    fontSize: "1.35rem",
+                    color: GOLDBR,
+                    marginTop: 6,
+                  }}
+                >
+                  {v}
+                </div>
+              </div>
+            ))}
+            <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 14 }}>
+              <div style={label}>Right now</div>
+              <div
+                style={{
+                  fontFamily: "JetBrains Mono, monospace",
+                  fontSize: "1.35rem",
+                  color: isNight === null ? MUTED : isNight ? WARN : GOLDBR,
+                  marginTop: 6,
+                }}
+              >
+                {isNight === null ? "N/A" : isNight ? "DARK" : "DAYLIGHT"}
+              </div>
+            </div>
+          </div>
+
+          <p style={{ margin: "14px 0 0", fontSize: ".8rem", color: DIM, lineHeight: 1.6 }}>
+            Computed on this device from latitude/longitude with the NOAA solar position equations —
+            no API and no key. Times shown in <strong style={{ color: MUTED }}>{tz}</strong>
+            {coords ? " (your device timezone)" : " (the selected city's timezone)"}. Where the sun
+            never crosses the horizon — far north in midsummer or midwinter — the field reads N/A
+            instead of guessing.
+          </p>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 4, borderBottom: `1px solid ${BORDER}`, marginBottom: 24, flexWrap: "wrap" }}>
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              style={{
+                background: "transparent",
+                border: "none",
+                borderBottom: `2px solid ${activeTab === t.id ? GOLD : "transparent"}`,
+                color: activeTab === t.id ? GOLDBR : MUTED,
+                padding: "12px 16px",
+                fontFamily: "Oswald, sans-serif",
+                letterSpacing: ".06em",
+                textTransform: "uppercase",
+                fontSize: ".85rem",
+                cursor: "pointer",
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "navigation" && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 18 }}>
+            <div>
+              <h2 style={h2}>Finding true north without a signal</h2>
+              <div style={{ ...card, marginBottom: 14 }}>
+                <ul style={{ margin: 0, paddingLeft: 18, color: MUTED, fontSize: ".9rem", lineHeight: 1.75 }}>
+                  <li>Find the Big Dipper. The two stars forming the outer lip of the bowl are the pointers.</li>
+                  <li>Follow that line away from the bowl about five times the distance between the two stars. The moderately bright star you land on is Polaris.</li>
+                  <li>Polaris sits over true north and barely moves all night. Face it and you are facing north.</li>
+                  <li>If the Dipper is below the horizon or blocked, use Cassiopeia — it sits on the far side of Polaris.</li>
+                  <li>This is a backup for orientation, not for routing. It tells you which way is north, not which way the road goes.</li>
+                </ul>
+              </div>
+              <div style={card}>
+                <div style={label}>Selected</div>
+                <h3 style={{ margin: "6px 0 8px", color: GOLDBR, fontSize: "1.05rem", fontFamily: "Oswald, sans-serif" }}>
+                  {constellation.name}
+                </h3>
+                <p style={{ margin: "0 0 6px", fontSize: ".88rem", color: MUTED }}>{constellation.visibility}</p>
+                <p style={{ margin: 0, fontSize: ".88rem", color: "#e8e8e8" }}>{constellation.navigation}</p>
+              </div>
+            </div>
+
+            <div>
+              <h2 style={h2}>Sky panel</h2>
+              <div
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  aspectRatio: "1 / 1",
+                  background: "#060606",
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: 10,
+                  overflow: "hidden",
+                }}
+              >
+                {DECOR_STARS.map(([l, t, s], i) => (
+                  <div
+                    key={i}
+                    style={{
+                      position: "absolute",
+                      left: `${l}%`,
+                      top: `${t}%`,
+                      width: s,
+                      height: s,
+                      borderRadius: "50%",
+                      background: "#4a4a3a",
+                    }}
+                  />
+                ))}
+                {constellationView === "ursa-major" && (
+                  <svg viewBox="0 0 100 100" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+                    <polyline
+                      points="26,30 36,34 46,38 56,42 56,58 50,63 42,60"
+                      fill="none"
+                      stroke="rgba(201,168,76,0.45)"
+                      strokeWidth="0.7"
+                    />
+                    {[[26,30],[36,34],[46,38],[56,42],[56,58],[50,63],[42,60]].map(([x, y], i) => (
+                      <circle key={i} cx={x} cy={y} r={1.6} fill={GOLDBR} />
+                    ))}
+                    <circle cx={72} cy={16} r={2} fill={GOLDBR} />
+                    <text x={66} y={11} fill={GOLD} fontSize="3.2">Polaris</text>
+                    <line x1="56" y1="42" x2="72" y2="16" stroke="rgba(201,168,76,0.25)" strokeWidth="0.5" strokeDasharray="2 2" />
+                  </svg>
+                )}
+                {constellationView === "orion" && (
+                  <svg viewBox="0 0 100 100" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+                    {[[36,18],[62,22],[42,48],[50,50],[58,52],[38,78],[64,80]].map(([x, y], i) => (
+                      <circle key={i} cx={x} cy={y} r={1.6} fill={GOLDBR} />
+                    ))}
+                    <line x1="42" y1="48" x2="58" y2="52" stroke="rgba(201,168,76,0.45)" strokeWidth="0.7" />
+                    <text x="30" y="60" fill={GOLD} fontSize="3.2">belt → east/west</text>
+                  </svg>
+                )}
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 12,
+                    right: 12,
+                    bottom: 12,
+                    fontSize: ".74rem",
+                    color: DIM,
+                    fontFamily: "JetBrains Mono, monospace",
+                  }}
+                >
+                  Diagram only — a shape reference, not a live sky rendering for {locLabel}.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "night" && (
+          <div>
+            <h2 style={h2}>Night driving guidance</h2>
+            <p style={{ color: MUTED, fontSize: ".9rem", margin: "0 0 18px", lineHeight: 1.6 }}>
+              General guidance, not readings. This page does not measure your visibility, your dew
+              point, your remaining drive time or the distance to the next rest area. The previous
+              version printed all of those as if it did — every one was a hardcoded number.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14, marginBottom: 20 }}>
+              {[
+                {
+                  t: "Fatigue window",
+                  b: [
+                    "The hardest hours on the body are roughly 02:00–06:00 and the hour either side of midnight.",
+                    "A 20-minute nap beats coffee for alertness that holds up over the next hour.",
+                    "Sleep debt does not clear with a single long night.",
+                  ],
+                },
+                {
+                  t: "Visibility",
+                  b: [
+                    "Low beams reach roughly 150–200 ft; at 65 mph you cover that in under two seconds.",
+                    "Speed to what your lights actually show, not to the posted limit.",
+                    "Clean the windshield inside as well as out — inside film is what scatters oncoming headlights.",
+                  ],
+                },
+                {
+                  t: "Wildlife",
+                  b: [
+                    "Deer movement peaks around dusk and again before dawn.",
+                    "One animal at the shoulder usually means more behind it.",
+                    "Brake, do not swerve — a loaded trailer punishes an abrupt lane change.",
+                  ],
+                },
+                {
+                  t: "Cold and bridges",
+                  b: [
+                    "Bridge decks lose heat from both sides and ice before the roadway does.",
+                    "Air temperature near freezing with damp pavement is the black ice setup.",
+                    "High-profile trailers feel crosswind gusts hardest on open bridges.",
+                  ],
+                },
+              ].map((c) => (
+                <div key={c.t} style={card}>
+                  <h3 style={{ margin: "0 0 10px", color: GOLDBR, fontSize: "1rem", fontFamily: "Oswald, sans-serif" }}>
+                    {c.t}
+                  </h3>
+                  <ul style={{ margin: 0, paddingLeft: 18, color: MUTED, fontSize: ".87rem", lineHeight: 1.65 }}>
+                    {c.b.map((x) => (
+                      <li key={x}>{x}</li>
+                    ))}
                   </ul>
                 </div>
-
-                <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                  <h3 className="font-bold text-cyan-300 mb-2">Current Night Sky</h3>
-                  <p className="text-sm text-slate-300 mb-3">{constellation.visibility}</p>
-                  <p className="text-sm text-slate-400">{constellation.navigation}</p>
-                </div>
-
-                <div className="bg-gradient-to-br from-yellow-900/20 to-orange-900/20 rounded-lg p-4 border border-yellow-700/30">
-                  <h3 className="font-bold text-yellow-300 mb-2">Pro Tip</h3>
-                  <p className="text-sm text-slate-300">Memorize the Big Dipper and Polaris. These two help you find true north anywhere in the northern hemisphere, any time of year.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Star Map Visualization */}
-            <div>
-              <h3 className="font-bold text-lg mb-4 text-cyan-300">Interactive Sky Map</h3>
-              <div className="relative w-full aspect-square bg-gradient-to-br from-slate-900 to-slate-950 rounded-lg border border-slate-700 overflow-hidden">
-                {/* Simulated star field */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="relative w-48 h-48">
-                    {/* Big Dipper stars */}
-                    {constellationView === 'ursa-major' && (
-                      <>
-                        <div className="absolute w-3 h-3 bg-yellow-300 rounded-full" style={{top: '20%', left: '30%'}} />
-                        <div className="absolute w-3 h-3 bg-yellow-300 rounded-full" style={{top: '25%', left: '40%'}} />
-                        <div className="absolute w-3 h-3 bg-yellow-300 rounded-full" style={{top: '30%', left: '50%'}} />
-                        <div className="absolute w-3 h-3 bg-yellow-300 rounded-full" style={{top: '35%', left: '60%'}} />
-                        <div className="absolute w-2 h-2 bg-yellow-200 rounded-full" style={{top: '50%', left: '50%'}} />
-                        <div className="absolute w-2 h-2 bg-yellow-200 rounded-full" style={{top: '55%', left: '55%'}} />
-                        <div className="absolute w-2 h-2 bg-yellow-200 rounded-full" style={{top: '60%', left: '60%'}} />
-                        {/* Connecting lines */}
-                        <svg className="absolute inset-0 w-full h-full" style={{opacity: 0.5}}>
-                          <line x1="30%" y1="20%" x2="40%" y2="25%" stroke="rgba(253, 224, 71, 0.3)" strokeWidth="1" />
-                          <line x1="40%" y1="25%" x2="50%" y2="30%" stroke="rgba(253, 224, 71, 0.3)" strokeWidth="1" />
-                          <line x1="50%" y1="30%" x2="60%" y2="35%" stroke="rgba(253, 224, 71, 0.3)" strokeWidth="1" />
-                          <line x1="50%" y1="30%" x2="50%" y2="50%" stroke="rgba(253, 224, 71, 0.3)" strokeWidth="1" />
-                          <line x1="50%" y1="50%" x2="55%" y2="55%" stroke="rgba(253, 224, 71, 0.3)" strokeWidth="1" />
-                          <line x1="55%" y1="55%" x2="60%" y2="60%" stroke="rgba(253, 224, 71, 0.3)" strokeWidth="1" />
-                        </svg>
-                      </>
-                    )}
-
-                    {/* Orion stars */}
-                    {constellationView === 'orion' && (
-                      <>
-                        <div className="absolute w-3 h-3 bg-red-400 rounded-full" style={{top: '10%', left: '35%'}} />
-                        <div className="absolute w-3 h-3 bg-yellow-300 rounded-full" style={{top: '25%', left: '30%'}} />
-                        <div className="absolute w-3 h-3 bg-yellow-300 rounded-full" style={{top: '30%', left: '50%'}} />
-                        <div className="absolute w-3 h-3 bg-yellow-300 rounded-full" style={{top: '35%', left: '70%'}} />
-                        <div className="absolute w-3 h-3 bg-orange-400 rounded-full" style={{top: '50%', left: '40%'}} />
-                        <div className="absolute w-3 h-3 bg-orange-400 rounded-full" style={{top: '50%', left: '50%'}} />
-                        <div className="absolute w-3 h-3 bg-orange-400 rounded-full" style={{top: '50%', left: '60%'}} />
-                        <div className="absolute w-3 h-3 bg-yellow-300 rounded-full" style={{top: '70%', left: '35%'}} />
-                        <div className="absolute w-3 h-3 bg-yellow-300 rounded-full" style={{top: '75%', left: '65%'}} />
-                      </>
-                    )}
-
-                    {/* Default stars */}
-                    {!['ursa-major', 'orion'].includes(constellationView) && (
-                      <>
-                        {[...Array(15)].map((_, i) => (
-                          <div
-                            key={i}
-                            className="absolute bg-yellow-200 rounded-full"
-                            style={{
-                              width: Math.random() > 0.7 ? '3px' : '2px',
-                              height: Math.random() > 0.7 ? '3px' : '2px',
-                              top: `${Math.random() * 100}%`,
-                              left: `${Math.random() * 100}%`,
-                              opacity: Math.random() * 0.7 + 0.3,
-                            }}
-                          />
-                        ))}
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="absolute bottom-4 left-4 right-4 bg-gradient-to-r from-slate-900/80 to-transparent rounded p-2 text-xs text-slate-400">
-                  {constellation.name} • {constellation.stars} bright stars • Brightness {(constellation.brightness * 100).toFixed(0)}%
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Night Driving Alerts */}
-        {activeTab === 'alerts' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <AlertTriangle className="w-6 h-6 text-orange-400" />
-              Night Driving Safety Alerts
-            </h2>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-red-950/30 border border-red-700/50 rounded-lg p-6">
-                <h3 className="font-bold text-red-300 mb-3 flex items-center gap-2">
-                  <Moon className="w-5 h-5" />
-                  Fatigue Risk
-                </h3>
-                <div className="space-y-2 text-sm text-slate-300">
-                  <p>• Active at: 2 AM - 6 AM, 10 PM - Midnight</p>
-                  <p>• Risk Level: CRITICAL during peak fatigue hours</p>
-                  <p>• Recommendation: Pull over for 20-min power nap</p>
-                  <p>• Next safe rest area: 14 miles ahead</p>
-                </div>
-              </div>
-
-              <div className="bg-yellow-950/30 border border-yellow-700/50 rounded-lg p-6">
-                <h3 className="font-bold text-yellow-300 mb-3">Road Visibility</h3>
-                <div className="space-y-2 text-sm text-slate-300">
-                  <p>• Current: 150 feet (fog/low light)</p>
-                  <p>• Headlight Brightness: Adjust for clarity</p>
-                  <p>• Wildlife Alert: High activity 10 PM - 4 AM</p>
-                  <p>• Recommendation: Reduce speed 10% on rural routes</p>
-                </div>
-              </div>
-
-              <div className="bg-blue-950/30 border border-blue-700/50 rounded-lg p-6">
-                <h3 className="font-bold text-blue-300 mb-3">Weather Impact</h3>
-                <div className="space-y-2 text-sm text-slate-300">
-                  <p>• Dew Point: High (moisture on windshield)</p>
-                  <p>• Temperature: Dropping (potential black ice)</p>
-                  <p>• Wind: Gusts 12-18 mph (affects high-profile loads)</p>
-                  <p>• Recommendation: Extra caution on bridges</p>
-                </div>
-              </div>
-
-              <div className="bg-purple-950/30 border border-purple-700/50 rounded-lg p-6">
-                <h3 className="font-bold text-purple-300 mb-3">HOS Compliance</h3>
-                <div className="space-y-2 text-sm text-slate-300">
-                  <p>• Hours Remaining: 6 hours 23 minutes</p>
-                  <p>• Next mandatory break: 1 hour 37 minutes</p>
-                  <p>• Restart window: Expires tomorrow 4 AM</p>
-                  <p>• Recommendation: Plan stop within 45 min</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-r from-slate-800/50 to-slate-800/30 rounded-lg p-6 border border-slate-700">
-              <h3 className="font-bold text-cyan-300 mb-4">Fatigue Prevention Strategy</h3>
-              <div className="grid md:grid-cols-3 gap-4 text-sm text-slate-300">
-                <div className="flex gap-3">
-                  <span className="text-cyan-400 font-bold min-w-8">1.</span>
-                  <p><strong>Bright light:</strong> Keep cabin well-lit, avoid blue light before sleep</p>
-                </div>
-                <div className="flex gap-3">
-                  <span className="text-cyan-400 font-bold min-w-8">2.</span>
-                  <p><strong>Movement:</strong> 20-min rest every 2 hours (walk, stretch, breathe)</p>
-                </div>
-                <div className="flex gap-3">
-                  <span className="text-cyan-400 font-bold min-w-8">3.</span>
-                  <p><strong>Sleep:</strong> 7-8 hrs daily; power naps 20-30 min only</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Constellation Guide */}
-        {activeTab === 'constellations' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Compass className="w-6 h-6 text-cyan-400" />
-              Constellation Library
-            </h2>
-
-            <div className="grid gap-4">
-              {Object.entries(constellations).map(([key, const_data]) => (
-                <div
-                  key={key}
-                  onClick={() => setConstellationView(key)}
-                  className={`p-6 rounded-lg border-2 transition cursor-pointer ${
-                    constellationView === key
-                      ? 'bg-slate-800/50 border-cyan-400 shadow-lg shadow-cyan-400/20'
-                      : 'bg-slate-800/20 border-slate-700 hover:border-slate-600'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-lg font-bold text-cyan-300">{const_data.name}</h3>
-                    <span className="text-xs bg-slate-700 px-2 py-1 rounded">{const_data.season}</span>
-                  </div>
-                  <p className="text-sm text-slate-400 mb-2">{const_data.visibility}</p>
-                  <p className="text-sm text-yellow-200 mb-3">🧭 Navigation: {const_data.navigation}</p>
-                  <div className="flex gap-4 text-xs text-slate-400">
-                    <span>⭐ {const_data.stars} major stars</span>
-                    <span>✨ Brightness: {(const_data.brightness * 100).toFixed(0)}%</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* James Webb Views */}
-        {activeTab === 'james-webb' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Eye className="w-6 h-6 text-purple-400" />
-              James Webb Space Telescope Views
-            </h2>
-
-            <p className="text-slate-400 text-lg">See what humanity's most powerful telescope reveals about the constellations you navigate by.</p>
-
-            <div className="space-y-6">
-              {Object.entries(jamesWebbViews).map(([key, view]) => (
-                <div
-                  key={key}
-                  className="bg-gradient-to-br from-purple-950/30 to-slate-900/30 rounded-lg border border-purple-700/30 p-8 overflow-hidden relative"
-                >
-                  {/* Infrared glow effect */}
-                  <div className="absolute -top-20 -right-20 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl" />
-
-                  <h3 className="text-xl font-bold text-purple-300 mb-4 relative z-10">{constellations[key]?.name}</h3>
-
-                  <div className="grid md:grid-cols-2 gap-8 relative z-10">
-                    <div>
-                      <h4 className="font-bold text-purple-300 mb-3">Infrared View</h4>
-                      <div className="w-full h-64 bg-gradient-to-br from-purple-900 via-pink-900 to-red-900 rounded-lg border border-purple-600/50 flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="text-4xl mb-2">🔭</div>
-                          <p className="text-xs text-slate-300">{view.imageDesc}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="font-bold text-purple-300 mb-2">Discovery</h4>
-                        <p className="text-slate-300">{view.discovery}</p>
-                      </div>
-
-                      <div>
-                        <h4 className="font-bold text-purple-300 mb-2">What James Webb Revealed</h4>
-                        <p className="text-slate-300">{view.description}</p>
-                      </div>
-
-                      <div>
-                        <h4 className="font-bold text-purple-300 mb-2">Stellar Temperature Range</h4>
-                        <p className="text-slate-300">{view.temperature}</p>
-                      </div>
-
-                      <div className="bg-purple-900/30 rounded p-3 border border-purple-700/30">
-                        <p className="text-xs text-purple-200">
-                          <strong>Did you know?</strong> James Webb sees in infrared, piercing through dust clouds that hide newborn stars. It's like seeing the universe through heat-vision glasses.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               ))}
             </div>
 
-            <div className="bg-gradient-to-r from-slate-800/50 to-slate-800/30 rounded-lg p-6 border border-slate-700">
-              <h3 className="font-bold text-slate-200 mb-3 flex items-center gap-2">
-                <BookOpen className="w-5 h-5" />
-                Fun Fact
+            <div style={{ ...card, background: CARD2 }}>
+              <h3 style={{ margin: "0 0 12px", color: GOLD, fontFamily: "Oswald, sans-serif", fontSize: ".95rem", letterSpacing: ".06em", textTransform: "uppercase" }}>
+                Where the real numbers live
               </h3>
-              <p className="text-slate-400 text-sm">
-                The same constellations you navigate by at night contain some of the most dramatic stellar nurseries in our galaxy. Stars are being born right now in Orion's nebula, just like they were when ancient astronomers first mapped these patterns thousands of years ago.
-              </p>
+              <ul style={{ margin: 0, paddingLeft: 18, color: MUTED, fontSize: ".88rem", lineHeight: 1.8 }}>
+                <li>
+                  Remaining drive time, break timing and the restart window:{" "}
+                  <a href="/hos" style={{ color: GOLDBR }}>Hours of Service</a>
+                </li>
+                <li>
+                  Forecast, wind and active National Weather Service warnings:{" "}
+                  <a href="/weather" style={{ color: GOLDBR }}>Weather</a>
+                </li>
+                <li>
+                  Somewhere to stop at the end of the clock:{" "}
+                  <a href="/parking" style={{ color: GOLDBR }}>Parking</a>
+                </li>
+              </ul>
             </div>
           </div>
         )}
+
+        {activeTab === "constellations" && (
+          <div>
+            <h2 style={h2}>Constellation guide</h2>
+            <p style={{ color: MUTED, fontSize: ".88rem", margin: "0 0 18px" }}>
+              Reference material for the northern United States. Pick one to load it into the sky
+              panel on the first tab.
+            </p>
+            <div style={{ display: "grid", gap: 12 }}>
+              {Object.entries(CONSTELLATIONS).map(([key, c]) => {
+                const on = constellationView === key;
+                return (
+                  <div
+                    key={key}
+                    onClick={() => setConstellationView(key)}
+                    style={{
+                      background: on ? CARD : CARD2,
+                      border: `1px solid ${on ? GOLD : BORDER}`,
+                      borderRadius: 10,
+                      padding: 18,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+                      <h3 style={{ margin: 0, color: GOLDBR, fontSize: "1.02rem", fontFamily: "Oswald, sans-serif" }}>
+                        {c.name}
+                      </h3>
+                      <span
+                        style={{
+                          fontSize: ".72rem",
+                          color: GOLD,
+                          border: `1px solid ${BORDER}`,
+                          borderRadius: 4,
+                          padding: "3px 8px",
+                          whiteSpace: "nowrap",
+                          fontFamily: "Oswald, sans-serif",
+                          letterSpacing: ".06em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {c.season}
+                      </span>
+                    </div>
+                    <p style={{ margin: "0 0 6px", fontSize: ".87rem", color: MUTED }}>{c.visibility}</p>
+                    <p style={{ margin: 0, fontSize: ".87rem", color: "#e8e8e8" }}>{c.navigation}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div style={{ ...card, background: CARD2, marginTop: 26 }}>
+          <h2 style={{ ...h2, margin: "0 0 10px" }}>What this page used to show</h2>
+          <ul style={{ margin: 0, paddingLeft: 18, color: MUTED, fontSize: ".87rem", lineHeight: 1.75 }}>
+            <li>
+              Sunrise 05:30 and sunset 20:30 in summer, 07:00 and 17:30 in winter — the same two
+              times for every location on earth, with the night-driving banner triggered off them.
+            </li>
+            <li>Your location fixed to New York City, whatever you were actually driving.</li>
+            <li>
+              A James Webb Space Telescope tab publishing invented findings — "3 new stellar
+              nurseries detected", "over 1000 young stellar objects catalogued", stellar temperature
+              ranges — under a real telescope's name.
+            </li>
+            <li>
+              Night alerts with hardcoded readings: 150 ft visibility, 14 miles to the next rest
+              area, 6 h 23 m of drive time left, 12–18 mph gusts.
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   );

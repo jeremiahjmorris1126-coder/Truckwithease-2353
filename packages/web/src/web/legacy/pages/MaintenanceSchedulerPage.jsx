@@ -2,18 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { Clock, Activity, CheckCircle, AlertTriangle, Zap, TrendingUp } from 'lucide-react';
 import { maintenanceScheduler, diagnosticTasks, PEAK_HOURS_CONFIG, MAINTENANCE_WINDOWS } from '../lib/maintenanceScheduler';
 
+// Brand palette: gold on black. Aliases kept so the rest of the file is unchanged.
+const GOLD = '#C9A84C';
+const WARN = '#c96a4c';
 const C = {
-  black: '#060A10',
+  black: '#0a0a0a',
   white: '#f0ede8',
   white60: 'rgba(240, 237, 232, 0.6)',
   white30: 'rgba(240, 237, 232, 0.3)',
-  white10: 'rgba(240, 237, 232, 0.1)',
-  card: '#0f1419',
-  gold: '#c9a84c',
-  green: '#22c55e',
-  red: '#ef4444',
-  cyan: '#06b6d4',
-  orange: '#f97316',
+  white10: 'rgba(34, 34, 34, 1)',
+  card: '#161616',
+  gold: GOLD,
+  goldBright: '#FFD700',
+  green: GOLD,
+  red: WARN,
+  cyan: GOLD,
+  orange: WARN,
+  dim: '#666666',
+  muted: '#8a8a8a',
 };
 
 export default function MaintenanceSchedulerPage() {
@@ -42,16 +48,17 @@ export default function MaintenanceSchedulerPage() {
   const nextWeekly = status.nextMaintenance.weekly;
   const nextMonthly = status.nextMaintenance.monthly;
 
+  // built: this task genuinely runs. Everything else needs a server worker.
   const allTasks = [
-    { id: 'cache-clear', name: 'Cache Clearing', category: 'daily', desc: 'Remove stale cached data', icon: '🗑️' },
-    { id: 'log-rotation', name: 'Log Rotation', category: 'daily', desc: 'Archive old application logs', icon: '📋' },
-    { id: 'index-optimization', name: 'Index Optimization', category: 'daily', desc: 'Optimize database indexes', icon: '⚡' },
-    { id: 'database-vacuum', name: 'Database Vacuum', category: 'weekly', desc: 'Compact and defragment database', icon: '🗃️' },
-    { id: 'file-cleanup', name: 'File Cleanup', category: 'weekly', desc: 'Remove temporary files', icon: '🗂️' },
-    { id: 'analytics-rollup', name: 'Analytics Rollup', category: 'weekly', desc: 'Aggregate daily statistics', icon: '📊' },
-    { id: 'full-backup', name: 'Full Backup', category: 'monthly', desc: 'Complete system backup', icon: '💾' },
-    { id: 'storage-audit', name: 'Storage Audit', category: 'monthly', desc: 'Analyze storage usage', icon: '💿' },
-    { id: 'performance-analysis', name: 'Performance Analysis', category: 'monthly', desc: 'Generate performance report', icon: '📈' },
+    { id: 'cache-clear', name: 'Cache Clearing', category: 'daily', desc: 'Removes localStorage keys prefixed cache_ in this browser', icon: '🗑️', built: true },
+    { id: 'log-rotation', name: 'Log Rotation', category: 'daily', desc: 'Needs a server log retention policy', icon: '📋', built: false },
+    { id: 'index-optimization', name: 'Index Optimization', category: 'daily', desc: 'Needs Turso admin access from a server job', icon: '⚡', built: false },
+    { id: 'database-vacuum', name: 'Database Vacuum', category: 'weekly', desc: 'Needs VACUUM run from a server job', icon: '🗃️', built: false },
+    { id: 'file-cleanup', name: 'File Cleanup', category: 'weekly', desc: 'Needs S3 lifecycle rules or a storage worker', icon: '🗂️', built: false },
+    { id: 'analytics-rollup', name: 'Analytics Rollup', category: 'weekly', desc: 'Needs a scheduled aggregation job', icon: '📊', built: false },
+    { id: 'full-backup', name: 'Full Backup', category: 'monthly', desc: 'Needs the Turso backup API called from a server job', icon: '💾', built: false },
+    { id: 'storage-audit', name: 'Storage Audit', category: 'monthly', desc: 'Needs S3 bucket listing from the server', icon: '💿', built: false },
+    { id: 'performance-analysis', name: 'Performance Analysis', category: 'monthly', desc: 'Needs request-level metrics collection', icon: '📈', built: false },
   ];
 
   return (
@@ -67,13 +74,13 @@ export default function MaintenanceSchedulerPage() {
             ⏰ Maintenance Scheduler
           </h1>
           <p style={{ fontSize: 16, color: C.white60, lineHeight: 1.7 }}>
-            All diagnostics & data operations run during off-peak hours. Zero impact on your drivers during busy times.
+            Off-peak window planner. Only cache clearing runs in the browser — every server-side task below is NOT IMPLEMENTED because TruckWithEase has no worker or cron job yet.
           </p>
         </div>
 
         {/* Peak Hour Status */}
         <div style={{
-          background: isPeakHour ? `rgba(239, 68, 68, 0.1)` : `rgba(34, 197, 94, 0.1)`,
+          background: isPeakHour ? `rgba(201, 106, 76, 0.1)` : `rgba(201, 168, 76, 0.1)`,
           border: `2px solid ${isPeakHour ? C.red : C.green}`,
           borderRadius: '12px',
           padding: '20px',
@@ -195,11 +202,17 @@ export default function MaintenanceSchedulerPage() {
                 </div>
                 <Zap size={32} color={C.orange} />
               </div>
-              <div style={{ fontSize: 24, fontWeight: '700', marginBottom: '8px', color: C.orange }}>
+              <div style={{ fontSize: 24, fontWeight: '700', marginBottom: '8px', color: C.gold }}>
                 {status.metrics.maintenanceCompleted}
               </div>
               <p style={{ fontSize: 12, color: C.white60, margin: 0 }}>
-                Successful maintenance runs
+                Window checks completed in this tab
+              </p>
+              <p style={{ fontSize: 11, color: C.dim, margin: '8px 0 0 0' }}>
+                Uptime: NOT TRACKED — no uptime monitor is wired to this app
+              </p>
+              <p style={{ fontSize: 11, color: C.dim, margin: '4px 0 0 0' }}>
+                Server tasks: {status.metrics.serverTasks}
               </p>
             </div>
           </div>
@@ -227,7 +240,13 @@ export default function MaintenanceSchedulerPage() {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
                         <div style={{ fontSize: 24 }}>{task.icon}</div>
-                        <CheckCircle size={20} color={C.green} />
+                        {task.built ? (
+                          <CheckCircle size={20} color={C.gold} />
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: C.orange, border: `1px solid ${C.orange}`, borderRadius: 4, padding: '2px 6px' }}>
+                            <AlertTriangle size={11} /> NOT IMPLEMENTED
+                          </span>
+                        )}
                       </div>
                       <h5 style={{ fontSize: 16, fontWeight: '700', margin: '0 0 4px 0' }}>{task.name}</h5>
                       <p style={{ fontSize: 12, color: C.white60, margin: 0 }}>{task.desc}</p>
@@ -247,36 +266,36 @@ export default function MaintenanceSchedulerPage() {
               <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '12px', padding: '24px' }}>
                 <h4 style={{ fontSize: 16, fontWeight: '700', marginBottom: '16px' }}>Daily (2:00 AM - 4:00 AM)</h4>
                 <ul style={{ fontSize: 14, color: C.white60, margin: 0, paddingLeft: '20px', lineHeight: 1.8 }}>
-                  <li>Cache clearing — remove stale browser/app cache</li>
-                  <li>Log rotation — archive old application logs</li>
-                  <li>Index optimization — speed up database queries</li>
+                  <li><strong>Cache clearing</strong> — BUILT. Clears <code>cache_</code> keys in this browser only.</li>
+                  <li>Log rotation — NOT IMPLEMENTED. Needs a server job with filesystem access.</li>
+                  <li>Index optimization — NOT IMPLEMENTED. Needs Turso admin access from a server job.</li>
                 </ul>
               </div>
 
               <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '12px', padding: '24px' }}>
                 <h4 style={{ fontSize: 16, fontWeight: '700', marginBottom: '16px' }}>Weekly (Sunday 3:00 AM - 5:00 AM)</h4>
                 <ul style={{ fontSize: 14, color: C.white60, margin: 0, paddingLeft: '20px', lineHeight: 1.8 }}>
-                  <li>Database vacuum — compact and defragment data</li>
-                  <li>File cleanup — remove temporary upload files</li>
-                  <li>Analytics rollup — aggregate daily statistics into summaries</li>
+                  <li>Database vacuum — NOT IMPLEMENTED. A browser tab cannot vacuum Turso.</li>
+                  <li>File cleanup — NOT IMPLEMENTED. Needs server-side S3 access.</li>
+                  <li>Analytics rollup — NOT IMPLEMENTED. Needs a cron job writing to the database.</li>
                 </ul>
               </div>
 
               <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '12px', padding: '24px' }}>
                 <h4 style={{ fontSize: 16, fontWeight: '700', marginBottom: '16px' }}>Monthly (1st of Month, 1:00 AM - 6:00 AM)</h4>
                 <ul style={{ fontSize: 14, color: C.white60, margin: 0, paddingLeft: '20px', lineHeight: 1.8 }}>
-                  <li>Full backup — complete system data backup & verification</li>
-                  <li>Storage audit — analyze usage patterns & recommendations</li>
-                  <li>Performance analysis — generate monthly performance report</li>
+                  <li>Full backup — NOT IMPLEMENTED. Needs the Turso backup API called from a server job.</li>
+                  <li>Storage audit — NOT IMPLEMENTED. Needs server-side S3 listing.</li>
+                  <li>Performance analysis — NOT IMPLEMENTED. No performance metrics are collected yet.</li>
                 </ul>
               </div>
 
-              <div style={{ background: `rgba(34, 197, 94, 0.1)`, border: `2px solid ${C.green}`, borderRadius: '12px', padding: '20px', marginTop: '20px' }}>
-                <h4 style={{ fontSize: 16, fontWeight: '700', marginBottom: '12px', color: C.green }}>✅ Peak Hours Protection</h4>
+              <div style={{ background: 'rgba(201, 168, 76, 0.10)', border: `2px solid ${C.gold}`, borderRadius: '12px', padding: '20px', marginTop: '20px' }}>
+                <h4 style={{ fontSize: 16, fontWeight: '700', marginBottom: '12px', color: C.green }}>Peak Hours Protection</h4>
                 <p style={{ fontSize: 14, color: C.white60, margin: 0 }}>
                   <strong>Weekdays:</strong> 9 AM - 5 PM (all maintenance paused)<br />
                   <strong>Weekends:</strong> 10 AM - 8 PM (all maintenance paused)<br />
-                  <strong>Guarantee:</strong> Zero system operations during driver peak usage
+                  <strong>Scope:</strong> This scheduler only skips its own window checks during those hours. It does not and cannot pause the API, the database, or anything server-side.
                 </p>
               </div>
             </div>
@@ -304,8 +323,11 @@ export default function MaintenanceSchedulerPage() {
                   </div>
                   <div>
                     <p style={{ fontSize: 12, color: C.white60, margin: '0 0 4px 0' }}>Status</p>
-                    <p style={{ fontSize: 16, fontWeight: '700', margin: 0, color: status.lastRun.allSucceeded ? C.green : C.red }}>
-                      {status.lastRun.allSucceeded ? 'All Passed' : 'Some Failed'}
+                    <p style={{ fontSize: 16, fontWeight: '700', margin: 0, color: status.lastRun.allSucceeded ? C.gold : C.red }}>
+                      {status.lastRun.allSucceeded ? 'No errors' : 'Some Failed'}
+                    </p>
+                    <p style={{ fontSize: 11, color: C.dim, margin: '4px 0 0 0' }}>
+                      {status.lastRun.implemented ?? 0} ran • {status.lastRun.notImplemented ?? 0} not implemented
                     </p>
                   </div>
                   <div>

@@ -2,7 +2,7 @@
   "expo": {
     "icon": "./assets/icon.png",
     "android": {
-      "package": "com.truckwithease_twe1.runable",
+      "package": "com.truckwithease.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
@@ -10,19 +10,19 @@
       "edgeToEdgeEnabled": true,
       "config": {
         "googleMaps": {
-          "apiKey": "REPLACE_WITH_GOOGLE_MAPS_KEY"
+          "apiKey": "AIzaSyBV1A1j58NrmJwGx4Mzk3qZoraLg4EDcbs"
         }
       }
     },
     "extra": {
-      "apiUrl": "https://truckwi-0p0ovfn-preview-4200.runable.site/",
-      "applicationId": "truckwi-0p0ovfn"
+      "apiUrl": "https://truckwi-bhnknc6-preview-4200.runable.site/",
+      "applicationId": "truckwi-bhnknc6"
     },
     "ios": {
-      "bundleIdentifier": "com.truckwithease_twe1.runable",
+      "bundleIdentifier": "com.truckwithease.app",
       "supportsTablet": true,
       "config": {
-        "googleMapsApiKey": "REPLACE_WITH_GOOGLE_MAPS_KEY"
+        "googleMapsApiKey": "AIzaSyBV1A1j58NrmJwGx4Mzk3qZoraLg4EDcbs"
       }
     },
     "splash": {

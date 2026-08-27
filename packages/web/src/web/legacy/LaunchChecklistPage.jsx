@@ -211,7 +211,7 @@ const SECTIONS = [
       {
         id: "support_system",
         label: "Driver Support System Live",
-        detail: "At minimum: truckwithease@gmail.com routed to a ticketing system (Freshdesk free tier or Zendesk). A driver hitting an ELD issue at 2am on I-40 needs to know someone is listening. Add a support chat widget if possible.",
+        detail: "At minimum: truckeasecare@gmail.com routed to a ticketing system (Freshdesk free tier or Zendesk). A driver hitting an ELD issue at 2am on I-40 needs to know someone is listening. Add a support chat widget if possible.",
         dueWeek: "Week 4",
       },
     ],
@@ -326,7 +326,7 @@ const SECTIONS = [
       {
         id: "support_email",
         label: "Support Email + Ticketing System",
-        detail: "truckwithease@gmail.com or truckwithease@gmail.com routed through Freshdesk (free for up to 10 agents) or Zendesk. Drivers need to know someone is on the other end — especially during trial.",
+        detail: "truckeasecare@gmail.com or truckeasecare@gmail.com routed through Freshdesk (free for up to 10 agents) or Zendesk. Drivers need to know someone is on the other end — especially during trial.",
         dueWeek: "Week 3",
       },
       {

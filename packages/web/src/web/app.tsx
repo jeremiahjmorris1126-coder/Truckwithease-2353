@@ -6,6 +6,7 @@ import { Shell } from "./components/shell";
 import { AgentFeedback, RunableBadge } from "@runablehq/website-runtime";
 
 import Index from "./pages/index";
+const Landing = lazy(() => import("./pages/landing"));
 const Dashboard = lazy(() => import("./pages/dashboard"));
 const HOS = lazy(() => import("./pages/hos"));
 const FleetMap = lazy(() => import("./pages/map"));
@@ -20,6 +21,7 @@ const Loads = lazy(() => import("./pages/loads"));
 const Chat = lazy(() => import("./pages/chat"));
 const Reports = lazy(() => import("./pages/reports"));
 const Billing = lazy(() => import("./pages/billing"));
+const Badges = lazy(() => import("./pages/badges"));
 // Recovered launch build — 253 pages behind its own path router.
 // Handles every route not claimed by the live-backend /app/* pages below.
 const LegacyApp = lazy(() => import("./legacy/App.jsx"));
@@ -46,7 +48,8 @@ function App() {
       <SessionProvider>
         <Suspense fallback={<RouteFallback />}>
         <Switch>
-          <Route path="/" component={Index} />
+          <Route path="/" component={Landing} />
+          <Route path="/legacy-home" component={Index} />
           <Route path="/app" component={() => <AppShell><Dashboard /></AppShell>} />
           <Route path="/app/hos" component={() => <AppShell><HOS /></AppShell>} />
           <Route path="/app/map" component={() => <AppShell><FleetMap /></AppShell>} />
@@ -59,6 +62,7 @@ function App() {
           <Route path="/app/loads" component={() => <AppShell><Loads /></AppShell>} />
           <Route path="/app/chat" component={() => <AppShell><Chat /></AppShell>} />
           <Route path="/app/reports" component={() => <AppShell><Reports /></AppShell>} />
+          <Route path="/app/badges" component={() => <Badges />} />
           <Route path="/app/pricing" component={() => <Billing />} />
           <Route path="/app/billing" component={() => <Billing />} />
           {/* Everything else falls through to the recovered launch build. */}

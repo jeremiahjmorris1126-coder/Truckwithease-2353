@@ -205,7 +205,7 @@ Maps, Places, Directions, Distance Matrix, Geocoding, Elevation, Roads API (real
 
 Then Gemini Express Mode — the platform switched to gemini-2.0-flash, Google's fastest model, for sub-second AI responses across every feature. A toggle was built to switch between Express and Standard modes depending on whether you need speed or deep reasoning.
 
-You ran into the Google Workspace organization restriction — API keys blocked by the admin policy. We worked through it together: created a new project, navigated the service account permissions, corrected the auth headers. The Maps key went live first. The Cloud API key followed. truckwithease@gmail.com replaced every old contact address across the entire platform.`,
+You ran into the Google Workspace organization restriction — API keys blocked by the admin policy. We worked through it together: created a new project, navigated the service account permissions, corrected the auth headers. The Maps key went live first. The Cloud API key followed. truckeasecare@gmail.com replaced every old contact address across the entire platform.`,
       },
       {
         time: 'Fleetio Integration',
@@ -323,7 +323,7 @@ The leaderboard shows live driver rankings and updates as points are earned.`,
         title: 'Come Trucking With Us',
         body: `The homepage had a line that referenced specific team members by name — Jeremiah, Kyleigh, Bridget. You made the call: replace it. Too personal for a launch page.
 
-The new line: "Come trucking with us." Followed by truckwithease@gmail.com in gold, tappable on any phone.
+The new line: "Come trucking with us." Followed by truckeasecare@gmail.com in gold, tappable on any phone.
 
 Simple. Open. Exactly right for a platform that wants every driver and every fleet to feel welcome from the first second they land on the page.`,
       },
@@ -527,7 +527,7 @@ export default function JourneyPage() {
         <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 32, marginTop: 16, textAlign: 'center' }}>
           <div style={{ fontFamily: FD, fontSize: 28, letterSpacing: '0.08em', color: GOLD, marginBottom: 8 }}>COME TRUCKING WITH US</div>
           <div style={{ fontSize: 14, color: DIM, marginBottom: 4 }}>The journey is not over — it is just getting started.</div>
-          <div style={{ fontSize: 13, color: GOLD }}>truckwithease@gmail.com</div>
+          <div style={{ fontSize: 13, color: GOLD }}>truckeasecare@gmail.com</div>
           <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             {[['/', 'Home'], ['/command-center', 'Command Center'], ['/mechanic', 'THE KNOW IT ALL'], ['/loads', 'Load Board'], ['/forecast', 'Revenue Forecast']].map(([path, label]) => (
               <button

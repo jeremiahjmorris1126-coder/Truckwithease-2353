@@ -1,178 +1,174 @@
-import { useState, useEffect, useRef } from 'react';
-import { ShieldCheck as ShieldIcon, AlertTriangle as AlertIcon, TrendingUp as TrendingUpIcon, DollarSign as DollarSignIcon, CheckCircle as CheckIcon, Star as StarIcon, Eye as EyeIcon, Zap as ZapIcon, FileText as FileTextIcon, Award as AwardIcon } from "lucide-react";
-import PocketBase from 'pocketbase';
-import { hasiDrive, getLiveCameraEvents, getFleetCameraSummary, detectFleetPatterns, CAMERA_EVENTS } from '../services/iDriveService';
+import { useState } from 'react';
+import {
+  hasiDrive,
+  getLiveCameraEvents,
+  detectFleetPatterns,
+  CAMERA_EVENTS,
+  IDRIVE_STATUS,
+} from '../services/iDriveService';
 
-const pb = new PocketBase();
+// Fleet Safety Intelligence
+//
+// Honest state, 2026-08-24. Read this before adding anything to this page:
+//   * No telemetry source is connected. No ELD feed, no dashcam, no speeding
+//     events. `eld_telemetry` has 0 rows and there is no safety_scores table.
+//   * Therefore this page contains NO live data. The score panel is an
+//     operator-entered ESTIMATOR — the numbers are whatever you type.
+//   * The insurance section lists carriers that write commercial trucking. It
+//     quotes no discount percentages, because TruckWithEase has no broker or
+//     carrier agreements and cannot promise a rate.
+//   * The safety report is built in your browser from the values you entered.
+//     Nothing is saved server-side, and the page says so.
+// Do not reintroduce seeded feeds, random tickers, or "ACTIVE" badges for
+// things that are not wired.
 
-const GOLD = '#F5C842';
+const GOLD = '#C9A84C';
+const GOLD_BRIGHT = '#FFD700';
 const BLACK = '#0a0a0a';
-const DARK = '#111111';
 const CARD = '#161616';
-const BORDER = '#2a2a2a';
-const GREEN = '#22c55e';
-const RED = '#ef4444';
-const AMBER = '#f59e0b';
+const BORDER = '#222222';
+const WARN = '#c96a4c';
+const MUTED = '#8a8a8a';
+const DIM = '#666666';
 
-const INSURANCE_PARTNERS = [
-  { name: 'Progressive Commercial', discount: '18%', minScore: 85, logo: '🏢', specialty: 'Owner Operators & Small Fleets' },
-  { name: 'Nationwide Trucking', discount: '22%', minScore: 90, logo: '🏛️', specialty: 'Large Fleets 50+ trucks' },
-  { name: 'Old Republic Insurance', discount: '15%', minScore: 80, logo: '🏦', specialty: 'Long-haul & Refrigerated' },
-  { name: 'Great West Casualty', discount: '20%', minScore: 88, logo: '🏗️', specialty: 'Flatbed & Heavy Haul' },
-  { name: 'Canal Insurance', discount: '12%', minScore: 75, logo: '🌊', specialty: 'Local & Regional Fleets' },
-  { name: 'Protective Insurance', discount: '25%', minScore: 92, logo: '🛡️', specialty: 'Elite Safety Fleets' },
+// Carriers that write commercial trucking. Names only — no discount claims,
+// no eligibility claims, no agreements.
+const CARRIERS_REFERENCE = [
+  { name: 'Progressive Commercial', specialty: 'Owner-operators and small fleets' },
+  { name: 'Nationwide', specialty: 'Fleets, multi-line commercial' },
+  { name: 'Old Republic Insurance', specialty: 'Long-haul and refrigerated' },
+  { name: 'Great West Casualty', specialty: 'Flatbed and heavy haul' },
+  { name: 'Canal Insurance', specialty: 'Local and regional fleets' },
+  { name: 'Protective Insurance', specialty: 'Large fleet trucking' },
 ];
 
-const SAFETY_MONITORS = [
-  { id: 'hos', label: 'HOS Violations', icon: '⏱️', weight: 20, description: 'Hours of Service compliance tracked in real time' },
+const SAFETY_INPUTS = [
+  { id: 'hos', label: 'HOS Compliance', icon: '⏱️', weight: 20, description: 'Share of shifts logged with no Hours of Service violation' },
   { id: 'dvir', label: 'DVIR Completion', icon: '🔧', weight: 15, description: 'Pre/post-trip inspection completion rate' },
-  { id: 'speed', label: 'Speed Events', icon: '🚨', weight: 20, description: 'Speeding, hard braking, rapid acceleration events' },
-  { id: 'dot', label: 'DOT Inspections', icon: '✅', weight: 20, description: 'Roadside inspection results and out-of-service rates' },
-  { id: 'accidents', label: 'Accident History', icon: '💥', weight: 15, description: 'Preventable vs. non-preventable accident tracking' },
+  { id: 'speed', label: 'Speed / Harsh Events', icon: '🚨', weight: 20, description: 'Speeding, hard braking, rapid acceleration' },
+  { id: 'dot', label: 'DOT Inspections', icon: '✅', weight: 20, description: 'Roadside inspection pass rate' },
+  { id: 'accidents', label: 'Accident History', icon: '💥', weight: 15, description: 'Preventable accident record' },
   { id: 'drug', label: 'Drug & Alcohol', icon: '🧪', weight: 10, description: 'Clearinghouse compliance and testing records' },
 ];
 
-const AUTOMATED_FEATURES = [
+// What each capability actually is today. "PLANNED" means no code runs it.
+const CAPABILITIES = [
   {
-    title: 'Eyes Off — Autonomous Monitoring',
+    title: 'Autonomous driver monitoring',
     icon: '👁️',
-    description: 'TruckWithEase watches every driver, every mile, 24/7. Your safety team gets alerted before a violation becomes a claim. No manual review required.',
-    savings: '$4,200/year per truck',
-    tag: 'PROPRIETARY',
+    status: 'PLANNED',
+    description:
+      'Continuous monitoring requires an ELD or dashcam feed. Neither is connected, so nothing is being watched right now.',
+    blocker: 'Needs an ELD/telemetry integration and camera hardware.',
   },
   {
-    title: 'Phantom Compliance Shield',
+    title: 'Compliance gap detection',
     icon: '🛡️',
-    description: 'Ghost Nerve catches compliance gaps 72 hours before they appear on your CSA score. Coaches the driver, logs the correction, files the proof.',
-    savings: '$12,000/year per fleet',
-    tag: 'GHOST NERVE',
+    status: 'PARTIAL',
+    description:
+      'HOS and DVIR records entered in TruckWithEase are stored and can be reviewed. There is no predictive CSA model — that would need historical inspection data the platform does not have.',
+    blocker: 'Prediction needs FMCSA/CSA history ingestion.',
   },
   {
-    title: 'Insurance Score Auto-Report',
+    title: 'Safety report export',
     icon: '📊',
-    description: 'Every 90 days TruckWithEase generates a certified safety report your insurance broker can use to renegotiate your premium. Zero paperwork for you.',
-    savings: '12–25% premium reduction',
-    tag: 'AUTOMATED',
+    status: 'PARTIAL',
+    description:
+      'You can build a report from the values you enter on this page and download it. It is not certified by anyone, and no carrier has agreed to accept it.',
+    blocker: 'Certification would require a third-party auditor.',
   },
   {
-    title: 'Driver Safety Coaching',
+    title: 'Driver safety coaching',
     icon: '🎓',
-    description: 'HRease automatically assigns corrective training the moment a safety event is logged. Game Up delivers the lesson. The driver earns Rig Bucks for completing it.',
-    savings: '67% fewer repeat violations',
-    tag: 'AI POWERED',
+    status: 'PLANNED',
+    description:
+      'Assigning corrective training automatically depends on safety events being recorded. No event source exists yet.',
+    blocker: 'Needs the safety event pipeline.',
   },
   {
-    title: 'Accident Response Protocol',
+    title: 'Accident response workflow',
     icon: '🚨',
-    description: 'The moment an accident is reported, TruckWithEase notifies your insurance carrier, logs GPS coordinates, captures driver statement, and preserves ELD data — all before the tow truck arrives.',
-    savings: '40% faster claims resolution',
-    tag: 'REAL TIME',
+    status: 'PARTIAL',
+    description:
+      'Incident reports can be filed and stored. Automatic carrier notification, GPS capture, and ELD preservation are not built.',
+    blocker: 'Needs carrier APIs and a telemetry feed.',
   },
   {
-    title: 'CSA Score Predictor',
+    title: 'CSA score forecasting',
     icon: '📈',
-    description: 'Ghost Nerve models your fleet\'s CSA score 90 days forward based on current driver behavior. Gives you time to intervene before scores affect your insurance rate.',
-    savings: 'Prevent 89% of CSA spikes',
-    tag: 'QUANTUM',
+    status: 'NOT BUILT',
+    description:
+      'There is no model. Any number shown here would be invented, so none is shown.',
+    blocker: 'Needs CSA history plus a validated model.',
   },
 ];
 
+const STATUS_COLOR = { PARTIAL: GOLD, PLANNED: MUTED, 'NOT BUILT': WARN };
+
 export default function FleetSafetyIntelligencePage() {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [safetyScore, setSafetyScore] = useState(87);
+  const [activeTab, setActiveTab] = useState('estimator');
   const [fleetSize, setFleetSize] = useState(10);
-  const [currentPremium, setCurrentPremium] = useState(8500);
-  const [scores, setScores] = useState({ hos: 92, dvir: 88, speed: 84, dot: 91, accidents: 95, drug: 100 });
-  const [liveEvents, setLiveEvents] = useState([]);
-  const [selectedPartner, setSelectedPartner] = useState(null);
-  const [reportGenerated, setReportGenerated] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const eventRef = useRef(null);
+  const [currentPremium, setCurrentPremium] = useState(850);
+  const [assumedDiscount, setAssumedDiscount] = useState(10);
+  const [scores, setScores] = useState({ hos: 0, dvir: 0, speed: 0, dot: 0, accidents: 0, drug: 0 });
+  const [reportBuilt, setReportBuilt] = useState(false);
 
-  const overallScore = Math.round(Object.values(scores).reduce((a, b) => a + b, 0) / Object.keys(scores).length);
+  const entered = Object.values(scores).some(v => v > 0);
+  const weightTotal = SAFETY_INPUTS.reduce((a, m) => a + m.weight, 0);
+  const overallScore = Math.round(
+    SAFETY_INPUTS.reduce((a, m) => a + scores[m.id] * m.weight, 0) / weightTotal,
+  );
 
-  const eligiblePartners = INSURANCE_PARTNERS.filter(p => overallScore >= parseInt(p.minScore));
-  const bestSavings = eligiblePartners.length > 0
-    ? Math.max(...eligiblePartners.map(p => parseInt(p.discount)))
-    : 0;
-  const annualSavings = Math.round((currentPremium * fleetSize * (bestSavings / 100)));
+  const annualPremium = currentPremium * 12 * fleetSize;
+  const annualSavings = Math.round(annualPremium * (assumedDiscount / 100));
 
-  useEffect(() => {
-    const events = [
-      { time: '2 min ago', type: 'success', msg: 'Driver Ray Davis — clean DOT inspection logged +150 Rig Bucks' },
-      { time: '8 min ago', type: 'warning', msg: 'Speed event detected on I-94 — coaching assigned automatically' },
-      { time: '15 min ago', type: 'success', msg: 'DVIR completed by Maria Santos — score updated to 91' },
-      { time: '23 min ago', type: 'info', msg: 'HOS log certified — 0 violations this shift' },
-      { time: '31 min ago', type: 'success', msg: 'Ghost Nerve: CSA score stable — no risk factors detected' },
-      { time: '44 min ago', type: 'warning', msg: 'Hard brake event — driver notified, corrective training queued' },
-      { time: '1 hr ago', type: 'success', msg: 'Insurance report auto-generated — 90-day safety window clean' },
-    ];
-    setLiveEvents(events);
-  }, []);
+  // Camera state — both of these are empty until a dashcam vendor is wired.
+  const cameraEvents = getLiveCameraEvents();
+  const cameraPatterns = detectFleetPatterns(cameraEvents);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const newEvents = [
-        'Ghost Nerve: HOS compliance verified across all active drivers',
-        'Speed monitor: all trucks within corridor limits',
-        'DVIR reminder sent to 3 drivers starting shift in 30 min',
-        'CSA predictor: score trending UP +2 points this week',
-        'Insurance broker report updated — 91-day clean window',
-      ];
-      const newEvent = {
-        time: 'just now',
-        type: 'success',
-        msg: newEvents[Math.floor(Math.random() * newEvents.length)],
-      };
-      setLiveEvents(prev => [newEvent, ...prev.slice(0, 8)]);
-    }, 8000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const generateReport = async () => {
-    setSaving(true);
-    try {
-      await pb.collection('fleet_safety_scores').create({
-        fleet_name: 'My Fleet',
-        safety_score: overallScore,
-        violations: 0,
-        accidents: 0,
-        inspections_passed: scores.dot,
-        insurance_tier: overallScore >= 90 ? 'ELITE' : overallScore >= 80 ? 'PREFERRED' : 'STANDARD',
-        estimated_savings: annualSavings,
-      });
-      setReportGenerated(true);
-    } catch (e) {
-      setReportGenerated(true);
-    }
-    setSaving(false);
+  const buildReport = () => {
+    const report = {
+      generatedAt: new Date().toISOString(),
+      source: 'operator-entered estimate',
+      certified: false,
+      savedServerSide: false,
+      note:
+        'Every value in this file was typed into the TruckWithEase safety estimator by an operator. None of it was measured by TruckWithEase. It is not an audit and it is not certified.',
+      fleetSize,
+      monthlyPremiumPerTruck: currentPremium,
+      assumedDiscountPercent: assumedDiscount,
+      estimatedAnnualSavings: annualSavings,
+      enteredScores: scores,
+      weightedScore: entered ? overallScore : null,
+    };
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `truckwithease-safety-estimate-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setReportBuilt(true);
   };
 
   const tabs = [
-    { id: 'overview', label: 'Safety Score', icon: '🛡️' },
+    { id: 'estimator', label: 'Score Estimator', icon: '🛡️' },
     { id: 'monitor', label: 'Live Monitor', icon: '👁️' },
-    { id: 'insurance', label: 'Insurance Intel', icon: '💰' },
-    { id: 'automation', label: 'Automation', icon: '⚡' },
-    { id: 'report', label: 'Safety Report', icon: '📊' },
+    { id: 'insurance', label: 'Insurance Notes', icon: '💰' },
+    { id: 'capabilities', label: 'What Works Today', icon: '⚡' },
+    { id: 'report', label: 'Export', icon: '📊' },
   ];
+
+  const notice = (text) => (
+    <div style={{ background: '#1a1508', border: `1px solid ${GOLD}55`, borderRadius: 12, padding: '14px 18px', color: GOLD, fontFamily: 'Inter, sans-serif', fontSize: 13, lineHeight: 1.6 }}>
+      {text}
+    </div>
+  );
 
   return (
     <div style={{ background: BLACK, minHeight: '100vh', color: '#fff', fontFamily: 'Oswald, sans-serif' }}>
-      {/* Banner */}
-      <div style={{ background: `linear-gradient(90deg, ${GOLD}, #e6a800, ${GOLD})`, padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 12, overflowX: 'hidden' }}>
-        <span style={{ fontSize: 18, whiteSpace: 'nowrap' }}>⚡ FLEET SAFETY INTELLIGENCE</span>
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <div style={{ animation: 'ticker 20s linear infinite', whiteSpace: 'nowrap', color: BLACK, fontWeight: 700, fontSize: 13 }}>
-            &nbsp;&nbsp;&nbsp;🛡️ PHANTOM COMPLIANCE ACTIVE &nbsp;·&nbsp; 👁️ 24/7 DRIVER MONITORING &nbsp;·&nbsp; 💰 UP TO 25% INSURANCE DISCOUNT &nbsp;·&nbsp; ⚡ GHOST NERVE WATCHING &nbsp;·&nbsp; ✅ ZERO MANUAL REVIEW NEEDED &nbsp;&nbsp;&nbsp;
-          </div>
-        </div>
-      </div>
-
       <style>{`
-        @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
         @keyframes slideIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes glow { 0%,100% { box-shadow:0 0 20px ${GOLD}44; } 50% { box-shadow:0 0 40px ${GOLD}88; } }
       `}</style>
 
       {/* Header */}
@@ -181,23 +177,29 @@ export default function FleetSafetyIntelligencePage() {
           <img src="/static/twe-full-logo.jpg" alt="TruckWithEase" style={{ height: 48, borderRadius: 8 }} />
           <div>
             <h1 style={{ fontSize: 'clamp(24px, 4vw, 42px)', fontWeight: 700, color: GOLD, margin: 0, letterSpacing: 2, textTransform: 'uppercase' }}>Fleet Safety Intelligence</h1>
-            <p style={{ color: '#888', margin: 0, fontSize: 14, fontFamily: 'Inter, sans-serif' }}>Autonomous compliance · Insurance optimization · Zero manual review</p>
+            <p style={{ color: MUTED, margin: 0, fontSize: 14, fontFamily: 'Inter, sans-serif' }}>Safety score estimator · insurance prep notes · integration status</p>
           </div>
         </div>
 
-        {/* Stats Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, margin: '24px 0' }}>
+        <div style={{ margin: '20px 0' }}>
+          {notice(
+            'No telemetry source is connected to this fleet — no ELD feed, no dashcam, no speeding events. Nothing on this page is live data. The score panel below is an estimator: it shows the numbers you type in, so you can see how they would combine.',
+          )}
+        </div>
+
+        {/* Stats row — only values that are either entered by you or literally true */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, margin: '20px 0' }}>
           {[
-            { label: 'Safety Score', value: `${overallScore}/100`, color: overallScore >= 90 ? GREEN : overallScore >= 80 ? GOLD : RED },
-            { label: 'Eligible Partners', value: eligiblePartners.length, color: GOLD },
-            { label: 'Max Discount', value: `${bestSavings}%`, color: GREEN },
-            { label: 'Annual Savings', value: `$${annualSavings.toLocaleString()}`, color: GOLD },
-            { label: 'Live Monitors', value: '6 Active', color: GREEN },
-            { label: 'Violations Today', value: '0', color: GREEN },
+            { label: 'Estimated score (entered)', value: entered ? `${overallScore}/100` : '—' },
+            { label: 'Trucks (entered)', value: fleetSize },
+            { label: 'Connected data sources', value: '0' },
+            { label: 'Camera events available', value: cameraEvents.length },
+            { label: 'Measured violations', value: 'no data' },
+            { label: 'Broker agreements', value: 'none' },
           ].map((s, i) => (
-            <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '16px', textAlign: 'center' }}>
-              <div style={{ fontSize: 'clamp(18px, 3vw, 28px)', fontWeight: 700, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 12, color: '#888', fontFamily: 'Inter, sans-serif', marginTop: 4 }}>{s.label}</div>
+            <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 'clamp(16px, 3vw, 26px)', fontWeight: 700, color: GOLD }}>{s.value}</div>
+              <div style={{ fontSize: 12, color: MUTED, fontFamily: 'Inter, sans-serif', marginTop: 4 }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -207,9 +209,9 @@ export default function FleetSafetyIntelligencePage() {
           {tabs.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
               padding: '12px 20px', background: activeTab === t.id ? GOLD : 'transparent',
-              color: activeTab === t.id ? BLACK : '#888', border: 'none', cursor: 'pointer',
+              color: activeTab === t.id ? BLACK : MUTED, border: 'none', cursor: 'pointer',
               fontFamily: 'Oswald, sans-serif', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap',
-              borderRadius: '8px 8px 0 0', transition: 'all 0.2s',
+              borderRadius: '8px 8px 0 0',
             }}>{t.icon} {t.label}</button>
           ))}
         </div>
@@ -217,178 +219,161 @@ export default function FleetSafetyIntelligencePage() {
 
       <div style={{ padding: '0 24px 48px', maxWidth: 1200, margin: '0 auto' }}>
 
-        {/* OVERVIEW TAB */}
-        {activeTab === 'overview' && (
-          <div style={{ animation: 'slideIn 0.3s ease' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-              {/* Score Breakdown */}
-              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24 }}>
-                <h3 style={{ color: GOLD, margin: '0 0 20px', fontSize: 18, letterSpacing: 1 }}>⚡ LIVE SAFETY SCORE BREAKDOWN</h3>
-                {SAFETY_MONITORS.map(m => (
-                  <div key={m.id} style={{ marginBottom: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13 }}>{m.icon} {m.label}</span>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <input type="range" min="50" max="100" value={scores[m.id]}
-                          onChange={e => setScores(prev => ({ ...prev, [m.id]: parseInt(e.target.value) }))}
-                          style={{ width: 80, accentColor: GOLD }} />
-                        <span style={{ color: scores[m.id] >= 90 ? GREEN : scores[m.id] >= 80 ? GOLD : RED, fontWeight: 700, width: 32, textAlign: 'right' }}>{scores[m.id]}</span>
-                      </div>
+        {/* ESTIMATOR */}
+        {activeTab === 'estimator' && (
+          <div style={{ animation: 'slideIn 0.3s ease', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24 }}>
+              <h3 style={{ color: GOLD, margin: '0 0 6px', fontSize: 18, letterSpacing: 1 }}>SAFETY SCORE ESTIMATOR</h3>
+              <p style={{ color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: 12, margin: '0 0 18px', lineHeight: 1.6 }}>
+                Operator-entered, not measured. Drag each slider to your own figure. Weights are shown so you can see how the composite is built.
+              </p>
+              {SAFETY_INPUTS.map(m => (
+                <div key={m.id} style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, gap: 10 }}>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13 }}>{m.icon} {m.label} <span style={{ color: DIM }}>({m.weight}%)</span></span>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="range" min="0" max="100" value={scores[m.id]}
+                        onChange={e => setScores(prev => ({ ...prev, [m.id]: parseInt(e.target.value, 10) }))}
+                        style={{ width: 80, accentColor: GOLD }} />
+                      <span style={{ color: scores[m.id] > 0 ? GOLD_BRIGHT : DIM, fontWeight: 700, width: 32, textAlign: 'right' }}>{scores[m.id]}</span>
                     </div>
-                    <div style={{ background: '#222', borderRadius: 4, height: 6, overflow: 'hidden' }}>
-                      <div style={{ width: `${scores[m.id]}%`, height: '100%', background: scores[m.id] >= 90 ? GREEN : scores[m.id] >= 80 ? GOLD : RED, borderRadius: 4, transition: 'width 0.3s' }} />
-                    </div>
-                    <div style={{ fontSize: 11, color: '#666', marginTop: 4, fontFamily: 'Inter, sans-serif' }}>{m.description}</div>
+                  </div>
+                  <div style={{ background: '#1c1c1c', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                    <div style={{ width: `${scores[m.id]}%`, height: '100%', background: GOLD, borderRadius: 4, transition: 'width 0.2s' }} />
+                  </div>
+                  <div style={{ fontSize: 11, color: DIM, marginTop: 4, fontFamily: 'Inter, sans-serif' }}>{m.description}</div>
+                </div>
+              ))}
+              <div style={{ marginTop: 18, borderTop: `1px solid ${BORDER}`, paddingTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: MUTED }}>Weighted estimate</span>
+                <span style={{ fontSize: 30, fontWeight: 700, color: entered ? GOLD_BRIGHT : DIM }}>{entered ? `${overallScore}/100` : '—'}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ background: CARD, border: `1px solid ${GOLD}`, borderRadius: 16, padding: 24 }}>
+                <h3 style={{ color: GOLD, margin: '0 0 6px', fontSize: 18, letterSpacing: 1 }}>PREMIUM WHAT-IF</h3>
+                <p style={{ color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: 12, margin: '0 0 18px', lineHeight: 1.6 }}>
+                  Arithmetic on your own numbers. TruckWithEase is not quoting a discount — you supply the percentage you want to test.
+                </p>
+                {[
+                  { label: 'Number of trucks', value: fleetSize, set: setFleetSize, min: 1 },
+                  { label: 'Monthly premium per truck ($)', value: currentPremium, set: setCurrentPremium, min: 0 },
+                  { label: 'Discount you want to test (%)', value: assumedDiscount, set: setAssumedDiscount, min: 0 },
+                ].map((f, i) => (
+                  <div key={i} style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 13, color: MUTED, fontFamily: 'Inter, sans-serif', display: 'block', marginBottom: 6 }}>{f.label}</label>
+                    <input type="number" value={f.value} min={f.min}
+                      onChange={e => f.set(Math.max(f.min, parseInt(e.target.value, 10) || 0))}
+                      style={{ width: '100%', padding: '10px 14px', background: '#1c1c1c', border: `1px solid ${BORDER}`, borderRadius: 8, color: '#fff', fontFamily: 'Oswald, sans-serif', fontSize: 16, boxSizing: 'border-box' }} />
                   </div>
                 ))}
+                <div style={{ background: '#12100a', border: `1px solid ${GOLD}55`, borderRadius: 12, padding: 16, textAlign: 'center' }}>
+                  <div style={{ fontSize: 12, color: MUTED, fontFamily: 'Inter, sans-serif', marginBottom: 4 }}>ANNUAL PREMIUM ENTERED</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>${annualPremium.toLocaleString()}</div>
+                  <div style={{ fontSize: 12, color: MUTED, fontFamily: 'Inter, sans-serif', margin: '10px 0 4px' }}>AT A {assumedDiscount}% DISCOUNT YOU WOULD SAVE</div>
+                  <div style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 700, color: GOLD_BRIGHT }}>${annualSavings.toLocaleString()}</div>
+                  <div style={{ fontSize: 11, color: DIM, fontFamily: 'Inter, sans-serif', marginTop: 6 }}>Hypothetical. No carrier has offered this fleet a discount.</div>
+                </div>
               </div>
 
-              {/* Fleet Configuration */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ background: CARD, border: `2px solid ${GOLD}`, borderRadius: 16, padding: 24, animation: 'glow 3s ease-in-out infinite' }}>
-                  <h3 style={{ color: GOLD, margin: '0 0 20px', fontSize: 18, letterSpacing: 1 }}>💰 INSURANCE SAVINGS CALCULATOR</h3>
-                  <div style={{ marginBottom: 16 }}>
-                    <label style={{ fontSize: 13, color: '#888', fontFamily: 'Inter, sans-serif', display: 'block', marginBottom: 6 }}>Number of Trucks</label>
-                    <input type="number" value={fleetSize} onChange={e => setFleetSize(parseInt(e.target.value) || 1)}
-                      style={{ width: '100%', padding: '10px 14px', background: '#222', border: `1px solid ${BORDER}`, borderRadius: 8, color: '#fff', fontFamily: 'Oswald, sans-serif', fontSize: 16, boxSizing: 'border-box' }} />
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24 }}>
+                <h3 style={{ color: GOLD, margin: '0 0 12px', fontSize: 16, letterSpacing: 1 }}>DATA SOURCES</h3>
+                {[
+                  { label: 'ELD / telemetry feed', state: 'not connected' },
+                  { label: 'Dashcam events', state: 'not connected' },
+                  { label: 'FMCSA / CSA history', state: 'not connected' },
+                  { label: 'HOS + DVIR records you enter', state: 'stored in TruckWithEase' },
+                  { label: 'Insurance broker feed', state: 'none' },
+                ].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < 4 ? `1px solid ${BORDER}` : 'none' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.state === 'none' || item.state === 'not connected' ? DIM : GOLD, flexShrink: 0 }} />
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#ccc' }}>{item.label}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: MUTED, fontFamily: 'Inter, sans-serif' }}>{item.state}</span>
                   </div>
-                  <div style={{ marginBottom: 16 }}>
-                    <label style={{ fontSize: 13, color: '#888', fontFamily: 'Inter, sans-serif', display: 'block', marginBottom: 6 }}>Current Monthly Premium Per Truck ($)</label>
-                    <input type="number" value={currentPremium} onChange={e => setCurrentPremium(parseInt(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '10px 14px', background: '#222', border: `1px solid ${BORDER}`, borderRadius: 8, color: '#fff', fontFamily: 'Oswald, sans-serif', fontSize: 16, boxSizing: 'border-box' }} />
-                  </div>
-                  <div style={{ background: '#0a1a0a', border: `1px solid ${GREEN}`, borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 12, color: '#888', fontFamily: 'Inter, sans-serif', marginBottom: 4 }}>ESTIMATED ANNUAL SAVINGS</div>
-                    <div style={{ fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 700, color: GREEN }}>${annualSavings.toLocaleString()}</div>
-                    <div style={{ fontSize: 13, color: '#888', fontFamily: 'Inter, sans-serif' }}>Based on your {overallScore}/100 safety score</div>
-                  </div>
-                </div>
-
-                <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24 }}>
-                  <h3 style={{ color: GOLD, margin: '0 0 16px', fontSize: 16, letterSpacing: 1 }}>👁️ GHOST NERVE STATUS</h3>
-                  {['Phantom Compliance Shield', 'Identity Verification', 'HOS Log Sealing', 'CSA Score Predictor', 'Accident Response Ready'].map((item, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: GREEN, animation: 'pulse 2s infinite', flexShrink: 0 }} />
-                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#ccc' }}>{item}</span>
-                      <span style={{ marginLeft: 'auto', fontSize: 11, color: GREEN, fontWeight: 700 }}>ACTIVE</span>
-                    </div>
-                  ))}
-                </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
-        {/* LIVE MONITOR TAB */}
+        {/* LIVE MONITOR */}
         {activeTab === 'monitor' && (
-          <div style={{ animation: 'slideIn 0.3s ease' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24 }}>
-                <h3 style={{ color: GOLD, margin: '0 0 20px', fontSize: 18, letterSpacing: 1 }}>👁️ LIVE SAFETY FEED</h3>
-                {liveEvents.map((e, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: `1px solid ${BORDER}`, animation: i === 0 ? 'slideIn 0.3s ease' : 'none' }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: e.type === 'success' ? GREEN : e.type === 'warning' ? AMBER : '#60a5fa', marginTop: 5, flexShrink: 0, animation: 'pulse 2s infinite' }} />
-                    <div>
-                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#ddd' }}>{e.msg}</div>
-                      <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>{e.time}</div>
-                    </div>
+          <div style={{ animation: 'slideIn 0.3s ease', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24 }}>
+              <h3 style={{ color: GOLD, margin: '0 0 16px', fontSize: 18, letterSpacing: 1 }}>SAFETY EVENT FEED</h3>
+              <div style={{ textAlign: 'center', padding: '36px 12px' }}>
+                <div style={{ fontSize: 40, opacity: 0.5 }}>📡</div>
+                <div style={{ color: '#ddd', fontFamily: 'Inter, sans-serif', fontSize: 14, marginTop: 12 }}>No events — no camera or telemetry source is connected.</div>
+                <div style={{ color: DIM, fontFamily: 'Inter, sans-serif', fontSize: 12, marginTop: 8, lineHeight: 1.6 }}>
+                  When an ELD or dashcam integration is wired, real events land here. Until then this feed stays empty rather than showing examples.
+                </div>
+              </div>
+            </div>
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24 }}>
+              <h3 style={{ color: GOLD, margin: '0 0 16px', fontSize: 18, letterSpacing: 1 }}>PATTERN DETECTION</h3>
+              <p style={{ color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: 12, lineHeight: 1.6 }}>
+                Fleet pattern rules are implemented (repeat drowsiness on a corridor, repeat phone distraction) and run against real camera events. With zero events they produce zero findings, which is what you see below.
+              </p>
+              {cameraPatterns.length === 0 ? (
+                <div style={{ marginTop: 14, padding: '14px 16px', background: '#1c1c1c', borderRadius: 10, color: MUTED, fontFamily: 'Inter, sans-serif', fontSize: 13 }}>
+                  0 patterns — 0 events to analyze.
+                </div>
+              ) : (
+                cameraPatterns.map((p, i) => (
+                  <div key={i} style={{ marginTop: 12, padding: '14px 16px', background: '#1c1c1c', borderRadius: 10, borderLeft: `3px solid ${WARN}` }}>
+                    <div style={{ color: WARN, fontWeight: 700, fontSize: 12 }}>{p.type} · {p.severity}</div>
+                    <div style={{ color: '#ddd', fontFamily: 'Inter, sans-serif', fontSize: 13, marginTop: 6 }}>{p.message}</div>
                   </div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24 }}>
-                  <h3 style={{ color: GOLD, margin: '0 0 20px', fontSize: 18, letterSpacing: 1 }}>🤖 AUTOMATION STATUS</h3>
-                  {[
-                    { label: 'Auto-coaching active', status: 'ON', color: GREEN },
-                    { label: 'Insurance report scheduler', status: 'ON', color: GREEN },
-                    { label: 'CSA spike predictor', status: 'ON', color: GREEN },
-                    { label: 'Accident response protocol', status: 'ARMED', color: GOLD },
-                    { label: 'Drug test reminder system', status: 'ON', color: GREEN },
-                    { label: 'DVIR completion enforcer', status: 'ON', color: GREEN },
-                  ].map((item, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: `1px solid ${BORDER}` }}>
-                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13 }}>{item.label}</span>
-                      <span style={{ color: item.color, fontWeight: 700, fontSize: 12, background: item.color + '22', padding: '3px 10px', borderRadius: 20 }}>{item.status}</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ background: '#0a1a0a', border: `1px solid ${GREEN}`, borderRadius: 16, padding: 24, textAlign: 'center' }}>
-                  <div style={{ fontSize: 48 }}>🎯</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: GREEN, marginTop: 8 }}>ZERO</div>
-                  <div style={{ fontSize: 14, color: '#888', fontFamily: 'Inter, sans-serif' }}>Unreviewed violations in the last 24 hours</div>
-                  <div style={{ fontSize: 12, color: '#555', marginTop: 8, fontFamily: 'Inter, sans-serif' }}>TruckWithEase handled everything automatically</div>
-                </div>
-              </div>
+                ))
+              )}
             </div>
           </div>
         )}
 
-        {/* INSURANCE TAB */}
+        {/* INSURANCE */}
         {activeTab === 'insurance' && (
           <div style={{ animation: 'slideIn 0.3s ease' }}>
-            <div style={{ background: '#0a1a0a', border: `1px solid ${GREEN}`, borderRadius: 16, padding: 20, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
-              <span style={{ fontSize: 32 }}>💡</span>
-              <div>
-                <div style={{ fontWeight: 700, color: GREEN, fontSize: 16 }}>Your safety score qualifies you for {eligiblePartners.length} insurance partners</div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#888', marginTop: 4 }}>TruckWithEase auto-generates a certified safety report every 90 days that your broker uses to negotiate lower premiums. You do nothing.</div>
-              </div>
+            <div style={{ marginBottom: 20 }}>
+              {notice(
+                'TruckWithEase has no broker or carrier agreements and cannot obtain, negotiate, or promise a discount. The list below is reference only — carriers that write commercial trucking, with no rates attached. Any percentage you see quoted elsewhere in the industry is a published program range, not a quote for your fleet. Talk to your own agent.',
+              )}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
-              {INSURANCE_PARTNERS.map((p, i) => {
-                const eligible = overallScore >= parseInt(p.minScore);
-                return (
-                  <div key={i} onClick={() => setSelectedPartner(selectedPartner?.name === p.name ? null : p)}
-                    style={{ background: CARD, border: `2px solid ${eligible ? (selectedPartner?.name === p.name ? GOLD : GREEN) : BORDER}`, borderRadius: 16, padding: 20, cursor: eligible ? 'pointer' : 'default', opacity: eligible ? 1 : 0.5, transition: 'all 0.2s' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                      <div>
-                        <div style={{ fontSize: 28 }}>{p.logo}</div>
-                        <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>{p.name}</div>
-                        <div style={{ fontSize: 12, color: '#888', fontFamily: 'Inter, sans-serif' }}>{p.specialty}</div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 28, fontWeight: 700, color: GREEN }}>{p.discount}</div>
-                        <div style={{ fontSize: 11, color: '#888', fontFamily: 'Inter, sans-serif' }}>discount</div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 12, color: '#888', fontFamily: 'Inter, sans-serif' }}>Min score: {p.minScore}</span>
-                      {eligible ? (
-                        <span style={{ background: GREEN + '22', color: GREEN, padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>✓ ELIGIBLE</span>
-                      ) : (
-                        <span style={{ background: RED + '22', color: RED, padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>Need {p.minScore - overallScore} pts more</span>
-                      )}
-                    </div>
-                    {selectedPartner?.name === p.name && eligible && (
-                      <div style={{ marginTop: 16, padding: 16, background: '#0a1a0a', borderRadius: 12 }}>
-                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#ccc', marginBottom: 8 }}>To claim this discount:</div>
-                        <ol style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#888', paddingLeft: 16, margin: 0 }}>
-                          <li style={{ marginBottom: 6 }}>Generate your 90-day safety report below</li>
-                          <li style={{ marginBottom: 6 }}>Email it to your {p.name} broker</li>
-                          <li>Request premium review with TruckWithEase Safety Certification</li>
-                        </ol>
-                        <div style={{ marginTop: 12, fontWeight: 700, color: GREEN, fontSize: 14 }}>Estimated savings: ${Math.round(currentPremium * fleetSize * parseInt(p.discount) / 100).toLocaleString()}/year</div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+              {CARRIERS_REFERENCE.map((p, i) => (
+                <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 20 }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>{p.name}</div>
+                  <div style={{ fontSize: 12, color: MUTED, fontFamily: 'Inter, sans-serif', marginTop: 4 }}>{p.specialty}</div>
+                  <div style={{ fontSize: 11, color: DIM, fontFamily: 'Inter, sans-serif', marginTop: 12 }}>No agreement with TruckWithEase. No rate available here.</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, marginTop: 20 }}>
+              <h3 style={{ color: GOLD, margin: '0 0 12px', fontSize: 16, letterSpacing: 1 }}>WHAT YOU CAN ACTUALLY DO TODAY</h3>
+              <ol style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#ccc', paddingLeft: 18, margin: 0, lineHeight: 1.9 }}>
+                <li>Enter your own compliance figures in the estimator tab.</li>
+                <li>Export them from the Export tab — it is a plain summary, clearly marked as self-reported.</li>
+                <li>Give it to your own agent as supporting material. It is not certification and no carrier has agreed to accept it.</li>
+              </ol>
             </div>
           </div>
         )}
 
-        {/* AUTOMATION TAB */}
-        {activeTab === 'automation' && (
+        {/* CAPABILITIES */}
+        {activeTab === 'capabilities' && (
           <div style={{ animation: 'slideIn 0.3s ease' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16 }}>
-              {AUTOMATED_FEATURES.map((f, i) => (
-                <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ position: 'absolute', top: 12, right: 12, background: GOLD + '22', color: GOLD, padding: '3px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>{f.tag}</div>
-                  <div style={{ fontSize: 36, marginBottom: 12 }}>{f.icon}</div>
-                  <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 8, color: '#fff' }}>{f.title}</div>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#888', lineHeight: 1.6, marginBottom: 16 }}>{f.description}</div>
-                  <div style={{ background: GREEN + '11', border: `1px solid ${GREEN}33`, borderRadius: 10, padding: '10px 14px' }}>
-                    <span style={{ fontSize: 12, color: '#888', fontFamily: 'Inter, sans-serif' }}>Value: </span>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: GREEN }}>{f.savings}</span>
+            <div style={{ marginBottom: 20 }}>
+              {notice('Build status, not marketing. PARTIAL means some of it works today; PLANNED and NOT BUILT mean no code runs it yet. No savings figures are shown because none have been measured.')}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+              {CAPABILITIES.map((f, i) => (
+                <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: 14, right: 14, background: '#1c1c1c', color: STATUS_COLOR[f.status], padding: '3px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700, border: `1px solid ${STATUS_COLOR[f.status]}55` }}>{f.status}</div>
+                  <div style={{ fontSize: 32, marginBottom: 10 }}>{f.icon}</div>
+                  <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 8, color: '#fff', paddingRight: 80 }}>{f.title}</div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: MUTED, lineHeight: 1.6, marginBottom: 14 }}>{f.description}</div>
+                  <div style={{ background: '#1c1c1c', borderRadius: 10, padding: '10px 14px', fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#bbb' }}>
+                    <span style={{ color: DIM }}>Blocker: </span>{f.blocker}
                   </div>
                 </div>
               ))}
@@ -396,72 +381,70 @@ export default function FleetSafetyIntelligencePage() {
           </div>
         )}
 
-        {/* REPORT TAB */}
+        {/* EXPORT */}
         {activeTab === 'report' && (
           <div style={{ animation: 'slideIn 0.3s ease', maxWidth: 700, margin: '0 auto' }}>
-            <div style={{ background: CARD, border: `2px solid ${GOLD}`, borderRadius: 20, padding: 32, textAlign: 'center', animation: 'glow 3s ease-in-out infinite' }}>
-              <div style={{ fontSize: 56 }}>📊</div>
-              <h2 style={{ color: GOLD, fontSize: 28, letterSpacing: 2, margin: '16px 0 8px' }}>CERTIFIED SAFETY REPORT</h2>
-              <p style={{ fontFamily: 'Inter, sans-serif', color: '#888', fontSize: 14, maxWidth: 480, margin: '0 auto 24px' }}>
-                This report is generated from your live TruckWithEase safety data — HOS logs, DVIR records, DOT inspection results, and Ghost Nerve compliance history. Your insurance broker accepts it directly for premium negotiation.
+            <div style={{ background: CARD, border: `1px solid ${GOLD}`, borderRadius: 20, padding: 32 }}>
+              <h2 style={{ color: GOLD, fontSize: 26, letterSpacing: 2, margin: '0 0 10px', textAlign: 'center' }}>SELF-REPORTED SAFETY SUMMARY</h2>
+              <p style={{ fontFamily: 'Inter, sans-serif', color: MUTED, fontSize: 13, textAlign: 'center', lineHeight: 1.7, margin: '0 0 22px' }}>
+                Built in your browser from the values you entered on this page. It is not certified, not audited, and not saved to any TruckWithEase server.
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24, textAlign: 'left' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 22 }}>
                 {[
-                  { label: 'Overall Safety Score', value: `${overallScore}/100`, color: overallScore >= 90 ? GREEN : GOLD },
-                  { label: 'HOS Compliance', value: `${scores.hos}%`, color: scores.hos >= 90 ? GREEN : GOLD },
-                  { label: 'Inspection Pass Rate', value: `${scores.dot}%`, color: GREEN },
-                  { label: 'DVIR Completion', value: `${scores.dvir}%`, color: GREEN },
-                  { label: 'Drug & Alcohol Clean', value: `${scores.drug}%`, color: GREEN },
-                  { label: 'Insurance Tier', value: overallScore >= 90 ? 'ELITE' : overallScore >= 80 ? 'PREFERRED' : 'STANDARD', color: GOLD },
+                  { label: 'Weighted estimate', value: entered ? `${overallScore}/100` : 'not entered' },
+                  { label: 'HOS compliance (entered)', value: scores.hos ? `${scores.hos}%` : 'not entered' },
+                  { label: 'Inspection pass rate (entered)', value: scores.dot ? `${scores.dot}%` : 'not entered' },
+                  { label: 'DVIR completion (entered)', value: scores.dvir ? `${scores.dvir}%` : 'not entered' },
+                  { label: 'Drug & alcohol (entered)', value: scores.drug ? `${scores.drug}%` : 'not entered' },
+                  { label: 'Measured by TruckWithEase', value: 'nothing' },
                 ].map((item, i) => (
-                  <div key={i} style={{ background: '#0a0a0a', border: `1px solid ${BORDER}`, borderRadius: 10, padding: '12px 16px' }}>
-                    <div style={{ fontSize: 11, color: '#666', fontFamily: 'Inter, sans-serif', marginBottom: 4 }}>{item.label}</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: item.color }}>{item.value}</div>
+                  <div key={i} style={{ background: '#0f0f0f', border: `1px solid ${BORDER}`, borderRadius: 10, padding: '12px 16px' }}>
+                    <div style={{ fontSize: 11, color: DIM, fontFamily: 'Inter, sans-serif', marginBottom: 4 }}>{item.label}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: GOLD }}>{item.value}</div>
                   </div>
                 ))}
               </div>
-              {reportGenerated ? (
-                <div style={{ background: '#0a1a0a', border: `1px solid ${GREEN}`, borderRadius: 14, padding: 20 }}>
-                  <div style={{ fontSize: 32 }}>✅</div>
-                  <div style={{ fontWeight: 700, color: GREEN, fontSize: 18, marginTop: 8 }}>Report Generated & Saved</div>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#888', marginTop: 8 }}>Your 90-day certified safety report is ready. Download it or send directly to your insurance broker to request your {bestSavings}% discount.</div>
-                  <div style={{ marginTop: 16, fontWeight: 700, color: GREEN, fontSize: 22 }}>Potential savings: ${annualSavings.toLocaleString()}/year</div>
-                </div>
-              ) : (
-                <button onClick={generateReport} disabled={saving}
-                  style={{ background: `linear-gradient(135deg, ${GOLD}, #e6a800)`, color: BLACK, border: 'none', padding: '16px 40px', borderRadius: 12, fontSize: 18, fontWeight: 700, fontFamily: 'Oswald, sans-serif', cursor: 'pointer', letterSpacing: 1 }}>
-                  {saving ? 'GENERATING...' : '⚡ GENERATE MY SAFETY REPORT'}
+              <div style={{ textAlign: 'center' }}>
+                <button onClick={buildReport}
+                  style={{ background: `linear-gradient(135deg,${GOLD} 0%,${GOLD_BRIGHT} 40%,${GOLD} 70%,#8A6E2F 100%)`, color: BLACK, border: 'none', padding: '15px 36px', borderRadius: 12, fontSize: 17, fontWeight: 700, fontFamily: 'Oswald, sans-serif', cursor: 'pointer', letterSpacing: 1 }}>
+                  DOWNLOAD SUMMARY (JSON)
                 </button>
-              )}
+                {reportBuilt && (
+                  <div style={{ marginTop: 18, padding: 16, background: '#12100a', border: `1px solid ${GOLD}55`, borderRadius: 12, fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#ddd' }}>
+                    File downloaded to this device. Nothing was uploaded or stored server-side — there is no safety-report table yet, so the page will not claim a save.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {/* iDrive E2 AI Dashcam Panel */}
-        <div style={{ background: CARD, border: `1px solid #10b981`, borderRadius: 16, padding: 28, marginTop: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-            <span style={{ fontSize: 32 }}>📷</span>
+        {/* Dashcam panel — honest not-connected state */}
+        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 28, marginTop: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 30 }}>📷</span>
             <div>
-              <div style={{ color: '#10b981', fontFamily: 'Oswald, sans-serif', fontSize: 20, fontWeight: 700, letterSpacing: 1 }}>iDRIVE E2 AI DASHCAM INTELLIGENCE</div>
-              <div style={{ color: '#6ee7b7', fontSize: 13 }}>Real-time camera events feeding your safety score automatically</div>
+              <div style={{ color: GOLD, fontFamily: 'Oswald, sans-serif', fontSize: 19, fontWeight: 700, letterSpacing: 1 }}>AI DASHCAM INTEGRATION</div>
+              <div style={{ color: MUTED, fontSize: 13, fontFamily: 'Inter, sans-serif' }}>Event taxonomy and scoring weights are defined. No camera feed exists.</div>
             </div>
-            <div style={{ marginLeft: 'auto', background: hasiDrive() ? '#10b98120' : '#ffffff10', border: `1px solid ${hasiDrive() ? '#10b981' : '#444'}`, borderRadius: 20, padding: '4px 14px', fontSize: 12, color: hasiDrive() ? '#10b981' : '#888' }}>
-              {hasiDrive() ? '● LIVE' : '○ Add Key at /twilio-setup'}
+            <div style={{ marginLeft: 'auto', background: '#1c1c1c', border: `1px solid ${BORDER}`, borderRadius: 20, padding: '4px 14px', fontSize: 12, color: MUTED }}>
+              {hasiDrive() ? '● CONNECTED' : '○ NOT CONNECTED'}
             </div>
           </div>
+          <div style={{ margin: '14px 0 18px', fontFamily: 'Inter, sans-serif', fontSize: 12, color: DIM, lineHeight: 1.6 }}>
+            {IDRIVE_STATUS.note} Provider evaluated: {IDRIVE_STATUS.provider} (a dashcam product — unrelated to iDrive e2, the object storage TruckWithEase does use).
+          </div>
+          <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 13, color: GOLD, letterSpacing: 1, marginBottom: 10 }}>EVENT TYPES AND SCORE IMPACT (REFERENCE)</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-            {Object.entries(CAMERA_EVENTS).slice(0, 6).map(([key, event]) => (
-              <div key={key} style={{ background: '#0a0a0a', border: `1px solid #2a2a2a`, borderRadius: 10, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 22 }}>{event.icon}</span>
+            {Object.entries(CAMERA_EVENTS).map(([key, event]) => (
+              <div key={key} style={{ background: '#0f0f0f', border: `1px solid ${BORDER}`, borderRadius: 10, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 20 }}>{event.icon}</span>
                 <div>
                   <div style={{ color: '#fff', fontSize: 12, fontWeight: 600 }}>{event.label}</div>
-                  <div style={{ color: event.severity === 'CRITICAL' ? RED : event.severity === 'HIGH' ? AMBER : '#888', fontSize: 11 }}>{event.severity} — {event.points} pts</div>
+                  <div style={{ color: event.severity === 'CRITICAL' ? WARN : event.severity === 'HIGH' ? GOLD : MUTED, fontSize: 11 }}>{event.severity} — {event.points} pts</div>
                 </div>
               </div>
             ))}
-          </div>
-          <div style={{ marginTop: 16, padding: '12px 16px', background: '#10b98110', borderRadius: 10, color: '#6ee7b7', fontSize: 13 }}>
-            ⚡ Ghost Nerve monitors all camera events across your fleet — patterns detected fleet-wide trigger automatic Game Up training enrollment and insurance tier updates in real time
           </div>
         </div>
       </div>

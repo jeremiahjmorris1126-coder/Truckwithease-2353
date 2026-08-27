@@ -28,6 +28,20 @@ const EARN_RULES = [
   { action: "Referral joins", points: "10,000 pts" },
 ];
 
+// Achievement badges — keys match packages/web/src/web/components/badge-showcase.tsx.
+// Earned status is derived from real rows; anything with no data source stays locked
+// rather than being faked.
+const BADGE_KEYS = [
+  "first-load-assigned",
+  "first-route-saved",
+  "five-routes-saved",
+  "ten-stops-rated",
+  "danger-report-filed",
+  "broker-warned",
+  "one-week-user",
+  "fifty-actions",
+] as const;
+
 export const rewards = new Hono()
   .use("*", async (_c, next) => { await ensureSeed(); await next(); })
   .get("/catalog", (c) => c.json({ catalog: CATALOG, earnRules: EARN_RULES }, 200))
@@ -39,6 +53,35 @@ export const rewards = new Hono()
     const tier = points >= 5000 ? "Gold" : points >= 2000 ? "Silver" : "Bronze";
     const nextTier = points >= 5000 ? null : points >= 2000 ? { name: "Gold", at: 5000 } : { name: "Silver", at: 2000 };
     return c.json({ points, tier, nextTier, history }, 200);
+  })
+  .get("/:driverId/badges", async (c) => {
+    const driverId = c.req.param("driverId");
+    const [d] = await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId));
+    if (!d) return c.json({ error: "Driver not found" }, 404);
+
+    const bookedLoads = await db.select().from(schema.loads).where(eq(schema.loads.bookedByDriverId, driverId));
+    const inspections = await db.select().from(schema.dvirInspections).where(eq(schema.dvirInspections.driverId, driverId));
+    const driverTrips = await db.select().from(schema.trips).where(eq(schema.trips.driverId, driverId));
+    const actions = bookedLoads.length + inspections.length + driverTrips.length + ledger.filter((l) => l.driverId === driverId).length;
+    const ageDays = (Date.now() - new Date(d.createdAt).getTime()) / 86_400_000;
+
+    const earned: string[] = [];
+    if (bookedLoads.length >= 1) earned.push("first-load-assigned");
+    if (driverTrips.length >= 1) earned.push("first-route-saved");
+    if (driverTrips.length >= 5) earned.push("five-routes-saved");
+    if (inspections.filter((i) => i.hasDefects).length >= 1) earned.push("danger-report-filed");
+    if (ageDays >= 7) earned.push("one-week-user");
+    if (actions >= 50) earned.push("fifty-actions");
+    // ten-stops-rated and broker-warned have no table yet — intentionally never awarded.
+
+    return c.json(
+      {
+        achievements: earned,
+        all: BADGE_KEYS,
+        counters: { bookedLoads: bookedLoads.length, inspections: inspections.length, trips: driverTrips.length, actions, ageDays: Math.floor(ageDays) },
+      },
+      200,
+    );
   })
   .post("/:driverId/earn", async (c) => {
     const driverId = c.req.param("driverId");

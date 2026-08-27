@@ -8,22 +8,23 @@ export type FleetPos = {
   lat: number | null; lng: number | null; status: string; speed?: number | null;
 };
 
-const NAVY = "#0B2A6B";
-const AMBER = "#FFB400";
-const GREEN = "#1FA971";
+const NAVY = "#8A8A8A";        // name kept, paint is brand muted grey
+const AMBER = "#C9A84C";       // brand gold
+const GREEN = "#FFD700";       // brand bright gold
 
-// Dark navy map style to match the brand
+// Brand map style — black/gold. Was dark navy (#0d1b3e/#1b2f5e/#2a447e/#8fa6d4),
+// which is on the reject list.
 const MAP_STYLE: google.maps.MapTypeStyle[] = [
-  { elementType: "geometry", stylers: [{ color: "#0d1b3e" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#0d1b3e" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#8fa6d4" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#1b2f5e" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#2a447e" }] },
-  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#FFB400" }, { weight: 0.3 }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#071733" }] },
+  { elementType: "geometry", stylers: [{ color: "#0a0a0a" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#0a0a0a" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8A8A8A" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#1C1C1C" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#222222" }] },
+  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#C9A84C" }, { weight: 0.3 }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#111111" }] },
   { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#2a447e" }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#222222" }] },
 ];
 
 function TrafficLayer({ on }: { on: boolean }) {

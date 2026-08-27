@@ -1,12 +1,24 @@
 /**
- * Fleet Memory Intelligence — shared utility
- * Logs user/fleet actions, surfaces warnings for known bad brokers/shippers/receivers,
- * and aggregates cross-fleet charge stop intelligence.
+ * Fleet Memory — client for /api/fleet-memory.
  *
- * Import { logAction, checkEntityWarnings, submitEntityNote, getTopStops, logStopRating }
- * from '../lib/fleetMemory'
+ * WHAT CHANGED AND WHY
+ * The previous version of this file wrote every driver-submitted note, rating and stop
+ * review through the PocketBase browser shim to four collections:
+ *   user_activity_index, fleet_intelligence_notes, shipper_broker_ratings, route_stop_feedback
+ * None of those were in SERVER_COLLECTIONS (src/web/lib/pb-shim.ts), so all four resolved
+ * to localStorage. A note a driver filed about a broker was saved to that one browser and
+ * nowhere else, and checkEntityWarnings() returned "no warnings" for every broker on every
+ * other device — DispatchPage and FleetLoadBoardPage were showing a clean broker check that
+ * had checked nothing.
+ *
+ * All six exports keep their exact signatures. They now hit real Turso tables through the API.
+ *
+ * IMPORTANT for callers: hasWarnings === false does NOT mean the entity is clean. Read
+ * reportCount and note. Zero reports means nobody has reported anything. This platform does
+ * not rate brokers.
  */
-import { pb } from './pb.js';
+
+const API = "/api/fleet-memory";
 
 function getSessionId() {
   let sid = localStorage.getItem('twe_session_id');
@@ -17,156 +29,157 @@ function getSessionId() {
   return sid;
 }
 
+async function post(path, body) {
+  const res = await fetch(API + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...body, sessionId: getSessionId() }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+
+async function get(path) {
+  const res = await fetch(API + path);
+  if (!res.ok) throw new Error(`Request failed (${res.status})`);
+  return res.json();
+}
+
 /**
- * Log any user action across the platform.
+ * Log any user action across the platform. Fire-and-forget; never blocks a page.
  * module: 'Dispatch', 'Load Board', 'Route Planner', 'ELD', etc.
  * actionType: 'VIEW', 'SEARCH', 'SUBMIT', 'RATE', 'PLAN', 'SAVE', etc.
  */
 export async function logAction(module, actionType, detail = '', value = '') {
   try {
-    await pb.collection('user_activity_index').create({
-      session_id: getSessionId(),
-      action_type: actionType,
+    await post('/activity', {
       module,
-      detail: detail.slice(0, 200),
+      actionType,
+      detail: String(detail).slice(0, 200),
       value: String(value).slice(0, 100),
       device: /Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
-      duration_seconds: 0,
     });
   } catch (_) {}
 }
 
 /**
- * Check if a broker, shipper, or receiver has any previous complaints or negative ratings.
- * Returns { hasWarnings, notes, ratings, worstSeverity }
+ * Look up driver-submitted reports on a broker, shipper, or receiver.
+ * Returns { hasWarnings, notes, ratings, negRatings, worstSeverity, reportCount, note, unavailable }
+ *
+ * reportCount === 0 means no driver has reported anything on that name. It is not a clean
+ * record and must not be rendered as one. `unavailable: true` means the lookup itself failed —
+ * also not a clean record.
  */
 export async function checkEntityWarnings(entityName) {
-  if (!entityName || entityName.trim().length < 2) return { hasWarnings: false, notes: [], ratings: [] };
-  const name = entityName.trim().toLowerCase();
+  const empty = {
+    hasWarnings: false, notes: [], ratings: [], negRatings: [], worstSeverity: 'none',
+    reportCount: 0, note: '', unavailable: false,
+  };
+  if (!entityName || entityName.trim().length < 2) {
+    return { ...empty, note: 'Enter at least 2 characters to look up a company.' };
+  }
   try {
-    const [notesRes, ratingsRes] = await Promise.all([
-      pb.collection('fleet_intelligence_notes').getList(1, 50, {
-        filter: `entity_name ~ "${name}"`,
-        sort: '-created',
-      }).catch(() => ({ items: [] })),
-      pb.collection('shipper_broker_ratings').getList(1, 50, {
-        filter: `company_name ~ "${name}"`,
-        sort: 'rating',
-      }).catch(() => ({ items: [] })),
-    ]);
-
-    const notes = notesRes.items || [];
-    const ratings = ratingsRes.items || [];
-    const negRatings = ratings.filter(r => r.rating <= 2);
-    const hasWarnings = notes.length > 0 || negRatings.length > 0;
-
-    let worstSeverity = 'none';
-    if (notes.some(n => n.severity === 'Critical')) worstSeverity = 'critical';
-    else if (negRatings.length >= 2 || notes.some(n => n.severity === 'High')) worstSeverity = 'high';
-    else if (notes.length > 0 || negRatings.length > 0) worstSeverity = 'medium';
-
-    return { hasWarnings, notes, ratings, negRatings, worstSeverity };
+    const d = await get(`/entity/${encodeURIComponent(entityName.trim())}`);
+    return {
+      hasWarnings: !!d.hasWarnings,
+      notes: d.notes || [],
+      ratings: d.ratings || [],
+      negRatings: d.negRatings || [],
+      worstSeverity: d.worstSeverity || 'none',
+      reportCount: d.reportCount ?? 0,
+      note: d.note || '',
+      unavailable: false,
+    };
   } catch (_) {
-    return { hasWarnings: false, notes: [], ratings: [], negRatings: [], worstSeverity: 'none' };
+    return {
+      ...empty,
+      unavailable: true,
+      note: 'Broker check could not reach the server. This is NOT a clean result — nothing was checked.',
+    };
   }
 }
 
 /**
- * Submit a fleet intelligence note (comment/complaint) about a broker, shipper, or receiver.
+ * File a fleet intelligence note (complaint/comment) about a broker, shipper, or receiver.
+ * Throws on failure so the UI can tell the driver it was not saved.
  */
 export async function submitEntityNote({ entityName, entityType, noteType, severity, noteText, fleetName = '', driverName = '', loadNumber = '', mcNumber = '' }) {
-  await pb.collection('fleet_intelligence_notes').create({
-    entity_name: entityName,
-    entity_type: entityType,
-    note_type: noteType,
-    severity,
-    note_text: noteText,
-    fleet_name: fleetName,
-    driver_name: driverName,
-    load_number: loadNumber,
-    mc_number: mcNumber,
-    resolved: false,
-    session_id: getSessionId(),
-  });
+  return post('/notes', { entityName, entityType, noteType, severity, noteText, fleetName, driverName, loadNumber, mcNumber });
 }
 
 /**
- * Get top-rated charge stops across all fleets (aggregated from route_stop_feedback).
- * Returns array sorted by avg positive score, highest first.
+ * Recent notes + ratings feed. Returns { notes, ratings, total }.
+ */
+export async function getRecentIntel(limit = 30) {
+  try {
+    const d = await get(`/notes?limit=${limit}`);
+    return { notes: d.notes || [], ratings: d.ratings || [], total: d.total || 0 };
+  } catch (_) {
+    return { notes: [], ratings: [], total: 0, unavailable: true };
+  }
+}
+
+/**
+ * Submit a 1-5 star rating on a broker/shipper.
+ */
+export async function submitEntityRating({ companyName, companyType = 'Broker', rating, paySpeed = '', communication = '', reviewText = '', mcNumber = '' }) {
+  return post('/ratings', { companyName, companyType, rating, paySpeed, communication, reviewText, mcNumber });
+}
+
+/**
+ * Stops ranked by driver feedback. A stop needs at least 3 reports before it is ranked at all —
+ * one thumbs-up is not a recommendation. Returns an array (same shape as before) with
+ * `.meta` attached carrying totalReports, stopsBelowThreshold, minReports and a note.
  */
 export async function getTopStops(vehicleType = null, limit = 10) {
   try {
-    const filter = vehicleType ? `vehicle_type = "${vehicleType}"` : '';
-    const res = await pb.collection('route_stop_feedback').getList(1, 500, {
-      filter,
-      sort: '-created',
-    });
-
-    const agg = {};
-    res.items.forEach(item => {
-      const k = item.stop_name;
-      if (!k) return;
-      if (!agg[k]) agg[k] = { stop_name: k, vehicle_type: item.vehicle_type, pos: 0, neg: 0, total: 0 };
-      if (item.rating > 0) agg[k].pos++;
-      else if (item.rating < 0) agg[k].neg++;
-      agg[k].total++;
-    });
-
-    return Object.values(agg)
-      .map(s => ({ ...s, score: s.pos - s.neg, pct: s.total > 0 ? Math.round((s.pos / s.total) * 100) : 50 }))
-      .filter(s => s.total > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
-  } catch (_) { return []; }
+    const qs = new URLSearchParams({ limit: String(limit) });
+    if (vehicleType) qs.set('vehicleType', vehicleType);
+    const d = await get(`/stops?${qs.toString()}`);
+    const stops = (d.stops || []).map((s) => ({
+      stop_name: s.stopName,
+      vehicle_type: s.vehicleType,
+      pos: s.pos,
+      neg: s.neg,
+      total: s.total,
+      score: s.score,
+      pct: s.pct, // null when below the report threshold — never a made-up number
+    }));
+    stops.meta = {
+      totalReports: d.totalReports || 0,
+      stopsBelowThreshold: d.stopsBelowThreshold || 0,
+      minReports: d.minReports ?? 3,
+      note: d.note || '',
+    };
+    return stops;
+  } catch (_) {
+    const out = [];
+    out.meta = { totalReports: 0, stopsBelowThreshold: 0, minReports: 3, note: 'Stop feedback could not be loaded.', unavailable: true };
+    return out;
+  }
 }
 
 /**
- * Get the most-complained-about entities (brokers/shippers/receivers).
- * Returns array sorted by complaint count, worst first.
+ * Entities with the most driver flags. Counted, not scored.
+ * Returns an array with `.meta` carrying totalReports and a note.
  */
 export async function getWorstEntities(limit = 10) {
   try {
-    const [notesRes, ratingsRes] = await Promise.all([
-      pb.collection('fleet_intelligence_notes').getList(1, 500, { sort: '-created' }).catch(() => ({ items: [] })),
-      pb.collection('shipper_broker_ratings').getList(1, 500, { sort: 'rating' }).catch(() => ({ items: [] })),
-    ]);
-
-    const agg = {};
-
-    (notesRes.items || []).forEach(n => {
-      const k = (n.entity_name || '').toLowerCase().trim();
-      if (!k) return;
-      if (!agg[k]) agg[k] = { name: n.entity_name, type: n.entity_type, complaints: 0, negRatings: 0, notes: [] };
-      agg[k].complaints++;
-      agg[k].notes.push(n);
-    });
-
-    (ratingsRes.items || []).filter(r => r.rating <= 2).forEach(r => {
-      const k = (r.company_name || '').toLowerCase().trim();
-      if (!k) return;
-      if (!agg[k]) agg[k] = { name: r.company_name, type: r.company_type, complaints: 0, negRatings: 0, notes: [] };
-      agg[k].negRatings++;
-    });
-
-    return Object.values(agg)
-      .map(e => ({ ...e, totalFlags: e.complaints + e.negRatings }))
-      .filter(e => e.totalFlags > 0)
-      .sort((a, b) => b.totalFlags - a.totalFlags)
-      .slice(0, limit);
-  } catch (_) { return []; }
+    const d = await get(`/worst-entities?limit=${limit}`);
+    const entities = (d.entities || []).slice();
+    entities.meta = { totalReports: d.totalReports || 0, note: d.note || '' };
+    return entities;
+  } catch (_) {
+    const out = [];
+    out.meta = { totalReports: 0, note: 'Flagged entities could not be loaded.', unavailable: true };
+    return out;
+  }
 }
 
 /**
- * Log a charge stop rating and update fleet_stop_intelligence aggregates.
+ * Log a charge stop rating: +1 or -1.
  */
 export async function logStopRating(stopName, vehicleType, rating, origin = '', dest = '') {
-  const sid = getSessionId();
-  await pb.collection('route_stop_feedback').create({
-    session_id: sid,
-    stop_name: stopName,
-    vehicle_type: vehicleType,
-    rating,
-    route_origin: origin,
-    route_dest: dest,
-  });
+  return post('/stops', { stopName, vehicleType, rating, routeOrigin: origin, routeDest: dest });
 }

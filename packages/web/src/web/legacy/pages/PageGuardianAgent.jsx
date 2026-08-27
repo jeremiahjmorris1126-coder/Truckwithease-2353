@@ -13,7 +13,7 @@ const BLUE = "#00d4ff";
 
 const CRITICAL_PAGES = [
   { id: "api-keys", path: "/twilio-setup", label: "API Keys Hub", icon: "🔑", desc: "All 22 platform API connections — must load, save, and retrieve keys correctly 100% of the time", checks: ["Page loads", "Jump bar visible", "All 22 cards render", "Keys save permanently", "Keys load on return"] },
-  { id: "api-agent", path: "/api-agent", label: "API Nexus Agent", icon: "🤖", desc: "NEXUS monitors all services — must show live status for every API", checks: ["Page loads", "All 22 services listed", "Run Full Scan works", "Alerts tab accurate", "Master list complete"] },
+  { id: "api-agent", path: "/key-agent", label: "API Nexus Agent", icon: "🤖", desc: "NEXUS monitors all services — must show live status for every API", checks: ["Page loads", "All 22 services listed", "Run Full Scan works", "Alerts tab accurate", "Master list complete"] },
   { id: "ghost-nerve", path: "/ghost-nerve", label: "Ghost Nerve", icon: "⚡", desc: "Platform intelligence layer — must pulse live and show all 12 functions", checks: ["Page loads", "Live feed active", "Phase 1 all 8 functions", "Twitter/X feed running", "Backup credentials save"] },
   { id: "dispatch", path: "/dispatch", label: "Quantum Dispatch", icon: "🚛", desc: "Mission control — must show live map, load board, and quantum optimization", checks: ["Page loads", "6 tabs render", "Quantum AI runs", "Road alerts fire", "Broker check works"] },
   { id: "fleet-safety", path: "/fleet-safety", label: "Fleet Safety Intelligence", icon: "🛡️", desc: "Safety scores, insurance savings, iDrive E2 panel — all must be live", checks: ["Page loads", "Safety score renders", "Insurance partners show", "iDrive panel visible", "Report generates"] },

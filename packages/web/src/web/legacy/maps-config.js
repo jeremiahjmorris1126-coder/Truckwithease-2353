@@ -1,23 +1,26 @@
-// Google Maps API key — publishable key, safe in client code
-export const GOOGLE_MAPS_KEY = "AIzaSyBWlIo4ZSmkKWW1Z9QViAReZ7M561SxBlU";
+// Google Maps client config.
+//
+// The key comes from the root .env as VITE_GOOGLE_MAPS_KEY. Never hardcode it here.
+//
+// STRIPPED Aug 25, 2026 — this file previously exported 12 non-Maps functions that
+// called Vision, Speech-to-Text, Natural Language, Translate, Roads, Route
+// Optimization, Document AI, Sheets, Drive and FCM directly from the browser using
+// the Maps key: analyzeImageVision, transcribeAudio, analyzeText, translateText,
+// snapToRoads, getSpeedLimits, optimizeRoutes, processDocument, appendToSheet,
+// readSheet, uploadToDrive, sendPushNotification. Plus getCloudKey/setCloudKey,
+// which read an API key pasted into localStorage, and checkGoogleAPIs(), which
+// health-checked those dead endpoints. All removed:
+//   - the current Maps key is restricted to Maps APIs only, so every one 403s
+//   - none of them were imported anywhere in the app
+//   - processDocument pointed at a Document AI processor that does not exist
+//   - a credential must never be pasted into or stored in the browser
+// Document OCR runs server-side at POST /api/gemini/ocr. Use that instead.
+//
+// NOTE: the functions below use the Maps JavaScript API (Directions, Distance
+// Matrix, Geocoder, Places, Elevation services). Each of those APIs must be
+// enabled on the key separately, or the call fails at runtime.
 
-// Google Cloud API key — separate key for Vision, Speech, Translate, NLP, Sheets, Drive
-// Stored in localStorage so the user can paste it in from the Google APIs page
-export function getCloudKey() {
-  return localStorage.getItem('google_cloud_key') || GOOGLE_MAPS_KEY;
-}
-export function setCloudKey(key) {
-  localStorage.setItem('google_cloud_key', key.trim());
-}
-
-// All Google APIs enabled on this project:
-// Maps JavaScript API, Places API, Directions API, Distance Matrix API,
-// Geocoding API, Routes API, Elevation API, Time Zone API,
-// Vision API (via REST), Speech-to-Text (via REST), Natural Language (via REST),
-// Translate API (via REST), YouTube Data API v3,
-// Roads API (snapToRoads, speedLimits), Street View Static API,
-// Route Optimization API, Document AI API,
-// Google Sheets API, Google Drive API, Firebase Cloud Messaging
+export const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || "";
 
 const GOOGLE_LIBS = 'places,geometry,drawing';
 
@@ -102,69 +105,6 @@ export async function searchNearby(lat, lng, type = 'gas_station', radius = 5000
   });
 }
 
-// ─── Vision API (REST) — truck damage / BOL / CDL photo analysis ─────────────
-export async function analyzeImageVision(base64Image, features = ['LABEL_DETECTION', 'TEXT_DETECTION', 'OBJECT_LOCALIZATION']) {
-  const res = await fetch(
-    `https://vision.googleapis.com/v1/images:annotate?key=${getCloudKey()}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        requests: [{
-          image: { content: base64Image },
-          features: features.map(f => ({ type: f, maxResults: 20 })),
-        }],
-      }),
-    }
-  );
-  if (!res.ok) throw new Error(`Vision API error ${res.status}`);
-  return res.json();
-}
-
-// ─── Speech-to-Text API (REST) — driver voice commands ───────────────────────
-export async function transcribeAudio(base64Audio, languageCode = 'en-US', sampleRate = 16000) {
-  const res = await fetch(
-    `https://speech.googleapis.com/v1/speech:recognize?key=${getCloudKey()}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        config: { encoding: 'WEBM_OPUS', sampleRateHertz: sampleRate, languageCode },
-        audio: { content: base64Audio },
-      }),
-    }
-  );
-  if (!res.ok) throw new Error(`Speech-to-Text error ${res.status}`);
-  return res.json();
-}
-
-// ─── Natural Language API (REST) — document / BOL entity extraction ──────────
-export async function analyzeText(text, type = 'analyzeEntities') {
-  const res = await fetch(
-    `https://language.googleapis.com/v1/documents:${type}?key=${getCloudKey()}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        document: { type: 'PLAIN_TEXT', content: text },
-        encodingType: 'UTF8',
-      }),
-    }
-  );
-  if (!res.ok) throw new Error(`Natural Language API error ${res.status}`);
-  return res.json();
-}
-
-// ─── Translate API (REST) — multilingual driver support ──────────────────────
-export async function translateText(text, targetLang = 'en', sourceLang = null) {
-  const params = new URLSearchParams({ q: text, target: targetLang, key: getCloudKey() });
-  if (sourceLang) params.append('source', sourceLang);
-  const res = await fetch(`https://translation.googleapis.com/language/translate/v2?${params}`);
-  if (!res.ok) throw new Error(`Translate API error ${res.status}`);
-  const data = await res.json();
-  return data?.data?.translations?.[0]?.translatedText || text;
-}
-
 // ─── Elevation API — grade/incline for fuel burn estimation ─────────────────
 export async function getElevation(lat, lng) {
   await loadGoogleMaps();
@@ -177,95 +117,6 @@ export async function getElevation(lat, lng) {
   });
 }
 
-// ─── API Health Check — ping all endpoints ───────────────────────────────────
-export async function checkGoogleAPIs() {
-  const results = [];
-
-  const checks = [
-    {
-      name: 'Maps JavaScript + Places',
-      test: async () => { await loadGoogleMaps(); return !!window.google?.maps; },
-    },
-    {
-      name: 'Geocoding',
-      test: async () => { const r = await geocodeAddress('Chicago, IL'); return !!r.lat; },
-    },
-    {
-      name: 'Distance Matrix',
-      test: async () => { const r = await getDistanceMatrix(['Chicago, IL'], ['Dallas, TX']); return r.rows.length > 0; },
-    },
-    {
-      name: 'Vision API',
-      test: async () => {
-        const res = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${getCloudKey()}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ requests: [{ image: { source: { imageUri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png' } }, features: [{ type: 'LABEL_DETECTION', maxResults: 1 }] }] }),
-        });
-        return res.ok || res.status === 400; // 400 = API enabled, bad image = OK
-      },
-    },
-    {
-      name: 'Natural Language',
-      test: async () => {
-        const res = await fetch(`https://language.googleapis.com/v1/documents:analyzeEntities?key=${getCloudKey()}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ document: { type: 'PLAIN_TEXT', content: 'Truck driver in Chicago.' }, encodingType: 'UTF8' }),
-        });
-        return res.ok;
-      },
-    },
-    {
-      name: 'Translate',
-      test: async () => {
-        const r = await translateText('Hello driver', 'es');
-        return r.length > 0;
-      },
-    },
-    {
-      name: 'Speech-to-Text',
-      test: async () => {
-        const res = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${getCloudKey()}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ config: { encoding: 'LINEAR16', sampleRateHertz: 16000, languageCode: 'en-US' }, audio: { content: '' } }),
-        });
-        return res.ok || res.status === 400; // 400 = API enabled, empty audio = OK
-      },
-    },
-  ];
-
-  for (const check of checks) {
-    const start = Date.now();
-    try {
-      const ok = await check.test();
-      results.push({ name: check.name, status: ok ? 'LIVE' : 'ERROR', ms: Date.now() - start });
-    } catch (e) {
-      results.push({ name: check.name, status: 'ERROR', error: e.message, ms: Date.now() - start });
-    }
-  }
-
-  return results;
-}
-
-// ─── Roads API — snap GPS coords to roads, get speed limits ──────────────────
-export async function snapToRoads(points) {
-  // points: array of {lat, lng}
-  const path = points.map(p => `${p.lat},${p.lng}`).join('|');
-  const res = await fetch(
-    `https://roads.googleapis.com/v1/snapToRoads?path=${encodeURIComponent(path)}&interpolate=true&key=${GOOGLE_MAPS_KEY}`
-  );
-  if (!res.ok) throw new Error(`Roads API error ${res.status}`);
-  return res.json();
-}
-
-export async function getSpeedLimits(points) {
-  const path = points.map(p => `${p.lat},${p.lng}`).join('|');
-  const res = await fetch(
-    `https://roads.googleapis.com/v1/speedLimits?path=${encodeURIComponent(path)}&key=${GOOGLE_MAPS_KEY}`
-  );
-  if (!res.ok) throw new Error(`Speed Limits API error ${res.status}`);
-  return res.json();
-}
-
 // ─── Street View Static API — delivery address photo preview ─────────────────
 export function getStreetViewUrl(lat, lng, width = 640, height = 480, heading = 0, pitch = 0) {
   return `https://maps.googleapis.com/maps/api/streetview?size=${width}x${height}&location=${lat},${lng}&heading=${heading}&pitch=${pitch}&key=${GOOGLE_MAPS_KEY}`;
@@ -273,128 +124,4 @@ export function getStreetViewUrl(lat, lng, width = 640, height = 480, heading = 
 
 export function getStreetViewUrlByAddress(address, width = 640, height = 480) {
   return `https://maps.googleapis.com/maps/api/streetview?size=${width}x${height}&location=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_KEY}`;
-}
-
-// ─── Route Optimization API — multi-stop dispatch routing ────────────────────
-export async function optimizeRoutes(shipments, vehicles) {
-  // shipments: [{id, pickupLocation, deliveryLocation, loadDemand}]
-  // vehicles: [{id, startLocation, endLocation, loadLimit}]
-  const res = await fetch(
-    `https://routeoptimization.googleapis.com/v1/projects/truckwithease:optimizeTours?key=${GOOGLE_MAPS_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: {
-          shipments: shipments.map(s => ({
-            pickups: [{ arrivalLocation: { latLng: s.pickupLocation }, duration: '300s' }],
-            deliveries: [{ arrivalLocation: { latLng: s.deliveryLocation }, duration: '300s' }],
-            loadDemands: { weight: { amount: String(s.loadDemand || 1) } },
-          })),
-          vehicles: vehicles.map(v => ({
-            startLocation: { latLng: v.startLocation },
-            endLocation: { latLng: v.endLocation || v.startLocation },
-            loadLimits: { weight: { maxLoad: String(v.loadLimit || 48000) } },
-          })),
-        },
-      }),
-    }
-  );
-  if (!res.ok) throw new Error(`Route Optimization error ${res.status}`);
-  return res.json();
-}
-
-// ─── Document AI (REST) — BOL / rate confirmation / POD extraction ───────────
-export async function processDocument(base64Content, mimeType = 'application/pdf', processorId = 'general') {
-  // processorId must be set up in your Google Cloud project
-  const projectId = 'truckwithease';
-  const location = 'us';
-  const res = await fetch(
-    `https://documentai.googleapis.com/v1/projects/${projectId}/locations/${location}/processors/${processorId}:process?key=${GOOGLE_MAPS_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        rawDocument: { content: base64Content, mimeType },
-      }),
-    }
-  );
-  if (!res.ok) throw new Error(`Document AI error ${res.status}`);
-  return res.json();
-}
-
-// ─── Google Sheets API — export reports to Google Sheets ─────────────────────
-export async function appendToSheet(spreadsheetId, range, values, accessToken) {
-  const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ values }),
-    }
-  );
-  if (!res.ok) throw new Error(`Sheets API error ${res.status}`);
-  return res.json();
-}
-
-export async function readSheet(spreadsheetId, range, accessToken) {
-  const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`,
-    { headers: { 'Authorization': `Bearer ${accessToken}` } }
-  );
-  if (!res.ok) throw new Error(`Sheets API error ${res.status}`);
-  return res.json();
-}
-
-// ─── Google Drive API — backup DVIR photos and compliance docs ───────────────
-export async function uploadToDrive(fileName, base64Content, mimeType, accessToken, folderId = null) {
-  const metadata = { name: fileName, ...(folderId ? { parents: [folderId] } : {}) };
-  const boundary = 'multipart_boundary_truckwithease';
-  const body = [
-    `--${boundary}`,
-    'Content-Type: application/json; charset=UTF-8',
-    '',
-    JSON.stringify(metadata),
-    `--${boundary}`,
-    `Content-Type: ${mimeType}`,
-    'Content-Transfer-Encoding: base64',
-    '',
-    base64Content,
-    `--${boundary}--`,
-  ].join('\r\n');
-
-  const res = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': `multipart/related; boundary=${boundary}`,
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body,
-    }
-  );
-  if (!res.ok) throw new Error(`Drive API error ${res.status}`);
-  return res.json();
-}
-
-// ─── Firebase Cloud Messaging — push notifications to drivers ────────────────
-export async function sendPushNotification(fcmServerKey, token, title, body, data = {}) {
-  const res = await fetch('https://fcm.googleapis.com/fcm/send', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `key=${fcmServerKey}`,
-    },
-    body: JSON.stringify({
-      to: token,
-      notification: { title, body },
-      data,
-    }),
-  });
-  if (!res.ok) throw new Error(`FCM error ${res.status}`);
-  return res.json();
 }

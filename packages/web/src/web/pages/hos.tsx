@@ -15,14 +15,14 @@ function ClockBar({ label, used, total, tone }: { label: string; used: number; t
   const pct = Math.min(100, (used / total) * 100);
   const remaining = Math.max(0, total - used);
   const h = Math.floor(remaining / 60), m = remaining % 60;
-  const colors: Record<string, string> = { danger: "bg-[#E0322B]", warning: "bg-[#FFB400]", ok: "bg-[#1FA971]" };
+  const colors: Record<string, string> = { danger: "bg-[#c96a4c]", warning: "bg-[#C9A84C]", ok: "bg-[#C9A84C]" };
   return (
     <div>
       <div className="flex justify-between text-sm mb-1.5">
-        <span className="font-medium text-[#0E1524]">{label}</span>
-        <span className="font-mono-data font-semibold text-[#0B2A6B]">{h}h {m}m left</span>
+        <span className="font-medium text-[#F5F5F5]">{label}</span>
+        <span className="font-mono-data font-semibold text-[#C9A84C]">{h}h {m}m left</span>
       </div>
-      <div className="h-3 rounded-full bg-[#EEF2FA] overflow-hidden">
+      <div className="h-3 rounded-full bg-[#1C1C1C] overflow-hidden">
         <div className={`h-full rounded-full ${colors[tone]}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -57,7 +57,7 @@ export default function HosPage() {
 
       {violations.length > 0 && (
         <Card className="p-4 mb-6" accent>
-          <div className="flex items-center gap-2 mb-2"><AlertTriangle className="h-5 w-5 text-[#E0322B]" /><b className="text-[#0E1524]">HOS Watcher</b></div>
+          <div className="flex items-center gap-2 mb-2"><AlertTriangle className="h-5 w-5 text-[#c96a4c]" /><b className="text-[#F5F5F5]">HOS Watcher</b></div>
           <div className="space-y-1.5">
             {violations.map((v, i) => (
               <div key={i} className="flex items-center gap-2 text-sm"><Badge status={v.level} />{v.msg}</div>
@@ -69,7 +69,7 @@ export default function HosPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         <Card className="p-6">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="font-bold text-[#0E1524]">Current Status</h2>
+            <h2 className="font-bold text-[#F5F5F5]">Current Status</h2>
             <Badge status={current?.status ?? "off_duty"} />
           </div>
           <div className="space-y-5">
@@ -77,7 +77,7 @@ export default function HosPage() {
             {clocks && <ClockBar label="14-Hour Window" used={clocks.onDutyWindowUsed} total={clocks.limits.onDutyWindow} tone={windowTone} />}
           </div>
           <div className="mt-6">
-            <div className="text-xs font-semibold uppercase text-[#5B6577] mb-2">Change duty status</div>
+            <div className="text-xs font-semibold uppercase text-[#8A8A8A] mb-2">Change duty status</div>
             <div className="grid grid-cols-2 gap-2">
               {STATUSES.map((s) => (
                 <Button key={s.key} variant={current?.status === s.key ? "amber" : "ghost"} disabled={setStatus.isPending} onClick={() => setStatus.mutate(s.key)}>
@@ -89,12 +89,12 @@ export default function HosPage() {
         </Card>
 
         <Card className="p-6">
-          <h2 className="font-bold text-[#0E1524] mb-4">Today's Log</h2>
+          <h2 className="font-bold text-[#F5F5F5] mb-4">Today's Log</h2>
           <div className="space-y-2">
             {(hos.data?.logs ?? []).slice(0, 8).map((l) => (
-              <div key={l.id} className="flex items-center justify-between rounded-lg bg-[#F4F6FB] px-3 py-2.5 text-sm">
-                <div className="flex items-center gap-2"><Badge status={l.status} /><span className="text-[#5B6577]">{l.location}</span></div>
-                <span className="font-mono-data text-xs text-[#5B6577]">
+              <div key={l.id} className="flex items-center justify-between rounded-lg bg-[#0a0a0a] px-3 py-2.5 text-sm">
+                <div className="flex items-center gap-2"><Badge status={l.status} /><span className="text-[#8A8A8A]">{l.location}</span></div>
+                <span className="font-mono-data text-xs text-[#8A8A8A]">
                   {new Date(l.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   {l.endedAt ? `–${new Date(l.endedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : " · now"}
                 </span>
@@ -106,15 +106,15 @@ export default function HosPage() {
 
       {!isDriver && fleet.data && (
         <Card className="mt-6 overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#E2E7F0]"><h2 className="font-bold text-[#0E1524]">Fleet HOS Overview</h2></div>
+          <div className="px-5 py-4 border-b border-[#222222]"><h2 className="font-bold text-[#F5F5F5]">Fleet HOS Overview</h2></div>
           <table className="w-full text-sm">
-            <thead><tr className="text-left text-[#5B6577] text-xs uppercase bg-[#F4F6FB]">
+            <thead><tr className="text-left text-[#8A8A8A] text-xs uppercase bg-[#0a0a0a]">
               <th className="px-5 py-2.5">Driver</th><th className="px-5 py-2.5">Status</th>
               <th className="px-5 py-2.5">Driving Left</th><th className="px-5 py-2.5">Window Left</th><th className="px-5 py-2.5">Alerts</th>
             </tr></thead>
             <tbody>
               {fleet.data.fleet.map((f) => (
-                <tr key={f.driverId} className="border-t border-[#E2E7F0]">
+                <tr key={f.driverId} className="border-t border-[#222222]">
                   <td className="px-5 py-3 font-medium">{f.name}</td>
                   <td className="px-5 py-3"><Badge status={f.status} /></td>
                   <td className="px-5 py-3 font-mono-data">{Math.floor(f.clocks.drivingRemaining / 60)}h {f.clocks.drivingRemaining % 60}m</td>

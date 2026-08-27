@@ -1,556 +1,597 @@
-import { useState, useRef, useEffect } from "react";
+/**
+ * TripPlannerPage — rebuilt Aug 26, 2026.
+ *
+ * Removed fabricated content (original preserved at docs/launch/TripPlannerPage.ORIGINAL.jsx.txt):
+ *  1. PRESET_ROUTES — five invented lanes with invented mileage, drive times, fuel costs,
+ *     toll costs, load weights and rate-per-mile ("$3.10", "$2.85"…). Quoting a market rate
+ *     the platform never read is the worst of these. Deleted; the planner now computes only
+ *     from numbers the driver types in.
+ *  2. DEFAULT_LEGS — three invented Dallas→Memphis legs with invented mileage, drive times,
+ *     a named "Pilot TT — Exit 220", a weigh station "open", and "⚡ PrePass bypass active".
+ *     There is no routing API enabled and no PrePass connection. Deleted.
+ *  3. FUEL_STOPS / REST_AREAS — invented stations and rest areas with invented exits,
+ *     per-gallon prices, amenities and space counts. Deleted. Live regional diesel price now
+ *     comes from GET /api/fuel/stations, which reads U.S. EIA data.
+ *  4. HOS_PLAN — a seven-row invented clock ("05:00 pre-trip", "08:14 break", "13:18 arrival")
+ *     presented as a compliant plan. Replaced by the driver's real remaining clocks from
+ *     GET /api/hos, compared against the drive hours the plan actually needs.
+ *  5. STATE_ALERTS — invented per-state statements ("Spring weight ban lifted June 15",
+ *     "I-40 EB right lane closed"). No state DOT feed exists. Deleted.
+ *  6. CONSTRUCTION_ZONES — three invented work zones with invented mile markers, delay
+ *     ranges, lane counts, speeds and detours. Deleted.
+ *  7. ALTERNATE_ROUTES — two invented detours with invented savings ("Saves ~35 min",
+ *     "Saves 22 mi") and turn-by-turn steps through real towns. Deleted.
+ *  8. The Google Maps Directions embed iframe and the Street View still. Both were verified
+ *     dead on Aug 26, 2026 — the Maps Embed API returns HTTP 403 for the current key, so the
+ *     page was rendering a broken frame. Stated as not enabled instead of shown broken.
+ *
+ * Restyled from navy/orange/amber/green/red/purple on #F0F4FA to gold-on-black.
+ * Everything on the page is either typed in by the driver or read from a named endpoint, and
+ * each panel names its endpoint.
+ */
 
-const NAVY   = "#0B2A6B";
-const NAVY2  = "#081E4D";
-const ORANGE = "#FF6B00";
-const AMBER  = "#FFB400";
-const GREEN  = "#16A34A";
-const RED    = "#DC2626";
-const DARK   = "#06090F";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Route,
+  Fuel,
+  Clock,
+  Calculator,
+  AlertTriangle,
+  RefreshCw,
+  MapPinned,
+  Receipt,
+} from "lucide-react";
 
-// ─── Pre-built routes ────────────────────────────────────────────────────────
-const PRESET_ROUTES = [
-  { id: 1, from: "Dallas, TX", to: "Memphis, TN",     miles: 466,  drive: "6h 58m",  fuel: "$142", toll: "$0",   toll2: "$0",  load: "43,200 lbs", type: "Reefer",  rpm: "$3.10" },
-  { id: 2, from: "Chicago, IL", to: "Atlanta, GA",    miles: 716,  drive: "10h 22m", fuel: "$218", toll: "$24",  toll2: "$0",  load: "38,000 lbs", type: "Dry Van", rpm: "$2.85" },
-  { id: 3, from: "Dallas, TX", to: "Los Angeles, CA", miles: 1435, drive: "20h 10m", fuel: "$436", toll: "$18",  toll2: "$0",  load: "44,000 lbs", type: "Flatbed", rpm: "$2.65" },
-  { id: 4, from: "Houston, TX", to: "Denver, CO",     miles: 1012, drive: "14h 20m", fuel: "$308", toll: "$8",   toll2: "$0",  load: "40,000 lbs", type: "Dry Van", rpm: "$2.90" },
-  { id: 5, from: "Memphis, TN", to: "Kansas City, MO",miles: 450,  drive: "6h 40m",  fuel: "$136", toll: "$12",  toll2: "$0",  load: "36,500 lbs", type: "Dry Van", rpm: "$2.78" },
-];
+const GOLD = "#C9A84C";
+const GOLD_BRIGHT = "#FFD700";
+const WARN = "#c96a4c";
+const DRIVER_ID = "drv-1";
 
-// Route legs (Dallas → Memphis)
-const DEFAULT_LEGS = [
-  { leg: 1, from: "Dallas, TX",         to: "Texarkana, TX",      miles: 182, drive: "2h 44m", fuel: "Pilot TT — Exit 220", alert: null },
-  { leg: 2, from: "Texarkana, TX",      to: "Little Rock, AR",    miles: 143, drive: "2h 08m", fuel: null,                   alert: "🚦 WB-1 Weigh Station — open" },
-  { leg: 3, from: "Little Rock, AR",    to: "Memphis, TN",        miles: 141, drive: "2h 06m", fuel: "Love's — Exit 11",    alert: "⚡ PrePass bypass active" },
-];
+const money = (n) => (Number.isFinite(n) ? `$${n.toFixed(2)}` : "—");
+const hoursFromSec = (s) => (Number.isFinite(s) ? s / 3600 : null);
+const hm = (s) => {
+  if (!Number.isFinite(s)) return "—";
+  const h = Math.floor(s / 3600);
+  const m = Math.round((s % 3600) / 60);
+  return `${h}h ${String(m).padStart(2, "0")}m`;
+};
 
-const FUEL_STOPS = [
-  { name: "Pilot Travel Center", city: "Texarkana, TX", exit: "220", price: "$3.12/gal", amenities: ["Showers", "Restaurant", "CAT Scale"], miles: 182 },
-  { name: "Love's Travel Stop",  city: "Memphis, TN",   exit: "11",  price: "$3.08/gal", amenities: ["Showers", "Laundry", "Restaurant"],   miles: 466 },
-];
-
-const REST_AREAS = [
-  { name: "Hope Rest Area",         state: "AR", mile: 220, amenities: ["Parking", "Restrooms"], spaces: "12 truck spaces" },
-  { name: "West Memphis Truck Stop",state: "AR", mile: 280, amenities: ["Fuel", "Food", "Scale"], spaces: "Open 24h" },
-];
-
-const HOS_PLAN = [
-  { phase: "Pre-Trip",    time: "05:00",  duration: "30 min", type: "prep",    icon: "🔍", note: "DVIR + pre-trip inspection" },
-  { phase: "Drive Leg 1", time: "05:30",  duration: "2h 44m", type: "drive",   icon: "🚛", note: "Dallas → Texarkana (182 mi)" },
-  { phase: "30-min Break",time: "08:14",  duration: "30 min", type: "break",   icon: "☕", note: "FMCSA-required after 8h" },
-  { phase: "Drive Leg 2", time: "08:44",  duration: "2h 08m", type: "drive",   icon: "🚛", note: "Texarkana → Little Rock (143 mi)" },
-  { phase: "Fuel Stop",   time: "10:52",  duration: "20 min", type: "fuel",    icon: "⛽", note: "Love's, Little Rock — $3.08/gal" },
-  { phase: "Drive Leg 3", time: "11:12",  duration: "2h 06m", type: "drive",   icon: "🚛", note: "Little Rock → Memphis (141 mi)" },
-  { phase: "Arrival",     time: "13:18",  duration: "—",      type: "arrive",  icon: "📍", note: "Memphis, TN — delivery confirmed" },
-];
-
-const STATE_ALERTS = [
-  { state: "Texas",    flag: "🟦", alert: "Max 80,000 lbs GVW on I-30. No restrictions today.", ok: true },
-  { state: "Arkansas", flag: "🟩", alert: "Spring weight ban lifted June 15. All good.", ok: true },
-  { state: "Tennessee",flag: "🟨", alert: "I-40 EB lane restriction near Memphis — right lane closed.", ok: false },
-];
-
-
-const CONSTRUCTION_ZONES = [
-  { highway:'I-30 EB', location:'Mile 182-195, Benton, AR', delay:'25-40 min', severity:'HIGH', lanes_open:1, lanes_total:2, speed:45, detour:'US-70 via Benton — adds 8 mi, saves 35 min vs waiting', tip:'🚧 Active 7am-6pm weekdays. Clear by 6:01pm typically.', icon:'🚧' },
-  { highway:'I-40 EB', location:'Mile 272, West Memphis, AR', delay:'10-15 min', severity:'MED', lanes_open:2, lanes_total:3, speed:55, detour:null, tip:'Reduced to 2 lanes. Move right early — merge is tight.', icon:'🚧' },
-  { highway:'I-55 NB', location:'Exit 12, Memphis, TN', delay:'5-10 min', severity:'LOW', lanes_open:2, lanes_total:3, speed:65, detour:null, tip:'Minor shoulder work. No significant delay expected.', icon:'⚠️' },
-];
-
-const ALTERNATE_ROUTES = [
-  {
-    id:'alt1',
-    label:'Avoid I-30 Construction (Recommended)',
-    savings:'Saves ~35 min',
-    addedMiles:8,
-    description:'Exit I-30 at Exit 111 (Benton) → US-70 E → rejoin I-30 at Exit 123. Active construction at mile 182-195 is the worst bottleneck on this corridor today.',
-    steps:['Take Exit 111 → US-70 East','Continue 12 miles through Benton','Rejoin I-30 East at Exit 123'],
-    color:'#16A34A',
-    icon:'🟢',
-  },
-  {
-    id:'alt2', 
-    label:'US-67 Alternate Corridor',
-    savings:'Saves 22 mi on fuel, adds 8 min',
-    addedMiles:-22,
-    description:'Bypass congested I-30 entirely via US-67 North from Texarkana. Shorter but slower road — best for lighter loads. Truck-legal, no height restrictions.',
-    steps:['From Texarkana, take US-67 North','Continue through Arkadelphia','Merge onto I-30 East near Benton'],
-    color:'#F59E0B',
-    icon:'🟡',
-  },
-];
-
-function useInView(ref) {
-  const [seen, setSeen] = useState(false);
-  useEffect(() => {
-    if (!ref.current) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setSeen(true); }, { threshold: 0.06 });
-    obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, []);
-  return seen;
-}
-function FadeIn({ children, delay = 0, style = {} }) {
-  const ref = useRef(null);
-  const seen = useInView(ref);
+function Panel({ title, note, children, right }) {
   return (
-    <div ref={ref} style={{ opacity: seen ? 1 : 0, transform: seen ? "translateY(0)" : "translateY(16px)", transition: `opacity 0.55s cubic-bezier(.22,1,.36,1) ${delay}ms, transform 0.55s cubic-bezier(.22,1,.36,1) ${delay}ms`, ...style }}>
+    <section className="border border-[#222] bg-[#161616]">
+      <header className="flex items-start justify-between gap-4 border-b border-[#222] px-5 py-4">
+        <div>
+          <h2 className="font-[Oswald] text-sm uppercase tracking-[0.22em] text-white">{title}</h2>
+          {note && <p className="mt-1 font-[Inter] text-[11px] leading-snug text-[#666]">{note}</p>}
+        </div>
+        {right}
+      </header>
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block font-[JetBrains_Mono] text-[10px] uppercase tracking-[0.18em] text-[#666]">
+        {label}
+      </span>
       {children}
+    </label>
+  );
+}
+
+function Missing({ label, reason }) {
+  return (
+    <div className="border border-dashed border-[#333] bg-[#0f0f0f] p-4">
+      <div className="flex items-center gap-2">
+        <AlertTriangle size={13} style={{ color: WARN }} />
+        <span
+          className="font-[JetBrains_Mono] text-[10px] uppercase tracking-[0.2em]"
+          style={{ color: WARN }}
+        >
+          Missing / Not tracked
+        </span>
+      </div>
+      <p className="mt-2 font-[Oswald] text-xs uppercase tracking-[0.16em] text-white">{label}</p>
+      <p className="mt-1 font-[Inter] text-[11px] leading-relaxed text-[#8a8a8a]">{reason}</p>
     </div>
   );
 }
 
+const inputCls =
+  "w-full border border-[#222] bg-[#0f0f0f] px-3 py-2 font-[JetBrains_Mono] text-sm text-white outline-none transition placeholder:text-[#666] focus:border-[#C9A84C]";
+
 export default function TripPlannerPage() {
-  const [from, setFrom]             = useState("Dallas, TX");
-  const [to, setTo]                 = useState("Memphis, TN");
-  const [weight, setWeight]         = useState("43200");
-  const [mpg, setMpg]               = useState("6.5");
-  const [fuelPrice, setFuelPrice]   = useState("3.10");
-  const [planned, setPlanned]       = useState(true);
-  const [routeChoice, setRoute]     = useState("recommended");
-  const [activeTab, setTab]         = useState("legs");
-  const [selectedPreset, setPreset] = useState(0);
+  // ── driver inputs (the only source of trip facts on this page) ───────────
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [miles, setMiles] = useState("");
+  const [mpg, setMpg] = useState("6.5");
+  const [fuelPrice, setFuelPrice] = useState("");
+  const [ratePerMile, setRatePerMile] = useState("");
+  const [avgSpeed, setAvgSpeed] = useState("55");
 
-  const route = PRESET_ROUTES[selectedPreset];
-  const fuelCost = ((route.miles / parseFloat(mpg || 6.5)) * parseFloat(fuelPrice || 3.10)).toFixed(0);
-  const tollCost = routeChoice === "toll" ? route.toll : "$0";
-  const totalCost = (parseFloat(fuelCost) + parseFloat(tollCost.replace("$","") || 0)).toFixed(0);
-  const grossPay = (route.miles * parseFloat(route.rpm.replace("$",""))).toFixed(0);
-  const netPay = (parseFloat(grossPay) - parseFloat(totalCost)).toFixed(0);
+  // ── live EIA diesel price ────────────────────────────────────────────────
+  const [dieselState, setDieselState] = useState("loading");
+  const [diesel, setDiesel] = useState(null);
+  const [dieselError, setDieselError] = useState("");
+  const [stateCode, setStateCode] = useState("MO");
 
-  function planTrip() { setPlanned(true); }
+  const loadDiesel = useCallback((st) => {
+    setDieselState("loading");
+    setDieselError("");
+    fetch(`/api/fuel/stations?state=${encodeURIComponent(st)}`)
+      .then(async (r) => {
+        const j = await r.json();
+        if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+        return j;
+      })
+      .then((j) => {
+        setDiesel(j);
+        setDieselState("ok");
+        if (Number.isFinite(j?.avg)) {
+          setFuelPrice((prev) => (prev === "" ? String(j.avg) : prev));
+        }
+      })
+      .catch((e) => {
+        setDieselError(String(e?.message || e));
+        setDieselState("error");
+      });
+  }, []);
 
-  const typeColors = { prep: NAVY, drive: GREEN, break: AMBER, fuel: ORANGE, arrive: "#8B5CF6" };
+  useEffect(() => {
+    loadDiesel(stateCode);
+  }, [loadDiesel, stateCode]);
+
+  // ── real HOS clocks ──────────────────────────────────────────────────────
+  const [hosState, setHosState] = useState("loading");
+  const [hos, setHos] = useState(null);
+  const [hosError, setHosError] = useState("");
+
+  const loadHos = useCallback(() => {
+    setHosState("loading");
+    setHosError("");
+    fetch("/api/hos")
+      .then(async (r) => {
+        const j = await r.json();
+        if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+        return j;
+      })
+      .then((j) => {
+        const row = (j.fleet || []).find((d) => d.driverId === DRIVER_ID) || (j.fleet || [])[0] || null;
+        setHos(row);
+        setHosState("ok");
+      })
+      .catch((e) => {
+        setHosError(String(e?.message || e));
+        setHosState("error");
+      });
+  }, []);
+
+  useEffect(() => {
+    loadHos();
+  }, [loadHos]);
+
+  // ── toll estimate from the API's reference rates ─────────────────────────
+  const [roads, setRoads] = useState([]);
+  const [roadId, setRoadId] = useState("");
+  const [axles, setAxles] = useState("5");
+  const [toll, setToll] = useState(null);
+  const [tollError, setTollError] = useState("");
+  const [tollBusy, setTollBusy] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/tolls/roads")
+      .then((r) => r.json())
+      .then((j) => setRoads(j.roads || []))
+      .catch(() => setRoads([]));
+  }, []);
+
+  const runToll = () => {
+    if (!roadId) return;
+    setTollBusy(true);
+    setTollError("");
+    setToll(null);
+    fetch("/api/tolls/estimate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ roadId, miles: Number(miles) || 0, axles: Number(axles) || 5 }),
+    })
+      .then(async (r) => {
+        const j = await r.json();
+        if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+        return j;
+      })
+      .then((j) => setToll(j))
+      .catch((e) => setTollError(String(e?.message || e)))
+      .finally(() => setTollBusy(false));
+  };
+
+  // ── derived math — inputs only, nothing invented ─────────────────────────
+  const m = Number(miles);
+  const g = Number(mpg);
+  const p = Number(fuelPrice);
+  const rpm = Number(ratePerMile);
+  const spd = Number(avgSpeed);
+
+  const gallons = m > 0 && g > 0 ? m / g : null;
+  const fuelCost = gallons != null && p > 0 ? gallons * p : null;
+  const tollCost = toll && Number.isFinite(toll.gross) ? toll.gross : null;
+  const driveHours = m > 0 && spd > 0 ? m / spd : null;
+  const gross = m > 0 && rpm > 0 ? m * rpm : null;
+  const costs = (fuelCost || 0) + (tollCost || 0);
+  const net = gross != null ? gross - costs : null;
+  const costPerMile = m > 0 && costs > 0 ? costs / m : null;
+
+  const driveRemainingSec = hos?.clocks?.drivingRemaining;
+  const windowRemainingSec = hos?.clocks?.onDutyWindowRemaining;
+  const fitsDrive =
+    driveHours != null && Number.isFinite(driveRemainingSec)
+      ? driveHours <= hoursFromSec(driveRemainingSec)
+      : null;
 
   return (
-    <div style={{ fontFamily: "'Poppins', sans-serif", background: "#F0F4FA", minHeight: "100vh", color: "#0F172A" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: #F0F4FA; }
-        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 2px; }
-        .tp-input { transition: border-color 0.15s; }
-        .tp-input:focus { outline: none; border-color: ${NAVY} !important; }
-        .tp-tab { transition: all 0.15s; cursor: pointer; border-bottom: 2px solid transparent; }
-        .tp-tab.active { border-bottom-color: ${NAVY}; color: ${NAVY} !important; font-weight: 700; }
-        .tp-tab:hover:not(.active) { color: ${ORANGE} !important; }
-        .tp-preset { transition: all 0.18s; cursor: pointer; }
-        .tp-preset:hover { border-color: ${NAVY} !important; background: #EFF6FF !important; }
-        .tp-preset.active { border-color: ${NAVY} !important; background: #EFF6FF !important; }
-        .tp-route-btn { transition: all 0.18s; cursor: pointer; }
-        .tp-route-btn.active { background: ${NAVY} !important; color: white !important; border-color: ${NAVY} !important; }
-        .tp-route-btn:hover:not(.active) { border-color: ${NAVY} !important; }
-        .tp-leg { transition: background 0.15s; }
-        .tp-leg:hover { background: #EFF6FF !important; }
-        .tp-fuel-card { transition: transform 0.18s; }
-        .tp-fuel-card:hover { transform: translateY(-3px); }
-        @keyframes tpDot { 0%,100%{opacity:1} 50%{opacity:0.3} }
-        .tp-live { animation: tpDot 2s ease-in-out infinite; }
-        @keyframes tpSlide { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-        .tp-result { animation: tpSlide 0.4s cubic-bezier(.22,1,.36,1) both; }
-        @media (max-width: 900px) {
-          .tp-two-col { grid-template-columns: 1fr !important; }
-          .tp-three-col { grid-template-columns: 1fr 1fr !important; }
-          .tp-nav-links { display: none !important; }
-        }
-      `}</style>
-
-      {/* ── NAV ─────────────────────────────────────────────────────────────── */}
-      <nav style={{ background: NAVY2, borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "0 5%", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <a href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-            <img src="/static/truckwithease-icon.png" alt="" style={{ width: 28, height: 28, borderRadius: 7, objectFit: "cover" }} />
-          </a>
-          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.12)" }} />
-          <div style={{ color: "white", fontWeight: 800, fontSize: 14 }}>🗺️ Trip Planner</div>
-        </div>
-        <div className="tp-nav-links" style={{ display: "flex", gap: 18, alignItems: "center" }}>
-          <a href="/command" style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, textDecoration: "none", fontWeight: 500 }}>🎯 Command Center</a>
-          <a href="/driver?driver=1" style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, textDecoration: "none", fontWeight: 500 }}>👤 Driver Profile</a>
-          <a href="/#pricing" style={{ background: AMBER, color: DARK, padding: "7px 16px", borderRadius: 7, fontWeight: 800, fontSize: 13, textDecoration: "none" }}>Start Free Trial</a>
-          <a href="/" style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, textDecoration: "none" }}>← Back</a>
-        </div>
-      </nav>
-
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 5% 60px" }}>
-
-        {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-        <FadeIn>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 24 }}>
-            <div>
-              <h1 style={{ fontSize: "clamp(1.5rem,3vw,2rem)", fontWeight: 900, color: NAVY, marginBottom: 4 }}>Trip Pre-Planner</h1>
-              <p style={{ color: "#64748B", fontSize: 14 }}>Plan your route, calculate real costs, and check HOS compliance before you turn the key.</p>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(22,163,74,0.08)", border: "1px solid rgba(22,163,74,0.2)", borderRadius: 20, padding: "6px 14px" }}>
-              <div className="tp-live" style={{ width: 7, height: 7, borderRadius: "50%", background: GREEN }} />
-              <span style={{ color: GREEN, fontSize: 12, fontWeight: 700 }}>Live DOT + Weather data</span>
-            </div>
+    <div className="min-h-screen bg-[#0a0a0a] font-[Inter] text-white">
+      <header className="border-b border-[#222] bg-gradient-to-b from-[#111] to-[#0a0a0a]">
+        <div className="mx-auto max-w-6xl px-6 py-8">
+          <div className="flex w-fit items-center gap-2 border border-[#222] bg-[#0f0f0f] px-2.5 py-1">
+            <Route size={12} style={{ color: GOLD }} />
+            <span className="font-[JetBrains_Mono] text-[10px] uppercase tracking-[0.22em] text-[#8a8a8a]">
+              Cost &amp; hours planner
+            </span>
           </div>
-        </FadeIn>
+          <h1 className="mt-4 font-[Bebas_Neue] text-5xl leading-none tracking-wide">
+            TRIP <span style={{ color: GOLD_BRIGHT }}>PLANNER</span>
+          </h1>
+          <p className="mt-3 max-w-2xl font-[Inter] text-sm leading-relaxed text-[#8a8a8a]">
+            Enter the trip and this page computes the money and the hours. It does not route you:
+            no mapping or directions API is enabled on this key, so mileage is yours to enter.
+            Diesel price is live from the U.S. EIA, tolls come from the reference rate table in
+            the API, and the hours check uses your real HOS clocks.
+          </p>
+        </div>
+      </header>
 
-        <div className="tp-two-col" style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 20, alignItems: "start" }}>
+      <main className="mx-auto grid max-w-6xl gap-5 px-6 py-8 lg:grid-cols-[1fr_1fr]">
+        {/* ── inputs ─────────────────────────────────────────────────────── */}
+        <Panel title="The trip" note="Every value here is typed in by you. Nothing is prefilled from a saved lane.">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Origin">
+              <input className={inputCls} value={from} onChange={(e) => setFrom(e.target.value)} placeholder="City, ST" />
+            </Field>
+            <Field label="Destination">
+              <input className={inputCls} value={to} onChange={(e) => setTo(e.target.value)} placeholder="City, ST" />
+            </Field>
+            <Field label="Miles">
+              <input className={inputCls} value={miles} onChange={(e) => setMiles(e.target.value)} placeholder="e.g. 466" inputMode="decimal" />
+            </Field>
+            <Field label="Avg speed (mph)">
+              <input className={inputCls} value={avgSpeed} onChange={(e) => setAvgSpeed(e.target.value)} inputMode="decimal" />
+            </Field>
+            <Field label="Truck MPG">
+              <input className={inputCls} value={mpg} onChange={(e) => setMpg(e.target.value)} inputMode="decimal" />
+            </Field>
+            <Field label="Diesel $/gal">
+              <input className={inputCls} value={fuelPrice} onChange={(e) => setFuelPrice(e.target.value)} inputMode="decimal" />
+            </Field>
+            <Field label="Your rate $/mile">
+              <input className={inputCls} value={ratePerMile} onChange={(e) => setRatePerMile(e.target.value)} placeholder="from your rate con" inputMode="decimal" />
+            </Field>
+            <Field label="Axles (for tolls)">
+              <input className={inputCls} value={axles} onChange={(e) => setAxles(e.target.value)} inputMode="numeric" />
+            </Field>
+          </div>
+          <p className="mt-4 font-[Inter] text-[11px] leading-relaxed text-[#666]">
+            Rate per mile must come off your own rate confirmation. TruckWithEase does not
+            subscribe to a rate index and will never suggest a market rate.
+          </p>
+        </Panel>
 
-          {/* ── LEFT: INPUT PANEL ──────────────────────────────────────────── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-            {/* Quick-pick preset routes */}
-            <FadeIn>
-              <div style={{ background: "white", borderRadius: 14, border: "1px solid #E2E8F0", padding: "16px" }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: NAVY, marginBottom: 12 }}>Quick Routes</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {PRESET_ROUTES.map((r, i) => (
-                    <div key={r.id} className={`tp-preset${selectedPreset === i ? " active" : ""}`}
-                      onClick={() => { setPreset(i); setFrom(r.from); setTo(r.to); setPlanned(true); }}
-                      style={{ border: "1px solid #E2E8F0", borderRadius: 10, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 12, color: "#0F172A" }}>{r.from.split(",")[0]} → {r.to.split(",")[0]}</div>
-                        <div style={{ color: "#94A3B8", fontSize: 10, fontFamily: "'DM Mono', monospace", marginTop: 2 }}>{r.miles} mi · {r.drive}</div>
-                      </div>
-                      <div style={{ color: GREEN, fontWeight: 800, fontSize: 13, fontFamily: "'DM Mono', monospace" }}>{r.rpm}/mi</div>
-                    </div>
-                  ))}
-                </div>
+        {/* ── money ──────────────────────────────────────────────────────── */}
+        <Panel title="Money" note="Computed from your inputs plus the toll estimate below. No stored lane costs.">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              ["Gallons burned", gallons != null ? gallons.toFixed(1) : "—"],
+              ["Fuel cost", money(fuelCost)],
+              ["Toll (from estimate)", money(tollCost)],
+              ["Total trip cost", costs > 0 ? money(costs) : "—"],
+              ["Gross (miles × your rate)", money(gross)],
+              ["Net after fuel + toll", money(net)],
+              ["Cost per mile", costPerMile != null ? `$${costPerMile.toFixed(3)}` : "—"],
+              ["Drive time at avg speed", driveHours != null ? `${driveHours.toFixed(1)} h` : "—"],
+            ].map(([k, v]) => (
+              <div key={k} className="border border-[#222] bg-[#0f0f0f] px-3 py-2.5">
+                <div className="font-[JetBrains_Mono] text-[9px] uppercase tracking-[0.18em] text-[#666]">{k}</div>
+                <div className="mt-1 font-[JetBrains_Mono] text-lg" style={{ color: GOLD_BRIGHT }}>{v}</div>
               </div>
-            </FadeIn>
+            ))}
+          </div>
+          <p className="mt-4 font-[Inter] text-[11px] leading-relaxed text-[#666]">
+            A dash means an input is missing. The page will not fill a gap with an assumption —
+            no default mileage, no default rate, no "typical" lane cost.
+          </p>
+        </Panel>
 
-            {/* Manual entry */}
-            <FadeIn delay={40}>
-              <div style={{ background: "white", borderRadius: 14, border: "1px solid #E2E8F0", padding: "16px" }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: NAVY, marginBottom: 14 }}>Trip Details</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {[
-                    { label: "Origin", value: from, setter: setFrom, placeholder: "City, State" },
-                    { label: "Destination", value: to, setter: setTo, placeholder: "City, State" },
-                    { label: "Load Weight (lbs)", value: weight, setter: setWeight, placeholder: "80000" },
-                    { label: "Truck MPG", value: mpg, setter: setMpg, placeholder: "6.5" },
-                    { label: "Diesel Price ($/gal)", value: fuelPrice, setter: setFuelPrice, placeholder: "3.10" },
-                  ].map(field => (
-                    <div key={field.label}>
-                      <div style={{ color: "#64748B", fontSize: 11, fontWeight: 600, marginBottom: 4 }}>{field.label}</div>
-                      <input className="tp-input" value={field.value} onChange={e => field.setter(e.target.value)}
-                        placeholder={field.placeholder}
-                        style={{ width: "100%", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "9px 12px", fontSize: 13, fontFamily: "'Poppins', sans-serif", color: "#0F172A" }} />
-                    </div>
-                  ))}
-                </div>
-
-                {/* Route choice */}
-                <div style={{ marginTop: 14 }}>
-                  <div style={{ color: "#64748B", fontSize: 11, fontWeight: 600, marginBottom: 8 }}>Route Preference</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-                    {[["recommended","⭐ Best"],["toll","🛣️ Toll"],["tollfree","⚡ Toll-Free"]].map(([val,label]) => (
-                      <button key={val} onClick={() => setRoute(val)}
-                        className={`tp-route-btn${routeChoice === val ? " active" : ""}`}
-                        style={{ background: "white", border: "1px solid #E2E8F0", borderRadius: 8, padding: "8px 4px", fontSize: 11, fontWeight: 600, fontFamily: "'Poppins', sans-serif", color: "#475569" }}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <button onClick={planTrip} style={{ width: "100%", marginTop: 14, background: `linear-gradient(135deg, ${NAVY}, ${ORANGE})`, color: "white", border: "none", borderRadius: 10, padding: "13px", fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "'Poppins', sans-serif", boxShadow: `0 6px 20px rgba(11,42,107,0.3)` }}>
-                  Plan This Trip →
-                </button>
-              </div>
-            </FadeIn>
+        {/* ── diesel ─────────────────────────────────────────────────────── */}
+        <Panel
+          title="Diesel price"
+          note="Source: GET /api/fuel/stations — U.S. Energy Information Administration regional data"
+          right={
+            <button
+              onClick={() => loadDiesel(stateCode)}
+              className="flex items-center gap-1.5 border border-[#222] bg-[#0f0f0f] px-3 py-1.5 font-[JetBrains_Mono] text-[10px] uppercase tracking-[0.18em] text-[#8a8a8a] transition hover:border-[#C9A84C] hover:text-white"
+            >
+              <RefreshCw size={11} /> Refresh
+            </button>
+          }
+        >
+          <div className="mb-4 flex items-end gap-3">
+            <Field label="State">
+              <input
+                className={inputCls}
+                value={stateCode}
+                onChange={(e) => setStateCode(e.target.value.toUpperCase().slice(0, 2))}
+                placeholder="MO"
+              />
+            </Field>
           </div>
 
-          {/* ── RIGHT: RESULTS ─────────────────────────────────────────────── */}
-          {planned && (
-            <div className="tp-result" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {dieselState === "loading" && (
+            <p className="font-[JetBrains_Mono] text-xs text-[#666]">Loading EIA data…</p>
+          )}
+          {dieselState === "error" && (
+            <p className="font-[JetBrains_Mono] text-xs" style={{ color: WARN }}>
+              Failed: {dieselError}
+            </p>
+          )}
+          {dieselState === "ok" && diesel && (
+            <>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  ["Regional avg", Number.isFinite(diesel.avg) ? `$${diesel.avg.toFixed(2)}` : "—"],
+                  ["Region", diesel.region || "—"],
+                  ["Period", diesel.period || "—"],
+                ].map(([k, v]) => (
+                  <div key={k} className="border border-[#222] bg-[#0f0f0f] px-3 py-2">
+                    <div className="font-[JetBrains_Mono] text-[9px] uppercase tracking-[0.18em] text-[#666]">{k}</div>
+                    <div className="mt-1 font-[JetBrains_Mono] text-sm text-white">{v}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <span
+                  className="border px-2 py-0.5 font-[JetBrains_Mono] text-[9px] uppercase tracking-[0.16em]"
+                  style={
+                    diesel.live
+                      ? { borderColor: GOLD, color: GOLD_BRIGHT }
+                      : { borderColor: WARN, color: WARN }
+                  }
+                >
+                  {diesel.live ? "Live · EIA" : "Estimate · EIA unreachable"}
+                </span>
+                <span className="font-[Inter] text-[11px] text-[#666]">
+                  source: {diesel.source || "—"}
+                </span>
+              </div>
+              <p className="mt-3 font-[Inter] text-[11px] leading-relaxed text-[#666]">
+                This is a regional average, not a price at a specific pump. Per-station pump prices
+                are not licensed on this platform.
+              </p>
+            </>
+          )}
+        </Panel>
 
-              {/* Summary cards */}
-              <FadeIn>
-                <div className="tp-three-col" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 10 }}>
-                  {[
-                    { label: "Total Miles",  value: `${route.miles}`,      sub: "via I-30 E",       color: NAVY,   icon: "🛣️" },
-                    { label: "Drive Time",   value: route.drive,            sub: "excl. breaks",     color: ORANGE, icon: "⏱️" },
-                    { label: "Fuel Cost",    value: `$${fuelCost}`,        sub: `${mpg} MPG avg`,   color: GREEN,  icon: "⛽" },
-                    { label: "Tolls",        value: tollCost,               sub: routeChoice === "tollfree" ? "toll-free route" : "estimated", color: AMBER, icon: "💳" },
-                    { label: "Net Pay Est.", value: `$${netPay}`,          sub: `vs $${grossPay} gross`, color: netPay > 0 ? GREEN : RED, icon: "💰" },
-                  ].map(s => (
-                    <div key={s.label} style={{ background: "white", borderRadius: 12, border: "1px solid #E2E8F0", padding: "14px 12px", textAlign: "center" }}>
-                      <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
-                      <div style={{ color: s.color, fontWeight: 900, fontSize: 18, fontFamily: "'DM Mono', monospace", lineHeight: 1 }}>{s.value}</div>
-                      <div style={{ color: "#0F172A", fontWeight: 700, fontSize: 10, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>{s.label}</div>
-                      <div style={{ color: "#94A3B8", fontSize: 9, marginTop: 2 }}>{s.sub}</div>
-                    </div>
-                  ))}
+        {/* ── tolls ──────────────────────────────────────────────────────── */}
+        <Panel
+          title="Toll estimate"
+          note="Source: GET /api/tolls/roads and POST /api/tolls/estimate — a static reference rate table in the API, not a live toll-authority feed"
+        >
+          <div className="grid gap-3 sm:grid-cols-[2fr_auto]">
+            <Field label="Toll road">
+              <select className={inputCls} value={roadId} onChange={(e) => setRoadId(e.target.value)}>
+                <option value="">Select a road…</option>
+                {roads.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} — ${Number(r.perMile).toFixed(2)}/mi
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <div className="flex items-end">
+              <button
+                onClick={runToll}
+                disabled={!roadId || !(Number(miles) > 0) || tollBusy}
+                className="flex items-center gap-2 border px-4 py-2 font-[Oswald] text-xs uppercase tracking-[0.18em] transition disabled:opacity-40"
+                style={{ borderColor: GOLD, color: GOLD_BRIGHT }}
+              >
+                <Calculator size={13} /> {tollBusy ? "Working…" : "Estimate"}
+              </button>
+            </div>
+          </div>
+
+          {tollError && (
+            <p className="mt-3 font-[JetBrains_Mono] text-xs" style={{ color: WARN }}>
+              {tollError}
+            </p>
+          )}
+
+          {toll && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {[
+                ["Gross toll", money(toll.gross)],
+                ["Miles used", String(toll.miles ?? miles)],
+                ["Axles", String(toll.axles ?? axles)],
+              ].map(([k, v]) => (
+                <div key={k} className="border border-[#222] bg-[#0f0f0f] px-3 py-2">
+                  <div className="font-[JetBrains_Mono] text-[9px] uppercase tracking-[0.18em] text-[#666]">{k}</div>
+                  <div className="mt-1 font-[JetBrains_Mono] text-sm text-white">{v}</div>
                 </div>
-              </FadeIn>
-
-              {/* State DOT alerts */}
-              <FadeIn delay={30}>
-                <div style={{ background: "white", borderRadius: 14, border: "1px solid #E2E8F0", padding: "16px 18px" }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: NAVY, marginBottom: 12, display: "flex", justifyContent: "space-between" }}>
-                    <span>🤖 State DOT AI — Route Alerts</span>
-                    <span style={{ background: "rgba(22,163,74,0.08)", color: GREEN, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20 }}>All 3 states checked</span>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {STATE_ALERTS.map(s => (
-                      <div key={s.state} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "10px 12px", background: s.ok ? "rgba(22,163,74,0.04)" : "rgba(245,158,11,0.06)", borderRadius: 8, border: `1px solid ${s.ok ? "rgba(22,163,74,0.15)" : "rgba(245,158,11,0.2)"}` }}>
-                        <span style={{ fontSize: 18, flexShrink: 0 }}>{s.ok ? "✅" : "⚠️"}</span>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 12, color: "#0F172A" }}>{s.state}</div>
-                          <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>{s.alert}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </FadeIn>
-
-              {/* Tabs */}
-              <FadeIn delay={50}>
-                <div style={{ background: "white", borderRadius: 14, border: "1px solid #E2E8F0", overflow: "hidden" }}>
-                  <div style={{ display: "flex", borderBottom: "1px solid #F1F5F9" }}>
-                    {[["legs","🚛 Drive Legs"],["hos","⏱️ HOS Plan"],["fuel","⛽ Fuel Stops"],["rest","🅿️ Rest Areas"],["map","🗺️ Route Map"],["construction","🚧 Construction"]].map(([id,label]) => (
-                      <button key={id} onClick={() => setTab(id)}
-                        className={`tp-tab${activeTab === id ? " active" : ""}`}
-                        style={{ padding: "12px 16px", background: "none", border: "none", color: activeTab === id ? NAVY : "#94A3B8", fontWeight: activeTab === id ? 700 : 500, fontSize: 12, fontFamily: "'Poppins', sans-serif" }}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Drive Legs */}
-                  {activeTab === "legs" && (
-                    <div>
-                      {DEFAULT_LEGS.map((leg, i) => (
-                        <div key={leg.leg} className="tp-leg" style={{ padding: "14px 18px", borderBottom: i < DEFAULT_LEGS.length - 1 ? "1px solid #F8FAFC" : "none" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                            <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                              <div style={{ width: 28, height: 28, borderRadius: 8, background: `${NAVY}15`, display: "flex", alignItems: "center", justifyContent: "center", color: NAVY, fontWeight: 900, fontSize: 12, flexShrink: 0 }}>{leg.leg}</div>
-                              <div>
-                                <div style={{ fontWeight: 700, fontSize: 13, color: "#0F172A" }}>{leg.from} → {leg.to}</div>
-                                <div style={{ color: "#94A3B8", fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 2 }}>{leg.miles} mi · {leg.drive}</div>
-                                {leg.fuel && <div style={{ color: ORANGE, fontSize: 11, marginTop: 4 }}>⛽ {leg.fuel}</div>}
-                                {leg.alert && <div style={{ color: leg.alert.includes("bypass") ? GREEN : AMBER, fontSize: 11, marginTop: 4 }}>{leg.alert}</div>}
-                              </div>
-                            </div>
-                            <div style={{ width: 60, height: 5, background: "#F1F5F9", borderRadius: 3, marginTop: 10, flexShrink: 0 }}>
-                              <div style={{ height: "100%", width: `${(leg.miles / route.miles * 100).toFixed(0)}%`, background: `linear-gradient(90deg, ${NAVY}, ${ORANGE})`, borderRadius: 3 }} />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* HOS Plan */}
-                  {activeTab === "hos" && (
-                    <div style={{ padding: "16px 18px" }}>
-                      <div style={{ marginBottom: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        {[["Drive left","9h 00m",GREEN],["Break req.","30 min",AMBER],["ETA","1:18 PM",NAVY]].map(([l,v,c]) => (
-                          <div key={l} style={{ background: `${c}10`, border: `1px solid ${c}25`, borderRadius: 8, padding: "6px 12px", textAlign: "center" }}>
-                            <div style={{ color: c, fontWeight: 800, fontSize: 14, fontFamily: "'DM Mono', monospace" }}>{v}</div>
-                            <div style={{ color: "#94A3B8", fontSize: 10 }}>{l}</div>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                        {HOS_PLAN.map((phase, i) => (
-                          <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", paddingBottom: i < HOS_PLAN.length - 1 ? 0 : 0 }}>
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                              <div style={{ width: 32, height: 32, borderRadius: 9, background: `${typeColors[phase.type]}15`, border: `1.5px solid ${typeColors[phase.type]}35`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>{phase.icon}</div>
-                              {i < HOS_PLAN.length - 1 && <div style={{ width: 2, height: 20, background: "#E2E8F0", margin: "2px 0" }} />}
-                            </div>
-                            <div style={{ paddingBottom: 14 }}>
-                              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                <span style={{ fontWeight: 700, fontSize: 12, color: "#0F172A" }}>{phase.phase}</span>
-                                <span style={{ color: typeColors[phase.type], fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{phase.time}</span>
-                                <span style={{ color: "#94A3B8", fontSize: 10 }}>{phase.duration}</span>
-                              </div>
-                              <div style={{ color: "#64748B", fontSize: 11, marginTop: 2 }}>{phase.note}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Fuel Stops */}
-                  {activeTab === "fuel" && (
-                    <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
-                      {FUEL_STOPS.map(stop => (
-                        <div key={stop.name} className="tp-fuel-card" style={{ border: "1px solid #E2E8F0", borderRadius: 12, padding: "14px 16px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                            <div>
-                              <div style={{ fontWeight: 700, fontSize: 13, color: "#0F172A" }}>{stop.name}</div>
-                              <div style={{ color: "#64748B", fontSize: 11, marginTop: 2 }}>Exit {stop.exit} · {stop.city}</div>
-                            </div>
-                            <div style={{ textAlign: "right" }}>
-                              <div style={{ color: GREEN, fontWeight: 800, fontSize: 15, fontFamily: "'DM Mono', monospace" }}>{stop.price}</div>
-                              <div style={{ color: "#94A3B8", fontSize: 10, marginTop: 1 }}>At mile {stop.miles}</div>
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            {stop.amenities.map(a => (
-                              <span key={a} style={{ background: `${NAVY}0F`, color: NAVY, fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 10 }}>{a}</span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Rest Areas */}
-                  {activeTab === "rest" && (
-                    <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
-                      {REST_AREAS.map(rest => (
-                        <div key={rest.name} style={{ border: "1px solid #E2E8F0", borderRadius: 12, padding: "14px 16px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                            <div>
-                              <div style={{ fontWeight: 700, fontSize: 13, color: "#0F172A" }}>🅿️ {rest.name}</div>
-                              <div style={{ color: "#64748B", fontSize: 11, marginTop: 2 }}>{rest.state} · Mile marker {rest.mile}</div>
-                            </div>
-                            <span style={{ background: "rgba(22,163,74,0.08)", color: GREEN, fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 20 }}>{rest.spaces}</span>
-                          </div>
-                          <div style={{ display: "flex", gap: 6 }}>
-                            {rest.amenities.map(a => (
-                              <span key={a} style={{ background: `${ORANGE}0F`, color: ORANGE, fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 10 }}>{a}</span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                      <div style={{ background: "rgba(255,180,0,0.06)", border: "1px solid rgba(255,180,0,0.2)", borderRadius: 10, padding: "12px 14px" }}>
-                        <div style={{ color: AMBER, fontWeight: 700, fontSize: 12, marginBottom: 4 }}>💡 AI Parking Tip</div>
-                        <div style={{ color: "#64748B", fontSize: 12, lineHeight: 1.6 }}>Based on your HOS plan, your mandatory 10-hour break falls near Memphis. West Memphis Truck Stop at mile 280 is recommended — book a spot via the app before you leave to guarantee parking.</div>
-                      </div>
-                    </div>
-                  )}
-                  {activeTab === "map" && (
-                    <div style={{ padding: 0, position: "relative" }}>
-                      <iframe
-                        title="Route Map"
-                        width="100%"
-                        height="320"
-                        style={{ border: 0, display: "block" }}
-                        loading="lazy"
-                        allowFullScreen
-                        referrerPolicy="no-referrer-when-downgrade"
-                        src={`https://www.google.com/maps/embed/v1/directions?key=AIzaSyAtgo9lKS-aCevpsgeda7VYgodpYPqbboE&origin=${encodeURIComponent(from)}&destination=${encodeURIComponent(to)}&mode=driving&avoid=ferries`}
-                      />
-                      <div style={{ position:"absolute", bottom:8, left:8, background:"rgba(11,42,107,0.85)", borderRadius:8, padding:"5px 10px", display:"flex", alignItems:"center", gap:6 }}>
-                        <div style={{ width:7, height:7, borderRadius:"50%", background:"#16A34A" }} />
-                        <span style={{ color:"white", fontSize:11, fontWeight:700 }}>Google Maps — {from} → {to}</span>
-                      </div>
-                      {/* Street View — destination preview */}
-                      <div style={{ padding:"12px 16px", background:"#0a0a0a", borderTop:"1px solid rgba(201,168,76,0.2)" }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                          <span style={{ fontSize:16 }}>📸</span>
-                          <span style={{ color:"#c9a84c", fontWeight:700, fontSize:13 }}>Destination Street View — {to}</span>
-                        </div>
-                        <img
-                          src={`https://maps.googleapis.com/maps/api/streetview?size=640x200&location=${encodeURIComponent(to)}&key=AIzaSyAtgo9lKS-aCevpsgeda7VYgodpYPqbboE`}
-                          alt={`Street view of ${to}`}
-                          style={{ width:"100%", borderRadius:8, border:"1px solid rgba(201,168,76,0.2)", display:"block" }}
-                          onError={e => { e.target.style.display='none'; }}
-                        />
-                        <p style={{ color:"#888", fontSize:11, marginTop:6, marginBottom:0 }}>Know exactly what the delivery location looks like before your driver arrives.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Construction Tab */}
-                  {activeTab === "construction" && (
-                    <div style={{ padding:"16px 18px" }}>
-                      {/* Alert banner */}
-                      <div style={{ background:"rgba(220,38,38,0.06)", border:"1px solid rgba(220,38,38,0.2)", borderRadius:10, padding:"12px 16px", marginBottom:16, display:"flex", gap:10, alignItems:"flex-start" }}>
-                        <span style={{ fontSize:20, flexShrink:0 }}>🚧</span>
-                        <div>
-                          <div style={{ fontWeight:700, fontSize:13, color:"#DC2626", marginBottom:2 }}>3 Construction Zones on Your Route</div>
-                          <div style={{ color:"#64748B", fontSize:12 }}>Total potential delay: 40-65 minutes. 1 detour available that saves 35 minutes.</div>
-                        </div>
-                      </div>
-
-                      {/* Alternate route recommendations */}
-                      <div style={{ fontWeight:700, fontSize:12, color:"#64748B", letterSpacing:1.5, textTransform:"uppercase", marginBottom:10 }}>✅ Recommended Alternates</div>
-                      {ALTERNATE_ROUTES.map(alt => (
-                        <div key={alt.id} style={{ border:`2px solid ${alt.color}30`, background:`${alt.color}06`, borderRadius:12, padding:"14px 16px", marginBottom:12 }}>
-                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
-                            <div style={{ fontWeight:700, fontSize:13, color:"#0F172A" }}>{alt.icon} {alt.label}</div>
-                            <span style={{ background:`${alt.color}15`, color:alt.color, fontSize:11, fontWeight:700, padding:"2px 9px", borderRadius:20 }}>{alt.savings}</span>
-                          </div>
-                          <div style={{ color:"#475569", fontSize:12, lineHeight:1.7, marginBottom:10 }}>{alt.description}</div>
-                          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                            {alt.steps.map((s,i) => (
-                              <div key={i} style={{ display:"flex", gap:8, alignItems:"center", fontSize:12, color:"#64748B" }}>
-                                <span style={{ width:18, height:18, background:`${alt.color}20`, color:alt.color, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, flexShrink:0 }}>{i+1}</span>
-                                {s}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-
-                      {/* Construction zone list */}
-                      <div style={{ fontWeight:700, fontSize:12, color:"#64748B", letterSpacing:1.5, textTransform:"uppercase", marginBottom:10, marginTop:16 }}>🚧 Active Construction Zones</div>
-                      {CONSTRUCTION_ZONES.map((z,i) => (
-                        <div key={i} style={{ border:`1px solid ${z.severity==="HIGH"?"rgba(220,38,38,0.3)":z.severity==="MED"?"rgba(245,158,11,0.3)":"rgba(203,213,225,0.5)"}`, borderRadius:12, padding:"14px 16px", marginBottom:10, borderLeft:`4px solid ${z.severity==="HIGH"?"#DC2626":z.severity==="MED"?"#F59E0B":"#CBD5E1"}` }}>
-                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
-                            <div style={{ fontWeight:700, fontSize:13 }}>{z.icon} {z.highway} — {z.location}</div>
-                            <span style={{ background:z.severity==="HIGH"?"rgba(220,38,38,0.1)":z.severity==="MED"?"rgba(245,158,11,0.1)":"rgba(203,213,225,0.2)", color:z.severity==="HIGH"?"#DC2626":z.severity==="MED"?"#D97706":"#94A3B8", fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:10 }}>{z.severity}</span>
-                          </div>
-                          <div style={{ display:"flex", gap:16, marginBottom:8 }}>
-                            <span style={{ fontSize:12, color:"#64748B" }}>⏱️ Delay: <strong>{z.delay}</strong></span>
-                            <span style={{ fontSize:12, color:"#64748B" }}>🛣️ {z.lanes_open}/{z.lanes_total} lanes open</span>
-                            <span style={{ fontSize:12, color:"#64748B" }}>🚗 {z.speed} MPH</span>
-                          </div>
-                          <div style={{ fontSize:12, color:"#475569", lineHeight:1.6 }}>{z.tip}</div>
-                          {z.detour && (
-                            <div style={{ marginTop:8, background:"rgba(22,163,74,0.08)", border:"1px solid rgba(22,163,74,0.2)", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#16A34A", fontWeight:600 }}>
-                              🟢 Detour: {z.detour}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </FadeIn>
-
-              {/* Profit breakdown */}
-              <FadeIn delay={70}>
-                <div style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${NAVY2} 100%)`, borderRadius: 14, padding: "18px 20px" }}>
-                  <div style={{ color: AMBER, fontWeight: 700, fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12 }}>💰 Load Profit Breakdown</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
-                    {[
-                      { l: "Gross Pay",   v: `$${grossPay}`, c: "white" },
-                      { l: "Fuel Cost",   v: `-$${fuelCost}`, c: RED    },
-                      { l: "Tolls",       v: `-${tollCost}`, c: tollCost === "$0" ? GREEN : RED },
-                      { l: "Net Profit",  v: `$${netPay}`,   c: parseInt(netPay) > 0 ? "#4ADE80" : RED },
-                    ].map(item => (
-                      <div key={item.l} style={{ textAlign: "center" }}>
-                        <div style={{ color: item.c, fontWeight: 900, fontSize: 18, fontFamily: "'DM Mono', monospace" }}>{item.v}</div>
-                        <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, marginTop: 3 }}>{item.l}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ marginTop: 14, padding: "10px 14px", background: "rgba(255,255,255,0.06)", borderRadius: 8, color: "rgba(255,255,255,0.65)", fontSize: 12 }}>
-                    At {route.rpm}/mi · {route.miles} miles · Breakdown excludes driver pay, insurance, and permits
-                  </div>
-                </div>
-              </FadeIn>
+              ))}
             </div>
           )}
-        </div>
 
-        {/* ── CTA ───────────────────────────────────────────────────────────── */}
-        <FadeIn delay={100} style={{ marginTop: 28 }}>
-          <div style={{ background: "white", borderRadius: 16, border: "1px solid #E2E8F0", padding: "24px 28px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 16, color: NAVY, marginBottom: 4 }}>This is your actual Trip Planner — inside TruckWithEase.</div>
-              <div style={{ color: "#64748B", fontSize: 13 }}>With your account, it knows your real HOS, your truck's MPG, your fuel card rate, and pre-fills everything automatically.</div>
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <a href="/#pricing" style={{ background: ORANGE, color: "white", padding: "12px 24px", borderRadius: 9, fontWeight: 800, fontSize: 14, textDecoration: "none", boxShadow: `0 4px 16px rgba(255,107,0,0.35)` }}>Start Free Trial</a>
-              <a href="/command" style={{ background: "#F1F5F9", color: NAVY, padding: "12px 20px", borderRadius: 9, fontWeight: 600, fontSize: 14, textDecoration: "none" }}>Command Center</a>
-            </div>
+          {!roadId && !toll && (
+            <p className="mt-4 font-[Inter] text-[11px] leading-relaxed text-[#666]">
+              Assumes the whole trip runs on the selected road. For a mixed route, estimate each
+              tolled segment separately on the <a href="/tolls" className="underline hover:text-white">Tolls page</a>.
+            </p>
+          )}
+        </Panel>
+
+        {/* ── hours ──────────────────────────────────────────────────────── */}
+        <Panel
+          title="Hours check"
+          note={`Source: GET /api/hos — real clocks for ${DRIVER_ID}`}
+          right={
+            <button
+              onClick={loadHos}
+              className="flex items-center gap-1.5 border border-[#222] bg-[#0f0f0f] px-3 py-1.5 font-[JetBrains_Mono] text-[10px] uppercase tracking-[0.18em] text-[#8a8a8a] transition hover:border-[#C9A84C] hover:text-white"
+            >
+              <RefreshCw size={11} /> Reload
+            </button>
+          }
+        >
+          {hosState === "loading" && (
+            <p className="font-[JetBrains_Mono] text-xs text-[#666]">Loading clocks…</p>
+          )}
+          {hosState === "error" && (
+            <p className="font-[JetBrains_Mono] text-xs" style={{ color: WARN }}>
+              Failed: {hosError}
+            </p>
+          )}
+          {hosState === "ok" && !hos && (
+            <Missing
+              label="HOS clocks for this driver"
+              reason="GET /api/hos returned no row for this driver, so there is nothing to compare the plan against."
+            />
+          )}
+          {hosState === "ok" && hos && (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  ["Driver", `${hos.name || hos.driverId}${hos.truckNumber ? ` · ${hos.truckNumber}` : ""}`],
+                  ["Duty status", String(hos.status || "—")],
+                  ["Driving remaining", hm(driveRemainingSec)],
+                  ["14-hr window remaining", hm(windowRemainingSec)],
+                ].map(([k, v]) => (
+                  <div key={k} className="border border-[#222] bg-[#0f0f0f] px-3 py-2">
+                    <div className="font-[JetBrains_Mono] text-[9px] uppercase tracking-[0.18em] text-[#666]">{k}</div>
+                    <div className="mt-1 font-[JetBrains_Mono] text-sm text-white">{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 border border-[#222] bg-[#0f0f0f] p-4">
+                <div className="flex items-center gap-2">
+                  <Clock size={13} style={{ color: GOLD }} />
+                  <span className="font-[Oswald] text-xs uppercase tracking-[0.18em] text-white">
+                    Does this trip fit today?
+                  </span>
+                </div>
+                {driveHours == null ? (
+                  <p className="mt-2 font-[Inter] text-[11px] text-[#8a8a8a]">
+                    Enter miles and an average speed and this compares the drive time against your
+                    remaining driving clock.
+                  </p>
+                ) : fitsDrive == null ? (
+                  <p className="mt-2 font-[Inter] text-[11px] text-[#8a8a8a]">
+                    No remaining-driving value came back from the API, so this cannot be answered.
+                  </p>
+                ) : (
+                  <p
+                    className="mt-2 font-[JetBrains_Mono] text-sm"
+                    style={{ color: fitsDrive ? GOLD_BRIGHT : WARN }}
+                  >
+                    {driveHours.toFixed(1)} h of driving vs {hm(driveRemainingSec)} remaining —{" "}
+                    {fitsDrive ? "fits in today's driving clock" : "does NOT fit; you will need a reset or a relay"}
+                  </p>
+                )}
+                <p className="mt-2 font-[Inter] text-[11px] leading-relaxed text-[#666]">
+                  Straight clock arithmetic only. It does not account for the 30-minute break,
+                  loading and unloading time, fuel stops, traffic, or a split sleeper — and
+                  TruckWithEase is not a registered ELD. Your ELD record is the record.
+                </p>
+              </div>
+
+              {Array.isArray(hos.violations) && hos.violations.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {hos.violations.map((v, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-2 border px-3 py-2"
+                      style={{ borderColor: WARN }}
+                    >
+                      <AlertTriangle size={13} className="mt-0.5 shrink-0" style={{ color: WARN }} />
+                      <div>
+                        <div className="font-[JetBrains_Mono] text-[9px] uppercase tracking-[0.18em]" style={{ color: WARN }}>
+                          {v.level}
+                        </div>
+                        <div className="font-[Inter] text-[11px] text-[#8a8a8a]">{v.msg}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </Panel>
+
+        {/* ── what isn't here ───────────────────────────────────────────── */}
+        <Panel title="Not on this page" note="Named honestly instead of filled with examples.">
+          <div className="space-y-3">
+            <Missing
+              label="Routing, mileage, legs, turn-by-turn, map"
+              reason="No mapping API is enabled for this key. Verified Aug 26, 2026: the Google Maps Embed API returns HTTP 403, and the Places API returns API_KEY_SERVICE_BLOCKED. The old page rendered a Directions iframe and a Street View still that were both broken, plus three invented legs. Enter your mileage from your own routing tool."
+            />
+            <Missing
+              label="Fuel stops and rest areas along the route"
+              reason="No truck-stop or rest-area location licence exists on this platform. The old page named specific Pilot and Love's locations with exits and pump prices that were invented."
+            />
+            <Missing
+              label="Construction zones, lane closures, work-zone delays"
+              reason="No state DOT work-zone feed is connected. The old page listed three zones with invented mile markers, delay ranges and detours."
+            />
+            <Missing
+              label="Per-state weight limits and seasonal restrictions"
+              reason="No state permitting or weight-restriction feed is connected. Check the state's DOT permit office. Federal limits are on the Load Chief weight guidance, which cites FHWA."
+            />
+            <Missing
+              label="Weigh-station status and bypass"
+              reason="There is no PrePass or Drivewyze contract or API connection. The old page displayed 'PrePass bypass active' on a leg."
+            />
           </div>
-        </FadeIn>
-      </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              { href: "/tolls", label: "Tolls", icon: Receipt },
+              { href: "/fuel-finder", label: "Fuel finder", icon: Fuel },
+              { href: "/weather", label: "Weather (NWS)", icon: MapPinned },
+            ].map((l) => {
+              const Icon = l.icon;
+              return (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  className="flex items-center gap-2 border border-[#222] bg-[#0f0f0f] px-3 py-2 font-[Oswald] text-[11px] uppercase tracking-[0.16em] text-[#8a8a8a] transition hover:border-[#C9A84C] hover:text-white"
+                >
+                  <Icon size={12} style={{ color: GOLD }} /> {l.label}
+                </a>
+              );
+            })}
+          </div>
+        </Panel>
+      </main>
+
+      <footer className="border-t border-[#222] px-6 py-6">
+        <div className="mx-auto max-w-6xl font-[Inter] text-[11px] leading-relaxed text-[#666]">
+          Estimates only. Fuel and toll figures are computed from the inputs above and the EIA
+          regional average; actual pump prices, toll rates and drive times will differ.{" "}
+          <a href="/" className="underline hover:text-white">
+            Back to dashboard
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }

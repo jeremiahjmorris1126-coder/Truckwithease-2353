@@ -38,7 +38,7 @@ export default function MapPage() {
           </div>
         ) : undefined} />
       {!HAS_MAPS && (
-        <div className="rounded-lg bg-[#FFB400]/10 border border-[#FFB400]/30 px-4 py-2.5 text-sm text-[#8B6914] mb-4">
+        <div className="rounded-lg bg-[#C9A84C]/10 border border-[#C9A84C]/30 px-4 py-2.5 text-sm text-[#8B6914] mb-4">
           Add a <b>Google Maps API key</b> (VITE_GOOGLE_MAPS_API_KEY) for the full interactive map with traffic &amp; truck routing. Showing the live schematic tracker below.
         </div>
       )}
@@ -54,10 +54,10 @@ export default function MapPage() {
             {/* grid */}
             <svg className="absolute inset-0 w-full h-full opacity-20" preserveAspectRatio="none">
               {Array.from({ length: 12 }).map((_, i) => (
-                <line key={`h${i}`} x1="0" y1={`${(i / 12) * 100}%`} x2="100%" y2={`${(i / 12) * 100}%`} stroke="#8FA6D4" strokeWidth="0.5" />
+                <line key={`h${i}`} x1="0" y1={`${(i / 12) * 100}%`} x2="100%" y2={`${(i / 12) * 100}%`} stroke="#8A8A8A" strokeWidth="0.5" />
               ))}
               {Array.from({ length: 16 }).map((_, i) => (
-                <line key={`v${i}`} x1={`${(i / 16) * 100}%`} y1="0" x2={`${(i / 16) * 100}%`} y2="100%" stroke="#8FA6D4" strokeWidth="0.5" />
+                <line key={`v${i}`} x1={`${(i / 16) * 100}%`} y1="0" x2={`${(i / 16) * 100}%`} y2="100%" stroke="#8A8A8A" strokeWidth="0.5" />
               ))}
             </svg>
             {ps.map((p) => {
@@ -67,10 +67,10 @@ export default function MapPage() {
               return (
                 <button key={p.id} onClick={() => setSelected(p.id)}
                   className="absolute -translate-x-1/2 -translate-y-1/2 group" style={{ left: `${x}%`, top: `${y}%` }}>
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-transform ${active ? "bg-[#FFB400] scale-125" : p.status === "driving" ? "bg-[#1FA971]" : "bg-white"}`}>
-                    <Truck className={`h-4 w-4 ${active ? "text-[#0B2A6B]" : p.status === "driving" ? "text-white" : "text-[#0B2A6B]"}`} />
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-transform ${active ? "bg-[#C9A84C] scale-125" : p.status === "driving" ? "bg-[#C9A84C]" : "bg-[#161616]"}`}>
+                    <Truck className={`h-4 w-4 ${active ? "text-[#C9A84C]" : p.status === "driving" ? "text-white" : "text-[#C9A84C]"}`} />
                   </div>
-                  <div className="absolute left-1/2 -translate-x-1/2 mt-1 whitespace-nowrap rounded bg-[#071E4E] px-1.5 py-0.5 text-[10px] font-semibold text-white opacity-0 group-hover:opacity-100">
+                  <div className="absolute left-1/2 -translate-x-1/2 mt-1 whitespace-nowrap rounded bg-[#FFD700] px-1.5 py-0.5 text-[10px] font-semibold text-[#0a0a0a] opacity-0 group-hover:opacity-100">
                     {p.truckNumber}
                   </div>
                 </button>
@@ -83,24 +83,24 @@ export default function MapPage() {
         <div className="space-y-3">
           {sel ? (
             <Card className="p-5" accent>
-              <div className="flex items-center gap-2 mb-3"><Truck className="h-5 w-5 text-[#0B2A6B]" /><b>{sel.truckNumber}</b><Badge status={sel.status} /></div>
+              <div className="flex items-center gap-2 mb-3"><Truck className="h-5 w-5 text-[#C9A84C]" /><b>{sel.truckNumber}</b><Badge status={sel.status} /></div>
               <div className="text-sm space-y-2">
-                <div className="flex justify-between"><span className="text-[#5B6577]">Driver</span><span className="font-medium">{sel.name}</span></div>
-                <div className="flex justify-between"><span className="text-[#5B6577]">Speed</span><span className="font-mono-data">{Math.round(sel.speed ?? 0)} mph</span></div>
-                <div className="flex justify-between"><span className="text-[#5B6577]">Position</span><span className="font-mono-data text-xs">{sel.lat?.toFixed(3)}, {sel.lng?.toFixed(3)}</span></div>
+                <div className="flex justify-between"><span className="text-[#8A8A8A]">Driver</span><span className="font-medium">{sel.name}</span></div>
+                <div className="flex justify-between"><span className="text-[#8A8A8A]">Speed</span><span className="font-mono-data">{Math.round(sel.speed ?? 0)} mph</span></div>
+                <div className="flex justify-between"><span className="text-[#8A8A8A]">Position</span><span className="font-mono-data text-xs">{sel.lat?.toFixed(3)}, {sel.lng?.toFixed(3)}</span></div>
               </div>
-              <a href={`https://www.google.com/maps?q=${sel.lat},${sel.lng}`} target="_blank" rel="noreferrer" className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-[#0B2A6B] text-white py-2 text-sm font-medium">
+              <a href={`https://www.google.com/maps?q=${sel.lat},${sel.lng}`} target="_blank" rel="noreferrer" className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-[#C9A84C] text-[#0a0a0a] py-2 text-sm font-medium">
                 <Navigation className="h-4 w-4" />Open in Maps
               </a>
             </Card>
           ) : (
-            <Card className="p-5 text-center text-sm text-[#5B6577]"><MapPin className="h-6 w-6 mx-auto mb-2 text-[#FFB400]" />Tap a truck to see details</Card>
+            <Card className="p-5 text-center text-sm text-[#8A8A8A]"><MapPin className="h-6 w-6 mx-auto mb-2 text-[#C9A84C]" />Tap a truck to see details</Card>
           )}
           <Card className="p-4">
-            <div className="text-xs font-semibold uppercase text-[#5B6577] mb-2">Fleet ({ps.length})</div>
+            <div className="text-xs font-semibold uppercase text-[#8A8A8A] mb-2">Fleet ({ps.length})</div>
             <div className="space-y-1">
               {ps.map((p) => (
-                <button key={p.id} onClick={() => setSelected(p.id)} className={`w-full flex items-center justify-between rounded-lg px-2.5 py-2 text-sm ${p.id === selected ? "bg-[#FFB400]/10" : "hover:bg-[#F4F6FB]"}`}>
+                <button key={p.id} onClick={() => setSelected(p.id)} className={`w-full flex items-center justify-between rounded-lg px-2.5 py-2 text-sm ${p.id === selected ? "bg-[#C9A84C]/10" : "hover:bg-[#0a0a0a]"}`}>
                   <span className="font-medium">{p.truckNumber}</span>
                   <Badge status={p.status} />
                 </button>

@@ -1,204 +1,198 @@
-// IP Geolocation Intelligence Engine
-// Resolves IPv4/IPv6 addresses and hostnames to location, ISP, timezone, currency
-// Used by: CheckoutPage (fraud screening), SignupPage (geo-targeted offers), FactoringPage (lender geo-compliance)
-// Integration: Flags VPN/proxy traffic at payment, serves pricing in local currency, tracks regional compliance
+// IP Geolocation Intelligence — thin client over /api/intel
+//
+// The original (docs/launch/ipGeolocationIntel.ORIGINAL.js.txt) was a hardcoded
+// `mockGeoData` object containing three entries: 8.8.8.8, 1.1.1.1 and "default".
+// Every other IP on earth silently resolved to the "default" record, so the
+// page reported a confident location, ISP, timezone and currency for addresses
+// it had never looked at. Callers had no way to tell.
+//
+// This version calls the server proxy, which holds the APIFreaks key
+// server-side. When no key is connected it returns `live: false` and says so
+// instead of handing back a fake city.
 
+const API = "/api/intel";
+
+async function get(path) {
+  const res = await fetch(API + path);
+  if (!res.ok) throw new Error(`${path} failed: ${res.status}`);
+  return res.json();
+}
+
+const NO_PROVIDER =
+  "No IP intelligence provider is connected. Add an APIFreaks key in the API Key Vault to resolve real addresses.";
+
+function normalize(ip, payload) {
+  const d = payload?.data ?? {};
+  const live = Boolean(payload?.live);
+  return {
+    ip,
+    type: ip.includes(":") ? "ipv6" : "ipv4",
+    hostname: d.hostname ?? null,
+    country: d.country?.code ?? d.country_code ?? null,
+    country_code: d.country?.code ?? d.country_code ?? null,
+    country_name: d.country?.name ?? d.country_name ?? null,
+    region: d.region?.code ?? d.region ?? null,
+    region_name: d.region?.name ?? d.region_name ?? null,
+    city: d.city?.name ?? d.city ?? null,
+    latitude: d.location?.latitude ?? d.latitude ?? null,
+    longitude: d.location?.longitude ?? d.longitude ?? null,
+    timezone: d.timezone?.id ?? d.timezone ?? null,
+    timezone_offset: d.timezone?.offset ?? null,
+    isp: d.connection?.isp ?? d.isp ?? null,
+    asn: d.connection?.asn ?? d.asn ?? null,
+    organization: d.connection?.organization ?? null,
+    currency: d.currency?.code ?? null,
+    is_vpn: d.security?.is_vpn ?? null,
+    is_proxy: d.security?.is_proxy ?? null,
+    is_tor: d.security?.is_tor ?? null,
+    is_hosting: d.security?.is_hosting ?? null,
+    live,
+    source: payload?.source ?? "unknown",
+    note: live ? null : NO_PROVIDER,
+  };
+}
+
+/** Resolve an IPv4/IPv6 address. Returns nulls with a note when not live. */
 export async function resolveIPLocation(ipAddress) {
-  // Resolve any IP (v4/v6) or hostname to full geolocation data
-  const mockGeoData = {
-    "8.8.8.8": {
-      ip: "8.8.8.8",
-      type: "ipv4",
-      hostname: "dns.google",
-      country: "US",
-      country_code: "US",
-      country_name: "United States",
-      region: "CA",
-      region_name: "California",
-      city: "Mountain View",
-      latitude: 37.4192,
-      longitude: -122.0574,
-      timezone: "America/Los_Angeles",
-      timezone_offset: "-07:00",
-      isp: "Google LLC",
-      asn: "AS15169",
-      network: "8.8.8.0/24",
-      currency: "USD",
-      currency_symbol: "$",
-      calling_code: "+1",
-      is_vpn: false,
-      is_proxy: false,
-      is_datacenter: true,
-      is_residential: false,
-      threat_level: "low",
-    },
-    "1.1.1.1": {
-      ip: "1.1.1.1",
-      type: "ipv4",
-      hostname: "one.one.one.one",
-      country: "US",
-      country_code: "US",
-      country_name: "United States",
-      region: "CA",
-      region_name: "California",
-      city: "Los Angeles",
-      latitude: 34.0522,
-      longitude: -118.2437,
-      timezone: "America/Los_Angeles",
-      timezone_offset: "-07:00",
-      isp: "Cloudflare Inc",
-      asn: "AS13335",
-      network: "1.1.1.0/24",
-      currency: "USD",
-      currency_symbol: "$",
-      calling_code: "+1",
-      is_vpn: false,
-      is_proxy: false,
-      is_datacenter: true,
-      is_residential: false,
-      threat_level: "low",
-    },
-    "default": {
-      ip: "192.168.1.1",
-      type: "ipv4",
-      hostname: "local.home",
-      country: "US",
-      country_code: "US",
-      country_name: "United States",
-      region: "IL",
-      region_name: "Illinois",
-      city: "Chicago",
-      latitude: 41.8781,
-      longitude: -87.6298,
-      timezone: "America/Chicago",
-      timezone_offset: "-06:00",
-      isp: "Residential ISP",
-      asn: "AS12345",
-      network: "192.168.0.0/16",
-      currency: "USD",
-      currency_symbol: "$",
-      calling_code: "+1",
-      is_vpn: false,
-      is_proxy: false,
-      is_datacenter: false,
-      is_residential: true,
-      threat_level: "low",
-    }
-  };
-
-  return mockGeoData[ipAddress] || mockGeoData["default"];
+  if (!ipAddress) return { ip: null, live: false, note: "No IP supplied." };
+  try {
+    const payload = await get(`/ip/${encodeURIComponent(ipAddress)}`);
+    return normalize(ipAddress, payload);
+  } catch (e) {
+    return { ip: ipAddress, live: false, error: e.message, note: NO_PROVIDER };
+  }
 }
 
+/**
+ * Threat flags for an IP. Previously derived from the mock record, so it always
+ * came back clean. Now it reports the provider's security block, or `unknown`.
+ */
 export async function checkIPThreats(ipAddress) {
-  // Assess security risk level of an IP
-  const geoData = await resolveIPLocation(ipAddress);
-  
+  const geo = await resolveIPLocation(ipAddress);
+  if (!geo.live) {
+    return {
+      ip: ipAddress,
+      threatLevel: "unknown",
+      isVPN: null,
+      isProxy: null,
+      isTor: null,
+      isHosting: null,
+      flags: [],
+      live: false,
+      note: NO_PROVIDER + " Do not read this as clean.",
+    };
+  }
+  const flags = [];
+  if (geo.is_tor) flags.push("tor");
+  if (geo.is_vpn) flags.push("vpn");
+  if (geo.is_proxy) flags.push("proxy");
+  if (geo.is_hosting) flags.push("datacenter");
   return {
     ip: ipAddress,
-    threat_level: geoData.threat_level,
-    is_vpn: geoData.is_vpn,
-    is_proxy: geoData.is_proxy,
-    is_datacenter: geoData.is_datacenter,
-    risk_factors: {
-      vpn: geoData.is_vpn ? "User is behind VPN — verify legitimacy" : "No VPN detected",
-      proxy: geoData.is_proxy ? "Proxy detected — potential fraud" : "No proxy detected",
-      datacenter: geoData.is_datacenter ? "Datacenter IP — may be automated traffic" : "Residential connection",
-    },
-    recommended_action: geoData.is_proxy ? "block" : geoData.is_vpn ? "challenge" : "allow",
+    threatLevel: geo.is_tor ? "high" : flags.length ? "elevated" : "low",
+    isVPN: geo.is_vpn,
+    isProxy: geo.is_proxy,
+    isTor: geo.is_tor,
+    isHosting: geo.is_hosting,
+    flags,
+    live: true,
+    note: null,
   };
 }
 
+/** Country → default content language. Static mapping, correct offline. */
+const COUNTRY_LANGUAGE = {
+  US: "en", CA: "en", GB: "en", AU: "en", IE: "en", NZ: "en",
+  MX: "es", ES: "es", AR: "es", CO: "es", CL: "es", PE: "es",
+  BR: "pt", PT: "pt", FR: "fr", DE: "de", AT: "de", CH: "de",
+  IT: "it", NL: "nl", PL: "pl", SE: "sv", NO: "no", DK: "da",
+  JP: "ja", CN: "zh", TW: "zh", KR: "ko", IN: "en", TH: "th",
+  VN: "vi", ID: "id", PH: "en", SA: "ar", AE: "ar", EG: "ar",
+};
+
+const COUNTRY_CURRENCY = {
+  US: "USD", CA: "CAD", MX: "MXN", GB: "GBP", AU: "AUD", NZ: "NZD",
+  BR: "BRL", JP: "JPY", CN: "CNY", IN: "INR", CH: "CHF", SE: "SEK",
+  NO: "NOK", DK: "DKK", PL: "PLN", KR: "KRW", AE: "AED", SA: "SAR",
+};
+
+const EU = new Set(["ES","PT","FR","DE","AT","IT","NL","BE","IE","FI","GR","PL","SE","DK","CZ","HU","RO","SK","SI","HR","BG","EE","LV","LT","LU","MT","CY"]);
+
+/**
+ * Geo-targeted content hints. Serviceability is now explicit: this platform
+ * operates on North American freight authority, so anything outside US/CA/MX
+ * is reported as out-of-area rather than being handed local pricing.
+ */
 export async function geoTargetContent(ipAddress) {
-  // Serve location-aware content (language, currency, offers)
-  const geoData = await resolveIPLocation(ipAddress);
-  
-  const languageMap = {
-    "US": "en",
-    "CA": "en",
-    "MX": "es",
-    "GB": "en",
-    "DE": "de",
-    "FR": "fr",
-    "ES": "es",
-    "IT": "it",
-    "JP": "ja",
-    "CN": "zh",
-  };
-
+  const geo = await resolveIPLocation(ipAddress);
+  const cc = geo.country_code;
+  if (!geo.live || !cc) {
+    return {
+      ip: ipAddress,
+      country: null,
+      language: "en",
+      currency: "USD",
+      serviceable: null,
+      gdprApplies: null,
+      live: false,
+      note: NO_PROVIDER + " Falling back to en / USD.",
+    };
+  }
   return {
     ip: ipAddress,
-    country: geoData.country,
-    language: languageMap[geoData.country] || "en",
-    currency: geoData.currency,
-    currency_symbol: geoData.currency_symbol,
-    timezone: geoData.timezone,
-    city: geoData.city,
-    region: geoData.region_name,
-    calling_code: geoData.calling_code,
-    content: {
-      welcome: `Welcome from ${geoData.city}, ${geoData.region_name}!`,
-      pricing_currency: geoData.currency,
-      local_time: new Date().toLocaleString("en-US", { timeZone: geoData.timezone }),
-      offers: geoData.country === "US" ? "US-specific offers" : "International offers",
-    }
+    country: cc,
+    countryName: geo.country_name,
+    region: geo.region_name,
+    city: geo.city,
+    timezone: geo.timezone,
+    language: COUNTRY_LANGUAGE[cc] ?? "en",
+    currency: geo.currency ?? COUNTRY_CURRENCY[cc] ?? "USD",
+    serviceable: cc === "US" || cc === "CA" || cc === "MX",
+    serviceNote:
+      cc === "US" || cc === "CA" || cc === "MX"
+        ? null
+        : `${geo.country_name ?? cc} is outside North American freight authority. This platform does not serve it.`,
+    gdprApplies: EU.has(cc),
+    live: true,
   };
 }
 
+/**
+ * Kept for call-site compatibility. Payment risk is scored server-side now —
+ * this delegates so there is exactly one scoring implementation.
+ */
 export async function validateCheckoutRisk(ipAddress, orderValue) {
-  // Assess fraud risk at checkout
-  const geoData = await resolveIPLocation(ipAddress);
-  const threats = await checkIPThreats(ipAddress);
-
-  let riskScore = 0;
-  const riskFactors = [];
-
-  if (geoData.is_datacenter) {
-    riskScore += 20;
-    riskFactors.push("Datacenter IP detected");
+  const res = await fetch(`${API}/checkout/screen`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ipAddress: ipAddress ?? null, amount: orderValue ?? null }),
+  });
+  if (!res.ok) {
+    return {
+      ipAddress,
+      riskScore: null,
+      riskLevel: "unknown",
+      recommendation: "verify",
+      note: "Screening unavailable. Verify manually.",
+    };
   }
-  if (geoData.is_proxy) {
-    riskScore += 40;
-    riskFactors.push("Proxy/VPN detected");
-  }
-  if (geoData.is_vpn) {
-    riskScore += 15;
-    riskFactors.push("VPN connection detected");
-  }
-
-  return {
-    ip: ipAddress,
-    order_value: orderValue,
-    risk_score: Math.min(riskScore, 100),
-    risk_level: riskScore > 60 ? "high" : riskScore > 30 ? "medium" : "low",
-    risk_factors: riskFactors,
-    geolocation: `${geoData.city}, ${geoData.region_name}, ${geoData.country}`,
-    isp: geoData.isp,
-    recommended_action: riskScore > 60 ? "require_verification" : "allow",
-  };
+  return res.json();
 }
 
-export async function enrichLogWithGeo(ipAddress, eventData = {}) {
-  // Add geolocation context to server logs
-  const geoData = await resolveIPLocation(ipAddress);
+/** WHOIS on a domain, via the server proxy. */
+export async function resolveDomainWhois(domain) {
+  try {
+    return await get(`/whois/${encodeURIComponent(domain)}`);
+  } catch (e) {
+    return { live: false, error: e.message, note: NO_PROVIDER };
+  }
+}
 
-  return {
-    timestamp: new Date().toISOString(),
-    ip: ipAddress,
-    hostname: geoData.hostname,
-    geolocation: {
-      country: geoData.country_name,
-      region: geoData.region_name,
-      city: geoData.city,
-      coordinates: { lat: geoData.latitude, lng: geoData.longitude },
-    },
-    network: {
-      isp: geoData.isp,
-      asn: geoData.asn,
-      network: geoData.network,
-      type: geoData.is_datacenter ? "datacenter" : geoData.is_residential ? "residential" : "unknown",
-    },
-    timezone: geoData.timezone,
-    currency: geoData.currency,
-    event: eventData,
-  };
+/** Whether live intel is available at all — use this to gate the UI. */
+export async function intelStatus() {
+  try {
+    return await get("/status");
+  } catch (e) {
+    return { connected: false, error: e.message };
+  }
 }

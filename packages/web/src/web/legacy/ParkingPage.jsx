@@ -1,384 +1,402 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import { GOOGLE_MAPS_KEY, loadGoogleMaps } from "./maps-config.js";
+/**
+ * ParkingPage — REBUILT 2026-08-27
+ *
+ * WHAT WAS DELETED FROM THE ORIGINAL AND WHY
+ * (original preserved verbatim at docs/launch/ParkingPage.ORIGINAL.jsx.txt, md5 ef2b852cf932b4ed32982066f83d1e8a)
+ *
+ * 1. PARKING_SPOTS — 8 completely invented parking locations presented as live data. Every one of
+ *    them named a REAL business at a REAL exit and then invented its facts: "Pilot Flying J #0441,
+ *    Exit 220, 38 open spaces of 60, 12 showers, ~5 min wait", "Love's Travel Stop Exit 11, 14 of
+ *    40", "Flying J #0882 Exit 48, 42 of 65, 18 showers, ~3 min", "TA Petro #193 Exit 61, 55 of 80,
+ *    20 showers, ~2 min", "Petro Stopping Center Exit 42, 28 of 45". None of it came from anywhere.
+ *    A driver with 20 minutes of clock left, routing to a lot because this screen said 42 spaces
+ *    were open, is the exact failure this page must never cause. Open-space counts are the single
+ *    most safety-critical number in this app after weight limits, and we had them hardcoded.
+ *
+ * 2. The invented SAFETY claims. "Walmart Supercenter ... 🚫 NOT safe for overnight — 3 theft
+ *    reports this month. Do not park here." There were no theft reports. We invented crime data
+ *    about a named, real, identifiable business at a specific exit. That is defamation risk on top
+ *    of being false. Also deleted: the "⚠️ Theft Risk" badge, the safe:true/false flag driving it,
+ *    and "Walmart lots have the highest truck theft rate of any parking type" (unsourced).
+ *
+ * 3. nearbyMotels — invented hotels with invented nightly rates and invented star ratings
+ *    ("La Quinta Inn Texarkana, 0.8 mi, $79/nt, 4.1", "Drury Inn & Suites $109/nt 4.5",
+ *    "Motel 6 Joplin $54/nt 3.6"). Real brands, fabricated prices and scores.
+ *
+ * 4. DRIVER_HOS = { driveLeft:"2h 15m", windowLeft:"3h 40m", action:"STOP NEEDED IN ~135 MI" } —
+ *    a hardcoded fake clock, and the comment in the source literally said "Current HOS simulation".
+ *    It drove a red full-width "HOS ALERT" banner at the top of the page. A fabricated hours-of-
+ *    service warning is worse than no warning: it trains the driver to ignore the real one.
+ *    Replaced with the actual clock from GET /api/hos.
+ *
+ * 5. The fake AI chat ("🤖 AI Parking Navigator — HOS-Aware"). A setTimeout waiting 900ms behind a
+ *    chat bubble, then returning one of five canned strings built from the invented spot list —
+ *    "Best overnight options on your corridor: 1️⃣ Flying J #0882 (Exit 48 · 42 spaces...)". It
+ *    called no model and no API. It also opened with an unprompted claim that 3 safe spots were
+ *    confirmed in range. Deleted rather than rewired: an LLM must never be the source of whether a
+ *    parking space physically exists.
+ *
+ * 6. PIN_POSITIONS / SPOT_COORDS — hand-placed map pins and hardcoded lat/lngs for the 8 invented
+ *    lots, plus the Google Maps loader and the "Google Maps powering live parking locations"
+ *    loading caption. The Maps Embed API returns HTTP 403 for our key, so that map never drew
+ *    anything; the caption claimed a live source behind a permanently broken map.
+ *
+ * 7. Off-brand paint: navy #0B2A6B/#081E4D/#06090F/#0C1628/#0f1f3d/#1e3a6e, amber #FFB400,
+ *    orange #FF6B00, green #16A34A, red #DC2626, slate #94a3b8/#e2e8f0/#64748b, Poppins/DM Mono.
+ *
+ * WHAT IS REAL ON THIS PAGE NOW
+ * - GET /api/hos — the driver's actual drive-time and on-duty clocks and actual violations.
+ * - Range math from those real seconds against a speed the driver types in himself.
+ * - Outbound links to the agencies that actually publish truck parking availability.
+ * - Everything we cannot source renders as MISSING / NOT TRACKED with the reason.
+ */
 
-const NAVY  = "#0B2A6B";
-const NAVY2 = "#081E4D";
-const ORANGE= "#FF6B00";
-const AMBER = "#FFB400";
-const GREEN = "#16A34A";
-const RED   = "#DC2626";
-const DARK  = "#06090F";
+import { useState, useEffect, useMemo } from "react";
+import {
+  ParkingSquare, AlertTriangle, ExternalLink, Clock, RefreshCw,
+  Gauge, MapPin, ShieldQuestion, Link2,
+} from "lucide-react";
 
-const PARKING_SPOTS = [
-  { id:1, name:"Pilot Flying J #0441", exit:"220", distance:4.2,  spaces:38, total:60, free:false, price:0, showers:true, showerCount:12, showerWait:"~5 min", food:true, wifi:true, scales:true, beds:true, safe:true, bigRig:true, overnight:true, lit:true, cameras:true, type:"truck_stop", city:"Texarkana, TX", hosAlert:null,
-    nearbyMotels:[{name:"La Quinta Inn Texarkana",dist:"0.8 mi",rate:"$79/nt",rating:4.1},{name:"Holiday Inn Express",dist:"1.2 mi",rate:"$94/nt",rating:4.3}] },
-  { id:2, name:"Love's Travel Stop", exit:"11", distance:8.5, spaces:14, total:40, free:false, price:0, showers:true, showerCount:8, showerWait:"~15 min", food:true, wifi:true, scales:false, beds:false, safe:true, bigRig:true, overnight:true, lit:true, cameras:true, type:"truck_stop", city:"Memphis, TN", hosAlert:null,
-    nearbyMotels:[{name:"Super 8 Memphis",dist:"0.4 mi",rate:"$64/nt",rating:3.8},{name:"Comfort Inn & Suites",dist:"1.0 mi",rate:"$89/nt",rating:4.0}] },
-  { id:3, name:"I-30 Rest Area WB", exit:"N/A", distance:12.1, spaces:6, total:22, free:true, price:0, showers:false, showerCount:0, showerWait:"N/A", food:false, wifi:false, scales:false, beds:false, safe:true, bigRig:true, overnight:false, lit:false, cameras:false, type:"rest_area", city:"Benton, AR", hosAlert:"⚠️ No cameras or lighting — not recommended overnight",
-    nearbyMotels:[{name:"Americas Best Value Inn",dist:"3.1 mi",rate:"$59/nt",rating:3.5}] },
-  { id:4, name:"Flying J #0882", exit:"48", distance:15.8, spaces:42, total:65, free:false, price:0, showers:true, showerCount:18, showerWait:"~3 min", food:true, wifi:true, scales:true, beds:true, safe:true, bigRig:true, overnight:true, lit:true, cameras:true, type:"truck_stop", city:"Joplin, MO", hosAlert:null,
-    nearbyMotels:[{name:"Drury Inn & Suites",dist:"0.6 mi",rate:"$109/nt",rating:4.5},{name:"Hampton Inn Joplin",dist:"0.9 mi",rate:"$119/nt",rating:4.4},{name:"Motel 6 Joplin",dist:"0.3 mi",rate:"$54/nt",rating:3.6}] },
-  { id:5, name:"Walmart Supercenter", exit:"7", distance:3.1, spaces:4, total:8, free:true, price:0, showers:false, showerCount:0, showerWait:"N/A", food:true, wifi:false, scales:false, beds:false, safe:false, bigRig:false, overnight:false, lit:true, cameras:false, type:"walmart", city:"Texarkana, TX", hosAlert:"🚫 NOT safe for overnight — 3 theft reports this month. Do not park here.",
-    nearbyMotels:[] },
-  { id:6, name:"TA Petro #193", exit:"61", distance:22.4, spaces:55, total:80, free:false, price:0, showers:true, showerCount:20, showerWait:"~2 min", food:true, wifi:true, scales:true, beds:true, safe:true, bigRig:true, overnight:true, lit:true, cameras:true, type:"truck_stop", city:"Springfield, MO", hosAlert:null,
-    nearbyMotels:[{name:"Best Western Plus Springfield",dist:"1.1 mi",rate:"$89/nt",rating:4.2},{name:"Days Inn Springfield",dist:"0.7 mi",rate:"$65/nt",rating:3.7}] },
-  { id:7, name:"I-40 Rest Area EB", exit:"N/A", distance:6.7, spaces:3, total:18, free:true, price:0, showers:false, showerCount:0, showerWait:"N/A", food:false, wifi:false, scales:false, beds:false, safe:true, bigRig:true, overnight:false, lit:false, cameras:false, type:"rest_area", city:"Amarillo, TX", hosAlert:"⚠️ Only 3 spaces — may fill before you arrive. Have a backup.",
-    nearbyMotels:[{name:"Holiday Inn Amarillo",dist:"4.2 mi",rate:"$99/nt",rating:4.1}] },
-  { id:8, name:"Petro Stopping Center", exit:"42", distance:18.3, spaces:28, total:45, free:false, price:0, showers:true, showerCount:15, showerWait:"~8 min", food:true, wifi:true, scales:true, beds:false, safe:true, bigRig:true, overnight:true, lit:true, cameras:true, type:"truck_stop", city:"OKC, OK", hosAlert:null,
-    nearbyMotels:[{name:"La Quinta Inn OKC",dist:"0.5 mi",rate:"$84/nt",rating:4.0},{name:"Econolodge OKC",dist:"0.2 mi",rate:"$49/nt",rating:3.3}] },
-];
+const DRIVER_ID = "drv-1";
 
-// Current HOS simulation - driver has 2h 15m of drive time remaining
-const DRIVER_HOS = { driveLeft: "2h 15m", windowLeft: "3h 40m", action: "STOP NEEDED IN ~135 MI" };
+/* ---------------------------------------------------------------- house kit */
 
-const FILTER_TYPES = ["All","Big Rig Only","Overnight Safe","Truck Stop","Rest Area"];
-
-function spaceColor(spaces, total) {
-  const pct = spaces / total;
-  if (pct > 0.33) return GREEN;
-  if (pct > 0.08) return AMBER;
-  return RED;
+function Panel({ title, note, right, children }) {
+  return (
+    <section style={{ background: "#161616", border: "1px solid #222", borderRadius: 14, overflow: "hidden" }}>
+      <div style={{ padding: "14px 18px", borderBottom: "1px solid #222", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <h2 style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.22em", fontSize: 13, color: "#F5F5F5", margin: 0 }}>{title}</h2>
+          {note && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#8a8a8a", lineHeight: 1.6 }}>{note}</p>}
+        </div>
+        {right}
+      </div>
+      <div style={{ padding: 18 }}>{children}</div>
+    </section>
+  );
 }
 
-const PIN_POSITIONS = [
-  { id:1, x:55, y:38 }, { id:2, x:72, y:55 }, { id:3, x:40, y:62 },
-  { id:4, x:60, y:72 }, { id:5, x:52, y:32 }, { id:6, x:78, y:78 },
-  { id:7, x:25, y:48 }, { id:8, x:65, y:65 },
-];
+function Missing({ label, reason }) {
+  return (
+    <div style={{ border: "1px dashed #333", borderRadius: 10, padding: "12px 14px", marginBottom: 10, background: "#131313" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <AlertTriangle size={13} color="#c96a4c" />
+        <span style={{ fontFamily: "Oswald, sans-serif", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "#c96a4c" }}>
+          Missing / Not tracked
+        </span>
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "#F5F5F5", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 12, color: "#8a8a8a", lineHeight: 1.6 }}>{reason}</div>
+    </div>
+  );
+}
 
+function Row({ k, v, mono, tone }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "8px 0", borderBottom: "1px solid #1c1c1c" }}>
+      <span style={{ fontSize: 12, color: "#8a8a8a" }}>{k}</span>
+      <span style={{ fontSize: 12, color: tone || "#F5F5F5", fontFamily: mono ? "'JetBrains Mono', monospace" : "inherit", textAlign: "right" }}>{v}</span>
+    </div>
+  );
+}
 
-const SPOT_COORDS = {
-  1: { lat: 33.4357, lng: -94.0477 },
-  2: { lat: 35.1495, lng: -90.0490 },
-  3: { lat: 34.5651, lng: -92.5452 },
-  4: { lat: 37.0842, lng: -94.5133 },
-  5: { lat: 33.4418, lng: -94.0377 },
-  6: { lat: 37.2153, lng: -93.2982 },
-  7: { lat: 35.2220, lng: -101.8313 },
-  8: { lat: 35.4676, lng: -97.5164 },
+function Field({ label, children }) {
+  return (
+    <label style={{ display: "block", marginBottom: 12 }}>
+      <span style={{ display: "block", fontFamily: "Oswald, sans-serif", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "#8a8a8a", marginBottom: 6 }}>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+const inputCls = {
+  width: "100%", background: "#0f0f0f", border: "1px solid #222", borderRadius: 8,
+  padding: "10px 12px", color: "#F5F5F5", fontFamily: "'JetBrains Mono', monospace",
+  fontSize: 13, outline: "none",
 };
 
+function hhmm(sec) {
+  if (sec === null || sec === undefined || Number.isNaN(sec)) return "—";
+  const s = Math.max(0, Math.round(sec));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return `${h}h ${String(m).padStart(2, "0")}m`;
+}
+
+/* ------------------------------------------------------- real outside sources
+ * Every entry below is a government or public-agency program that actually
+ * publishes truck parking information. We link to their own front page and
+ * reproduce no counts, no availability and no claims of our own.            */
+
+const SOURCES = [
+  { name: "Trucks Park Here (MAASTO TPIMS)", scope: "8-state Midwest corridor", url: "https://trucksparkhere.com/", what: "Federally funded multi-state real-time truck parking availability system." },
+  { name: "FHWA — Truck Parking", scope: "National", url: "https://ops.fhwa.dot.gov/freight/infrastructure/truck_parking/index.htm", what: "Federal program page, including the Jason's Law survey work." },
+  { name: "BTS — Truck Stop Parking dataset", scope: "National", url: "https://data-usdot.opendata.arcgis.com/datasets/usdot::truck-stop-parking/about", what: "USDOT open geospatial inventory of truck parking locations." },
+  { name: "FDOT Truck Parking Availability System", scope: "Florida", url: "https://www.fdot.gov/rail/studies/truck-parking", what: "State system covering Florida interstates." },
+  { name: "NMDOT TPAS", scope: "New Mexico / I-10", url: "https://www.dot.nm.gov/travel-information/trucking-industry/tpas/", what: "I-10 corridor availability detection." },
+  { name: "AZ511", scope: "Arizona / I-10", url: "https://az511.gov/", what: "Carries I-10 truck parking availability across AZ, CA, NM and TX." },
+  { name: "FHWA 511 directory", scope: "All states", url: "https://ops.fhwa.dot.gov/511/", what: "Every state's own traveler-information line and site." },
+];
+
+const INTERNAL = [
+  { href: "/hos", label: "Hours of Service", desc: "The clock this page reads" },
+  { href: "/trip-planner", label: "Trip Planner", desc: "Range, fuel and toll math" },
+  { href: "/weather", label: "Weather", desc: "Live NWS conditions" },
+  { href: "/fuel-finder", label: "Fuel Finder", desc: "Live EIA diesel averages" },
+  { href: "/state-patrol", label: "State & Federal Limits", desc: "Federal weight limits, cited" },
+  { href: "/breakdown", label: "Breakdown / SOS", desc: "If you cannot make a stop" },
+];
+
+/* ------------------------------------------------------------------- page */
+
 export default function ParkingPage() {
-  const [search, setSearch]         = useState("");
-  const [filter, setFilter]         = useState("All");
-  const [overnightOnly, setOvernight] = useState(false);
-  const [bigRigOnly, setBigRig]     = useState(false);
-  const [selected, setSelected]     = useState(PARKING_SPOTS[0]);
-  const [chatInput, setChatInput]   = useState("");
-  const [chatMessages, setChatMessages] = useState([
-    { role:"ai", text:`⚠️ HOS ALERT: You have ${DRIVER_HOS.driveLeft} of drive time left. Based on your corridor, I'm showing 3 safe big-rig overnight spots within your range. Top pick: Pilot Flying J #0441 at Exit 220 — 38 open spaces, cameras, lit lot, full amenities. Want me to set it as your destination?` }
-  ]);
-
-  const chatEndRef = useRef(null);
-  const mapRef = useRef(null);
-  const mapObj = useRef(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior:"smooth" }); }, [chatMessages]);
-
-  const filtered = PARKING_SPOTS.filter(s => {
-    if (filter === "Big Rig Only" && !s.bigRig) return false;
-    if (filter === "Overnight Safe" && (!s.overnight || !s.safe)) return false;
-    if (filter === "Truck Stop" && s.type !== "truck_stop") return false;
-    if (filter === "Rest Area" && s.type !== "rest_area") return false;
-    if (overnightOnly && (!s.overnight || !s.safe)) return false;
-    if (bigRigOnly && !s.bigRig) return false;
-    if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !s.city.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const [hos, setHos] = useState({ state: "loading", data: null, error: "" });
+  const [mph, setMph] = useState("58");
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
-    loadGoogleMaps().then(() => {
-      if (!mapRef.current || mapObj.current) return;
-      const map = new window.google.maps.Map(mapRef.current, {
-        center: { lat: 35.5, lng: -94.5 }, zoom: 7,
-        styles: [
-          { elementType: 'geometry', stylers: [{ color: '#07111f' }] },
-          { elementType: 'labels.text.fill', stylers: [{ color: '#8EC3B9' }] },
-          { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1e3a6e' }] },
-          { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2d5a9e' }] },
-          { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0b1929' }] },
-          { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-        ],
-      });
-      mapObj.current = map;
-      PARKING_SPOTS.forEach(spot => {
-        const coords = SPOT_COORDS[spot.id];
-        if (!coords) return;
-        const pct = spot.spaces / spot.total;
-        const color = pct > 0.33 ? '#16A34A' : pct > 0.08 ? '#FFB400' : '#DC2626';
-        const marker = new window.google.maps.Marker({
-          position: coords, map,
-          icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 14, fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
-          title: spot.name,
-        });
-        marker.addListener('click', () => setSelected(spot));
-      });
-      setMapLoaded(true);
-    }).catch(() => {});
-  }, []);
+    let dead = false;
+    setHos((p) => ({ ...p, state: "loading" }));
+    fetch("/api/hos")
+      .then(async (r) => {
+        const body = await r.text();
+        if (!r.ok) throw new Error(`HTTP ${r.status} — ${body.slice(0, 160)}`);
+        return JSON.parse(body);
+      })
+      .then((j) => {
+        if (dead) return;
+        const me = (j.fleet || []).find((f) => f.driverId === DRIVER_ID) || (j.fleet || [])[0] || null;
+        setHos({ state: me ? "ok" : "error", data: me, error: me ? "" : "No driver rows returned by /api/hos." });
+      })
+      .catch((e) => { if (!dead) setHos({ state: "error", data: null, error: String(e.message || e) }); });
+    return () => { dead = true; };
+  }, [reload]);
 
-  useEffect(() => {
-    if (!mapObj.current || !selected) return;
-    const c = SPOT_COORDS[selected.id];
-    if (c) { mapObj.current.panTo(c); mapObj.current.setZoom(13); }
-  }, [selected]);
+  const me = hos.data;
+  const driveLeft = me?.clocks?.drivingRemaining ?? null;
+  const windowLeft = me?.clocks?.onDutyWindowRemaining ?? null;
 
+  const range = useMemo(() => {
+    const v = parseFloat(mph);
+    if (!Number.isFinite(v) || v <= 0 || driveLeft === null) return null;
+    return (driveLeft / 3600) * v;
+  }, [mph, driveLeft]);
 
-  function sendChat(e) {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-    const msg = chatInput.trim();
-    setChatMessages(p => [...p, { role:"user", text:msg }]);
-    setChatInput("");
-    setTimeout(() => {
-      const lower = msg.toLowerCase();
-      let reply;
-      if (lower.includes("overnight") || lower.includes("safe") || lower.includes("sleep"))
-        reply = "Best overnight options on your corridor: 1️⃣ Flying J #0882 (Exit 48 · 42 spaces · cameras · lit) 2️⃣ TA Petro #193 (Exit 61 · 55 spaces · full amenities) 3️⃣ Pilot at Exit 220 (38 spaces · closest). All three have verified security and big-rig spaces. Avoid the I-30 rest area — no lighting.";
-      else if (lower.includes("big rig") || lower.includes("truck"))
-        reply = "All truck stops on your list accommodate 53-ft trailers and doubles. Rest areas may have length restrictions — I-40 Rest Area EB has a 65-ft limit. Flying J #0882 has the most big-rig spaces right now with 42 open.";
-      else if (lower.includes("free") || lower.includes("cost"))
-        reply = "Free options: I-30 Rest Area (6 spaces, no amenities) and I-40 Rest Area EB (3 spaces, very limited). Not recommended for overnight — no cameras or lighting. Truck stops are pay-as-you-go with fuel purchase often waiving overnight fees.";
-      else if (lower.includes("hos") || lower.includes("time"))
-        reply = `Your HOS window closes in ${DRIVER_HOS.windowLeft}. At current speed you can safely reach Flying J #0882 at Exit 48 (15.8 mi) or Pilot at Exit 220 (4.2 mi, closest). I'd recommend stopping at Pilot to keep a safety buffer on your clock.`;
-      else
-        reply = "I can help you find the safest big-rig overnight parking on your corridor. Ask about overnight-safe spots, HOS timing, big-rig clearance, or which lots have cameras and lighting.";
-      setChatMessages(p => [...p, { role:"ai", text:reply }]);
-    }, 900);
-  }
+  const outOfHours = driveLeft !== null && driveLeft <= 0;
 
   return (
-    <div style={{ fontFamily:"'Poppins',sans-serif", background:"#0C1628", minHeight:"100vh", color:"#e2e8f0" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap');
-        *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-        ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-thumb{background:#1e3a6e;border-radius:2px}
-        .pk-nav-link{color:#94a3b8;text-decoration:none;font-size:13px;font-weight:500;transition:color 0.2s}
-        .pk-nav-link:hover{color:#FFB400}
-        .pk-filter{border:1px solid #1e3a6e;background:transparent;color:#94a3b8;padding:6px 13px;border-radius:20px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;white-space:nowrap}
-        .pk-filter.active{background:#FFB400;border-color:#FFB400;color:#000}
-        .pk-filter:hover:not(.active){border-color:#FFB400;color:#FFB400}
-        .pk-spot{background:#0f1f3d;border:1px solid #1e3a6e;border-radius:12px;padding:13px;cursor:pointer;transition:all 0.2s;margin-bottom:8px}
-        .pk-spot:hover,.pk-spot.sel{border-color:#FFB400;background:#131f3a}
-        .pk-toggle{width:40px;height:22px;border-radius:11px;cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0}
-        .pk-toggle-knob{position:absolute;top:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left 0.2s}
-        .pk-chat-input{background:#0f1f3d;border:1px solid #1e3a6e;color:#e2e8f0;font-family:'Poppins',sans-serif;font-size:13px;border-radius:8px;padding:10px 14px;flex:1;outline:none}
-        .pk-chat-input:focus{border-color:#FFB400}
-        @media(max-width:900px){.pk-layout{flex-direction:column!important}.pk-left{width:100%!important;max-height:55vh!important}.pk-right{height:45vh!important}}
-      `}</style>
+    <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#F5F5F5", fontFamily: "Inter, sans-serif" }}>
 
-      {/* HOS ALERT BANNER */}
-      <div style={{ background:"linear-gradient(90deg,#7c1515,#991b1b)", borderBottom:"2px solid #dc2626", padding:"10px 24px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <span style={{ fontSize:20 }}>⏱️</span>
-          <div>
-            <div style={{ color:"white", fontWeight:800, fontSize:13 }}>HOS ALERT — {DRIVER_HOS.action}</div>
-            <div style={{ color:"rgba(255,255,255,0.7)", fontSize:11 }}>Drive time left: {DRIVER_HOS.driveLeft} · Window closes in: {DRIVER_HOS.windowLeft}</div>
+      {/* header band */}
+      <div style={{ borderBottom: "1px solid #222", background: "linear-gradient(to bottom, #111, #0a0a0a)", padding: "34px 28px 26px" }}>
+        <div style={{ maxWidth: 1240, margin: "0 auto" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 7, border: "1px solid #222", borderRadius: 6, padding: "4px 10px", marginBottom: 14 }}>
+            <ParkingSquare size={12} color="#C9A84C" />
+            <span style={{ fontFamily: "Oswald, sans-serif", fontSize: 10, letterSpacing: "0.24em", textTransform: "uppercase", color: "#C9A84C" }}>Parking &amp; Rest</span>
           </div>
-        </div>
-        <div style={{ display:"flex", gap:8 }}>
-          <span style={{ background:"rgba(0,0,0,0.3)", color:"#fca5a5", fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:20, border:"1px solid #dc2626" }}>3 safe stops within range</span>
-          <a href="/hos" style={{ background:"#dc2626", color:"white", fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:20, textDecoration:"none" }}>View HOS →</a>
+          <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 52, lineHeight: 1, letterSpacing: "0.01em", margin: 0 }}>
+            TRUCK <span style={{ color: "#FFD700" }}>PARKING</span>
+          </h1>
+          <p style={{ maxWidth: 760, marginTop: 14, fontSize: 14, lineHeight: 1.75, color: "#c9c9c9" }}>
+            This page tells you how far your <strong style={{ color: "#F5F5F5" }}>real</strong> remaining hours will carry you, and
+            points you at the agencies that actually publish live space counts. It does not list lots or show open
+            spaces, because TruckWithEase has no parking availability feed. Anything we cannot source is marked
+            missing rather than filled in.
+          </p>
+          <div style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid #333", borderRadius: 6, padding: "5px 11px", background: "#131313" }}>
+            <ShieldQuestion size={12} color="#c96a4c" />
+            <span style={{ fontFamily: "Oswald, sans-serif", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "#c96a4c" }}>
+              No space counts — we have no feed
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* NAV */}
-      <nav style={{ background:NAVY2, padding:"0 24px", height:58, display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid #1e3a6e", position:"sticky", top:0, zIndex:100 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <a href="/"><img src="/static/truckwithease-icon.png" alt="" style={{ height:32, borderRadius:8 }} /></a>
-          <div style={{ width:1, height:20, background:"rgba(255,255,255,0.1)" }} />
-          <span style={{ fontWeight:800, fontSize:14, color:"white" }}>🅿️ Truck Parking Finder</span>
-        </div>
-        <div style={{ display:"flex", gap:18, alignItems:"center" }}>
-          <a href="/fuel-finder" className="pk-nav-link">⛽ Fuel</a>
-          <a href="/bypass" className="pk-nav-link">⚡ Bypass</a>
-          <a href="/breakdown" className="pk-nav-link">🆘 SOS</a>
-          <a href="/#pricing" style={{ background:AMBER, color:DARK, padding:"6px 14px", borderRadius:7, fontWeight:800, fontSize:12, textDecoration:"none" }}>Free Trial</a>
-          <a href="/" className="pk-nav-link" style={{ fontSize:11 }}>← Back</a>
-        </div>
-      </nav>
+      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "26px 28px 60px", display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit, minmax(430px, 1fr))" }}>
 
-      <div className="pk-layout" style={{ display:"flex", height:"calc(100vh - 120px)" }}>
+        {/* real clock */}
+        <Panel
+          title="Your hours right now"
+          note="GET /api/hos — the same clock the HOS page reads. Not a simulation."
+          right={
+            <button onClick={() => setReload((n) => n + 1)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "1px solid #333", color: "#C9A84C", borderRadius: 6, padding: "5px 10px", fontSize: 11, cursor: "pointer", fontFamily: "Oswald, sans-serif", letterSpacing: "0.14em", textTransform: "uppercase" }}>
+              <RefreshCw size={11} /> Refresh
+            </button>
+          }
+        >
+          {hos.state === "loading" && <div style={{ fontSize: 13, color: "#8a8a8a" }}>Reading /api/hos…</div>}
 
-        {/* LEFT PANEL */}
-        <div className="pk-left" style={{ width:330, background:"#0a1628", borderRight:"1px solid #1a2e50", display:"flex", flexDirection:"column", overflow:"hidden" }}>
-          {/* Search */}
-          <div style={{ padding:"12px 14px 8px" }}>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search city, highway, exit..."
-              style={{ width:"100%", background:"#0f1f3d", border:"1px solid #1e3a6e", color:"#e2e8f0", fontFamily:"'Poppins',sans-serif", fontSize:13, borderRadius:8, padding:"9px 14px", outline:"none" }} />
-          </div>
-
-          {/* Filters */}
-          <div style={{ padding:"0 14px 10px", display:"flex", flexWrap:"wrap", gap:6 }}>
-            {FILTER_TYPES.map(f => (
-              <button key={f} className={`pk-filter${filter===f?" active":""}`} onClick={()=>setFilter(f)}>{f}</button>
-            ))}
-          </div>
-
-          {/* Smart toggles */}
-          <div style={{ padding:"8px 14px", borderTop:"1px solid #1a2e50", display:"flex", flexDirection:"column", gap:10 }}>
-            {[
-              { label:"🚛 Big Rig Only (53ft+)", val:bigRigOnly, set:setBigRig },
-              { label:"🌙 Overnight Safe Only", val:overnightOnly, set:setOvernight },
-            ].map(t => (
-              <div key={t.label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <span style={{ fontSize:12, color:"#94a3b8" }}>{t.label}</span>
-                <div className="pk-toggle" onClick={()=>t.set(!t.val)} style={{ background:t.val?AMBER:"#1e3a6e" }}>
-                  <div className="pk-toggle-knob" style={{ left:t.val?21:3 }} />
-                </div>
+          {hos.state === "error" && (
+            <div style={{ border: "1px solid #3a2420", background: "#1a1210", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <AlertTriangle size={13} color="#c96a4c" />
+                <span style={{ fontFamily: "Oswald, sans-serif", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "#c96a4c" }}>Clock unavailable</span>
               </div>
-            ))}
-          </div>
-
-          {/* Spot list */}
-          <div style={{ flex:1, overflowY:"auto", padding:"10px 14px" }}>
-            {filtered.length === 0 && <div style={{ color:"#64748b", textAlign:"center", marginTop:30, fontSize:13 }}>No spots match your filters.</div>}
-            {filtered.map(s => (
-              <div key={s.id} className={`pk-spot${selected?.id===s.id?" sel":""}`} onClick={()=>setSelected(s)}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color:"#fff", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{s.name}</div>
-                    <div style={{ fontSize:11, color:"#64748b" }}>{s.city}{s.exit!=="N/A"?` · Exit ${s.exit}`:""} · {s.distance} mi</div>
-                  </div>
-                  <div style={{ textAlign:"right", flexShrink:0, marginLeft:8 }}>
-                    <div style={{ fontWeight:900, fontSize:20, color:spaceColor(s.spaces,s.total), fontFamily:"'DM Mono',monospace" }}>{s.spaces}</div>
-                    <div style={{ fontSize:10, color:"#64748b" }}>/{s.total}</div>
-                  </div>
-                </div>
-
-                {/* HOS alert for this spot */}
-                {s.hosAlert && (
-                  <div style={{ background:"rgba(220,38,38,0.12)", border:"1px solid rgba(220,38,38,0.3)", borderRadius:6, padding:"5px 8px", marginBottom:6, fontSize:11, color:"#fca5a5", lineHeight:1.4 }}>
-                    {s.hosAlert}
-                  </div>
-                )}
-
-                <div style={{ display:"flex", gap:5, flexWrap:"wrap", alignItems:"center" }}>
-                  {s.showers && <span style={{ fontSize:13 }} title={`${s.showerCount} showers · ${s.showerWait}`}>🚿 {s.showerCount}</span>}
-                  {s.food    && <span style={{ fontSize:13 }} title="Food">🍔</span>}
-                  {s.wifi    && <span style={{ fontSize:13 }} title="WiFi">📶</span>}
-                  {s.scales  && <span style={{ fontSize:13 }} title="Scales">⚖️</span>}
-                  {s.beds    && <span style={{ fontSize:13 }} title="Sleeper Beds">🛏️</span>}
-                  {s.cameras && <span style={{ fontSize:13 }} title="Security Cameras">📹</span>}
-                  {s.lit     && <span style={{ fontSize:13 }} title="Lit Lot">💡</span>}
-                  <span style={{ marginLeft:"auto", fontSize:10, fontWeight:700, color:s.free?GREEN:AMBER }}>{s.free?"FREE":"PAID"}</span>
-                  {s.overnight && s.safe && <span style={{ fontSize:9, background:"#14532d", color:"#86efac", padding:"2px 6px", borderRadius:20 }}>✓ Overnight</span>}
-                  {s.bigRig   && <span style={{ fontSize:9, background:"#1e3a6e", color:"#93c5fd", padding:"2px 6px", borderRadius:20 }}>🚛 Big Rig</span>}
-                  {!s.safe    && <span style={{ fontSize:9, background:"#7c1515", color:"#fca5a5", padding:"2px 6px", borderRadius:20 }}>⚠️ Theft Risk</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Safety Sarge */}
-          <div style={{ padding:"10px 14px", background:"#0d1a30", borderTop:"1px solid #1a2e50" }}>
-            <div style={{ display:"flex", gap:8 }}>
-              <span style={{ fontSize:18 }}>🦺</span>
-              <div>
-                <div style={{ fontSize:10, fontWeight:700, color:AMBER, marginBottom:2 }}>Safety Sarge</div>
-                <div style={{ fontSize:10, color:"#94a3b8", lineHeight:1.5 }}>Truck stops with cameras + lighting only for overnight. Rest areas are for breaks, not sleep. Walmart lots have the highest truck theft rate of any parking type.</div>
-              </div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "#c9c9c9", wordBreak: "break-all" }}>{hos.error}</div>
+              <div style={{ fontSize: 12, color: "#8a8a8a", marginTop: 8 }}>No range is shown while the clock is unreadable. We will not guess it.</div>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* RIGHT — MAP + CHAT */}
-        <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
-          {/* Map */}
-          <div className="pk-right" style={{ flex:1, position:"relative", background:"#07111f", overflow:"hidden" }}>
-            {/* Real Google Maps */}
-            <div ref={mapRef} style={{ width:"100%", height:"100%" }} />
-            {!mapLoaded && (
-              <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"#07111f", flexDirection:"column", gap:12 }}>
-                <div style={{ fontSize:32 }}>🗺️</div>
-                <div style={{ color:"#FFB400", fontWeight:700, fontSize:14 }}>Loading map…</div>
-                <div style={{ color:"#64748b", fontSize:12 }}>Google Maps powering live parking locations</div>
+          {hos.state === "ok" && me && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+                {[
+                  { l: "Drive time left", v: hhmm(driveLeft), warn: outOfHours },
+                  { l: "14-hr window left", v: hhmm(windowLeft), warn: windowLeft !== null && windowLeft <= 0 },
+                ].map((c) => (
+                  <div key={c.l} style={{ background: "#111", border: `1px solid ${c.warn ? "#3a2420" : "#222"}`, borderRadius: 10, padding: "14px 16px" }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 26, fontWeight: 700, color: c.warn ? "#c96a4c" : "#FFD700" }}>{c.v}</div>
+                    <div style={{ fontFamily: "Oswald, sans-serif", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8a8a8a", marginTop: 4 }}>{c.l}</div>
+                  </div>
+                ))}
               </div>
-            )}
-            {/* Legend */}
-            <div style={{ position:"absolute", bottom:16, left:16, background:"rgba(10,22,40,0.9)", border:"1px solid #1e3a6e", borderRadius:8, padding:"10px 14px", display:"flex", gap:14, flexWrap:"wrap", zIndex:10 }}>
-              {[[GREEN,"20+ spaces"],[AMBER,"5–20 spaces"],[RED,"< 5 spaces"]].map(([col,l])=>(
-                <div key={l} style={{ display:"flex", alignItems:"center", gap:5 }}>
-                  <div style={{ width:10, height:10, borderRadius:"50%", background:col }} />
-                  <span style={{ fontSize:10, color:"#94a3b8" }}>{l}</span>
-                </div>
-              ))}
-              <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                <span style={{ fontSize:12 }}>🌙</span>
-                <span style={{ fontSize:10, color:"#94a3b8" }}>Overnight Safe</span>
-              </div>
-            </div>
 
-            {/* Selected detail */}
-            {selected && (
-              <div style={{ position:"absolute", top:16, right:16, width:270, background:"rgba(10,22,40,0.97)", border:`1px solid ${selected.overnight&&selected.safe?GREEN:selected.safe?AMBER:RED}`, borderRadius:14, padding:18, zIndex:20 }}>
-                <div style={{ fontWeight:800, fontSize:14, color:"#fff", marginBottom:3 }}>{selected.name}</div>
-                <div style={{ fontSize:11, color:"#64748b", marginBottom:10 }}>{selected.city}{selected.exit!=="N/A"?` · Exit ${selected.exit}`:""}</div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
-                  {[
-                    { l:"Open", v:selected.spaces, c:spaceColor(selected.spaces,selected.total) },
-                    { l:"Total", v:selected.total, c:"#fff" },
-                    { l:"Type", v:selected.free?"Free":"Paid", c:selected.free?GREEN:AMBER },
-                  ].map(d=>(
-                    <div key={d.l} style={{ textAlign:"center" }}>
-                      <div style={{ fontSize:20, fontWeight:900, color:d.c, fontFamily:"'DM Mono',monospace" }}>{d.v}</div>
-                      <div style={{ fontSize:10, color:"#64748b" }}>{d.l}</div>
-                    </div>
+              <Row k="Driver" v={`${me.name} · ${me.truckNumber}`} />
+              <Row k="Duty status" v={String(me.status || "—").toUpperCase()} mono />
+              <Row k="Driving used" v={hhmm(me.clocks?.drivingUsed)} mono />
+              <Row k="On-duty window used" v={hhmm(me.clocks?.onDutyWindowUsed)} mono />
+
+              {Array.isArray(me.violations) && me.violations.length > 0 && (
+                <div style={{ marginTop: 14, border: "1px solid #3a2420", background: "#1a1210", borderRadius: 10, padding: "12px 14px" }}>
+                  <div style={{ fontFamily: "Oswald, sans-serif", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "#c96a4c", marginBottom: 8 }}>
+                    Live from /api/hos — {me.violations.length} open
+                  </div>
+                  {me.violations.map((v, i) => (
+                    <div key={i} style={{ fontSize: 12, color: "#e6c8bd", lineHeight: 1.6, marginBottom: 4 }}>• {v.msg}</div>
                   ))}
                 </div>
-                <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
-                  {selected.overnight && selected.safe && <span style={{ fontSize:10, background:"rgba(22,163,74,0.15)", color:"#86efac", border:"1px solid rgba(22,163,74,0.3)", padding:"2px 8px", borderRadius:20 }}>🌙 Overnight Safe</span>}
-                  {selected.bigRig && <span style={{ fontSize:10, background:"rgba(59,130,246,0.15)", color:"#93c5fd", border:"1px solid rgba(59,130,246,0.3)", padding:"2px 8px", borderRadius:20 }}>🚛 Big Rig OK</span>}
-                  {selected.cameras && <span style={{ fontSize:10, background:"rgba(255,180,0,0.1)", color:AMBER, border:`1px solid ${AMBER}30`, padding:"2px 8px", borderRadius:20 }}>📹 Cameras</span>}
-                  {selected.lit && <span style={{ fontSize:10, background:"rgba(255,180,0,0.1)", color:AMBER, border:`1px solid ${AMBER}30`, padding:"2px 8px", borderRadius:20 }}>💡 Lit Lot</span>}
-                  {!selected.safe && <span style={{ fontSize:10, background:"rgba(220,38,38,0.15)", color:"#fca5a5", border:"1px solid rgba(220,38,38,0.3)", padding:"2px 8px", borderRadius:20 }}>⚠️ Theft Reports</span>}
-                </div>
-                {selected.hosAlert && (
-                  <div style={{ background:"rgba(220,38,38,0.1)", border:"1px solid rgba(220,38,38,0.25)", borderRadius:8, padding:"8px 10px", marginBottom:10, fontSize:11, color:"#fca5a5", lineHeight:1.5 }}>
-                    {selected.hosAlert}
-                  </div>
-                )}
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, marginBottom:10 }}>
-                  {[
-                    { e:"🚿", l:"Showers", v:selected.showers },
-                    { e:"🍔", l:"Food",    v:selected.food },
-                    { e:"📶", l:"WiFi",    v:selected.wifi },
-                    { e:"⚖️", l:"Scales",  v:selected.scales },
-                    { e:"🛏️", l:"Beds",   v:selected.beds },
-                    { e:"⛽", l:"Fuel",    v:selected.type==="truck_stop" },
-                  ].map(a=>(
-                    <div key={a.l} style={{ display:"flex", alignItems:"center", gap:4, opacity:a.v?1:0.3 }}>
-                      <span style={{ fontSize:11 }}>{a.e}</span>
-                      <span style={{ fontSize:10, color:a.v?"#e2e8f0":"#475569" }}>{a.l}</span>
-                    </div>
-                  ))}
-                </div>
-                <button onClick={()=>{}} style={{ width:"100%", background:selected.overnight&&selected.safe?GREEN:ORANGE, color:"white", border:"none", borderRadius:8, padding:"10px", fontWeight:800, fontSize:14, cursor:"pointer", fontFamily:"'Poppins',sans-serif" }}>
-                  🧭 Navigate Here
-                </button>
-              </div>
-            )}
+              )}
+            </>
+          )}
+        </Panel>
+
+        {/* range math */}
+        <Panel
+          title="How far your clock reaches"
+          note="Straight arithmetic on your real remaining drive seconds and a speed you type. No traffic, terrain or weather model."
+        >
+          <Field label="Your realistic average speed (mph)">
+            <input style={inputCls} value={mph} onChange={(e) => setMph(e.target.value)} inputMode="decimal" placeholder="58" />
+          </Field>
+
+          <div style={{ background: "#111", border: "1px solid #222", borderRadius: 10, padding: "18px 16px", textAlign: "center", marginBottom: 14 }}>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 40, fontWeight: 700, color: outOfHours ? "#c96a4c" : "#FFD700", lineHeight: 1 }}>
+              {range === null ? "—" : `${Math.round(range)}`}
+            </div>
+            <div style={{ fontFamily: "Oswald, sans-serif", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "#8a8a8a", marginTop: 8 }}>
+              Miles you can legally still drive
+            </div>
           </div>
 
-          {/* AI Chat */}
-          <div style={{ background:"#0a1628", borderTop:"1px solid #1a2e50", padding:"12px 16px", height:200, display:"flex", flexDirection:"column" }}>
-            <div style={{ fontSize:11, fontWeight:700, color:AMBER, marginBottom:8 }}>🤖 AI Parking Navigator — HOS-Aware</div>
-            <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:6, marginBottom:8 }}>
-              {chatMessages.map((m,i) => (
-                <div key={i} style={{ display:"flex", justifyContent:m.role==="user"?"flex-end":"flex-start" }}>
-                  <div style={{ maxWidth:"85%", background:m.role==="user"?NAVY:"#0f1f3d", border:m.role==="ai"?`1px solid ${AMBER}33`:"none", color:"#e2e8f0", borderRadius:8, padding:"7px 12px", fontSize:12, lineHeight:1.5 }}>
-                    {m.role==="ai"&&<span style={{ color:AMBER, fontWeight:700 }}>Navigator: </span>}
-                    {m.text}
-                  </div>
-                </div>
-              ))}
-              <div ref={chatEndRef} />
+          {outOfHours && (
+            <div style={{ border: "1px solid #3a2420", background: "#1a1210", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <Clock size={13} color="#c96a4c" />
+                <span style={{ fontFamily: "Oswald, sans-serif", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "#c96a4c" }}>Zero drive time left</span>
+              </div>
+              <div style={{ fontSize: 12, color: "#c9c9c9", lineHeight: 1.65 }}>
+                Your clock says zero, so the range above is zero. Park where you are if it is legal and safe to do so.
+              </div>
             </div>
-            <form onSubmit={sendChat} style={{ display:"flex", gap:8 }}>
-              <input className="pk-chat-input" value={chatInput} onChange={e=>setChatInput(e.target.value)} placeholder="Ask about overnight safety, big rig spots, HOS timing..." />
-              <button type="submit" style={{ background:AMBER, color:DARK, border:"none", borderRadius:8, padding:"9px 16px", fontWeight:700, cursor:"pointer", fontFamily:"'Poppins',sans-serif", fontSize:13 }}>Send</button>
-            </form>
+          )}
+
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 11, color: "#8a8a8a", lineHeight: 1.65 }}>
+            <Gauge size={13} color="#8a8a8a" style={{ flexShrink: 0, marginTop: 2 }} />
+            <span>
+              This is clock arithmetic, not a compliance ruling. TruckWithEase is not a registered ELD. Give yourself a
+              cushion — the number above is the legal ceiling, not a target.
+            </span>
           </div>
+        </Panel>
+
+        {/* what we don't have */}
+        <Panel title="What this page does not do" note="Stated plainly so nobody plans a load around a capability that is not here.">
+          <Missing
+            label="Live open-space counts"
+            reason="TruckWithEase has no parking availability feed. There is no /api/parking route and no vendor contract. The state systems linked to the right publish real counts for the corridors they cover — use those."
+          />
+          <Missing
+            label="Lot directory (names, exits, amenities)"
+            reason="We have no licensed truck-stop dataset. The USDOT BTS Truck Stop Parking layer is public and would fill this, but importing and keeping it current is real work that has not been done."
+          />
+          <Missing
+            label="Safety, lighting, camera and theft data"
+            reason="No sourced dataset exists for us. Inventing crime statistics about a named business is not something this app will do — the previous version of this page did exactly that and it has been removed."
+          />
+          <Missing
+            label="Map"
+            reason="The Google Maps Embed API returns HTTP 403 for our key and Places returns API_KEY_SERVICE_BLOCKED. Until those two APIs are enabled on the key, no map on this platform will draw."
+          />
+          <Missing
+            label="Reservations"
+            reason="No booking integration. We would never show a space as held without a confirmation from whoever owns the lot."
+          />
+        </Panel>
+
+        {/* real sources */}
+        <Panel
+          title="Where real availability lives"
+          note="Public agency programs that actually publish truck parking information. Links only — we reproduce none of their numbers."
+        >
+          {SOURCES.map((s) => (
+            <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer"
+              style={{ display: "block", textDecoration: "none", border: "1px solid #222", background: "#111", borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#F5F5F5" }}>{s.name}</span>
+                <ExternalLink size={12} color="#C9A84C" style={{ flexShrink: 0 }} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "6px 0 5px" }}>
+                <MapPin size={11} color="#8a8a8a" />
+                <span style={{ fontFamily: "Oswald, sans-serif", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "#C9A84C" }}>{s.scope}</span>
+              </div>
+              <div style={{ fontSize: 11, color: "#8a8a8a", lineHeight: 1.6 }}>{s.what}</div>
+            </a>
+          ))}
+          <div style={{ fontSize: 11, color: "#666", lineHeight: 1.65, marginTop: 10 }}>
+            Coverage is partial nationwide. Most states still publish nothing in real time, which is the actual reason
+            this screen is thin — not an oversight in the app.
+          </div>
+        </Panel>
+
+        {/* internal */}
+        <Panel title="Related pages" note="Other screens in the app backed by a named source.">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {INTERNAL.map((l) => (
+              <a key={l.href} href={l.href}
+                style={{ display: "block", textDecoration: "none", border: "1px solid #222", background: "#111", borderRadius: 10, padding: "11px 13px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#F5F5F5" }}>{l.label}</span>
+                  <Link2 size={11} color="#C9A84C" style={{ flexShrink: 0 }} />
+                </div>
+                <div style={{ fontSize: 10, color: "#8a8a8a", marginTop: 3 }}>{l.desc}</div>
+              </a>
+            ))}
+          </div>
+        </Panel>
+
+        {/* what would make it real */}
+        <Panel title="What would make this page real" note="In order of what actually helps a driver at 9pm.">
+          {[
+            "Import the USDOT BTS Truck Stop Parking layer into a parking_locations table — that alone gives a real directory of lots with real coordinates, no vendor needed.",
+            "Consume the state TPIMS/TPAS feeds for the corridors that publish them and show their counts with their timestamp and their name attached.",
+            "Turn on driver-sourced reports (the road_danger_reports table that has been offered twice) so a driver can mark a lot full and it expires on its own after a few hours.",
+            "Enable Maps Embed + Places on the Google key so lots can be plotted and routed to.",
+            "Only after all of the above: an assistant that reads those real sources. Never one that answers from a model's memory.",
+          ].map((t, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "#C9A84C", flexShrink: 0 }}>{String(i + 1).padStart(2, "0")}</span>
+              <span style={{ fontSize: 12, color: "#c9c9c9", lineHeight: 1.65 }}>{t}</span>
+            </div>
+          ))}
+        </Panel>
+      </div>
+
+      <div style={{ borderTop: "1px solid #222", padding: "20px 28px 40px" }}>
+        <div style={{ maxWidth: 1240, margin: "0 auto", fontSize: 11, color: "#666", lineHeight: 1.75 }}>
+          TruckWithEase does not track parking availability, does not rate the safety of any lot, and does not reserve
+          spaces. The hours shown are read from this platform's own logs and are not a substitute for a registered ELD
+          or for your own record of duty status.
         </div>
       </div>
     </div>

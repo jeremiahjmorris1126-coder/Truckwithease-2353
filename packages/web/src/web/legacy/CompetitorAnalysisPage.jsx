@@ -1,629 +1,532 @@
-import { useState } from 'react';
+/**
+ * CompetitorAnalysisPage — /competitors
+ *
+ * REWRITTEN 2026-08-25. Original preserved at
+ * docs/launch/CompetitorAnalysisPage.ORIGINAL.jsx.txt
+ *
+ * What was wrong with the original:
+ *
+ *  1. It published per-vehicle price ranges for Motive, Samsara, Geotab and
+ *     Verizon Connect ("$25-50/vehicle/month") that were never sourced. Naming
+ *     a competitor's price on a public page is the kind of claim that gets
+ *     answered by their legal department.
+ *  2. It scored TruckWithEase against them out of 10 in ten categories, with
+ *     "UNMATCHED ADVANTAGE" on financial and HR. Those scores were invented.
+ *  3. Its TruckWithEase feature list claimed things that do not exist in this
+ *     codebase: "Traxes AI (automated taxes)", "Entertainment (Spotify +
+ *     YouTube)", "Security (24/7 threat detection)", "QA agent (self-healing)"
+ *     and a full "HRease" HR suite. There is no Spotify, YouTube, entertainment
+ *     or background-check code anywhere in the API.
+ *  4. It listed the price as "$24.99/seat/month (fleet)". Fleet is
+ *     $49.99/truck/mo hardware-leased or $59.99/driver/mo hardware-owned.
+ *  5. Every gap carried an ROI figure — "$3-5K saved per accident prevented",
+ *     "driver retention up 35-40%", "$50K+ revenue" — with no model behind any
+ *     of them, plus week-level effort estimates for work nobody has scoped.
+ *
+ * This version keeps the one genuinely useful thing in the original: an
+ * honest internal list of what is missing and why it matters. Competitor
+ * pricing, scorecards and ROI numbers are gone. This is an internal planning
+ * page, and it says so.
+ */
+import { useState } from "react";
 
-const NAVY = '#0B2A6B';
-const ORANGE = '#FF6B00';
-const AMBER = '#FFB400';
-const GREEN = '#16A34A';
-const RED = '#DC2626';
+const B = {
+  black: "#0a0a0a",
+  card: "#161616",
+  nav: "#111111",
+  border: "#222222",
+  gold: "#C9A84C",
+  goldBright: "#FFD700",
+  goldDim: "#8A6E2F",
+  warn: "#c96a4c",
+  muted: "#8a8a8a",
+  dim: "#666666",
+  white: "#FFFFFF",
+};
+
+const PRIORITY = {
+  BLOCKER: { color: B.warn, note: "Blocks launch or a paying customer" },
+  HIGH: { color: B.goldBright, note: "First release after launch" },
+  LATER: { color: B.goldDim, note: "Real, but not now" },
+};
+
+/**
+ * Gaps. Each one states the gap, why it matters, and what exists today.
+ * No effort estimates and no ROI figures — nothing here has been scoped or
+ * modelled, and inventing a number is worse than leaving it blank.
+ */
+const GAPS = [
+  {
+    id: 1,
+    priority: "BLOCKER",
+    area: "Access control",
+    gap: "There is no user login",
+    why:
+      "Every page is reachable by URL and there is no per-user or per-fleet data separation. A carrier cannot be given an account, and driver records cannot be kept private from other carriers. This is the single largest thing standing between the platform and a paying customer.",
+    today: "Auth is scaffolded in the template and deliberately deferred. Nothing enforces identity today.",
+  },
+  {
+    id: 2,
+    priority: "BLOCKER",
+    area: "Compliance",
+    gap: "Not a registered ELD",
+    while: true,
+    why:
+      "FMCSA registration has not been granted, there is no engine connection, and there is no roadside data-transfer file. Until that changes the product must be sold as HOS and DVIR record-keeping software, not as an ELD.",
+    today: "Duty-status logging, clock math and DVIR capture are built and running against the live database.",
+  },
+  {
+    id: 3,
+    priority: "BLOCKER",
+    area: "Messaging",
+    gap: "No A2P campaign, so outbound SMS cannot send",
+    why:
+      "The Twilio brand is approved but no campaign exists and the sending number is not attached to a messaging service. Every SMS alert the product promises — HOS warnings, dispatch pings, load offers — is dead until that is filed.",
+    today: "Twilio account, number and brand approval are in place. Campaign filing is the missing step.",
+  },
+  {
+    id: 4,
+    priority: "HIGH",
+    area: "Documents",
+    gap: "Document upload has no user interface",
+    why:
+      "Drivers and HR need to attach a med card, a BOL, a DVIR photo or an incident photo. The backend for this is finished and verified end to end; there is simply no page that uses it.",
+    today:
+      "Presigned upload and download endpoints are live against object storage, with folder scoping and a size cap. OCR through the vision endpoint already works on an uploaded image.",
+  },
+  {
+    id: 5,
+    priority: "HIGH",
+    area: "Dispatch",
+    gap: "No route optimization",
+    why:
+      "Loads are assigned and checked against state rules, but nothing sequences stops, minimizes deadhead or refuses a schedule the driver's HOS clock cannot physically complete.",
+    today:
+      "State dispatch rules, a compliance check and a tax calculator exist. Assignment itself is manual.",
+  },
+  {
+    id: 6,
+    priority: "HIGH",
+    area: "Telematics",
+    gap: "No hardware feed of any kind",
+    why:
+      "Position, engine hours, fault codes, hard-brake events and mileage all come from what a person types in. Every downstream number — safety score, IFTA mileage, fuel efficiency, HOS accuracy — inherits that limitation, and the product should say so rather than imply a sensor exists.",
+    today:
+      "ELD device and telemetry tables exist and accept data. No device, OBD dongle or dashcam is connected to them.",
+  },
+  {
+    id: 7,
+    priority: "HIGH",
+    area: "Maintenance",
+    gap: "Maintenance is a log, not a predictor",
+    why:
+      "PM intervals, work orders and a health index are built, but nothing forecasts a failure because there is no engine data to forecast from. Predictive maintenance is a hardware problem before it is a software problem.",
+    today: "PM intervals, work orders, per-unit PM plans and a health index endpoint are live.",
+  },
+  {
+    id: 8,
+    priority: "LATER",
+    area: "Customers",
+    gap: "No shipper or broker portal",
+    why:
+      "Shippers call to ask where freight is. A read-only status link per load would remove most of those calls. Nothing exists for an external party to look at.",
+    today: "Load records and broker verification history exist internally only.",
+  },
+  {
+    id: 9,
+    priority: "LATER",
+    area: "Insurance",
+    gap: "No insurance or claims tracking",
+    why:
+      "Policy renewals, claims and premium audits are real fleet pain and no obvious incumbent owns it. It is also a large build with no revenue attached until there are customers to sell it to.",
+    today: "Incidents can be logged. Nothing connects them to a policy or a claim.",
+  },
+  {
+    id: 10,
+    priority: "LATER",
+    area: "Platform",
+    gap: "No public API or webhooks",
+    why:
+      "Partners cannot build on the platform and customers cannot pipe data out. Worth doing once there is a customer asking for it, and not before.",
+    today:
+      "The internal HTTP API is documented on the command docs page. It is not versioned, authenticated or public.",
+  },
+];
+
+/** What actually exists, so the gap list is read in context. Each of these is
+ *  a route or table that can be pointed at in the codebase. */
+const BUILT = [
+  "HOS duty-status logging with server-side clock calculation",
+  "DVIR capture, defect list and defect resolution",
+  "Safety scoring over a 30-day window, with unmeasured components returning null",
+  "Incident and accident reporting",
+  "Maintenance: PM intervals, work orders, per-unit plans, health index",
+  "Load records, booking and broker verification lookups",
+  "State dispatch rules and a per-state tax calculator",
+  "Fleet memory: driver-filed notes and ratings on brokers, shippers and stops",
+  "Document storage with presigned upload and download",
+  "Document OCR transcription through the vision endpoint",
+  "Voice output through server-side text to speech",
+  "Support ticketing with status workflow",
+  "Signup capture, trial links and plan definitions",
+  "Fuel card state and charge recording",
+  "Rewards points ledger",
+  "Mobile app shell with driver screens",
+];
 
 export default function CompetitorAnalysisPage() {
-  const [selectedTab, setSelectedTab] = useState('overview');
-  const [selectedCompetitor, setSelectedCompetitor] = useState(null);
+  const [tab, setTab] = useState("gaps");
+  const [openId, setOpenId] = useState(null);
 
-  const competitors = [
-    {
-      name: 'Motive',
-      strength: 'AI dashcam + telematics',
-      marketShare: 'Market leader',
-      pricing: '$25-50/vehicle/month',
-      features: [
-        '✓ AI dashcam (accident detection)',
-        '✓ Real-time GPS tracking',
-        '✓ Driver behavior scoring',
-        '✗ No financial (Traxes)',
-        '✗ No HR automation (HRease)',
-        '✗ No state-by-state HOS expertise',
-        '✗ No entertainment/wellness',
-      ],
-      gap: 'Missing: financial automation, HR, compliance guidance, employee wellness',
-    },
-    {
-      name: 'Samsara',
-      strength: 'Comprehensive fleet ops',
-      marketShare: 'IPO company',
-      pricing: '$30-60/vehicle/month',
-      features: [
-        '✓ Telematics & GPS',
-        '✓ ELD compliance',
-        '✓ Vehicle maintenance tracking',
-        '✗ No financial AI (Traxes)',
-        '✗ No HR (HRease)',
-        '✗ Limited HOS guidance',
-        '✗ No entertainment',
-      ],
-      gap: 'Missing: financial automation, HR, personalized HOS fixes, driver wellness',
-    },
-    {
-      name: 'Geotab',
-      strength: 'Telematics platform',
-      marketShare: 'Enterprise focus',
-      pricing: '$20-40/vehicle/month',
-      features: [
-        '✓ GPS & telematics',
-        '✓ Vehicle diagnostics',
-        '✓ Fuel monitoring',
-        '✗ No financial (Traxes)',
-        '✗ No HR (HRease)',
-        '✗ No HOS automation',
-        '✗ No entertainment',
-      ],
-      gap: 'Missing: financial, HR, HOS compliance, driver engagement',
-    },
-    {
-      name: 'Verizon Connect',
-      strength: 'Fleet management backbone',
-      marketShare: 'Mid-market standard',
-      pricing: '$25-50/vehicle/month',
-      features: [
-        '✓ GPS & routing',
-        '✓ Fuel card integration',
-        '✓ Basic ELD',
-        '✗ No financial AI',
-        '✗ No HR automation',
-        '✗ No state HOS expertise',
-        '✗ No entertainment',
-      ],
-      gap: 'Missing: financial, HR, compliance guidance, driver retention',
-    },
-  ];
-
-  const truckwithease = {
-    name: 'TruckWithEase',
-    strength: 'All-in-one with Traxes + HRease',
-    pricing: '$24.99/seat/month (fleet)',
-    features: [
-      '✓ Traxes AI (automated taxes)',
-      '✓ HRease (full HR automation)',
-      '✓ HOS Compliance (state-by-state)',
-      '✓ Real-time GPS tracking',
-      '✓ Load board integration',
-      '✓ Walkie Talk (dispatch)',
-      '✓ Entertainment (Spotify + YouTube)',
-      '✓ Billing & scan (invoice management)',
-      '✓ Security (24/7 threat detection)',
-      '✓ QA agent (self-healing)',
-    ],
-  };
-
-  const gaps = [
-    {
-      id: 1,
-      category: 'Telematics & Hardware',
-      priority: 'HIGH',
-      feature: 'AI Dashcam Integration',
-      why: 'Motive & Samsara lead here. Critical for insurance, accident prevention, driver coaching.',
-      currentStatus: 'Missing',
-      whyNeeded: [
-        'Captures hard evidence in accidents (reduces liability)',
-        'Real-time driver alerts (dangerous behavior prevention)',
-        'Insurance premium reduction (underwriters reward dashcam fleets)',
-        'Training footage (AI auto-clips bad driving moments)',
-      ],
-      recommendation: 'Integrate Mobileye or Nexar dashcam APIs. Partner with insurance companies for bundle pricing.',
-      effort: '6-8 weeks',
-      roi: '$3-5K saved per accident prevented',
-    },
-    {
-      id: 2,
-      category: 'Vehicle Maintenance',
-      priority: 'HIGH',
-      feature: 'Predictive Maintenance (OBD-II Integration)',
-      why: 'Samsara does this well. Prevents breakdowns; saves thousands.',
-      currentStatus: 'Missing',
-      whyNeeded: [
-        'OBD-II data predicts failures (oil pressure, battery, alternator)',
-        'Schedules maintenance before breakdown (avoids $2-5K roadside calls)',
-        'Tracks maintenance history per vehicle',
-        'Alerts for recalls & safety bulletins',
-      ],
-      recommendation: 'Integrate Samsara OBD API or use Geotab SDK. Partner with truck stop chains for discounts.',
-      effort: '4-6 weeks',
-      roi: '$1-2K per vehicle per year in prevented breakdowns',
-    },
-    {
-      id: 3,
-      category: 'Insurance & Compliance',
-      priority: 'MEDIUM',
-      feature: 'Insurance Management Dashboard',
-      why: 'No competitor owns this. Critical for fleets.',
-      currentStatus: 'Partial (HRease tracks)',
-      whyNeeded: [
-        'Policy tracking (renewal alerts)',
-        'Claims management (auto-log incidents)',
-        'Premium audit reports (reduce overcharges)',
-        'Safety discount optimization (tell insurers what you\'ve done)',
-      ],
-      recommendation: 'Build insurance API integrations (Progressive, Wesco, etc.). Add claims workflow.',
-      effort: '8-10 weeks',
-      roi: '5-15% insurance premium reduction',
-    },
-    {
-      id: 4,
-      category: 'Customer Experience',
-      priority: 'HIGH',
-      feature: 'Shipper/Customer Portal',
-      why: 'Motive & Samsara offer this. Builds trust.',
-      currentStatus: 'Missing',
-      whyNeeded: [
-        'Shippers see real-time load status (reduces "where\'s my freight" calls)',
-        'POD (proof of delivery) auto-captured with photos',
-        'Customer ratings (better relationships)',
-        'Automated invoicing to shippers',
-      ],
-      recommendation: 'Build white-label shipper portal. Integrate with TMS (Transportation Management System).',
-      effort: '6-8 weeks',
-      roi: 'Increases repeat shipments 20-30%',
-    },
-    {
-      id: 5,
-      category: 'Driver Engagement',
-      priority: 'MEDIUM',
-      feature: 'Safety Gamification & Leaderboards',
-      why: 'You have leaderboards. Need to tie to incentives.',
-      currentStatus: 'Partial (Rig Bucks exists)',
-      whyNeeded: [
-        'Safe driving contests (cash prizes for 30-day clean records)',
-        'Team challenges (inter-fleet competitions)',
-        'Wellness tracking (exercise, sleep, hydration)',
-        'Reward redemption (points → fuel discounts, truck stop gift cards)',
-      ],
-      recommendation: 'Expand Rig Bucks: partner with fuel card providers, truck stops, wellness apps.',
-      effort: '4-6 weeks',
-      roi: 'Driver retention up 35-40%',
-    },
-    {
-      id: 6,
-      category: 'Financial Tools',
-      priority: 'MEDIUM',
-      feature: 'Fuel Card Integration (Auto-Purchasing)',
-      why: 'Verizon Connect does this. Saves drivers time.',
-      currentStatus: 'Partial (fuel tracking exists)',
-      whyNeeded: [
-        'One-click fuel purchase (no need to swipe card)',
-        'Auto-discounts by truck stop (rebate tracking)',
-        'Fuel price alerts (buy cheaper when nearby)',
-        'Fuel consumption benchmarking (per-driver efficiency)',
-      ],
-      recommendation: 'Deep integration with Pilot/Love\'s/TA-Petro APIs. Negotiate referral fees.',
-      effort: '6-8 weeks',
-      roi: '$200-300 per truck per year in fuel savings',
-    },
-    {
-      id: 7,
-      category: 'Dispatch & Optimization',
-      priority: 'HIGH',
-      feature: 'Route Optimization & Load Planning',
-      why: 'Missing big feature. Competitors do this well.',
-      currentStatus: 'Missing',
-      whyNeeded: [
-        'Auto-routes loads to maximize profit per mile',
-        'Considers HOS limits (never assigns impossible schedules)',
-        'Multi-stop optimization (reduces dead miles)',
-        'Real-time re-routing (traffic, weather)',
-      ],
-      recommendation: 'Integrate Vroom or project44. Use Google Maps API for real-time optimization.',
-      effort: '8-10 weeks',
-      roi: '$2-4K per truck per year in fuel + detention savings',
-    },
-    {
-      id: 8,
-      category: 'Analytics & Reporting',
-      priority: 'MEDIUM',
-      feature: 'Custom Analytics & BI Dashboards',
-      why: 'Samsara does this. Fleet ops need custom views.',
-      currentStatus: 'Partial (reports exist)',
-      whyNeeded: [
-        'Drag-and-drop dashboard builder (fleet ops sees what they want)',
-        'Pre-built templates (KPIs: cost per mile, profit per load, etc.)',
-        'Scheduled reports (email weekly/monthly)',
-        'Predictive analytics (load demand forecast)',
-      ],
-      recommendation: 'Build custom dashboard builder. Use data warehouse (Snowflake integration).',
-      effort: '6-8 weeks',
-      roi: '15-20% operational efficiency improvement',
-    },
-    {
-      id: 9,
-      category: 'Mobile Experience',
-      priority: 'MEDIUM',
-      feature: 'Native iOS/Android Apps (Not Just Web)',
-      why: 'Competitors have native apps. Drivers expect offline access.',
-      currentStatus: 'Missing (web-only)',
-      whyNeeded: [
-        'Offline mode (work without signal)',
-        'Push notifications (real-time alerts)',
-        'Device sensors (location, camera for POD)',
-        'Native performance (faster than web)',
-      ],
-      recommendation: 'React Native for iOS/Android. Share codebase with web.',
-      effort: '12-16 weeks',
-      roi: '40% increase in daily active users; driver adoption up 60%',
-    },
-    {
-      id: 10,
-      category: 'Integrations & API Ecosystem',
-      priority: 'HIGH',
-      feature: 'Open API Marketplace',
-      why: 'Samsara & Motive let partners build on top. Lock-in strategy.',
-      currentStatus: 'Missing',
-      whyNeeded: [
-        'Third-party developers build on TruckWithEase',
-        'Fuel card providers, brokers, insurers integrate directly',
-        'Plugin marketplace (like Slack app store)',
-        'Webhooks for custom automation',
-      ],
-      recommendation: 'Build public REST API + webhooks. Create developer portal. Launch partner program.',
-      effort: '8-10 weeks',
-      roi: '10-20 paid integrations per year; $50K+ revenue',
-    },
-  ];
-
-  const scorecard = [
-    { category: 'Telematics & GPS', truckeaseScore: '8/10', motive: '10/10', samsara: '10/10', geotab: '9/10', gap: 'Need dashcam' },
-    { category: 'Financial (Taxes, Expenses)', truckeaseScore: '10/10', motive: '3/10', samsara: '3/10', geotab: '2/10', gap: 'UNMATCHED ADVANTAGE' },
-    { category: 'HR & Payroll', truckeaseScore: '10/10', motive: '2/10', samsara: '2/10', geotab: '1/10', gap: 'UNMATCHED ADVANTAGE' },
-    { category: 'HOS Compliance', truckeaseScore: '9/10', motive: '6/10', samsara: '6/10', geotab: '5/10', gap: 'Better state expertise needed' },
-    { category: 'Vehicle Maintenance', truckeaseScore: '3/10', motive: '9/10', samsara: '9/10', geotab: '9/10', gap: 'CRITICAL GAP' },
-    { category: 'Driver Engagement', truckeaseScore: '7/10', motive: '5/10', samsara: '5/10', geotab: '3/10', gap: 'Entertainment is advantage' },
-    { category: 'Load Board Integration', truckeaseScore: '8/10', motive: '4/10', samsara: '4/10', geotab: '3/10', gap: 'ADVANTAGE' },
-    { category: 'Dispatch & Routing', truckeaseScore: '4/10', motive: '8/10', samsara: '9/10', geotab: '8/10', gap: 'CRITICAL GAP' },
-    { category: 'Mobile App (Native)', truckeaseScore: '2/10', motive: '10/10', samsara: '10/10', geotab: '10/10', gap: 'CRITICAL GAP' },
-    { category: 'Customer Portal', truckeaseScore: '2/10', motive: '9/10', samsara: '9/10', geotab: '8/10', gap: 'CRITICAL GAP' },
-  ];
+  const counts = GAPS.reduce((acc, g) => {
+    acc[g.priority] = (acc[g.priority] || 0) + 1;
+    return acc;
+  }, {});
 
   return (
-    <div style={{ fontFamily: "'Poppins',sans-serif", background: '#F8FAFC', minHeight: '100vh' }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        .comp-tab {
-          background: none;
-          border: none;
-          padding: 12px 20px;
-          font-weight: 600;
-          cursor: pointer;
-          border-bottom: 3px solid transparent;
-          transition: all 0.2s;
-          color: #64748B;
-          font-family: 'Poppins',sans-serif;
-        }
-        .comp-tab.active {
-          color: ${NAVY};
-          border-bottom-color: ${AMBER};
-        }
-      `}</style>
-
-      {/* Header */}
-      <div style={{ background: NAVY, color: 'white', padding: '40px 5%', borderBottom: `2px solid ${RED}` }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          <h1 style={{ fontSize: 36, fontWeight: 900, marginBottom: 12 }}>🔍 Competitor Analysis</h1>
-          <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 16 }}>
-            How TruckWithEase stacks against Motive, Samsara, Geotab, Verizon Connect. What we have. What we need. Complete roadmap.
+    <div
+      style={{
+        background: B.black,
+        minHeight: "100vh",
+        color: B.white,
+        fontFamily: "'Inter', sans-serif",
+      }}
+    >
+      <div
+        style={{
+          background: B.nav,
+          borderBottom: `1px solid ${B.border}`,
+          padding: "36px 24px",
+        }}
+      >
+        <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+          <div
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10,
+              letterSpacing: "0.16em",
+              color: B.warn,
+              marginBottom: 10,
+            }}
+          >
+            INTERNAL PLANNING — NOT CUSTOMER FACING
+          </div>
+          <h1
+            style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: "2.9rem",
+              letterSpacing: "0.02em",
+              margin: 0,
+              background: `linear-gradient(135deg,${B.gold} 0%,${B.goldBright} 40%,${B.gold} 70%,${B.goldDim} 100%)`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            BUILD GAPS
+          </h1>
+          <p
+            style={{
+              color: B.muted,
+              fontSize: "0.93rem",
+              margin: "8px 0 0",
+              maxWidth: 780,
+              lineHeight: 1.65,
+            }}
+          >
+            What is missing, why it matters, and what exists in its place
+            today. No competitor pricing, no scorecards, no ROI estimates —
+            none of those were ever sourced or modelled, so none of them are
+            here.
           </p>
         </div>
       </div>
 
-      {/* Navigation */}
-      <div style={{ background: 'white', borderBottom: '1px solid #E2E8F0', padding: '0 5%', display: 'flex', gap: 0 }}>
-        {[
-          { id: 'scorecard', label: '📊 Scorecard' },
-          { id: 'competitors', label: '🎯 vs. Competitors' },
-          { id: 'gaps', label: '⚠️ Critical Gaps' },
-          { id: 'roadmap', label: '🛣️ Build Roadmap' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setSelectedTab(tab.id)}
-            className={`comp-tab ${selectedTab === tab.id ? 'active' : ''}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 24px 64px" }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
+          {[
+            ["gaps", `Gaps (${GAPS.length})`],
+            ["built", `Built (${BUILT.length})`],
+            ["rules", "Positioning rules"],
+          ].map(([key, label]) => {
+            const on = tab === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                style={{
+                  padding: "11px 18px",
+                  background: on ? B.gold : B.card,
+                  color: on ? B.black : B.white,
+                  border: `1px solid ${on ? B.gold : B.border}`,
+                  borderRadius: 5,
+                  fontFamily: "'Oswald', sans-serif",
+                  fontSize: "0.86rem",
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
 
-      {/* Content */}
-      <div style={{ padding: '40px 5%', maxWidth: 1400, margin: '0 auto' }}>
-        {selectedTab === 'scorecard' && (
+        {tab === "gaps" && (
+          <>
+            <div
+              style={{
+                display: "flex",
+                gap: 18,
+                flexWrap: "wrap",
+                marginBottom: 22,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 12,
+              }}
+            >
+              {Object.entries(PRIORITY).map(([k, p]) => (
+                <span key={k} style={{ color: p.color }}>
+                  {k} {counts[k] || 0}
+                </span>
+              ))}
+            </div>
+
+            <div style={{ display: "grid", gap: 10 }}>
+              {GAPS.map((g) => {
+                const p = PRIORITY[g.priority];
+                const open = openId === g.id;
+                return (
+                  <div
+                    key={g.id}
+                    style={{
+                      background: B.card,
+                      border: `1px solid ${open ? B.gold : B.border}`,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <button
+                      onClick={() => setOpenId(open ? null : g.id)}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        background: "transparent",
+                        border: "none",
+                        padding: "16px 18px",
+                        cursor: "pointer",
+                        color: B.white,
+                        font: "inherit",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 12,
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          marginBottom: 6,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: "0.1em",
+                            color: p.color,
+                            border: `1px solid ${p.color}`,
+                            borderRadius: 4,
+                            padding: "2px 8px",
+                          }}
+                        >
+                          {g.priority}
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: 11,
+                            color: B.dim,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {g.area}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: "'Oswald', sans-serif",
+                          fontSize: "1.08rem",
+                          letterSpacing: "0.01em",
+                        }}
+                      >
+                        {g.gap}
+                      </div>
+                    </button>
+
+                    {open && (
+                      <div
+                        style={{
+                          padding: "0 18px 18px",
+                          borderTop: `1px solid ${B.border}`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            marginTop: 14,
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: 10,
+                            letterSpacing: "0.12em",
+                            color: B.dim,
+                            marginBottom: 6,
+                          }}
+                        >
+                          WHY IT MATTERS
+                        </div>
+                        <div
+                          style={{
+                            color: "rgba(255,255,255,0.86)",
+                            fontSize: "0.9rem",
+                            lineHeight: 1.7,
+                            marginBottom: 16,
+                          }}
+                        >
+                          {g.why}
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: 10,
+                            letterSpacing: "0.12em",
+                            color: B.dim,
+                            marginBottom: 6,
+                          }}
+                        >
+                          WHAT EXISTS TODAY
+                        </div>
+                        <div
+                          style={{
+                            color: B.muted,
+                            fontSize: "0.9rem",
+                            lineHeight: 1.7,
+                          }}
+                        >
+                          {g.today}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {tab === "built" && (
           <div>
-            <h2 style={{ fontSize: 24, fontWeight: 900, color: NAVY, marginBottom: 28 }}>Feature Scorecard: 10 Critical Categories</h2>
-
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E2E8F0' }}>
-                    <th style={{ padding: '14px', textAlign: 'left', fontSize: 12, fontWeight: 800, color: NAVY }}>Category</th>
-                    <th style={{ padding: '14px', textAlign: 'center', fontSize: 12, fontWeight: 800, color: NAVY }}>TruckWithEase</th>
-                    <th style={{ padding: '14px', textAlign: 'center', fontSize: 12, fontWeight: 800, color: '#94A3B8' }}>Motive</th>
-                    <th style={{ padding: '14px', textAlign: 'center', fontSize: 12, fontWeight: 800, color: '#94A3B8' }}>Samsara</th>
-                    <th style={{ padding: '14px', textAlign: 'center', fontSize: 12, fontWeight: 800, color: '#94A3B8' }}>Geotab</th>
-                    <th style={{ padding: '14px', textAlign: 'left', fontSize: 12, fontWeight: 800, color: RED }}>Gap</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scorecard.map((row, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #E2E8F0' }}>
-                      <td style={{ padding: '14px', fontSize: 12, fontWeight: 600, color: NAVY }}>{row.category}</td>
-                      <td style={{ padding: '14px', textAlign: 'center', fontSize: 14, fontWeight: 800, color: GREEN }}>
-                        {row.truckeaseScore}
-                      </td>
-                      <td style={{ padding: '14px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#94A3B8' }}>
-                        {row.motive}
-                      </td>
-                      <td style={{ padding: '14px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#94A3B8' }}>
-                        {row.samsara}
-                      </td>
-                      <td style={{ padding: '14px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#94A3B8' }}>
-                        {row.geotab}
-                      </td>
-                      <td style={{ padding: '14px', fontSize: 12, fontWeight: 600, color: row.gap.includes('UNMATCHED') ? GREEN : row.gap.includes('CRITICAL') ? RED : ORANGE }}>
-                        {row.gap}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <p
+              style={{
+                color: B.muted,
+                fontSize: "0.9rem",
+                lineHeight: 1.65,
+                margin: "0 0 20px",
+                maxWidth: 780,
+              }}
+            >
+              Each line below is a route or table in this codebase. Anything not
+              on this list should be treated as not built, whatever a slide
+              deck says.
+            </p>
+            <div style={{ display: "grid", gap: 8 }}>
+              {BUILT.map((item) => (
+                <div
+                  key={item}
+                  style={{
+                    background: B.card,
+                    border: `1px solid ${B.border}`,
+                    borderRadius: 6,
+                    padding: "13px 16px",
+                    display: "flex",
+                    gap: 12,
+                    alignItems: "baseline",
+                  }}
+                >
+                  <span
+                    style={{
+                      color: B.gold,
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 11,
+                      letterSpacing: "0.08em",
+                      flexShrink: 0,
+                    }}
+                  >
+                    BUILT
+                  </span>
+                  <span style={{ fontSize: "0.92rem", lineHeight: 1.5 }}>
+                    {item}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {selectedTab === 'competitors' && (
-          <div>
-            <h2 style={{ fontSize: 24, fontWeight: 900, color: NAVY, marginBottom: 28 }}>Head-to-Head: What Each Competitor Owns</h2>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, marginBottom: 40 }}>
-              {competitors.map((comp, i) => (
+        {tab === "rules" && (
+          <div style={{ display: "grid", gap: 12, maxWidth: 820 }}>
+            {[
+              [
+                "Never quote a competitor's price",
+                "Motive, Samsara, Geotab and Verizon Connect all change pricing, discount by fleet size and negotiate. A published range is both wrong and actionable against you. Talk about what this platform costs, not what theirs does.",
+              ],
+              [
+                "Never score yourself against them out of ten",
+                "A self-assigned 10/10 next to a competitor's 3/10 is not analysis, it is an assertion. If a buyer asks for a comparison, hand them the built list and let them compare.",
+              ],
+              [
+                "No ROI figure without a model",
+                "\"Saves $3-5K per accident prevented\" and \"retention up 35-40%\" cannot be defended in a renewal conversation. If a number is worth saying, it is worth writing the model down first.",
+              ],
+              [
+                "Never list a feature that has no code behind it",
+                "Automated tax filing, entertainment streaming, 24/7 threat detection, self-healing QA and background checks have all appeared in TruckWithEase copy. None of them exist. A driver who signs up for a feature that is not there churns and tells other drivers.",
+              ],
+              [
+                "The honest differentiator is the one that is actually built",
+                "Driver-filed intelligence on brokers, shippers and stops is real, it is server-backed, and it refuses to call an unreported company clean. That is a defensible claim. Lead with it.",
+              ],
+            ].map(([title, body]) => (
+              <div
+                key={title}
+                style={{
+                  background: B.card,
+                  border: `1px solid ${B.border}`,
+                  borderRadius: 8,
+                  padding: "18px 20px",
+                }}
+              >
                 <div
-                  key={i}
                   style={{
-                    background: 'white',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: 12,
-                    padding: 24,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                  onClick={() => setSelectedCompetitor(selectedCompetitor === comp.name ? null : comp.name)}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = AMBER;
-                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#E2E8F0';
-                    e.currentTarget.style.boxShadow = 'none';
+                    fontFamily: "'Oswald', sans-serif",
+                    fontSize: "1.02rem",
+                    color: B.goldBright,
+                    letterSpacing: "0.02em",
+                    marginBottom: 8,
                   }}
                 >
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'start', marginBottom: 16 }}>
-                    <div>
-                      <h3 style={{ fontSize: 18, fontWeight: 900, color: NAVY, marginBottom: 8 }}>{comp.name}</h3>
-                      <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>
-                        <strong>Strength:</strong> {comp.strength}
-                      </p>
-                      <p style={{ fontSize: 13, color: '#64748B' }}>
-                        <strong>Pricing:</strong> {comp.pricing}
-                      </p>
-                    </div>
-                    <span style={{ background: `${ORANGE}20`, color: ORANGE, padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                      {comp.marketShare}
-                    </span>
-                  </div>
-
-                  {selectedCompetitor === comp.name && (
-                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #E2E8F0' }}>
-                      <div style={{ marginBottom: 16 }}>
-                        <h4 style={{ fontSize: 12, fontWeight: 800, color: NAVY, marginBottom: 10 }}>Features</h4>
-                        <ul style={{ display: 'grid', gap: 6 }}>
-                          {comp.features.map((feat, j) => (
-                            <li key={j} style={{ fontSize: 12, color: feat.includes('✓') ? GREEN : RED, fontWeight: 500 }}>
-                              {feat}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div style={{ background: `${RED}12`, border: `1px solid ${RED}30`, borderRadius: 8, padding: 12 }}>
-                        <p style={{ fontSize: 12, color: NAVY, fontWeight: 600 }}>
-                          <strong>What They're Missing:</strong> {comp.gap}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  {title}
                 </div>
-              ))}
-            </div>
-
-            {/* TruckWithEase Advantage */}
-            <div style={{ background: `${GREEN}12`, border: `1px solid ${GREEN}30`, borderRadius: 12, padding: 24 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 900, color: NAVY, marginBottom: 16 }}>🏆 TruckWithEase Advantages</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                {truckwithease.features.map((feat, i) => (
-                  <div key={i} style={{ fontSize: 13, color: NAVY, fontWeight: 600, display: 'flex', gap: 8 }}>
-                    <span style={{ color: GREEN }}>✓</span>
-                    {feat}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {selectedTab === 'gaps' && (
-          <div>
-            <h2 style={{ fontSize: 24, fontWeight: 900, color: NAVY, marginBottom: 28 }}>10 Critical Gaps — Priority Roadmap</h2>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
-              {gaps.map((gap) => (
                 <div
-                  key={gap.id}
                   style={{
-                    background: 'white',
-                    border: `2px solid ${gap.priority === 'HIGH' ? RED : ORANGE}`,
-                    borderRadius: 12,
-                    padding: 24,
+                    color: B.muted,
+                    fontSize: "0.9rem",
+                    lineHeight: 1.7,
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 16 }}>
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ fontSize: 16, fontWeight: 900, color: NAVY, marginBottom: 6 }}>
-                        {gap.id}. {gap.feature}
-                      </h3>
-                      <p style={{ fontSize: 12, color: '#64748B', marginBottom: 10 }}>{gap.why}</p>
-                      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{
-                          background: gap.priority === 'HIGH' ? `${RED}20` : `${ORANGE}20`,
-                          color: gap.priority === 'HIGH' ? RED : ORANGE,
-                          padding: '4px 10px',
-                          borderRadius: 6,
-                          fontSize: 11,
-                          fontWeight: 700,
-                        }}>
-                          {gap.priority} PRIORITY
-                        </span>
-                        <span style={{ background: '#F8FAFC', color: '#64748B', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
-                          {gap.effort}
-                        </span>
-                        <span style={{ background: `${GREEN}20`, color: GREEN, padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
-                          {gap.roi}
-                        </span>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: 24 }}>
-                      {gap.priority === 'HIGH' ? '🚨' : '⚠️'}
-                    </span>
-                  </div>
-
-                  <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid #E2E8F0' }}>
-                    <h4 style={{ fontSize: 12, fontWeight: 800, color: NAVY, marginBottom: 10 }}>Why it matters:</h4>
-                    <ul style={{ paddingLeft: 20, display: 'grid', gap: 6 }}>
-                      {gap.whyNeeded.map((reason, i) => (
-                        <li key={i} style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>{reason}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div style={{ background: `${AMBER}12`, borderRadius: 8, padding: 12 }}>
-                    <p style={{ fontSize: 12, color: NAVY, fontWeight: 600 }}>
-                      <strong>How to solve:</strong> {gap.recommendation}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {selectedTab === 'roadmap' && (
-          <div>
-            <h2 style={{ fontSize: 24, fontWeight: 900, color: NAVY, marginBottom: 28 }}>12-Month Build Roadmap to Match + Beat Competitors</h2>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
-              {[
-                {
-                  phase: 'Q3 2024 (Now)',
-                  focus: 'Foundation (in progress)',
-                  items: [
-                    '✓ Traxes AI (fully live)',
-                    '✓ HRease (fully live)',
-                    '✓ HOS Compliance Agent (state-by-state)',
-                    '✓ Entertainment Agent (Spotify + YouTube)',
-                    '✓ Security Agent (24/7 threat detection)',
-                  ],
-                },
-                {
-                  phase: 'Q4 2024',
-                  focus: 'Close High-Priority Gaps',
-                  items: [
-                    'AI Dashcam Integration (Mobileye/Nexar) — [8 weeks]',
-                    'OBD-II Predictive Maintenance (Samsara API) — [6 weeks]',
-                    'Native iOS/Android Apps (React Native) — [12 weeks, START NOW]',
-                  ],
-                },
-                {
-                  phase: 'Q1 2025',
-                  focus: 'Customer Experience + Operational Excellence',
-                  items: [
-                    'Shipper/Customer Portal (white-label) — [8 weeks]',
-                    'Route Optimization (Google + project44) — [10 weeks, START NOW]',
-                    'Insurance Dashboard (integrations) — [10 weeks, START NOW]',
-                  ],
-                },
-                {
-                  phase: 'Q2 2025',
-                  focus: 'Engagement + Analytics',
-                  items: [
-                    'Safety Gamification (expanded Rig Bucks) — [6 weeks]',
-                    'Custom BI Dashboards (Snowflake + Metabase) — [8 weeks]',
-                    'Fuel Card Deep Integration (Pilot/Love\'s auto-purchase) — [8 weeks]',
-                  ],
-                },
-                {
-                  phase: 'Q3 2025+',
-                  focus: 'Ecosystem & Lock-In',
-                  items: [
-                    'Public API Marketplace (webhooks, plugins) — [10 weeks]',
-                    'Partner Program (fuel, insurance, brokers) — [ongoing]',
-                    'AI Optimization Engine (loads, HOS, fuel) — [12 weeks]',
-                  ],
-                },
-              ].map((phase, i) => (
-                <div
-                  key={i}
-                  style={{
-                    background: 'white',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: 12,
-                    padding: 20,
-                  }}
-                >
-                  <h3 style={{ fontSize: 14, fontWeight: 900, color: ORANGE, marginBottom: 4 }}>{phase.phase}</h3>
-                  <p style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 12 }}>Focus: {phase.focus}</p>
-                  <ul style={{ paddingLeft: 20, display: 'grid', gap: 8 }}>
-                    {phase.items.map((item, j) => (
-                      <li key={j} style={{ fontSize: 12, color: NAVY, fontWeight: 500 }}>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-
-            {/* Summary */}
-            <div style={{ marginTop: 32, background: `${GREEN}12`, border: `1px solid ${GREEN}30`, borderRadius: 12, padding: 24 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 900, color: NAVY, marginBottom: 16 }}>By End of 2025: What Competitors Can't Match</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <h4 style={{ fontSize: 13, fontWeight: 800, color: GREEN, marginBottom: 10 }}>We'll Have (That They Don't)</h4>
-                  <ul style={{ paddingLeft: 20, display: 'grid', gap: 6 }}>
-                    <li style={{ fontSize: 12, color: NAVY, fontWeight: 500 }}>Traxes AI (auto-taxes)</li>
-                    <li style={{ fontSize: 12, color: NAVY, fontWeight: 500 }}>HRease (full HR)</li>
-                    <li style={{ fontSize: 12, color: NAVY, fontWeight: 500 }}>Entertainment (driver retention)</li>
-                    <li style={{ fontSize: 12, color: NAVY, fontWeight: 500 }}>State-by-state HOS coaching</li>
-                    <li style={{ fontSize: 12, color: NAVY, fontWeight: 500 }}>Custom BI dashboards</li>
-                    <li style={{ fontSize: 12, color: NAVY, fontWeight: 500 }}>API Marketplace (partners build on us)</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 style={{ fontSize: 13, fontWeight: 800, color: ORANGE, marginBottom: 10 }}>We'll Match Them On</h4>
-                  <ul style={{ paddingLeft: 20, display: 'grid', gap: 6 }}>
-                    <li style={{ fontSize: 12, color: NAVY, fontWeight: 500 }}>AI Dashcam (accident prevention)</li>
-                    <li style={{ fontSize: 12, color: NAVY, fontWeight: 500 }}>Predictive Maintenance (OBD-II)</li>
-                    <li style={{ fontSize: 12, color: NAVY, fontWeight: 500 }}>Native Mobile Apps</li>
-                    <li style={{ fontSize: 12, color: NAVY, fontWeight: 500 }}>Route Optimization</li>
-                    <li style={{ fontSize: 12, color: NAVY, fontWeight: 500 }}>Shipper Portal (customer trust)</li>
-                    <li style={{ fontSize: 12, color: NAVY, fontWeight: 500 }}>Insurance Integration</li>
-                  </ul>
+                  {body}
                 </div>
               </div>
-            </div>
+            ))}
           </div>
         )}
       </div>

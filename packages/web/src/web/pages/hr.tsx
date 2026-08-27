@@ -36,13 +36,13 @@ export default function HR() {
 
       <div className="grid xl:grid-cols-4 gap-6">
         <div className="xl:col-span-3">
-          <div className="flex flex-wrap gap-1 mb-5 border-b border-[#E2E7F0]">
+          <div className="flex flex-wrap gap-1 mb-5 border-b border-[#222222]">
             {TABS.map((t) => {
               const Icon = t.icon;
               const active = tab === t.id;
               return (
                 <button key={t.id} onClick={() => setTab(t.id)}
-                  className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${active ? "border-[#FFB400] text-[#0B2A6B]" : "border-transparent text-[#5B6577] hover:text-[#0E1524]"}`}>
+                  className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${active ? "border-[#C9A84C] text-[#C9A84C]" : "border-transparent text-[#8A8A8A] hover:text-[#F5F5F5]"}`}>
                   <Icon className="h-4 w-4" />{t.label}
                 </button>
               );
@@ -80,23 +80,23 @@ function Dashboard({ onNav }: { onNav: (t: Tab) => void }) {
       </div>
       <div className="grid md:grid-cols-2 gap-4">
         <Card className="p-5">
-          <div className="text-xs font-semibold uppercase tracking-wide text-[#5B6577] mb-3">Fleet Profitability (recent runs)</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-[#8A8A8A] mb-3">Fleet Profitability (recent runs)</div>
           <div className="flex items-end gap-6">
-            <div><div className="text-2xl font-bold font-mono-data text-[#1FA971]">{money(s.profit.revenue)}</div><div className="text-xs text-[#5B6577]">Revenue</div></div>
-            <div><div className="text-2xl font-bold font-mono-data text-[#E0322B]">{money(s.profit.cost)}</div><div className="text-xs text-[#5B6577]">Cost</div></div>
-            <div><div className="text-2xl font-bold font-mono-data text-[#0B2A6B]">{money(s.profit.net)}</div><div className="text-xs text-[#5B6577]">Net</div></div>
+            <div><div className="text-2xl font-bold font-mono-data text-[#C9A84C]">{money(s.profit.revenue)}</div><div className="text-xs text-[#8A8A8A]">Revenue</div></div>
+            <div><div className="text-2xl font-bold font-mono-data text-[#c96a4c]">{money(s.profit.cost)}</div><div className="text-xs text-[#8A8A8A]">Cost</div></div>
+            <div><div className="text-2xl font-bold font-mono-data text-[#C9A84C]">{money(s.profit.net)}</div><div className="text-xs text-[#8A8A8A]">Net</div></div>
           </div>
           <Button variant="ghost" className="mt-4 w-full" onClick={() => onNav("profit")}>View breakdown</Button>
         </Card>
         <Card className="p-5">
-          <div className="text-xs font-semibold uppercase tracking-wide text-[#5B6577] mb-3">Last Payroll</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-[#8A8A8A] mb-3">Last Payroll</div>
           {s.lastPayroll ? (
             <div>
-              <div className="text-2xl font-bold font-mono-data text-[#0B2A6B]">{money(s.lastPayroll.totalGross ?? 0)}</div>
-              <div className="text-xs text-[#5B6577]">gross · {s.lastPayroll.headcount} employees · {s.lastPayroll.periodStart} → {s.lastPayroll.periodEnd}</div>
+              <div className="text-2xl font-bold font-mono-data text-[#C9A84C]">{money(s.lastPayroll.totalGross ?? 0)}</div>
+              <div className="text-xs text-[#8A8A8A]">gross · {s.lastPayroll.headcount} employees · {s.lastPayroll.periodStart} → {s.lastPayroll.periodEnd}</div>
               <Badge status={s.lastPayroll.status === "finalized" ? "success" : "warning"}>{s.lastPayroll.status}</Badge>
             </div>
-          ) : <div className="text-sm text-[#5B6577]">No payroll runs yet.</div>}
+          ) : <div className="text-sm text-[#8A8A8A]">No payroll runs yet.</div>}
           <Button variant="ghost" className="mt-4 w-full" onClick={() => onNav("payroll")}>Run payroll</Button>
         </Card>
       </div>
@@ -105,12 +105,12 @@ function Dashboard({ onNav }: { onNav: (t: Tab) => void }) {
 }
 
 function Stat({ label, value, sub, tone = "navy" }: { label: string; value: React.ReactNode; sub?: string; tone?: "navy" | "amber" | "success" | "danger" }) {
-  const tones: Record<string, string> = { navy: "text-[#0B2A6B]", amber: "text-[#E09E00]", success: "text-[#1FA971]", danger: "text-[#E0322B]" };
+  const tones: Record<string, string> = { navy: "text-[#C9A84C]", amber: "text-[#FFD700]", success: "text-[#C9A84C]", danger: "text-[#c96a4c]" };
   return (
     <Card className="p-5">
-      <div className="text-xs font-semibold uppercase tracking-wide text-[#5B6577]">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-[#8A8A8A]">{label}</div>
       <div className={`mt-2 text-3xl font-bold font-mono-data ${tones[tone]}`}>{value}</div>
-      {sub && <div className="mt-1 text-sm text-[#5B6577]">{sub}</div>}
+      {sub && <div className="mt-1 text-sm text-[#8A8A8A]">{sub}</div>}
     </Card>
   );
 }
@@ -130,7 +130,7 @@ function People() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <div className="text-sm text-[#5B6577]">{data.people.length} records</div>
+        <div className="text-sm text-[#8A8A8A]">{data.people.length} records</div>
         <Button variant="amber" onClick={() => setShow(true)}><Plus className="h-4 w-4" />Add person</Button>
       </div>
       {show && (
@@ -153,16 +153,16 @@ function People() {
       )}
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-[#F4F6FB] text-[#5B6577] text-xs uppercase"><tr>
+          <thead className="bg-[#0a0a0a] text-[#8A8A8A] text-xs uppercase"><tr>
             <th className="text-left px-4 py-2.5">Name</th><th className="text-left px-4 py-2.5">Position</th>
             <th className="text-left px-4 py-2.5">Type</th><th className="text-left px-4 py-2.5">Status</th>
             <th className="text-right px-4 py-2.5">Pay</th>
           </tr></thead>
           <tbody>
             {data.people.map((p: any) => (
-              <tr key={p.id} className="border-t border-[#E2E7F0] hover:bg-[#F9FBFE]">
-                <td className="px-4 py-2.5 font-semibold text-[#0E1524]">{p.name}<div className="text-xs font-normal text-[#5B6577]">{p.homeBase || p.email}</div></td>
-                <td className="px-4 py-2.5 text-[#5B6577]">{p.position}</td>
+              <tr key={p.id} className="border-t border-[#222222] hover:bg-[#F9FBFE]">
+                <td className="px-4 py-2.5 font-semibold text-[#F5F5F5]">{p.name}<div className="text-xs font-normal text-[#8A8A8A]">{p.homeBase || p.email}</div></td>
+                <td className="px-4 py-2.5 text-[#8A8A8A]">{p.position}</td>
                 <td className="px-4 py-2.5"><Badge status="info">{p.type}</Badge></td>
                 <td className="px-4 py-2.5"><Badge status={p.status === "active" ? "active" : p.status === "terminated" ? "danger" : "warning"}>{p.status}</Badge></td>
                 <td className="px-4 py-2.5 text-right font-mono-data">{p.payType === "mileage" ? `$${p.payRate}/mi` : p.payType === "hourly" ? `$${p.payRate}/hr` : money(p.payRate)}</td>
@@ -192,7 +192,7 @@ function Occurrences() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <div className="text-sm text-[#5B6577]">{data?.occurrences.length ?? 0} logged</div>
+        <div className="text-sm text-[#8A8A8A]">{data?.occurrences.length ?? 0} logged</div>
         <Button variant="amber" onClick={() => setShow(true)}><Plus className="h-4 w-4" />Log occurrence</Button>
       </div>
       {show && (
@@ -218,13 +218,13 @@ function Occurrences() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-[#0E1524]">{o.title}</span>
+                  <span className="font-semibold text-[#F5F5F5]">{o.title}</span>
                   <Badge status={sevTone(o.severity)}>{o.severity}</Badge>
                   <Badge status="info">{o.category}</Badge>
                 </div>
-                <div className="text-sm text-[#5B6577] mt-1">{nameOf(o.personId)} · {o.occurredOn} · reported by {o.reportedBy}</div>
-                {o.description && <p className="text-sm text-[#0E1524] mt-2">{o.description}</p>}
-                {o.actionTaken && <p className="text-xs text-[#5B6577] mt-1"><strong>Action:</strong> {o.actionTaken}</p>}
+                <div className="text-sm text-[#8A8A8A] mt-1">{nameOf(o.personId)} · {o.occurredOn} · reported by {o.reportedBy}</div>
+                {o.description && <p className="text-sm text-[#F5F5F5] mt-2">{o.description}</p>}
+                {o.actionTaken && <p className="text-xs text-[#8A8A8A] mt-1"><strong>Action:</strong> {o.actionTaken}</p>}
               </div>
               <Badge status={o.status === "resolved" ? "resolved" : "warning"}>{o.status}</Badge>
             </div>
@@ -258,7 +258,7 @@ function Screening() {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <div className="flex items-center gap-2 mb-3 text-sm font-bold text-[#0E1524]"><Bot className="h-4 w-4 text-[#FFB400]" />Run an AI pre-screen interview</div>
+        <div className="flex items-center gap-2 mb-3 text-sm font-bold text-[#F5F5F5]"><Bot className="h-4 w-4 text-[#C9A84C]" />Run an AI pre-screen interview</div>
         <div className="grid sm:grid-cols-2 gap-3">
           <Field label="Candidate name"><input className={inp} value={candidate} onChange={(e) => setCandidate(e.target.value)} /></Field>
           <Field label="Position"><input className={inp} value={position} onChange={(e) => setPosition(e.target.value)} /></Field>
@@ -269,7 +269,7 @@ function Screening() {
           <div className="mt-4 space-y-3">
             {questions.map((q, i) => (
               <div key={i}>
-                <div className="text-sm font-medium text-[#0E1524]">{i + 1}. {q}</div>
+                <div className="text-sm font-medium text-[#F5F5F5]">{i + 1}. {q}</div>
                 <textarea className={inp + " mt-1"} rows={2} placeholder="Candidate's answer…" value={answers[i] ?? ""} onChange={(e) => { const a = [...answers]; a[i] = e.target.value; setAnswers(a); }} />
               </div>
             ))}
@@ -280,27 +280,27 @@ function Screening() {
         {result && (
           <Card className="p-4 mt-4" accent>
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-2xl font-bold font-mono-data text-[#0B2A6B]">{result.score}</span>
-              <span className="text-xs text-[#5B6577]">fit score</span>
+              <span className="text-2xl font-bold font-mono-data text-[#C9A84C]">{result.score}</span>
+              <span className="text-xs text-[#8A8A8A]">fit score</span>
               <Badge status={recTone(result.recommendation)}>{result.recommendation}</Badge>
             </div>
-            <p className="text-sm text-[#0E1524]">{result.summary}</p>
+            <p className="text-sm text-[#F5F5F5]">{result.summary}</p>
             {JSON.parse(result.redFlags ?? "[]").length > 0 && (
-              <ul className="mt-2 text-xs text-[#E0322B] list-disc pl-5">{JSON.parse(result.redFlags).map((r: string, i: number) => <li key={i}>{r}</li>)}</ul>
+              <ul className="mt-2 text-xs text-[#c96a4c] list-disc pl-5">{JSON.parse(result.redFlags).map((r: string, i: number) => <li key={i}>{r}</li>)}</ul>
             )}
           </Card>
         )}
       </Card>
 
       <div className="space-y-2">
-        <div className="text-xs font-semibold uppercase text-[#5B6577]">Past screenings</div>
+        <div className="text-xs font-semibold uppercase text-[#8A8A8A]">Past screenings</div>
         {list?.screenings.map((s: any) => (
           <Card key={s.id} className="p-4">
             <div className="flex items-center justify-between">
-              <div><span className="font-semibold text-[#0E1524]">{s.candidateName}</span> <span className="text-sm text-[#5B6577]">· {s.position}</span></div>
-              <div className="flex items-center gap-2"><span className="font-mono-data font-bold text-[#0B2A6B]">{s.score}</span><Badge status={recTone(s.recommendation)}>{s.recommendation}</Badge></div>
+              <div><span className="font-semibold text-[#F5F5F5]">{s.candidateName}</span> <span className="text-sm text-[#8A8A8A]">· {s.position}</span></div>
+              <div className="flex items-center gap-2"><span className="font-mono-data font-bold text-[#C9A84C]">{s.score}</span><Badge status={recTone(s.recommendation)}>{s.recommendation}</Badge></div>
             </div>
-            <p className="text-sm text-[#5B6577] mt-1">{s.summary}</p>
+            <p className="text-sm text-[#8A8A8A] mt-1">{s.summary}</p>
           </Card>
         ))}
       </div>
@@ -326,7 +326,7 @@ function Background() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="text-xs text-[#5B6577]">Structured FCRA-compliant intake. Reports are templated pending a real provider (e.g. Checkr) — no adverse action until results return.</div>
+        <div className="text-xs text-[#8A8A8A]">Structured FCRA-compliant intake. Reports are templated pending a real provider (e.g. Checkr) — no adverse action until results return.</div>
         <Button variant="amber" onClick={() => setShow(true)}><Plus className="h-4 w-4" />New request</Button>
       </div>
       {show && (
@@ -338,15 +338,15 @@ function Background() {
             <Field label="Date of birth"><input type="date" className={inp} value={f.dob} onChange={(e) => setF({ ...f, dob: e.target.value })} /></Field>
           </div>
           <div className="mt-3">
-            <div className="text-xs font-medium text-[#5B6577] mb-1">Checks to run</div>
+            <div className="text-xs font-medium text-[#8A8A8A] mb-1">Checks to run</div>
             <div className="flex flex-wrap gap-2">
               {ALL.map((x) => (
                 <button key={x} onClick={() => setF({ ...f, checkTypes: f.checkTypes.includes(x) ? f.checkTypes.filter((c) => c !== x) : [...f.checkTypes, x] })}
-                  className={`rounded-full px-3 py-1 text-xs font-medium border ${f.checkTypes.includes(x) ? "bg-[#0B2A6B] text-white border-[#0B2A6B]" : "border-[#E2E7F0] text-[#5B6577]"}`}>{x.toUpperCase()}</button>
+                  className={`rounded-full px-3 py-1 text-xs font-medium border ${f.checkTypes.includes(x) ? "bg-[#C9A84C] text-[#0a0a0a] border-[#C9A84C]" : "border-[#222222] text-[#8A8A8A]"}`}>{x.toUpperCase()}</button>
               ))}
             </div>
           </div>
-          <label className="flex items-center gap-2 mt-3 text-sm text-[#0E1524]">
+          <label className="flex items-center gap-2 mt-3 text-sm text-[#F5F5F5]">
             <input type="checkbox" checked={f.consent} onChange={(e) => setF({ ...f, consent: e.target.checked })} />
             Signed FCRA disclosure & authorization on file
           </label>
@@ -362,14 +362,14 @@ function Background() {
           return (
             <Card key={b.id} className="p-4">
               <div className="flex items-center justify-between">
-                <div className="font-semibold text-[#0E1524]">{nameOf(b.personId)}</div>
+                <div className="font-semibold text-[#F5F5F5]">{nameOf(b.personId)}</div>
                 <div className="flex items-center gap-2"><Badge status={b.status === "complete" ? "success" : "warning"}>{b.status}</Badge><Badge status={adjTone(b.adjudication)}>{b.adjudication}</Badge></div>
               </div>
-              <div className="flex flex-wrap gap-1.5 mt-2">{JSON.parse(b.checkTypes ?? "[]").map((c: string) => <span key={c} className="rounded bg-[#EEF2FA] px-2 py-0.5 text-[10px] font-semibold uppercase text-[#5B6577]">{c}</span>)}</div>
+              <div className="flex flex-wrap gap-1.5 mt-2">{JSON.parse(b.checkTypes ?? "[]").map((c: string) => <span key={c} className="rounded bg-[#1C1C1C] px-2 py-0.5 text-[10px] font-semibold uppercase text-[#8A8A8A]">{c}</span>)}</div>
               {Object.keys(findings).length > 0 && (
-                <div className="mt-3 space-y-1.5">{Object.entries(findings).map(([k, v]) => <div key={k} className="text-sm"><span className="font-semibold capitalize text-[#0B2A6B]">{k}:</span> <span className="text-[#5B6577]">{v as string}</span></div>)}</div>
+                <div className="mt-3 space-y-1.5">{Object.entries(findings).map(([k, v]) => <div key={k} className="text-sm"><span className="font-semibold capitalize text-[#C9A84C]">{k}:</span> <span className="text-[#8A8A8A]">{v as string}</span></div>)}</div>
               )}
-              <p className="text-xs text-[#5B6577] mt-2 border-t border-[#E2E7F0] pt-2">{b.reportSummary}</p>
+              <p className="text-xs text-[#8A8A8A] mt-2 border-t border-[#222222] pt-2">{b.reportSummary}</p>
             </Card>
           );
         })}
@@ -408,7 +408,7 @@ function Documents() {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <div className="text-sm font-bold text-[#0E1524] mb-3">Upload a document</div>
+        <div className="text-sm font-bold text-[#F5F5F5] mb-3">Upload a document</div>
         <div className="grid sm:grid-cols-3 gap-3">
           <Field label="Person"><select className={inp} value={personId} onChange={(e) => setPersonId(e.target.value)}><option value="">Select…</option>{people?.people.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
           <Field label="Category"><select className={inp} value={category} onChange={(e) => setCategory(e.target.value)}>{["cdl", "medical_card", "contract", "application", "background", "mvr", "w4", "misc"].map((x) => <option key={x} value={x}>{x.replace("_", " ")}</option>)}</select></Field>
@@ -417,20 +417,20 @@ function Documents() {
       </Card>
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-[#F4F6FB] text-[#5B6577] text-xs uppercase"><tr>
+          <thead className="bg-[#0a0a0a] text-[#8A8A8A] text-xs uppercase"><tr>
             <th className="text-left px-4 py-2.5">Document</th><th className="text-left px-4 py-2.5">Person</th>
             <th className="text-left px-4 py-2.5">Category</th><th className="text-left px-4 py-2.5">Expires</th><th className="px-4 py-2.5"></th>
           </tr></thead>
           <tbody>
             {data?.documents.map((d: any) => (
-              <tr key={d.id} className="border-t border-[#E2E7F0] hover:bg-[#F9FBFE]">
-                <td className="px-4 py-2.5"><div className="flex items-center gap-2 font-medium text-[#0E1524]"><FileText className="h-4 w-4 text-[#0B2A6B]" />{d.name}</div></td>
-                <td className="px-4 py-2.5 text-[#5B6577]">{nameOf(d.personId)}</td>
+              <tr key={d.id} className="border-t border-[#222222] hover:bg-[#F9FBFE]">
+                <td className="px-4 py-2.5"><div className="flex items-center gap-2 font-medium text-[#F5F5F5]"><FileText className="h-4 w-4 text-[#C9A84C]" />{d.name}</div></td>
+                <td className="px-4 py-2.5 text-[#8A8A8A]">{nameOf(d.personId)}</td>
                 <td className="px-4 py-2.5"><Badge status="info">{d.category?.replace("_", " ")}</Badge></td>
-                <td className="px-4 py-2.5">{d.expiresOn ? <span className={expiring(d) ? "text-[#E0322B] font-semibold" : "text-[#5B6577]"}>{d.expiresOn}</span> : <span className="text-[#5B6577]">—</span>}</td>
+                <td className="px-4 py-2.5">{d.expiresOn ? <span className={expiring(d) ? "text-[#c96a4c] font-semibold" : "text-[#8A8A8A]"}>{d.expiresOn}</span> : <span className="text-[#8A8A8A]">—</span>}</td>
                 <td className="px-4 py-2.5 text-right">
-                  {d.dataUrl && <a href={d.dataUrl} download={d.name} className="inline-flex text-[#0B2A6B] hover:text-[#FFB400] mr-3"><Download className="h-4 w-4" /></a>}
-                  <button onClick={() => del.mutate(d.id)} className="text-[#5B6577] hover:text-[#E0322B]"><X className="h-4 w-4" /></button>
+                  {d.dataUrl && <a href={d.dataUrl} download={d.name} className="inline-flex text-[#C9A84C] hover:text-[#C9A84C] mr-3"><Download className="h-4 w-4" /></a>}
+                  <button onClick={() => del.mutate(d.id)} className="text-[#8A8A8A] hover:text-[#c96a4c]"><X className="h-4 w-4" /></button>
                 </td>
               </tr>
             ))}
@@ -465,7 +465,7 @@ function Payroll() {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <div className="text-sm font-bold text-[#0E1524] mb-3">New payroll run</div>
+        <div className="text-sm font-bold text-[#F5F5F5] mb-3">New payroll run</div>
         <div className="grid sm:grid-cols-3 gap-3 mb-3">
           <Field label="Period start"><input type="date" className={inp} value={period.periodStart} onChange={(e) => setPeriod({ ...period, periodStart: e.target.value })} /></Field>
           <Field label="Period end"><input type="date" className={inp} value={period.periodEnd} onChange={(e) => setPeriod({ ...period, periodEnd: e.target.value })} /></Field>
@@ -475,14 +475,14 @@ function Payroll() {
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="text-[#5B6577] text-xs uppercase"><tr><th className="text-left py-2">Employee</th><th className="text-left py-2">Type</th><th className="text-right py-2">Units</th><th className="text-right py-2">Rate</th></tr></thead>
+                <thead className="text-[#8A8A8A] text-xs uppercase"><tr><th className="text-left py-2">Employee</th><th className="text-left py-2">Type</th><th className="text-right py-2">Units</th><th className="text-right py-2">Rate</th></tr></thead>
                 <tbody>
                   {lines.map((l, i) => (
-                    <tr key={l.personId} className="border-t border-[#E2E7F0]">
-                      <td className="py-2 font-medium text-[#0E1524]">{l.personName}</td>
-                      <td className="py-2 text-[#5B6577]">{l.payType}</td>
-                      <td className="py-2 text-right"><input type="number" className="w-24 rounded border border-[#E2E7F0] px-2 py-1 text-right font-mono-data" value={l.units} onChange={(e) => { const n = [...lines]; n[i] = { ...l, units: +e.target.value }; setLines(n); }} /></td>
-                      <td className="py-2 text-right"><input type="number" step="0.01" className="w-24 rounded border border-[#E2E7F0] px-2 py-1 text-right font-mono-data" value={l.rate} onChange={(e) => { const n = [...lines]; n[i] = { ...l, rate: +e.target.value }; setLines(n); }} /></td>
+                    <tr key={l.personId} className="border-t border-[#222222]">
+                      <td className="py-2 font-medium text-[#F5F5F5]">{l.personName}</td>
+                      <td className="py-2 text-[#8A8A8A]">{l.payType}</td>
+                      <td className="py-2 text-right"><input type="number" className="w-24 rounded border border-[#222222] px-2 py-1 text-right font-mono-data" value={l.units} onChange={(e) => { const n = [...lines]; n[i] = { ...l, units: +e.target.value }; setLines(n); }} /></td>
+                      <td className="py-2 text-right"><input type="number" step="0.01" className="w-24 rounded border border-[#222222] px-2 py-1 text-right font-mono-data" value={l.rate} onChange={(e) => { const n = [...lines]; n[i] = { ...l, rate: +e.target.value }; setLines(n); }} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -497,13 +497,13 @@ function Payroll() {
         {preview && (
           <Card className="p-4 mt-3" accent>
             <div className="flex gap-6 mb-3">
-              <div><div className="text-xl font-bold font-mono-data text-[#0B2A6B]">{money(preview.totalGross)}</div><div className="text-xs text-[#5B6577]">Gross</div></div>
-              <div><div className="text-xl font-bold font-mono-data text-[#1FA971]">{money(preview.totalNet)}</div><div className="text-xs text-[#5B6577]">Net</div></div>
+              <div><div className="text-xl font-bold font-mono-data text-[#C9A84C]">{money(preview.totalGross)}</div><div className="text-xs text-[#8A8A8A]">Gross</div></div>
+              <div><div className="text-xl font-bold font-mono-data text-[#C9A84C]">{money(preview.totalNet)}</div><div className="text-xs text-[#8A8A8A]">Net</div></div>
             </div>
             <table className="w-full text-sm">
-              <thead className="text-[#5B6577] text-xs uppercase"><tr><th className="text-left py-1">Employee</th><th className="text-right py-1">Gross</th><th className="text-right py-1">Deductions</th><th className="text-right py-1">Net</th></tr></thead>
+              <thead className="text-[#8A8A8A] text-xs uppercase"><tr><th className="text-left py-1">Employee</th><th className="text-right py-1">Gross</th><th className="text-right py-1">Deductions</th><th className="text-right py-1">Net</th></tr></thead>
               <tbody>{preview.statements.map((s: any) => (
-                <tr key={s.personId} className="border-t border-[#E2E7F0]"><td className="py-1.5">{s.personName}</td><td className="py-1.5 text-right font-mono-data">{money(s.gross)}</td><td className="py-1.5 text-right font-mono-data text-[#E0322B]">-{money(s.totalDeductions)}</td><td className="py-1.5 text-right font-mono-data font-bold">{money(s.net)}</td></tr>
+                <tr key={s.personId} className="border-t border-[#222222]"><td className="py-1.5">{s.personName}</td><td className="py-1.5 text-right font-mono-data">{money(s.gross)}</td><td className="py-1.5 text-right font-mono-data text-[#c96a4c]">-{money(s.totalDeductions)}</td><td className="py-1.5 text-right font-mono-data font-bold">{money(s.net)}</td></tr>
               ))}</tbody>
             </table>
           </Card>
@@ -511,16 +511,16 @@ function Payroll() {
       </Card>
 
       <div className="space-y-2">
-        <div className="text-xs font-semibold uppercase text-[#5B6577]">Payroll history</div>
+        <div className="text-xs font-semibold uppercase text-[#8A8A8A]">Payroll history</div>
         {runs?.runs.map((r: any) => (
           <Card key={r.id} className="p-4 flex items-center justify-between">
             <div>
-              <div className="font-semibold text-[#0E1524]">{r.periodStart} → {r.periodEnd}</div>
-              <div className="text-xs text-[#5B6577]">{r.headcount} employees · gross {money(r.totalGross)} · net {money(r.totalNet)}</div>
+              <div className="font-semibold text-[#F5F5F5]">{r.periodStart} → {r.periodEnd}</div>
+              <div className="text-xs text-[#8A8A8A]">{r.headcount} employees · gross {money(r.totalGross)} · net {money(r.totalNet)}</div>
             </div>
             <div className="flex items-center gap-3">
               <Badge status={r.status === "finalized" ? "success" : "warning"}>{r.status}</Badge>
-              <a href={`/api/hr/payroll/${r.id}/export`} className="inline-flex items-center gap-1 text-sm text-[#0B2A6B] hover:text-[#FFB400]"><Download className="h-4 w-4" />CSV</a>
+              <a href={`/api/hr/payroll/${r.id}/export`} className="inline-flex items-center gap-1 text-sm text-[#C9A84C] hover:text-[#C9A84C]"><Download className="h-4 w-4" />CSV</a>
             </div>
           </Card>
         ))}
@@ -536,19 +536,19 @@ function Profitability() {
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#E2E7F0] text-sm font-bold text-[#0E1524]">Per-driver profitability</div>
+        <div className="px-4 py-3 border-b border-[#222222] text-sm font-bold text-[#F5F5F5]">Per-driver profitability</div>
         <table className="w-full text-sm">
-          <thead className="bg-[#F4F6FB] text-[#5B6577] text-xs uppercase"><tr>
+          <thead className="bg-[#0a0a0a] text-[#8A8A8A] text-xs uppercase"><tr>
             <th className="text-left px-4 py-2.5">Driver</th><th className="text-right px-4 py-2.5">Runs</th><th className="text-right px-4 py-2.5">Miles</th>
             <th className="text-right px-4 py-2.5">Revenue</th><th className="text-right px-4 py-2.5">Cost</th><th className="text-right px-4 py-2.5">Net</th><th className="text-right px-4 py-2.5">Margin</th>
           </tr></thead>
           <tbody>{data.drivers.map((d: any) => (
-            <tr key={d.driverName} className="border-t border-[#E2E7F0]">
-              <td className="px-4 py-2.5 font-semibold text-[#0E1524]">{d.driverName}</td>
+            <tr key={d.driverName} className="border-t border-[#222222]">
+              <td className="px-4 py-2.5 font-semibold text-[#F5F5F5]">{d.driverName}</td>
               <td className="px-4 py-2.5 text-right font-mono-data">{d.runs}</td>
               <td className="px-4 py-2.5 text-right font-mono-data">{d.miles.toLocaleString()}</td>
-              <td className="px-4 py-2.5 text-right font-mono-data text-[#1FA971]">{money(d.revenue)}</td>
-              <td className="px-4 py-2.5 text-right font-mono-data text-[#E0322B]">{money(d.cost)}</td>
+              <td className="px-4 py-2.5 text-right font-mono-data text-[#C9A84C]">{money(d.revenue)}</td>
+              <td className="px-4 py-2.5 text-right font-mono-data text-[#c96a4c]">{money(d.cost)}</td>
               <td className="px-4 py-2.5 text-right font-mono-data font-bold">{money(d.net)}</td>
               <td className="px-4 py-2.5 text-right font-mono-data">{d.margin}%</td>
             </tr>
@@ -556,21 +556,21 @@ function Profitability() {
         </table>
       </Card>
       <Card className="overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#E2E7F0] text-sm font-bold text-[#0E1524]">Per-run detail</div>
+        <div className="px-4 py-3 border-b border-[#222222] text-sm font-bold text-[#F5F5F5]">Per-run detail</div>
         <table className="w-full text-sm">
-          <thead className="bg-[#F4F6FB] text-[#5B6577] text-xs uppercase"><tr>
+          <thead className="bg-[#0a0a0a] text-[#8A8A8A] text-xs uppercase"><tr>
             <th className="text-left px-4 py-2.5">Lane</th><th className="text-left px-4 py-2.5">Driver</th><th className="text-right px-4 py-2.5">Mi</th>
             <th className="text-right px-4 py-2.5">Rev</th><th className="text-right px-4 py-2.5">RPM</th><th className="text-right px-4 py-2.5">CPM</th><th className="text-right px-4 py-2.5">Net</th>
           </tr></thead>
           <tbody>{data.runs.map((r: any) => (
-            <tr key={r.id} className="border-t border-[#E2E7F0]">
-              <td className="px-4 py-2.5 text-[#0E1524]">{r.origin} → {r.destination}</td>
-              <td className="px-4 py-2.5 text-[#5B6577]">{r.driverName}</td>
+            <tr key={r.id} className="border-t border-[#222222]">
+              <td className="px-4 py-2.5 text-[#F5F5F5]">{r.origin} → {r.destination}</td>
+              <td className="px-4 py-2.5 text-[#8A8A8A]">{r.driverName}</td>
               <td className="px-4 py-2.5 text-right font-mono-data">{r.miles}</td>
               <td className="px-4 py-2.5 text-right font-mono-data">{money(r.revenue)}</td>
               <td className="px-4 py-2.5 text-right font-mono-data">${r.rpm}</td>
               <td className="px-4 py-2.5 text-right font-mono-data">${r.cpm}</td>
-              <td className={`px-4 py-2.5 text-right font-mono-data font-bold ${r.net >= 0 ? "text-[#1FA971]" : "text-[#E0322B]"}`}>{money(r.net)}</td>
+              <td className={`px-4 py-2.5 text-right font-mono-data font-bold ${r.net >= 0 ? "text-[#C9A84C]" : "text-[#c96a4c]"}`}>{money(r.net)}</td>
             </tr>
           ))}</tbody>
         </table>
@@ -612,30 +612,30 @@ function AskHumanAI() {
 
   return (
     <Card className="flex flex-col h-[calc(100vh-190px)] xl:sticky xl:top-24 overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-[#E2E7F0] bg-[#0B2A6B] text-white">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FFB400]"><Users className="h-4 w-4 text-[#0B2A6B]" /></div>
-        <div><div className="font-bold text-sm">HumanAI</div><div className="text-[11px] text-[#C7D3EC]">SHRM-SCP · Trucking HR</div></div>
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-[#222222] bg-[#C9A84C] text-[#0a0a0a]">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#C9A84C]"><Users className="h-4 w-4 text-[#C9A84C]" /></div>
+        <div><div className="font-bold text-sm">HumanAI</div><div className="text-[11px] text-[#C9C9C9]">SHRM-SCP · Trucking HR</div></div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map((m, i) => (
           <div key={i} className={`flex gap-2 ${m.role === "user" ? "justify-end" : ""}`}>
-            {m.role === "assistant" && <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#0B2A6B]"><Users className="h-4 w-4 text-[#FFB400]" /></div>}
-            <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "bg-[#0B2A6B] text-white" : "bg-[#F4F6FB] text-[#0E1524]"}`}>{m.content}</div>
+            {m.role === "assistant" && <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#C9A84C]"><Users className="h-4 w-4 text-[#C9A84C]" /></div>}
+            <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "bg-[#C9A84C] text-[#0a0a0a]" : "bg-[#0a0a0a] text-[#F5F5F5]"}`}>{m.content}</div>
           </div>
         ))}
         {messages.length === 1 && (
           <div className="space-y-1.5 pt-1">
             {SUGGESTIONS.map((s) => (
-              <button key={s} onClick={() => send(s)} className="w-full text-left rounded-lg border border-[#E2E7F0] px-3 py-1.5 text-xs text-[#5B6577] hover:border-[#FFB400] hover:text-[#0E1524]">{s}</button>
+              <button key={s} onClick={() => send(s)} className="w-full text-left rounded-lg border border-[#222222] px-3 py-1.5 text-xs text-[#8A8A8A] hover:border-[#C9A84C] hover:text-[#F5F5F5]">{s}</button>
             ))}
           </div>
         )}
-        {busy && <div className="flex gap-2"><div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#0B2A6B]"><Users className="h-4 w-4 text-[#FFB400]" /></div><div className="rounded-2xl bg-[#F4F6FB] px-3 py-2.5"><div className="flex gap-1"><span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#5B6577]" /><span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#5B6577] [animation-delay:150ms]" /><span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#5B6577] [animation-delay:300ms]" /></div></div></div>}
+        {busy && <div className="flex gap-2"><div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#C9A84C]"><Users className="h-4 w-4 text-[#C9A84C]" /></div><div className="rounded-2xl bg-[#0a0a0a] px-3 py-2.5"><div className="flex gap-1"><span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#8A8A8A]" /><span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#8A8A8A] [animation-delay:150ms]" /><span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#8A8A8A] [animation-delay:300ms]" /></div></div></div>}
         <div ref={endRef} />
       </div>
-      <div className="border-t border-[#E2E7F0] p-2.5">
+      <div className="border-t border-[#222222] p-2.5">
         <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex gap-2">
-          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask HumanAI…" className="flex-1 rounded-lg border border-[#E2E7F0] px-3 py-2 text-sm focus:border-[#FFB400] focus:outline-none" />
+          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask HumanAI…" className="flex-1 rounded-lg border border-[#222222] px-3 py-2 text-sm focus:border-[#C9A84C] focus:outline-none" />
           <Button variant="amber" type="submit" disabled={busy}><Send className="h-4 w-4" /></Button>
         </form>
       </div>
@@ -643,9 +643,9 @@ function AskHumanAI() {
   );
 }
 
-const inp = "w-full rounded-lg border border-[#E2E7F0] px-3 py-2 text-sm focus:border-[#FFB400] focus:outline-none";
+const inp = "w-full rounded-lg border border-[#222222] px-3 py-2 text-sm focus:border-[#C9A84C] focus:outline-none";
 function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
-  return <label className={`block ${full ? "sm:col-span-2" : ""}`}><span className="block text-xs font-medium text-[#5B6577] mb-1">{label}</span>{children}</label>;
+  return <label className={`block ${full ? "sm:col-span-2" : ""}`}><span className="block text-xs font-medium text-[#8A8A8A] mb-1">{label}</span>{children}</label>;
 }
 
 const Sparkles_ = Sparkles; // keep import referenced if unused elsewhere

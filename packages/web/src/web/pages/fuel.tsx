@@ -61,15 +61,15 @@ export default function FuelPage() {
             <Card key={s.id} className="p-4" accent={s.id === cheapest}>
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0B2A6B]/10"><Fuel className="h-5 w-5 text-[#0B2A6B]" /></div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#C9A84C]/10"><Fuel className="h-5 w-5 text-[#C9A84C]" /></div>
                   <div>
-                    <div className="font-semibold text-[#0E1524] flex items-center gap-2">{s.name} {s.id === cheapest && <Badge status="success">Cheapest</Badge>}</div>
-                    <div className="text-xs text-[#5B6577]">{s.brand}{"distance" in s ? ` · ${(s as any).distance} mi` : ""} · {s.amenities.join(" · ")}</div>
+                    <div className="font-semibold text-[#F5F5F5] flex items-center gap-2">{s.name} {s.id === cheapest && <Badge status="success">Cheapest</Badge>}</div>
+                    <div className="text-xs text-[#8A8A8A]">{s.brand}{"distance" in s ? ` · ${(s as any).distance} mi` : ""} · {s.amenities.join(" · ")}</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold font-mono-data text-[#0B2A6B]">${s.price.toFixed(2)}</div>
-                  <div className="text-[11px] text-[#5B6577] uppercase">per gal</div>
+                  <div className="text-2xl font-bold font-mono-data text-[#C9A84C]">${s.price.toFixed(2)}</div>
+                  <div className="text-[11px] text-[#8A8A8A] uppercase">per gal</div>
                 </div>
               </div>
               <div className="mt-3 flex gap-2">
@@ -79,9 +79,9 @@ export default function FuelPage() {
                 <Button variant="amber" onClick={() => setPayFor(s.id)}><CreditCard className="h-4 w-4" />Pay with Fuel Card</Button>
               </div>
               {payFor === s.id && (
-                <div className="mt-3 flex items-center gap-2 border-t border-[#E2E7F0] pt-3">
-                  <input type="number" value={gallons} onChange={(e) => setGallons(Number(e.target.value))} className="w-24 rounded-lg border border-[#E2E7F0] px-3 py-2 text-sm font-mono-data" />
-                  <span className="text-sm text-[#5B6577]">gal = <b className="font-mono-data">${(gallons * s.price).toFixed(2)}</b></span>
+                <div className="mt-3 flex items-center gap-2 border-t border-[#222222] pt-3">
+                  <input type="number" value={gallons} onChange={(e) => setGallons(Number(e.target.value))} className="w-24 rounded-lg border border-[#222222] px-3 py-2 text-sm font-mono-data" />
+                  <span className="text-sm text-[#8A8A8A]">gal = <b className="font-mono-data">${(gallons * s.price).toFixed(2)}</b></span>
                   <Button variant="primary" disabled={charge.isPending} onClick={() => charge.mutate({ station: s.name, pricePerGal: s.price })}>Charge</Button>
                   <Button variant="ghost" onClick={() => setPayFor(null)}>Cancel</Button>
                 </div>
@@ -92,17 +92,17 @@ export default function FuelPage() {
 
         <div>
           <Card className="p-5 twe-navy-grad text-white">
-            <div className="flex items-center gap-2 mb-1"><CreditCard className="h-5 w-5 text-[#FFB400]" /><b>Fuel Card</b></div>
-            <div className="text-xs text-[#C7D3EC] mb-4">Pro / Owner-Operator perk</div>
+            <div className="flex items-center gap-2 mb-1"><CreditCard className="h-5 w-5 text-[#C9A84C]" /><b>Fuel Card</b></div>
+            <div className="text-xs text-[#C9C9C9] mb-4">Pro / Owner-Operator perk</div>
             {card.isLoading ? <div className="text-sm">Loading…</div> : (
               <>
                 <div className="font-mono-data text-lg tracking-wider">{card.data?.card.number}</div>
-                <div className="mt-3 text-4xl font-bold font-mono-data text-[#FFB400]">${card.data?.card.balance.toFixed(2)}</div>
-                <div className="text-xs text-[#C7D3EC]">available balance</div>
+                <div className="mt-3 text-4xl font-bold font-mono-data text-[#C9A84C]">${card.data?.card.balance.toFixed(2)}</div>
+                <div className="text-xs text-[#C9C9C9]">available balance</div>
                 <div className="mt-4 space-y-1.5">
                   {card.data?.card.history.slice(0, 4).map((h, i) => (
-                    <div key={i} className="flex justify-between text-xs border-t border-[#163B7E] pt-1.5">
-                      <span className="text-[#C7D3EC]">{h.station} · {h.gallons}g</span>
+                    <div key={i} className="flex justify-between text-xs border-t border-[#222222] pt-1.5">
+                      <span className="text-[#C9C9C9]">{h.station} · {h.gallons}g</span>
                       <span className="font-mono-data">-${h.amount.toFixed(2)}</span>
                     </div>
                   ))}

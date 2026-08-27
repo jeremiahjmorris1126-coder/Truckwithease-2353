@@ -1,428 +1,214 @@
 /**
- * Load Board Licensing System
- * DAT & Uber Freight subscription management per user
- * Track logins, assign credentials, manage seat limits
+ * Load Board Licensing — client wrapper around the real server API.
+ *
+ * The original version of this file (preserved at
+ * docs/launch/loadBoardLicensing.ORIGINAL.js.txt) talked to PocketBase in 12
+ * places against collections that exist on no server, and it invented DAT and
+ * Uber Freight usernames, passwords and license keys in the browser. Those
+ * credentials logged nobody into anything — TruckWithEase has no reseller or
+ * API agreement with DAT, Uber Freight or Truckstop.
+ *
+ * Everything here now goes to /api/licensing (Hono + Turso). Export names and
+ * signatures are unchanged so callers keep working.
+ *
+ * What no longer happens, on purpose:
+ *  - No password or license key is generated. Real load board credentials go
+ *    through /api/vault and this table stores only a `credentialRef`.
+ *  - Nothing is marked `active` automatically. A seat is created `pending`;
+ *    activating it requires a credentialRef or a named person who confirmed
+ *    the account exists.
+ *  - Nothing is purchased or billed. Every response carries `purchased: false`
+ *    or `charged: false`.
  */
 
-import { pb } from './pb.js';
+const BASE = "/api/licensing";
+
+async function call(path, options = {}) {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  let body = null;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+  if (!res.ok) {
+    const msg = (body && (body.error || body.message)) || `${res.status} ${res.statusText}`;
+    throw new Error(msg);
+  }
+  return body;
+}
+
+/** Not supported yet — returned instead of pretending an action happened. */
+function unsupported(what, why) {
+  const note = `${what} is not wired to a server yet. ${why}`;
+  console.warn(`[loadBoardLicensing] ${note}`);
+  return { supported: false, changed: false, charged: false, note };
+}
 
 /**
- * Purchase load board license for user on signup
- * Creates user account for DAT and/or Uber Freight
+ * Create load board seats for a driver.
+ * Creates one PENDING seat per service. No account is purchased, no username
+ * or password is generated, nothing is emailed.
  */
 export async function purchaseLoadBoardLicense(userId, plan) {
-  try {
-    const user = await pb.collection('users').getOne(userId);
-    
-    // DAT license creation
-    const datLicense = await pb.collection('load_board_licenses').create({
-      user_id: userId,
-      service: 'dat',
-      status: 'active',
-      assigned_username: generateUsername(user.name, 'dat'),
-      assigned_password: generateSecurePassword(),
-      license_key: generateLicenseKey('DAT'),
-      purchase_date: new Date().toISOString(),
-      expiry_date: calculateExpiry(30), // 30-day trial or subscription period
-      login_count: 0,
-      last_login: null,
-      access_level: 'standard'
+  const services = ["dat", "uber_freight"];
+  const created = [];
+  for (const service of services) {
+    const out = await call("/", {
+      method: "POST",
+      body: JSON.stringify({
+        driverId: userId,
+        service,
+        days: 30,
+        notes: plan ? `Requested with plan: ${plan}` : null,
+      }),
     });
-
-    // Uber Freight license creation
-    const uberLicense = await pb.collection('load_board_licenses').create({
-      user_id: userId,
-      service: 'uber_freight',
-      status: 'active',
-      assigned_username: generateUsername(user.name, 'uber'),
-      assigned_password: generateSecurePassword(),
-      license_key: generateLicenseKey('UBER'),
-      purchase_date: new Date().toISOString(),
-      expiry_date: calculateExpiry(30),
-      login_count: 0,
-      last_login: null,
-      access_level: 'standard'
-    });
-
-    // Send credentials to user email
-    await sendLicenseCredentials(user.email, {
-      datUsername: datLicense.assigned_username,
-      datPassword: datLicense.assigned_password,
-      datKey: datLicense.license_key,
-      uberUsername: uberLicense.assigned_username,
-      uberPassword: uberLicense.assigned_password,
-      uberKey: uberLicense.license_key
-    });
-
-    // Log license activation
-    await logLicenseEvent(userId, 'license_activated', {
-      dat_license_id: datLicense.id,
-      uber_license_id: uberLicense.id,
-      plan
-    });
-
-    return {
-      dat: datLicense,
-      uber: uberLicense
-    };
-  } catch (error) {
-    console.error('Load board license purchase failed:', error);
-    throw error;
+    created.push(out);
   }
+  return {
+    dat: created[0]?.license ?? null,
+    uber: created[1]?.license ?? null,
+    purchased: false,
+    reseller: created[0]?.reseller ?? null,
+    note: "Seats recorded as pending. No DAT or Uber Freight account was bought or provisioned — TruckWithEase has no reseller agreement with either.",
+  };
 }
 
 /**
- * Generate unique username from driver name
- */
-function generateUsername(fullName, service) {
-  const timestamp = Date.now().toString().slice(-4);
-  const initials = fullName.split(' ').map(n => n[0]).join('').toLowerCase();
-  return `${service}_${initials}_${timestamp}`;
-}
-
-/**
- * Generate cryptographically secure password
- */
-function generateSecurePassword() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-  let password = '';
-  for (let i = 0; i < 16; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
-}
-
-/**
- * Generate license key for verification
- */
-function generateLicenseKey(service) {
-  const timestamp = Date.now().toString();
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `${service}-${timestamp.slice(-8)}-${random}`;
-}
-
-/**
- * Calculate license expiry date
- */
-function calculateExpiry(days) {
-  const expiry = new Date();
-  expiry.setDate(expiry.getDate() + days);
-  return expiry.toISOString();
-}
-
-/**
- * Send credentials to user via email
+ * Emailing credentials is deliberately gone.
+ * Credentials are never generated here, so there is nothing to send. Real
+ * credentials belong in /api/vault and are handed over by a human.
  */
 export async function sendLicenseCredentials(email, credentials) {
-  try {
-    // In production, integrate with email service (SendGrid, AWS SES, etc.)
-    await pb.collection('email_queue').create({
-      recipient_email: email,
-      subject: 'Your Load Board Access - DAT & Uber Freight',
-      template: 'load_board_credentials',
-      data: credentials,
-      status: 'pending',
-      created_at: new Date().toISOString()
-    });
-
-    // Log credential send
-    console.log(`Credentials sent to ${email}`);
-  } catch (error) {
-    console.error('Credential email send failed:', error);
-    throw error;
-  }
+  return unsupported(
+    "Emailing load board credentials",
+    "This app does not generate load board logins, so it has none to send. Store real credentials with /api/vault and share them out of band.",
+  );
 }
 
-/**
- * Track load board login
- */
+/** Record a load board login reported by the client. */
 export async function trackLoadBoardLogin(userId, service, success = true) {
-  try {
-    const license = await pb.collection('load_board_licenses').getFirstListItem(
-      `user_id = "${userId}" && service = "${service}"`
-    );
-
-    const updatedLicense = await pb.collection('load_board_licenses').update(license.id, {
-      login_count: license.login_count + 1,
-      last_login: new Date().toISOString()
-    });
-
-    // Log in access log
-    await pb.collection('load_board_access_log').create({
-      license_id: license.id,
-      user_id: userId,
-      service,
-      login_timestamp: new Date().toISOString(),
-      success,
-      ip_address: getClientIP(),
-      user_agent: navigator.userAgent || null
-    });
-
-    return updatedLicense;
-  } catch (error) {
-    console.error('Login tracking failed:', error);
-    throw error;
-  }
+  const { licenses = [] } = await call(
+    `/list?driverId=${encodeURIComponent(userId)}&service=${encodeURIComponent(service)}`,
+  );
+  const license = licenses[0];
+  if (!license) throw new Error(`No ${service} seat on record for this driver.`);
+  const out = await call(`/${license.id}/login`, { method: "POST", body: JSON.stringify({ success }) });
+  return { ...license, loginCount: out.loginCount, verifiedWithProvider: false, note: out.note };
 }
 
-/**
- * Get client IP (server-side would capture from request)
- */
-function getClientIP() {
-  // In real app, get from server headers
-  return 'client_ip';
-}
-
-/**
- * Retrieve user's load board licenses
- */
+/** All seats on record for a driver. */
 export async function getUserLoadBoardLicenses(userId) {
-  try {
-    const licenses = await pb.collection('load_board_licenses').getFullList({
-      filter: `user_id = "${userId}"`,
-      sort: 'service'
-    });
-
-    return licenses.map(license => ({
-      id: license.id,
-      service: license.service,
-      status: license.status,
-      username: license.assigned_username,
-      licenseKey: license.license_key,
-      expiryDate: license.expiry_date,
-      loginCount: license.login_count,
-      lastLogin: license.last_login,
-      daysRemaining: calculateDaysRemaining(license.expiry_date)
-    }));
-  } catch (error) {
-    console.error('License retrieval failed:', error);
-    throw error;
-  }
+  const { licenses = [], reseller } = await call(`/list?driverId=${encodeURIComponent(userId)}`);
+  return licenses.map((l) => ({
+    id: l.id,
+    service: l.service,
+    status: l.status,
+    username: l.username || null,
+    hasCredential: Boolean(l.hasCredential),
+    licenseKey: null,
+    expiryDate: l.expiresAt,
+    expired: Boolean(l.expired),
+    loginCount: l.loginCount,
+    lastLogin: l.lastLoginAt,
+    daysRemaining: calculateDaysRemaining(l.expiresAt),
+    reseller,
+  }));
 }
 
-/**
- * Calculate days remaining on license
- */
 function calculateDaysRemaining(expiryDate) {
-  const expiry = new Date(expiryDate);
-  const now = new Date();
-  const daysRemaining = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
-  return Math.max(daysRemaining, 0);
+  if (!expiryDate) return 0;
+  const days = Math.ceil((new Date(expiryDate).getTime() - Date.now()) / 86400000);
+  return Number.isFinite(days) ? Math.max(days, 0) : 0;
 }
 
-/**
- * Renew load board license
- */
+/** Extend a seat's expiry. Nothing is billed and no subscription is renewed. */
 export async function renewLoadBoardLicense(licenseId, days = 30) {
-  try {
-    const license = await pb.collection('load_board_licenses').getOne(licenseId);
-    
-    const currentExpiry = new Date(license.expiry_date);
-    const newExpiry = new Date(currentExpiry.getTime() + days * 24 * 60 * 60 * 1000);
+  const out = await call(`/${licenseId}/renew`, { method: "POST", body: JSON.stringify({ days }) });
+  return out.license;
+}
 
-    const renewed = await pb.collection('load_board_licenses').update(licenseId, {
-      expiry_date: newExpiry.toISOString(),
-      renewal_date: new Date().toISOString(),
-      renewal_count: (license.renewal_count || 0) + 1
-    });
-
-    // Log renewal
-    await logLicenseEvent(license.user_id, 'license_renewed', {
-      license_id: licenseId,
-      service: license.service,
-      new_expiry: newExpiry.toISOString()
-    });
-
-    return renewed;
-  } catch (error) {
-    console.error('License renewal failed:', error);
-    throw error;
-  }
+/** Revoke a seat in our records only. The load board is not contacted. */
+export async function revokeLicense(licenseId, reason = "manual_revoke") {
+  const out = await call(`/${licenseId}/status`, {
+    method: "POST",
+    body: JSON.stringify({ status: "revoked", reason }),
+  });
+  return out.license;
 }
 
 /**
- * Revoke or disable license
+ * Assign a seat to a fleet driver.
+ * Seat-limit enforcement is not implemented: there is no fleet_profiles table
+ * with per-fleet seat caps, so no limit is invented here.
  */
-export async function revokeLicense(licenseId, reason = 'manual_revoke') {
-  try {
-    const license = await pb.collection('load_board_licenses').getOne(licenseId);
-
-    await pb.collection('load_board_licenses').update(licenseId, {
-      status: 'revoked',
-      revoked_date: new Date().toISOString(),
-      revoke_reason: reason
-    });
-
-    // Log revocation
-    await logLicenseEvent(license.user_id, 'license_revoked', {
-      license_id: licenseId,
-      service: license.service,
-      reason
-    });
-  } catch (error) {
-    console.error('License revocation failed:', error);
-    throw error;
-  }
+export async function addFleetDriverLicense(fleetId, driverId, service = "dat") {
+  const svc = service === "both" ? "dat" : service;
+  const out = await call("/", {
+    method: "POST",
+    body: JSON.stringify({ driverId, fleetId, service: svc, days: 365 }),
+  });
+  return { ...out.license, seatLimitEnforced: false, purchased: false };
 }
 
-/**
- * Fleet manager: manage seat limits and additional licenses
- */
-export async function addFleetDriverLicense(fleetId, driverId, service = 'both') {
-  try {
-    // Check current seat usage
-    const existingLicenses = await pb.collection('load_board_licenses').getFullList({
-      filter: `fleet_id = "${fleetId}" && service = "${service}"`
-    });
-
-    const fleet = await pb.collection('fleet_profiles').getOne(fleetId);
-    const maxSeats = fleet.max_load_board_seats || 2;
-
-    if (existingLicenses.length >= maxSeats) {
-      throw new Error(`Seat limit reached. Upgrade to add more drivers.`);
-    }
-
-    // Create license for driver
-    const license = await pb.collection('load_board_licenses').create({
-      user_id: driverId,
-      fleet_id: fleetId,
-      service,
-      status: 'active',
-      assigned_username: generateUsername(`fleet_${fleetId}_driver_${driverId}`, service),
-      assigned_password: generateSecurePassword(),
-      license_key: generateLicenseKey(service.toUpperCase()),
-      purchase_date: new Date().toISOString(),
-      expiry_date: calculateExpiry(365), // Annual for fleet drivers
-      access_level: 'fleet_assigned'
-    });
-
-    // Log fleet driver assignment
-    await logLicenseEvent(driverId, 'fleet_license_assigned', {
-      fleet_id: fleetId,
-      license_id: license.id,
-      service
-    });
-
-    return license;
-  } catch (error) {
-    console.error('Fleet driver license addition failed:', error);
-    throw error;
-  }
-}
-
-/**
- * Get fleet dashboard: all driver licenses and seat usage
- */
+/** Fleet view of every seat on record. Seat caps are not tracked. */
 export async function getFleetLoadBoardDashboard(fleetId) {
-  try {
-    const fleet = await pb.collection('fleet_profiles').getOne(fleetId);
-    
-    const licenses = await pb.collection('load_board_licenses').getFullList({
-      filter: `fleet_id = "${fleetId}"`,
-      sort: 'service, assigned_username'
-    });
-
-    const datLicenses = licenses.filter(l => l.service === 'dat');
-    const uberLicenses = licenses.filter(l => l.service === 'uber_freight');
-
+  const { licenses = [], reseller } = await call("/list");
+  const mine = licenses.filter((l) => l.fleetId === fleetId);
+  const shape = (svc) => {
+    const rows = mine.filter((l) => l.service === svc);
     return {
-      fleet_name: fleet.fleet_name,
-      max_dat_seats: fleet.max_dat_logins || 2,
-      max_uber_seats: fleet.max_uber_logins || 2,
-      dat_usage: {
-        active: datLicenses.filter(l => l.status === 'active').length,
-        total: datLicenses.length,
-        drivers: datLicenses.map(l => ({
-          username: l.assigned_username,
-          status: l.status,
-          lastLogin: l.last_login,
-          loginCount: l.login_count
-        }))
-      },
-      uber_usage: {
-        active: uberLicenses.filter(l => l.status === 'active').length,
-        total: uberLicenses.length,
-        drivers: uberLicenses.map(l => ({
-          username: l.assigned_username,
-          status: l.status,
-          lastLogin: l.last_login,
-          loginCount: l.login_count
-        }))
-      },
-      upgrade_available: datLicenses.length < fleet.max_dat_seats || uberLicenses.length < fleet.max_uber_seats
+      active: rows.filter((l) => l.status === "active").length,
+      pending: rows.filter((l) => l.status === "pending").length,
+      total: rows.length,
+      drivers: rows.map((l) => ({
+        id: l.id,
+        driverId: l.driverId,
+        username: l.username || null,
+        status: l.status,
+        lastLogin: l.lastLoginAt,
+        loginCount: l.loginCount,
+      })),
     };
-  } catch (error) {
-    console.error('Fleet dashboard fetch failed:', error);
-    throw error;
-  }
+  };
+  return {
+    fleet_id: fleetId,
+    dat_usage: shape("dat"),
+    uber_usage: shape("uber_freight"),
+    seatLimits: null,
+    reseller,
+    note: "Seat caps are not tracked — there is no fleet seat-limit table. Counts above are seats recorded in TruckWithEase, not accounts confirmed with any load board.",
+  };
 }
 
 /**
- * Upgrade seat limit for fleet
+ * Buying more seats is deliberately gone.
+ * The original charged $15/seat against a payment path that does not exist and
+ * raised the fleet's limit anyway.
  */
 export async function upgradeFleetSeats(fleetId, service, additionalSeats, costPerSeat = 15) {
-  try {
-    const fleet = await pb.collection('fleet_profiles').getOne(fleetId);
-    
-    const currentLimit = service === 'dat' 
-      ? fleet.max_dat_logins || 2
-      : fleet.max_uber_logins || 2;
-
-    const newLimit = currentLimit + additionalSeats;
-    const totalCost = additionalSeats * costPerSeat;
-
-    // Create upgrade order
-    const upgrade = await pb.collection('seat_upgrades').create({
-      fleet_id: fleetId,
-      service,
-      additional_seats: additionalSeats,
-      current_limit: currentLimit,
-      new_limit: newLimit,
-      cost: totalCost,
-      per_seat_price: costPerSeat,
-      status: 'pending',
-      upgrade_date: new Date().toISOString()
-    });
-
-    // Update fleet (would require payment processing in production)
-    await pb.collection('fleet_profiles').update(fleetId, {
-      [service === 'dat' ? 'max_dat_logins' : 'max_uber_logins']: newLimit
-    });
-
-    // Log upgrade
-    await logLicenseEvent(fleetId, 'seat_upgrade_purchased', {
-      service,
-      seats_added: additionalSeats,
-      new_total: newLimit,
-      cost: totalCost
-    });
-
-    return upgrade;
-  } catch (error) {
-    console.error('Seat upgrade failed:', error);
-    throw error;
-  }
+  return unsupported(
+    "Buying additional load board seats",
+    "There is no reseller agreement and no live payment provider, so no seat can be bought and nothing was charged.",
+  );
 }
 
 /**
- * Log all license events for audit trail
+ * Audit logging is deliberately gone.
+ * There is no load_board_audit_log table; silently swallowing writes into one
+ * would make the audit trail look real when it is empty.
  */
 export async function logLicenseEvent(userId, eventType, eventData) {
-  try {
-    await pb.collection('load_board_audit_log').create({
-      user_id: userId,
-      event_type: eventType,
-      event_data: eventData,
-      timestamp: new Date().toISOString(),
-      ip_address: getClientIP()
-    });
-  } catch (error) {
-    console.error('Audit log failed:', error);
-  }
+  console.info(`[loadBoardLicensing] ${eventType} for ${userId}`, eventData);
+  return { logged: false, note: "No audit table exists yet — event written to the console only." };
 }
 
 export default {
   purchaseLoadBoardLicense,
+  sendLicenseCredentials,
   trackLoadBoardLogin,
   getUserLoadBoardLicenses,
   renewLoadBoardLicense,
@@ -430,5 +216,5 @@ export default {
   addFleetDriverLicense,
   getFleetLoadBoardDashboard,
   upgradeFleetSeats,
-  logLicenseEvent
+  logLicenseEvent,
 };

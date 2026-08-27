@@ -1,238 +1,341 @@
-import { useState, useEffect } from "react";
-import PocketBase from "pocketbase";
+import { useCallback, useEffect, useState } from 'react';
 
-const pb = new PocketBase();
+// Driver Scorecard — reads /api/safety, which is a real scoring engine.
+//
+// What this page used to be (preserved at docs/launch/DriverScorecardPage.ORIGINAL.jsx.txt):
+//   five hard-coded drivers ("Ray Davis 96", "John Miller 78"), a pulsing
+//   "LIVE SCORING" dot next to them, and a client-side weighted average of
+//   those constants. No scoring engine existed anywhere in the codebase.
+//
+// What it is now: every number comes from POST/GET /api/safety, computed from
+// hos_logs, dvir_inspections, hr_occurrences, speeding_events and
+// eld_telemetry. Rules that must not be softened:
+//   * A component with no source rows renders as MISSING with the reason, not
+//     as 100 and not as 0.
+//   * A driver without enough data shows NO SCORE, not a placeholder number.
+//   * Accident risk is never shown as a percentage. The engine returns null and
+//     this page prints why.
+//   * "Load demo history" writes clearly-marked DEMO rows for the seeded demo
+//     drivers only, and the banner says so while they are loaded.
 
-const C = {
-  gold: "#D4AF37",
-  goldLight: "#F0D060",
-  black: "#0a0a0a",
-  card: "#111111",
-  border: "#222222",
-  green: "#22c55e",
-  amber: "#f59e0b",
-  red: "#ef4444",
-  blue: "#3b82f6",
+const GOLD = '#C9A84C';
+const GOLD_BRIGHT = '#FFD700';
+const BLACK = '#0a0a0a';
+const CARD = '#161616';
+const NAV = '#111111';
+const BORDER = '#222222';
+const WARN = '#c96a4c';
+const MUTED = '#8a8a8a';
+const DIM = '#666666';
+
+const COMPONENT_LABELS = {
+  speeding: { label: 'Speeding', icon: '🚨', source: 'speeding_events + ELD odometer' },
+  hos: { label: 'HOS Discipline', icon: '⏱️', source: 'hos_logs (completed days only)' },
+  violations: { label: 'Violations & Accidents', icon: '⚖️', source: 'hr_occurrences' },
+  dvir: { label: 'DVIR Pairing', icon: '🔧', source: 'dvir_inspections' },
+  fatigue: { label: 'Fatigue (inverted)', icon: '😴', source: 'eld_telemetry' },
 };
 
-const DRIVERS = [
-  { id: "d1", name: "Ray Davis", truck: "TR-4821", miles: 12450, safetyScore: 96, hosCompliance: 99, inspections: 3, violations: 0, dvirs: 28, rigBucks: 2840, trend: "up", avatar: "RD" },
-  { id: "d2", name: "Maria Santos", truck: "TR-3390", miles: 9870, safetyScore: 91, hosCompliance: 97, inspections: 2, violations: 0, dvirs: 22, rigBucks: 1950, trend: "up", avatar: "MS" },
-  { id: "d3", name: "John Miller", truck: "TR-5512", miles: 11200, safetyScore: 78, hosCompliance: 88, inspections: 4, violations: 1, dvirs: 19, rigBucks: 1200, trend: "down", avatar: "JM" },
-  { id: "d4", name: "Tanya Rhodes", truck: "TR-2201", miles: 8900, safetyScore: 94, hosCompliance: 100, inspections: 2, violations: 0, dvirs: 25, rigBucks: 2100, trend: "up", avatar: "TR" },
-  { id: "d5", name: "Carlos Vega", truck: "TR-6677", miles: 13100, safetyScore: 88, hosCompliance: 94, inspections: 5, violations: 0, dvirs: 31, rigBucks: 2450, trend: "stable", avatar: "CV" },
-];
+const GRADE_COLOR = (grade) => {
+  if (grade === 'platinum' || grade === 'gold') return GOLD_BRIGHT;
+  if (grade === 'silver') return GOLD;
+  return WARN;
+};
 
-const CATEGORIES = [
-  { key: "safetyScore", label: "Safety Score", max: 100, icon: "🛡️", weight: 35 },
-  { key: "hosCompliance", label: "HOS Compliance", max: 100, icon: "⏱️", weight: 30 },
-  { key: "dvirs", label: "DVIRs Completed", max: 35, icon: "✅", weight: 20 },
-  { key: "inspections", label: "Inspections Passed", max: 6, icon: "🔍", weight: 15 },
-];
+function Bar({ value }) {
+  return (
+    <div style={{ height: 6, background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: 3, overflow: 'hidden' }}>
+      <div style={{ width: `${value}%`, height: '100%', background: `linear-gradient(90deg,#8A6E2F,${GOLD},${GOLD_BRIGHT})` }} />
+    </div>
+  );
+}
 
 export default function DriverScorecardPage() {
-  const [selected, setSelected] = useState(DRIVERS[0]);
-  const [tab, setTab] = useState("overview");
-  const [pulse, setPulse] = useState(false);
+  const [fleet, setFleet] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [history, setHistory] = useState(null);
+  const [weights, setWeights] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const [demoNote, setDemoNote] = useState('');
+
+  const loadFleet = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [f, w] = await Promise.all([
+        fetch('/api/safety').then((r) => r.json()),
+        fetch('/api/safety/weights').then((r) => r.json()),
+      ]);
+      setFleet(f);
+      setWeights(w);
+      if (!selectedId && f?.drivers?.length) setSelectedId(f.drivers[0].driverId);
+    } catch (e) {
+      setError(`Could not reach the scoring API: ${e.message}. Nothing is being shown from cache — this page has no fallback numbers.`);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedId]);
+
+  useEffect(() => { loadFleet(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const iv = setInterval(() => setPulse(p => !p), 2000);
-    return () => clearInterval(iv);
-  }, []);
+    if (!selectedId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [d, h] = await Promise.all([
+          fetch(`/api/safety/${selectedId}`).then((r) => r.json()),
+          fetch(`/api/safety/history/${selectedId}`).then((r) => r.json()),
+        ]);
+        if (!cancelled) { setDetail(d); setHistory(h); }
+      } catch (e) {
+        if (!cancelled) setError(`Could not load driver detail: ${e.message}`);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedId]);
 
-  const overallScore = d => Math.round(
-    CATEGORIES.reduce((sum, c) => sum + (Math.min(d[c.key], c.max) / c.max) * c.weight, 0)
-  );
+  const recompute = async () => {
+    if (!selectedId) return;
+    setBusy('recompute');
+    try {
+      const r = await fetch(`/api/safety/recompute/${selectedId}`, { method: 'POST' }).then((res) => res.json());
+      setDetail((prev) => ({ ...(prev || {}), ...r }));
+      const h = await fetch(`/api/safety/history/${selectedId}`).then((res) => res.json());
+      setHistory(h);
+      await loadFleet();
+    } catch (e) {
+      setError(`Recompute failed: ${e.message}`);
+    } finally {
+      setBusy('');
+    }
+  };
 
-  const scoreColor = s => s >= 90 ? C.green : s >= 75 ? C.amber : C.red;
-  const trendIcon = t => t === "up" ? "↑" : t === "down" ? "↓" : "→";
-  const trendColor = t => t === "up" ? C.green : t === "down" ? C.red : C.amber;
+  const loadDemo = async () => {
+    setBusy('demo');
+    try {
+      const r = await fetch('/api/safety/demo-history', { method: 'POST' }).then((res) => res.json());
+      setDemoNote(r.alreadyPresent
+        ? 'Demo history was already loaded — nothing was duplicated.'
+        : `Wrote demo history: ${r.written?.hosLogs ?? 0} HOS logs, ${r.written?.dvirs ?? 0} DVIRs, ${r.written?.speedingEvents ?? 0} speeding events, ${r.written?.telemetry ?? 0} telemetry rows across ${r.drivers} demo drivers.`);
+      await loadFleet();
+      if (selectedId) {
+        const d = await fetch(`/api/safety/${selectedId}`).then((res) => res.json());
+        setDetail(d);
+      }
+    } catch (e) {
+      setError(`Demo load failed: ${e.message}`);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const drivers = fleet?.drivers ?? [];
+  const isDemoFleet = drivers.some((d) => String(d.driverId).startsWith('drv-'));
 
   return (
-    <div style={{ minHeight: "100vh", background: C.black, color: "#fff", fontFamily: "'Oswald', sans-serif" }}>
-      {/* Header */}
-      <div style={{ background: `linear-gradient(135deg, #0a0a0a 0%, #1a1200 100%)`, borderBottom: `2px solid ${C.gold}`, padding: "20px 32px", display: "flex", alignItems: "center", gap: 16 }}>
-        <img src="/static/twe-full-logo.jpg" alt="TruckWithEase" style={{ height: 48, borderRadius: 8 }} />
+    <div style={{ minHeight: '100vh', background: BLACK, color: '#fff', fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div style={{ background: NAV, borderBottom: `2px solid ${GOLD}`, padding: '18px 28px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: C.gold, letterSpacing: 2 }}>DRIVER SCORECARD</div>
-          <div style={{ fontSize: 13, color: "#888", letterSpacing: 1 }}>LIVE PERFORMANCE INTELLIGENCE — POWERED BY GHOST NERVE</div>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, letterSpacing: 2, color: GOLD_BRIGHT, lineHeight: 1 }}>DRIVER SCORECARD</div>
+          <div style={{ fontSize: 12, color: MUTED, letterSpacing: 1 }}>
+            COMPUTED SERVER-SIDE FROM HOS LOGS, DVIRs, OCCURRENCES, SPEEDING EVENTS AND ELD TELEMETRY
+          </div>
         </div>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.green, boxShadow: `0 0 12px ${C.green}`, animation: pulse ? "none" : "pulse 2s infinite" }} />
-          <span style={{ color: C.green, fontSize: 13 }}>LIVE SCORING</span>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button onClick={loadFleet} disabled={loading} style={btn(false)}>{loading ? 'Loading…' : 'Refresh'}</button>
+          <button onClick={loadDemo} disabled={busy === 'demo'} style={btn(false)}>{busy === 'demo' ? 'Writing…' : 'Load demo history'}</button>
+          <button onClick={recompute} disabled={!selectedId || busy === 'recompute'} style={btn(true)}>{busy === 'recompute' ? 'Scoring…' : 'Recompute & save snapshot'}</button>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 0, height: "calc(100vh - 90px)" }}>
-        {/* Driver List */}
-        <div style={{ borderRight: `1px solid ${C.border}`, overflowY: "auto", padding: 16 }}>
-          <div style={{ fontSize: 11, color: "#666", letterSpacing: 2, marginBottom: 12 }}>YOUR DRIVERS</div>
-          {DRIVERS.map(d => {
-            const score = overallScore(d);
-            const isSelected = selected.id === d.id;
-            return (
-              <div key={d.id} onClick={() => setSelected(d)} style={{ cursor: "pointer", padding: "14px 16px", borderRadius: 10, marginBottom: 8, background: isSelected ? "#1a1200" : "#0f0f0f", border: `1px solid ${isSelected ? C.gold : C.border}`, transition: "all 0.2s" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: `linear-gradient(135deg, ${C.gold}, #8B6914)`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 15, color: "#000", flexShrink: 0 }}>{d.avatar}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: isSelected ? C.gold : "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
-                    <div style={{ fontSize: 12, color: "#666" }}>{d.truck}</div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: scoreColor(score) }}>{score}</div>
-                    <div style={{ fontSize: 12, color: trendColor(d.trend) }}>{trendIcon(d.trend)}</div>
-                  </div>
-                </div>
-                <div style={{ marginTop: 10, height: 4, borderRadius: 2, background: "#222", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${score}%`, background: `linear-gradient(90deg, ${scoreColor(score)}, ${scoreColor(score)}88)`, borderRadius: 2, transition: "width 0.6s" }} />
-                </div>
-              </div>
-            );
-          })}
+      {error && (
+        <div style={{ margin: '14px 28px', padding: 14, background: '#1a0f0c', border: `1px solid ${WARN}`, borderRadius: 8, color: WARN, fontSize: 13 }}>{error}</div>
+      )}
+      {demoNote && (
+        <div style={{ margin: '14px 28px', padding: 14, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, color: MUTED, fontSize: 13 }}>{demoNote}</div>
+      )}
+
+      <div style={{ padding: '18px 28px 40px' }}>
+        {/* Fleet summary */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12, marginBottom: 18 }}>
+          <Stat label="Drivers scored" value={fleet ? `${fleet.fleet.driversScored} of ${fleet.fleet.driversTotal}` : '—'} />
+          <Stat label={`Fleet average (${fleet?.windowDays ?? 30}-day)`} value={fleet?.fleet.averageScore ?? 'No score'} accent />
+          <Stat label="Unscored — not enough data" value={fleet ? fleet.fleet.driversUnscored : '—'} />
+          <Stat label="Accident risk" value="Not modeled" />
         </div>
 
-        {/* Detail Panel */}
-        <div style={{ overflowY: "auto", padding: "24px 32px" }}>
-          {/* Driver Header */}
-          <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 28 }}>
-            <div style={{ width: 80, height: 80, borderRadius: "50%", background: `linear-gradient(135deg, ${C.gold}, #8B6914)`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 28, color: "#000", border: `3px solid ${C.gold}` }}>{selected.avatar}</div>
-            <div>
-              <div style={{ fontSize: 36, fontWeight: 700, color: C.gold, letterSpacing: 2 }}>{selected.name.toUpperCase()}</div>
-              <div style={{ fontSize: 15, color: "#888" }}>Truck {selected.truck} · {selected.miles.toLocaleString()} miles this period</div>
-              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <span style={{ padding: "3px 10px", borderRadius: 20, background: "#1a1a1a", border: `1px solid ${scoreColor(overallScore(selected))}`, color: scoreColor(overallScore(selected)), fontSize: 12 }}>{overallScore(selected) >= 90 ? "TOP PERFORMER" : overallScore(selected) >= 75 ? "GOOD STANDING" : "NEEDS COACHING"}</span>
-                <span style={{ padding: "3px 10px", borderRadius: 20, background: "#1a1a1a", border: `1px solid ${trendColor(selected.trend)}`, color: trendColor(selected.trend), fontSize: 12 }}>TRENDING {selected.trend.toUpperCase()}</span>
-              </div>
+        <div style={{ padding: 14, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10, fontSize: 13, color: MUTED, marginBottom: 18, lineHeight: 1.6 }}>
+          {fleet?.note}
+          {isDemoFleet && (
+            <div style={{ marginTop: 8, color: WARN }}>
+              This roster is the seeded demo fleet (driver ids drv-1…drv-5). Their records are demo rows, not readings from a truck. Scores below are the real engine running over those demo rows.
             </div>
-            <div style={{ marginLeft: "auto", textAlign: "center" }}>
-              <div style={{ fontSize: 72, fontWeight: 900, color: scoreColor(overallScore(selected)), lineHeight: 1 }}>{overallScore(selected)}</div>
-              <div style={{ fontSize: 13, color: "#666" }}>OVERALL SCORE</div>
-            </div>
-          </div>
+          )}
+        </div>
 
-          {/* Tabs */}
-          <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: `1px solid ${C.border}`, paddingBottom: 0 }}>
-            {["overview", "compliance", "earnings", "coaching"].map(t => (
-              <button key={t} onClick={() => setTab(t)} style={{ padding: "10px 20px", background: "none", border: "none", borderBottom: tab === t ? `3px solid ${C.gold}` : "3px solid transparent", color: tab === t ? C.gold : "#666", fontSize: 14, fontFamily: "'Oswald', sans-serif", letterSpacing: 1, cursor: "pointer", textTransform: "uppercase", transition: "all 0.2s" }}>{t}</button>
-            ))}
-          </div>
-
-          {tab === "overview" && (
-            <div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
-                {[
-                  { label: "Safety Score", value: selected.safetyScore, suffix: "/100", color: scoreColor(selected.safetyScore), icon: "🛡️" },
-                  { label: "HOS Compliance", value: selected.hosCompliance, suffix: "%", color: scoreColor(selected.hosCompliance), icon: "⏱️" },
-                  { label: "DVIRs", value: selected.dvirs, suffix: " done", color: C.blue, icon: "✅" },
-                  { label: "Rig Bucks", value: selected.rigBucks.toLocaleString(), suffix: " pts", color: C.gold, icon: "⭐" },
-                ].map((stat, i) => (
-                  <div key={i} style={{ padding: 20, borderRadius: 12, background: "#111", border: `1px solid ${C.border}`, textAlign: "center" }}>
-                    <div style={{ fontSize: 28 }}>{stat.icon}</div>
-                    <div style={{ fontSize: 32, fontWeight: 700, color: stat.color, margin: "8px 0" }}>{stat.value}<span style={{ fontSize: 14, color: "#666" }}>{stat.suffix}</span></div>
-                    <div style={{ fontSize: 12, color: "#666" }}>{stat.label}</div>
-                  </div>
-                ))}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px,300px) 1fr', gap: 18, alignItems: 'start' }}>
+          {/* Roster */}
+          <div>
+            <div style={{ fontSize: 11, color: DIM, letterSpacing: 2, marginBottom: 10 }}>ROSTER</div>
+            {drivers.length === 0 && !loading && (
+              <div style={{ padding: 16, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10, color: MUTED, fontSize: 13 }}>
+                No drivers on file. Add drivers before scoring — this page invents nobody.
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                {CATEGORIES.map((cat, i) => {
-                  const val = selected[cat.key];
-                  const pct = Math.min(val / cat.max, 1) * 100;
-                  return (
-                    <div key={i} style={{ padding: 20, borderRadius: 12, background: "#111", border: `1px solid ${C.border}` }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                        <span style={{ fontSize: 15, color: "#ccc" }}>{cat.icon} {cat.label}</span>
-                        <span style={{ fontSize: 15, fontWeight: 700, color: scoreColor(pct) }}>{Math.round(pct)}%</span>
-                      </div>
-                      <div style={{ height: 8, borderRadius: 4, background: "#222" }}>
-                        <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, ${scoreColor(pct)}, ${scoreColor(pct)}88)`, borderRadius: 4, transition: "width 0.8s ease" }} />
-                      </div>
-                      <div style={{ fontSize: 12, color: "#555", marginTop: 8 }}>{cat.weight}% of overall score</div>
+            )}
+            {drivers.map((d) => {
+              const on = d.driverId === selectedId;
+              return (
+                <button
+                  key={d.driverId}
+                  onClick={() => setSelectedId(d.driverId)}
+                  style={{
+                    width: '100%', textAlign: 'left', cursor: 'pointer', marginBottom: 8, padding: '12px 14px',
+                    background: on ? '#1a1200' : CARD, border: `1px solid ${on ? GOLD : BORDER}`, borderRadius: 10, color: '#fff',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 16, color: on ? GOLD_BRIGHT : '#fff' }}>{d.name}</div>
+                      <div style={{ fontSize: 12, color: DIM }}>{d.truckNumber || 'no truck'} · {d.status?.replace('_', ' ')}</div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 20, color: d.score === null ? DIM : GRADE_COLOR(d.grade) }}>
+                        {d.score === null ? '—' : d.score}
+                      </div>
+                      <div style={{ fontSize: 10, color: DIM, letterSpacing: 1 }}>{d.score === null ? 'NO DATA' : (d.gradeLabel || '').toUpperCase()}</div>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 8, fontSize: 11, color: DIM }}>
+                    {d.componentsScored.length}/5 components have data{d.componentsMissing.length ? ` · missing: ${d.componentsMissing.join(', ')}` : ''}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
 
-          {tab === "compliance" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              {[
-                { label: "HOS Violations", value: selected.violations, good: selected.violations === 0, note: selected.violations === 0 ? "Zero violations — excellent record" : "Coaching recommended" },
-                { label: "DOT Inspections Passed", value: selected.inspections, good: true, note: "All inspections cleared" },
-                { label: "DVIR Completion Rate", value: `${Math.round((selected.dvirs / 31) * 100)}%`, good: selected.dvirs >= 25, note: selected.dvirs >= 25 ? "Consistent daily reporting" : "Missed some DVIRs this period" },
-                { label: "HOS Compliance Rate", value: `${selected.hosCompliance}%`, good: selected.hosCompliance >= 95, note: selected.hosCompliance >= 95 ? "Fully compliant" : "Minor compliance gaps detected" },
-              ].map((item, i) => (
-                <div key={i} style={{ padding: 24, borderRadius: 12, background: "#111", border: `1px solid ${item.good ? C.green + "44" : C.amber + "44"}` }}>
-                  <div style={{ fontSize: 13, color: "#666", marginBottom: 8, letterSpacing: 1 }}>{item.label.toUpperCase()}</div>
-                  <div style={{ fontSize: 42, fontWeight: 700, color: item.good ? C.green : C.amber }}>{item.value}</div>
-                  <div style={{ fontSize: 13, color: item.good ? C.green : C.amber, marginTop: 8 }}>{item.good ? "✓" : "⚠"} {item.note}</div>
+          {/* Detail */}
+          <div>
+            {!detail && <div style={{ padding: 20, color: MUTED, fontSize: 13 }}>Select a driver.</div>}
+            {detail && (
+              <>
+                <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 20, marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, letterSpacing: 1, color: GOLD_BRIGHT }}>
+                        {detail.driver?.name ?? detail.driverId}
+                      </div>
+                      <div style={{ fontSize: 12, color: MUTED }}>
+                        {detail.driver?.truckNumber || 'no truck'} · {detail.windowDays}-day window · {detail.milesObserved === null ? 'no ELD miles recorded' : `${detail.milesObserved.toLocaleString()} mi of telemetry`}
+                      </div>
+                    </div>
+                    <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 54, lineHeight: 1, color: detail.score === null ? DIM : GRADE_COLOR(detail.grade) }}>
+                        {detail.score === null ? 'NO SCORE' : detail.score}
+                      </div>
+                      <div style={{ fontSize: 12, letterSpacing: 2, color: MUTED }}>
+                        {detail.score === null ? 'NOT ENOUGH DATA' : (detail.gradeLabel || '').toUpperCase()}
+                      </div>
+                      {history?.trend !== null && history?.trend !== undefined && (
+                        <div style={{ fontSize: 12, color: history.trend >= 0 ? GOLD : WARN, marginTop: 4 }}>
+                          {history.trend >= 0 ? '▲' : '▼'} {Math.abs(history.trend)} pts vs oldest saved snapshot
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 14, fontSize: 13, color: MUTED, lineHeight: 1.6 }}>{detail.note}</div>
                 </div>
-              ))}
-            </div>
-          )}
 
-          {tab === "earnings" && (
-            <div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
-                {[
-                  { label: "Miles This Period", value: selected.miles.toLocaleString(), icon: "🛣️", color: C.blue },
-                  { label: "Est. Gross Pay", value: `$${(selected.miles * 0.58).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`, icon: "💵", color: C.green },
-                  { label: "Rig Bucks Earned", value: selected.rigBucks.toLocaleString(), icon: "⭐", color: C.gold },
-                ].map((item, i) => (
-                  <div key={i} style={{ padding: 24, borderRadius: 12, background: "#111", border: `1px solid ${C.border}`, textAlign: "center" }}>
-                    <div style={{ fontSize: 32 }}>{item.icon}</div>
-                    <div style={{ fontSize: 32, fontWeight: 700, color: item.color, margin: "8px 0" }}>{item.value}</div>
-                    <div style={{ fontSize: 13, color: "#666" }}>{item.label}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ padding: 24, borderRadius: 12, background: "#111", border: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 16, color: C.gold, marginBottom: 16, letterSpacing: 1 }}>PAY BREAKDOWN</div>
-                {[
-                  { label: "Base Miles Pay", value: `$${(selected.miles * 0.52).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}` },
-                  { label: "Safety Bonus", value: selected.safetyScore >= 90 ? "+$350" : selected.safetyScore >= 80 ? "+$150" : "$0", color: C.green },
-                  { label: "HOS Compliance Bonus", value: selected.hosCompliance >= 95 ? "+$200" : "$0", color: C.green },
-                  { label: "Deductions", value: selected.violations > 0 ? `-$${selected.violations * 100}` : "$0", color: selected.violations > 0 ? C.red : "#fff" },
-                ].map((row, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-                    <span style={{ color: "#999" }}>{row.label}</span>
-                    <span style={{ color: row.color || "#fff", fontWeight: 600 }}>{row.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                {/* Components */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 12, marginBottom: 14 }}>
+                  {Object.entries(detail.components || {}).map(([key, comp]) => {
+                    const meta = COMPONENT_LABELS[key] || { label: key, icon: '•', source: '' };
+                    const w = detail.weights?.[key];
+                    return (
+                      <div key={key} style={{ background: CARD, border: `1px solid ${comp.score === null ? BORDER : GOLD}`, borderRadius: 10, padding: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span>{meta.icon}</span>
+                          <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: 15, color: '#fff' }}>{meta.label}</span>
+                          <span style={{ marginLeft: 'auto', fontFamily: "'JetBrains Mono', monospace", fontSize: 22, color: comp.score === null ? DIM : GOLD_BRIGHT }}>
+                            {comp.score === null ? 'MISSING' : comp.score}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: DIM, margin: '4px 0 10px' }}>weight {w ?? '—'}% · source: {meta.source}</div>
+                        {comp.score !== null && <Bar value={comp.score} />}
+                        <div style={{ fontSize: 12, color: comp.score === null ? WARN : MUTED, marginTop: 10, lineHeight: 1.5 }}>{comp.note}</div>
+                        {comp.detail && Object.keys(comp.detail).length > 0 && (
+                          <div style={{ marginTop: 10, display: 'grid', gap: 4 }}>
+                            {Object.entries(comp.detail).filter(([, v]) => v === null || typeof v !== 'object').map(([k, v]) => (
+                              <div key={k} style={{ display: 'flex', fontSize: 11, color: DIM, fontFamily: "'JetBrains Mono', monospace" }}>
+                                <span style={{ flex: 1 }}>{k}</span>
+                                <span style={{ color: MUTED }}>{v === null ? 'none' : String(v)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
 
-          {tab === "coaching" && (
-            <div>
-              <div style={{ padding: 20, borderRadius: 12, background: "#111", border: `1px solid ${C.gold}44`, marginBottom: 16 }}>
-                <div style={{ fontSize: 16, color: C.gold, marginBottom: 12 }}>🧠 GHOST NERVE AI COACHING — {selected.name.toUpperCase()}</div>
-                {selected.safetyScore >= 90 ? (
-                  <div style={{ color: C.green, lineHeight: 1.7 }}>✓ Top performer. No immediate coaching needed.<br />Recommend for mentor program — this driver's habits improve fleet-wide scores when shared.</div>
-                ) : selected.safetyScore >= 80 ? (
-                  <div style={{ color: C.amber, lineHeight: 1.7 }}>⚠ Good performance with room to improve.<br />Schedule a 15-minute safety review this week. Focus on HOS log accuracy and DVIR consistency.</div>
-                ) : (
-                  <div style={{ color: C.red, lineHeight: 1.7 }}>🔴 Coaching required immediately.<br />Schedule a mandatory safety meeting within 48 hours. Review violation details, run Game Up training module, and monitor closely for 30 days.</div>
+                {/* Accident risk — deliberately not a number */}
+                <div style={{ background: CARD, border: `1px dashed ${WARN}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
+                  <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 15, color: WARN, marginBottom: 6 }}>ACCIDENT RISK — NOT MODELED</div>
+                  <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>{detail.accidentRiskNote}</div>
+                </div>
+
+                {/* Snapshots */}
+                <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 15, color: GOLD, marginBottom: 8 }}>SAVED SNAPSHOTS</div>
+                  <div style={{ fontSize: 12, color: MUTED, marginBottom: 10 }}>{history?.note}</div>
+                  {(history?.snapshots ?? []).slice(0, 12).map((s) => (
+                    <div key={s.id} style={{ display: 'flex', gap: 10, fontSize: 12, padding: '6px 0', borderTop: `1px solid ${BORDER}`, fontFamily: "'JetBrains Mono', monospace", color: MUTED }}>
+                      <span style={{ flex: 1 }}>{new Date(s.computedAt).toLocaleString()}</span>
+                      <span style={{ color: s.score === null ? DIM : GOLD_BRIGHT }}>{s.score === null ? 'no score' : s.score}</span>
+                      <span style={{ width: 90, textAlign: 'right', color: DIM }}>{s.grade || '—'}</span>
+                    </div>
+                  ))}
+                  {(history?.snapshots ?? []).length === 0 && (
+                    <div style={{ fontSize: 12, color: DIM }}>No snapshots saved yet. Nothing is stored until you press Recompute.</div>
+                  )}
+                </div>
+
+                {weights && (
+                  <div style={{ marginTop: 14, fontSize: 11, color: DIM, lineHeight: 1.7 }}>
+                    Grade bands: {weights.grades.map((g) => `${g.label} ${g.min}+`).join(' · ')}. A score is produced only when at least {weights.minComponents} of 5 components have records; missing components are excluded and the remaining weights are renormalized, never defaulted.
+                  </div>
                 )}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                {[
-                  { title: "Assign Training", desc: "Send a Game Up module directly to this driver", btn: "Assign Module →", color: C.blue },
-                  { title: "Schedule Meeting", desc: "Book a safety meeting through the Safety Center", btn: "Book Meeting →", color: C.gold },
-                  { title: "Add Note", desc: "Log a coaching note to this driver's permanent record", btn: "Add Note →", color: "#888" },
-                  { title: "Award Bonus Bucks", desc: "Manually award Rig Bucks for outstanding performance", btn: "Award Bucks →", color: C.green },
-                ].map((item, i) => (
-                  <div key={i} style={{ padding: 18, borderRadius: 10, background: "#111", border: `1px solid ${C.border}`, cursor: "pointer" }}>
-                    <div style={{ fontSize: 15, color: "#fff", fontWeight: 600, marginBottom: 6 }}>{item.title}</div>
-                    <div style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>{item.desc}</div>
-                    <div style={{ color: item.color, fontSize: 13 }}>{item.btn}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+function Stat({ label, value, accent }) {
+  return (
+    <div style={{ background: CARD, border: `1px solid ${accent ? GOLD : BORDER}`, borderRadius: 10, padding: 14 }}>
+      <div style={{ fontSize: 11, color: DIM, letterSpacing: 1, marginBottom: 6 }}>{label.toUpperCase()}</div>
+      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 24, color: accent ? GOLD_BRIGHT : '#fff' }}>{value}</div>
+    </div>
+  );
+}
+
+function btn(primary) {
+  return {
+    cursor: 'pointer',
+    padding: '9px 16px',
+    borderRadius: 8,
+    fontSize: 13,
+    fontFamily: "'Oswald', sans-serif",
+    letterSpacing: 0.5,
+    border: `1px solid ${GOLD}`,
+    background: primary ? 'linear-gradient(135deg,#C9A84C 0%,#FFD700 40%,#C9A84C 70%,#8A6E2F 100%)' : '#161616',
+    color: primary ? '#0a0a0a' : GOLD,
+  };
 }

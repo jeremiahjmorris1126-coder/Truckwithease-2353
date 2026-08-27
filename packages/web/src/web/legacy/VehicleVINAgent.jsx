@@ -24,7 +24,7 @@ export default function VehicleVINAgent() {
       licensePlate: 'TRK-4829',
       owner: 'Morrishive Logistics LLC',
       ownerPhone: '(555) 234-5678',
-      ownerEmail: 'truckwithease@gmail.com',
+      ownerEmail: 'truckeasecare@gmail.com',
       homeYard: {
         address: '1450 Industrial Blvd, Memphis, TN 38112',
         coordinates: { lat: 35.1264, lng: -90.0176 },
@@ -59,7 +59,7 @@ export default function VehicleVINAgent() {
       licensePlate: 'TRK-3941',
       owner: 'Morrishive Logistics LLC',
       ownerPhone: '(555) 234-5678',
-      ownerEmail: 'truckwithease@gmail.com',
+      ownerEmail: 'truckeasecare@gmail.com',
       homeYard: {
         address: '1450 Industrial Blvd, Memphis, TN 38112',
         coordinates: { lat: 35.1264, lng: -90.0176 },

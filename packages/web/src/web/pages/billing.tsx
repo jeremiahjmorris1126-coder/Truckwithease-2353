@@ -484,7 +484,7 @@ export default function Billing() {
               <div className="mt-6 border-t border-twborder pt-4 text-center text-xs text-neutral-500">
                 <b className="text-neutral-300">Payment Terms:</b> Net 30 • Auto-renews monthly • All pricing in USD
                 <br />
-                Questions? billing@truckwitheaseai.com
+                Questions? jeremiahjmorris1126@gmail.com
               </div>
             </div>
 

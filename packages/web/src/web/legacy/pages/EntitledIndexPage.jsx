@@ -1,1218 +1,716 @@
 /**
- * TruckWithEase — ENTITLED INDEX
- * Proprietary & Confidential — Morrishive.com
+ * EntitledIndexPage — FULL REWRITE 2026-08-27
+ * Routes: /entitled-index, /index, /master-hub, /entitled  (App.jsx)
+ * Original preserved at docs/launch/EntitledIndexPage.ORIGINAL.jsx.txt
  *
- * Master command hub: connects and integrates all platform functions.
- * Staff alert system wired directly. Live module status. Cross-function
- * navigation. Owner-level control in one screen.
+ * WHAT THIS PAGE IS NOW
+ * One operating hub that ties four things together on a single screen, sharing one driver
+ * selection: load planning against the driver's real HOS clock and his learned profile,
+ * the HR tools that already exist, DOT medical-card expiry tracking plus the official
+ * examiner registry, and the live platform telemetry feeding all three.
+ *
+ * WHAT WAS REMOVED FROM THE ORIGINAL AND WHY
+ * - The ~40-tile hardcoded MODULES array. Its `desc` strings were invented capability claims:
+ *   "47-variable profit engine", "47-point truck health AI", "DAT, Uber Freight, CH Robinson",
+ *   "Live bypass decision engine", "9 brands, DTC decode, DVIR memory", "Live ELD data +
+ *   FMCSA sync". None of those integrations exist. Fabricated claims get deleted, not restyled.
+ * - The `tier: 'enterprise'` concept. There is no enterprise plan — Solo, Pro, Fleet only.
+ * - The off-brand palette (#4ade80, #fbbf24, #f87171, #60a5fa, #a78bfa, #22d3ee).
+ * - The PocketBase import (`../lib/pb`) — a localStorage shim, not a server.
+ * - Emoji tile icons — they render as empty boxes in several fonts. lucide-react instead.
+ *
+ * THE MEDICAL QUESTION, ANSWERED HONESTLY
+ * There is no nationwide list of certified medical examiner buildings we can legally or
+ * technically pull. The FMCSA National Registry is reCAPTCHA-protected with no public API and
+ * no bulk download. Google Places is not enabled on our key, and a Places result would not
+ * certify FMCSA status anyway. So this page ships ZERO invented clinic addresses. What it does
+ * instead is the part that actually keeps a med card current: track the expiry date of every
+ * card on file and deep-link the driver into the official registry for his state.
+ *
+ * DATA SOURCES (all real, all server-side)
+ * - GET  /api/fleet/drivers        driver picker + live position/speed/lastSeen
+ * - GET  /api/hos                  real duty clocks in seconds + violations
+ * - GET  /api/loads                real load rows with server-computed rpm
+ * - GET  /api/algorithm/:driverId  the learned four-dimension profile
+ * - POST /api/algorithm/signal     records every book/pass so the profile compounds
+ * - POST /api/routing/plan         real Google Directions leg
+ * - GET  /api/hr/summary           headcount, occurrences, payroll, profit
+ * - GET  /api/hr/documents         med cards + expiry dates
+ * - GET  /api/hr/people            names for those documents
+ * - GET  /api/safety/:driverId     computed safety score
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { pb } from '../lib/pb';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  LayoutGrid, AlertTriangle, Loader2, RefreshCw, Package, Users, Stethoscope,
+  Radio, ExternalLink, Route as RouteIcon, Clock, MapPin,
+} from "lucide-react";
 
-const GOLD   = '#c9a84c';
-const GOLD2  = '#f5d78e';
-const DARK   = '#0a0a0a';
-const CARD   = '#0f0f0f';
-const CARD2  = '#141414';
-const BORD   = '#1e1e1e';
-const GREEN  = '#4ade80';
-const AMBER  = '#fbbf24';
-const RED    = '#f87171';
-const BLUE   = '#60a5fa';
-const PURPLE = '#a78bfa';
-const CYAN   = '#22d3ee';
-const WHITE  = '#ffffff';
-const DIM    = 'rgba(255,255,255,0.4)';
-const DIM2   = 'rgba(255,255,255,0.15)';
+const GOLD = "#C9A84C";
+const GOLDBR = "#FFD700";
+const CARD = "#161616";
+const BORDER = "#222222";
+const MUTED = "#8a8a8a";
+const DIM = "#666666";
+const WARN = "#c96a4c";
 
-// ─── ALL PLATFORM MODULES ────────────────────────────────────────────────────
-const MODULES = [
-  // COMMAND & OPERATIONS
-  { id: 'command',        label: 'Command Center',        path: '/command',         icon: '🎯', cat: 'Operations',   tier: 'core',   desc: 'Full operations dashboard' },
-  { id: 'dispatch',       label: 'Quantum Dispatch',      path: '/dispatch',        icon: '⚡', cat: 'Operations',   tier: 'core',   desc: 'AI load assignment engine' },
-  { id: 'profitable-lanes', label: 'Lane Intelligence',   path: '/profitable-lanes',icon: '💰', cat: 'Operations',   tier: 'pro',    desc: '47-variable profit engine' },
-  { id: 'loads',          label: 'Load Board',            path: '/loads',           icon: '🔍', cat: 'Operations',   tier: 'core',   desc: 'DAT, Uber Freight, CH Robinson' },
-  { id: 'bypass',         label: 'Weigh Station Bypass',  path: '/bypass',          icon: '🚛', cat: 'Operations',   tier: 'pro',    desc: 'Live bypass decision engine' },
-  { id: 'catscales',      label: 'SCALES',       path: '/catscales',       icon: '⚖️', cat: 'Operations',   tier: 'pro',    desc: 'Scale finder + allocation codes' },
-  { id: 'trip-planner',   label: 'Trip Planner',          path: '/trip-planner',    icon: '🗺️', cat: 'Operations',   tier: 'core',   desc: 'Route planning with fuel stops' },
-  { id: 'fuel-finder',    label: 'Fuel Finder',           path: '/fuel-finder',     icon: '⛽', cat: 'Operations',   tier: 'core',   desc: 'Live fuel prices on route' },
-  { id: 'quantum-nexus',  label: 'Quantum Nexus',         path: '/quantum-nexus',   icon: '🧬', cat: 'Operations',   tier: 'enterprise', desc: 'Master dispatch intelligence' },
+const API = "";
+const REGISTRY = "https://nationalregistry.fmcsa.dot.gov/search-medical-examiners";
 
-  // COMPLIANCE & SAFETY
-  { id: 'hos',            label: 'HOS Logger',            path: '/hos',             icon: '📋', cat: 'Compliance',   tier: 'core',   desc: 'Hours of service — all types' },
-  { id: 'dvir',           label: 'DVIR',                  path: '/dvir',            icon: '📝', cat: 'Compliance',   tier: 'core',   desc: 'Pre/post trip inspections' },
-  { id: 'dot-compliance', label: 'DOT Compliance Vault',  path: '/dot-compliance-vault', icon: '🛡️', cat: 'Compliance', tier: 'pro', desc: 'Audit-ready DOT records' },
-  { id: 'live-compliance',label: 'Live Compliance Monitor',path: '/live-compliance',icon: '🔒', cat: 'Compliance',   tier: 'pro',    desc: 'Real-time compliance tracking' },
-  { id: 'safety-meetings',label: 'Safety Meetings',       path: '/safety-meetings', icon: '👥', cat: 'Compliance',   tier: 'pro',    desc: 'Digital signatures + records' },
-  { id: 'safety-hr-fusion',label:'Safety & HR Fusion',    path: '/safety-hr-fusion',icon: '🏥', cat: 'Compliance',   tier: 'enterprise', desc: 'Safety + HR in one layer' },
-  { id: 'fmcsa-eld',      label: 'FMCSA ELD Integration', path: '/fmcsa-eld',       icon: '📡', cat: 'Compliance',   tier: 'pro',    desc: 'Live ELD data + FMCSA sync' },
-
-  // FLEET & MAINTENANCE
-  { id: 'mechanic',       label: 'THE KNOW IT ALL',        path: '/mechanic',        icon: '🔧', cat: 'Fleet',        tier: 'pro',    desc: '9 brands, DTC decode, DVIR memory' },
-  { id: 'predictive-maintenance', label: 'Predictive Maintenance', path: '/predictive-maintenance', icon: '🚛', cat: 'Fleet', tier: 'pro', desc: '47-point truck health AI' },
-  { id: 'maintenance',    label: 'Vehicle Maintenance',   path: '/maintenance',     icon: '🔩', cat: 'Fleet',        tier: 'core',   desc: 'Work order management' },
-  { id: 'asset-ease',     label: 'AssetEase',             path: '/asset-ease',      icon: '📦', cat: 'Fleet',        tier: 'enterprise', desc: 'Full asset lifecycle tracking' },
-  { id: 'live-gps',       label: 'Live GPS Tracking',     path: '/live-gps',        icon: '📍', cat: 'Fleet',        tier: 'pro',    desc: 'Real-time fleet location map' },
-  { id: 'vehicle-vin',    label: 'Vehicle VIN Agent',     path: '/vehicle-vin-agent',icon: '🚗', cat: 'Fleet',       tier: 'core',   desc: 'Scan VIN → maintenance history' },
-  { id: 'samsara-connect',label: 'Samsara Connect',       path: '/samsara-connect', icon: '📶', cat: 'Fleet',        tier: 'enterprise', desc: 'Fleet telematics sync' },
-  { id: 'twe-eld',        label: 'TruckWithEase ELD',     path: '/twe-eld',         icon: '📡', cat: 'Fleet',        tier: 'pro',        desc: 'Our ELD hardware + full platform analytics' },
-
-  // DRIVERS & HR
-  { id: 'humanai',        label: 'HRease',                path: '/humanai',         icon: '👤', cat: 'People',       tier: 'pro',    desc: 'Hire, onboard, retain drivers' },
-  { id: 'payroll',        label: 'Payroll',               path: '/payroll',         icon: '🧾', cat: 'People',       tier: 'pro',    desc: 'ELD-verified driver pay' },
-  { id: 'driver-scorecard',label: 'Driver Scorecard',     path: '/driver-scorecard',icon: '📊', cat: 'People',       tier: 'pro',    desc: 'Live performance ranking' },
-  { id: 'driver-profile', label: 'Driver Profile',        path: '/driver',          icon: '🪪', cat: 'People',       tier: 'core',   desc: 'Individual driver records' },
-  { id: 'safety-sos',     label: 'Safety SOS',            path: '/safety-sos',      icon: '🚨', cat: 'People',       tier: 'core',   desc: '911 + state patrol direct' },
-  { id: 'fleet-voice',    label: 'Fleet Voice',           path: '/fleet-voice',     icon: '📞', cat: 'People',       tier: 'pro',    desc: 'Hands-free fleet calls' },
-  { id: 'staff',          label: 'Staff Appointed Index', path: '/staff',           icon: '⭐', cat: 'People',       tier: 'core',   desc: 'Appointed team + Good Business alerts' },
-
-  // FINANCE & INTELLIGENCE
-  { id: 'forecast',       label: 'Revenue Forecast',      path: '/forecast',        icon: '📈', cat: 'Finance',      tier: 'enterprise', desc: '5-year growth model' },
-  { id: 'load-profit',    label: 'Load Profit Calculator',path: '/load-profit',     icon: '💵', cat: 'Finance',      tier: 'pro',    desc: 'Per-load net profit engine' },
-  { id: 'expenses',       label: 'Expenses',              path: '/expenses',        icon: '🧮', cat: 'Finance',      tier: 'core',   desc: 'Operating cost tracker' },
-  { id: 'reports',        label: 'Reports',               path: '/reports',         icon: '📑', cat: 'Finance',      tier: 'pro',    desc: 'Fleet performance reports' },
-  { id: 'scan-bill',      label: 'Scan & Bill',           path: '/scan-bill',       icon: '📸', cat: 'Finance',      tier: 'pro',    desc: 'Photo → instant invoice' },
-  { id: 'financial-model',label: 'Financial Model',       path: '/financial-model', icon: '🏦', cat: 'Finance',      tier: 'enterprise', desc: 'Investor-grade financial dashboard' },
-
-  // AI & PLATFORM
-  { id: 'ai-team',        label: 'Dream Team (AI Agents)',path: '/ai-team',         icon: '🤖', cat: 'Platform AI',  tier: 'enterprise', desc: '12 AI agents always working' },
-  { id: 'ghost-nerve',    label: 'Ghost Nerve',           path: '/ghost-nerve',     icon: '🧠', cat: 'Platform AI',  tier: 'enterprise', desc: '8-layer silent intelligence' },
-  { id: 'neural-safety',  label: 'Neural Safety Core',    path: '/neural-safety',   icon: '🛡️', cat: 'Platform AI',  tier: 'enterprise', desc: 'Predictive safety intelligence' },
-  { id: 'quantum-core',   label: 'Quantum Dispatch Core', path: '/quantum-core',    icon: '⚛️', cat: 'Platform AI',  tier: 'enterprise', desc: 'Autonomous dispatch brain' },
-  { id: 'orchestrator',   label: 'Agent Orchestrator',    path: '/orchestrator',    icon: '🎛️', cat: 'Platform AI',  tier: 'enterprise', desc: 'All agents in one council view' },
-  { id: 'api-agent',      label: 'API Agent',             path: '/api-agent',       icon: '🔑', cat: 'Platform AI',  tier: 'enterprise', desc: 'All API keys + connections' },
-  { id: 'daily-maintenance',label: 'Daily Diagnostic',    path: '/daily-maintenance',icon: '🩺', cat: 'Platform AI',  tier: 'enterprise', desc: '24h platform health scan' },
-
-  // TOP TIER FLEET SERVICES
-  { id: 'fleet-templates', label: 'Fleet Document Center', path: '/fleet-templates', icon: '📄', cat: 'Top Tier', tier: 'top-tier', desc: 'Branded templates, logo, print-ready docs' },
-  { id: 'dot-portal',      label: 'DOT Portal',            path: '/dot-portal',      icon: '🏛️', cat: 'Top Tier', tier: 'top-tier', desc: 'DOT mail, random pools, compliance notices' },
-  { id: 'medical-cdl',     label: 'Medical & CDL Tracker', path: '/medical-cdl',     icon: '🩺', cat: 'Top Tier', tier: 'top-tier', desc: 'Medical card + CDL test pipeline' },
-
-  // GROWTH & MARKETING
-  { id: 'freight-nexus',  label: 'Freight Nexus',         path: '/freight-nexus',   icon: '🚢', cat: 'Growth',       tier: 'enterprise', desc: 'Broker + shipper network' },
-  { id: 'competitive-intelligence', label: 'Competitive Intelligence', path: '/competitive-intelligence', icon: '🔭', cat: 'Growth', tier: 'enterprise', desc: 'Market position vs competitors' },
-  { id: 'growth',         label: 'Growth Command',        path: '/growth',          icon: '🚀', cat: 'Growth',       tier: 'enterprise', desc: 'Revenue + expansion strategy' },
-  { id: 'ad-strategy',    label: 'Ad Strategy',           path: '/ad-strategy',     icon: '📣', cat: 'Growth',       tier: 'enterprise', desc: 'Paid media planning' },
-  { id: 'outreach-agent', label: 'Outreach Agent',        path: '/outreach-agent',  icon: '📧', cat: 'Growth',       tier: 'enterprise', desc: 'Client outreach automation' },
-  { id: 'game-up',        label: 'Game Up Training',      path: '/game-up',         icon: '🎮', cat: 'Growth',       tier: 'pro',    desc: 'CDL + compliance training' },
-  { id: 'platform',       label: 'Platform Showcase',     path: '/platform',        icon: '🏆', cat: 'Growth',       tier: 'core',   desc: 'Full feature presentation' },
-
-  // ADMIN TOOLS
-  { id: 'code-vault',     label: 'Code Vault',            path: '/code-vault',      icon: '🔐', cat: 'Admin',        tier: 'owner',  desc: 'Proprietary code protection' },
-  { id: 'brand',          label: 'Brand Identity',        path: '/brand',           icon: '🎨', cat: 'Admin',        tier: 'owner',  desc: 'Platform brand constants' },
-  { id: 'page-guardian',  label: 'Page Guardian',         path: '/page-guardian',   icon: '👁️', cat: 'Admin',        tier: 'owner',  desc: 'All-page health monitor' },
-  { id: 'contact-inbox',  label: 'Contact Inbox',         path: '/contact-inbox',   icon: '📬', cat: 'Admin',        tier: 'owner',  desc: 'All inbound messages' },
-  { id: 'admin-subscriptions', label: 'Subscriptions',   path: '/admin/subscriptions', icon: '💳', cat: 'Admin',    tier: 'owner',  desc: 'Subscriber management' },
+const STATES = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
+  "Delaware", "District of Columbia", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois",
+  "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts",
+  "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
+  "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota",
+  "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
+  "West Virginia", "Wisconsin", "Wyoming",
 ];
 
-const CATEGORIES = ['All', 'Operations', 'Compliance', 'Fleet', 'People', 'Finance', 'Platform AI', 'Top Tier', 'Growth', 'Admin'];
-const TIER_COLORS = {
-  core:       { color: BLUE,   label: 'CORE' },
-  pro:        { color: GREEN,  label: 'PRO' },
-  enterprise: { color: PURPLE, label: 'ENTERPRISE' },
-  owner:      { color: GOLD,   label: 'OWNER' },
-  'top-tier': { color: '#FFD700', label: 'TOP TIER' },
+/* ------------------------------------------------------------------ helpers */
+
+const hhmm = (sec) => {
+  if (sec === null || sec === undefined || Number.isNaN(sec)) return "—";
+  const s = Math.max(0, Math.round(sec));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return `${h}h ${String(m).padStart(2, "0")}m`;
 };
 
-// ─── STYLED ATOMS ─────────────────────────────────────────────────────────────
-function TierBadge({ tier }) {
-  const t = TIER_COLORS[tier] || TIER_COLORS.core;
-  return (
-    <span style={{
-      fontSize: 9, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase',
-      padding: '2px 7px', borderRadius: 4,
-      background: t.color + '20', color: t.color, flexShrink: 0,
-    }}>{t.label}</span>
-  );
+const money = (n) =>
+  n === null || n === undefined || Number.isNaN(n)
+    ? "—"
+    : `$${Math.round(n).toLocaleString("en-US")}`;
+
+const AVG_MPH = 55; // plain average used only where no routed time exists — labelled as such
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const t = Date.parse(`${dateStr}T00:00:00Z`);
+  if (Number.isNaN(t)) return null;
+  return Math.round((t - Date.now()) / 86400000);
 }
 
-function StatusDot({ active = true }) {
+/* ----------------------------------------------------------------- house kit */
+
+function Panel({ title, note, right, icon: Icon, children }) {
   return (
-    <span style={{
-      width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-      background: active ? GREEN : AMBER,
-      boxShadow: active ? `0 0 6px ${GREEN}88` : `0 0 6px ${AMBER}88`,
-      display: 'inline-block',
-    }} />
-  );
-}
-
-function ModuleCard({ mod, onNavigate }) {
-  const [hover, setHover] = useState(false);
-  const isTopTier = mod.tier === 'top-tier';
-  const [showLockMsg, setShowLockMsg] = useState(false);
-
-  const handleClick = () => {
-    if (isTopTier) { setShowLockMsg(true); setTimeout(() => setShowLockMsg(false), 3000); return; }
-    onNavigate(mod.path);
-  };
-
-  return (
-    <div
-      onClick={handleClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        background: isTopTier
-          ? (hover ? '#1a1400' : '#110e00')
-          : (hover ? CARD2 : CARD),
-        border: `1px solid ${isTopTier ? '#FFD70060' : (hover ? GOLD + '50' : BORD)}`,
-        borderRadius: 10, padding: '14px 16px',
-        cursor: isTopTier ? 'default' : 'pointer',
-        transition: 'all 0.2s',
-        display: 'flex', flexDirection: 'column', gap: 8,
-        transform: (!isTopTier && hover) ? 'translateY(-1px)' : 'none',
-        position: 'relative', overflow: 'hidden',
-      }}
-    >
-      {/* Gold shimmer bar for top tier */}
-      {isTopTier && (
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-          background: 'linear-gradient(90deg, transparent, #FFD700, transparent)',
-        }} />
-      )}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 20, filter: isTopTier ? 'grayscale(0.3)' : 'none' }}>{mod.icon}</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: isTopTier ? '#FFD700' : WHITE, lineHeight: 1.3, marginBottom: 2 }}>
-            {mod.label}
-          </div>
-          <div style={{ fontSize: 11, color: DIM, lineHeight: 1.4 }}>{mod.desc}</div>
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10, marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderBottom: `1px solid ${BORDER}` }}>
+        {Icon && <Icon size={16} color={GOLD} />}
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.22em", fontSize: 13, color: GOLD }}>{title}</div>
+          {note && <div style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: DIM, marginTop: 4 }}>{note}</div>}
         </div>
-        {isTopTier ? (
-          <span style={{
-            fontSize: 9, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase',
-            padding: '2px 7px', borderRadius: 4,
-            background: '#FFD70025', color: '#FFD700', flexShrink: 0,
-            border: '1px solid #FFD70040',
-          }}>👑 TOP TIER</span>
-        ) : (
-          <TierBadge tier={mod.tier} />
-        )}
+        {right}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {isTopTier ? (
-          <>
-            <span style={{ fontSize: 12 }}>🔒</span>
-            <span style={{ fontSize: 10, color: '#FFD700bb', letterSpacing: 1, textTransform: 'uppercase' }}>
-              {showLockMsg ? 'Top Tier subscribers only — contact truckwithease@gmail.com' : 'Top Tier Exclusive'}
-            </span>
-          </>
-        ) : (
-          <>
-            <StatusDot active={true} />
-            <span style={{ fontSize: 10, color: DIM, letterSpacing: 1, textTransform: 'uppercase' }}>Live</span>
-            <span style={{ marginLeft: 'auto', fontSize: 10, color: GOLD, fontWeight: 600 }}>
-              {hover ? 'Open →' : mod.cat}
-            </span>
-          </>
-        )}
-      </div>
+      <div style={{ padding: 18 }}>{children}</div>
     </div>
   );
 }
 
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-export default function EntitledIndexPage() {
-  const [tab, setTab]               = useState('index');       // index | staff | alert | log | roads | ratings | performance
-  const [catFilter, setCatFilter]   = useState('All');
-  const [search, setSearch]         = useState('');
-  const [staff, setStaff]           = useState([]);
-  const [loadingStaff, setLoadingStaff] = useState(true);
-  const [alertRunning, setAlertRunning] = useState(false);
-  const [alertLog, setAlertLog]     = useState([]);
-  const [alertDone, setAlertDone]   = useState(false);
-  const [eventLog, setEventLog]     = useState([]);
-  const [loadingLog, setLoadingLog] = useState(true);
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [stats, setStats]           = useState({ staff: 0, confirmed: 0, modules: MODULES.length, events: 0 });
-
-  // ── Roads & Danger state
-  const [dangerReports, setDangerReports]       = useState([]);
-  const [dangerLoading, setDangerLoading]       = useState(false);
-  const [dangerForm, setDangerForm]             = useState({ route_segment: '', report_type: 'Road Hazard', severity: 'High', description: '', vehicle_type: 'truck' });
-  const [dangerSubmitting, setDangerSubmitting] = useState(false);
-  const [dangerSaved, setDangerSaved]           = useState(false);
-
-  // ── Shipper / Broker Ratings state
-  const [ratings, setRatings]                   = useState([]);
-  const [ratingsLoading, setRatingsLoading]     = useState(false);
-  const [ratingForm, setRatingForm]             = useState({ company_name: '', company_type: 'Broker', mc_number: '', dot_number: '', rating: 3, category: 'Payment', review_text: '', pay_speed: 'Fast', communication: 'Good', load_accuracy: 'Accurate', detention_respect: 'Respected', would_work_again: true });
-  const [ratingSubmitting, setRatingSubmitting] = useState(false);
-  const [ratingSaved, setRatingSaved]           = useState(false);
-  const [ratingFilter, setRatingFilter]         = useState('All');
-
-  // ── User performance state
-  const [perfData, setPerfData]                 = useState([]);
-  const [perfLoading, setPerfLoading]           = useState(false);
-  const [perfSummary, setPerfSummary]           = useState({ totalActions: 0, topModule: '', savedRoutes: 0, stopFeedback: 0, routesFeedbackPos: 0 });
-
-  // ── fetch staff
-  const fetchStaff = useCallback(async () => {
-    setLoadingStaff(true);
-    try {
-      const res = await pb.collection('staff_appointed').getList(1, 200, { sort: '-created' });
-      setStaff(res.items);
-    } catch { setStaff([]); }
-    setLoadingStaff(false);
-  }, []);
-
-  // ── fetch event log
-  const fetchLog = useCallback(async () => {
-    setLoadingLog(true);
-    try {
-      const res = await pb.collection('entitled_index_log').getList(1, 50, { sort: '-created' });
-      setEventLog(res.items);
-    } catch { setEventLog([]); }
-    setLoadingLog(false);
-  }, []);
-
-  // ── stats
-  useEffect(() => {
-    Promise.all([fetchStaff(), fetchLog()]).then(() => setStatsLoading(false));
-  }, [fetchStaff, fetchLog]);
-
-  useEffect(() => {
-    const confirmed = staff.filter(s => s.alert_confirmed).length;
-    setStats(s => ({ ...s, staff: staff.length, confirmed, modules: MODULES.length, events: eventLog.length }));
-  }, [staff, eventLog]);
-
-  // ── fetch danger reports
-  const fetchDangerReports = useCallback(async () => {
-    setDangerLoading(true);
-    try {
-      const res = await pb.collection('road_danger_reports').getList(1, 100, { sort: '-created' });
-      setDangerReports(res.items);
-    } catch { setDangerReports([]); }
-    setDangerLoading(false);
-  }, []);
-
-  // ── fetch shipper/broker ratings
-  const fetchRatings = useCallback(async () => {
-    setRatingsLoading(true);
-    try {
-      const res = await pb.collection('shipper_broker_ratings').getList(1, 200, { sort: '-created' });
-      setRatings(res.items);
-    } catch { setRatings([]); }
-    setRatingsLoading(false);
-  }, []);
-
-  // ── fetch user performance
-  const fetchPerf = useCallback(async () => {
-    setPerfLoading(true);
-    try {
-      const [actRes, routeRes, fbRes] = await Promise.all([
-        pb.collection('user_activity_index').getList(1, 200, { sort: '-created' }),
-        pb.collection('saved_routes').getList(1, 200, { sort: '-created' }),
-        pb.collection('route_stop_feedback').getList(1, 200, { sort: '-created' }),
-      ]);
-      setPerfData(actRes.items);
-      const modCount = {};
-      actRes.items.forEach(a => { modCount[a.module] = (modCount[a.module] || 0) + 1; });
-      const topMod = Object.entries(modCount).sort((a,b) => b[1]-a[1])[0];
-      const posCount = fbRes.items.filter(f => f.rating > 0).length;
-      setPerfSummary({
-        totalActions: actRes.totalItems,
-        topModule: topMod ? topMod[0] : 'None yet',
-        savedRoutes: routeRes.totalItems,
-        stopFeedback: fbRes.totalItems,
-        routesFeedbackPos: posCount,
-      });
-    } catch {}
-    setPerfLoading(false);
-  }, []);
-
-  // ── load tabs on switch
-  useEffect(() => {
-    if (tab === 'roads') fetchDangerReports();
-    if (tab === 'ratings') fetchRatings();
-    if (tab === 'performance') fetchPerf();
-  }, [tab, fetchDangerReports, fetchRatings, fetchPerf]);
-
-  // ── submit danger report
-  const submitDangerReport = async () => {
-    if (!dangerForm.route_segment || !dangerForm.description) return;
-    setDangerSubmitting(true);
-    try {
-      await pb.collection('road_danger_reports').create({
-        ...dangerForm,
-        confirmed_count: 0,
-        dismissed_count: 0,
-        session_id: localStorage.getItem('twe_session_id') || 'unknown',
-      });
-      setDangerSaved(true);
-      setDangerForm({ route_segment: '', report_type: 'Road Hazard', severity: 'High', description: '', vehicle_type: 'truck' });
-      await fetchDangerReports();
-      setTimeout(() => setDangerSaved(false), 4000);
-    } catch {}
-    setDangerSubmitting(false);
-  };
-
-  // ── confirm/dismiss danger report
-  const confirmDanger = async (item, type) => {
-    try {
-      const field = type === 'confirm' ? 'confirmed_count' : 'dismissed_count';
-      await pb.collection('road_danger_reports').update(item.id, { [field]: (item[field] || 0) + 1 });
-      await fetchDangerReports();
-    } catch {}
-  };
-
-  // ── submit shipper/broker rating
-  const submitRating = async () => {
-    if (!ratingForm.company_name) return;
-    setRatingSubmitting(true);
-    try {
-      await pb.collection('shipper_broker_ratings').create({
-        ...ratingForm,
-        session_id: localStorage.getItem('twe_session_id') || 'unknown',
-      });
-      setRatingSaved(true);
-      setRatingForm({ company_name: '', company_type: 'Broker', mc_number: '', dot_number: '', rating: 3, category: 'Payment', review_text: '', pay_speed: 'Fast', communication: 'Good', load_accuracy: 'Accurate', detention_respect: 'Respected', would_work_again: true });
-      await fetchRatings();
-      setTimeout(() => setRatingSaved(false), 4000);
-    } catch {}
-    setRatingSubmitting(false);
-  };
-
-  // ── navigate
-  const navigate = (path) => { window.location.href = path; };
-
-  // ── log event
-  const logEvent = async (type, description, module, affectedStaff = '', status = 'success') => {
-    try {
-      await pb.collection('entitled_index_log').create({
-        event_type: type,
-        event_description: description,
-        affected_module: module,
-        affected_staff: affectedStaff,
-        initiated_by: 'Platform Owner',
-        status,
-        metadata: JSON.stringify({ ts: Date.now(), userAgent: navigator.userAgent.slice(0, 80) }),
-      });
-    } catch {}
-  };
-
-  // ── bulk alert staff
-  const runBulkAlert = async () => {
-    if (staff.length === 0) return;
-    setAlertRunning(true);
-    setAlertLog([]);
-    setAlertDone(false);
-
-    const logs = staff.map(s => ({ id: s.id, name: s.full_name, role: s.role_title, status: 'pending' }));
-    setAlertLog([...logs]);
-
-    for (let i = 0; i < staff.length; i++) {
-      const member = staff[i];
-      logs[i].status = 'processing';
-      setAlertLog([...logs]);
-
-      try {
-        await pb.collection('staff_appointed').update(member.id, {
-          alert_confirmed: true,
-          alert_sent_at: new Date().toISOString(),
-        });
-        await logEvent('STAFF_ALERT', `Good Business confirmed: ${member.full_name}`, 'Staff Appointed Index', member.full_name, 'success');
-        logs[i].status = 'confirmed';
-      } catch {
-        logs[i].status = 'error';
-        await logEvent('STAFF_ALERT_ERROR', `Failed to confirm: ${member.full_name}`, 'Staff Appointed Index', member.full_name, 'error');
-      }
-      setAlertLog([...logs]);
-      await new Promise(r => setTimeout(r, 300));
-    }
-
-    await logEvent('BULK_ALERT_COMPLETE', `Bulk Good Business alert: ${staff.length} members indexed`, 'Entitled Index', 'ALL STAFF', 'success');
-    setAlertDone(true);
-    setAlertRunning(false);
-    fetchStaff();
-    fetchLog();
-  };
-
-  // ── connect module (log the navigation intent)
-  const connectModule = async (mod) => {
-    if (mod.tier === 'top-tier') return; // locked — ModuleCard handles the UI message
-    await logEvent('MODULE_CONNECT', `Owner accessed: ${mod.label}`, mod.id, '', 'success');
-    navigate(mod.path);
-  };
-
-  // ── filtered modules
-  const filtered = MODULES.filter(m => {
-    const matchCat  = catFilter === 'All' || m.cat === catFilter;
-    const matchSearch = !search || m.label.toLowerCase().includes(search.toLowerCase()) || m.desc.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
-  });
-
-  const confirmed = staff.filter(s => s.alert_confirmed).length;
-  const pending   = staff.length - confirmed;
-
-  // ─────────────────────────────────────────────────────────────────────────────
+function Missing({ label, reason }) {
   return (
-    <div style={{ background: DARK, minHeight: '100vh', fontFamily: "'Oswald', 'Inter', sans-serif", color: WHITE }}>
-
-      {/* ── HEADER ── */}
-      <div style={{
-        background: '#070707',
-        borderBottom: `1px solid ${BORD}`,
-        padding: '20px 24px',
-        position: 'sticky', top: 0, zIndex: 100,
-      }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 8,
-                background: `linear-gradient(135deg, ${GOLD}, ${GOLD2})`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 18, flexShrink: 0,
-              }}>⚡</div>
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 3, textTransform: 'uppercase', color: GOLD }}>
-                  ENTITLED INDEX
-                </div>
-                <div style={{ fontSize: 10, color: DIM, letterSpacing: 2, textTransform: 'uppercase' }}>
-                  TruckWithEase · Platform Master Hub · Morrishive.com
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {[
-              { id: 'index',       label: '📋 Modules' },
-              { id: 'staff',       label: '⭐ Staff' },
-              { id: 'alert',       label: '⚡ Alert' },
-              { id: 'log',         label: '🗂️ Log' },
-              { id: 'roads',       label: '⚠️ Road Danger' },
-              { id: 'ratings',     label: '🏴 Brokers & Shippers' },
-              { id: 'performance', label: '📊 My Performance' },
-            ].map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                background: tab === t.id ? `linear-gradient(135deg, ${GOLD}, ${GOLD2})` : 'transparent',
-                color: tab === t.id ? '#000' : DIM,
-                border: `1px solid ${tab === t.id ? GOLD : BORD}`,
-                padding: '8px 16px', borderRadius: 7,
-                fontSize: 12, fontWeight: 800, cursor: 'pointer',
-                letterSpacing: 0.5, whiteSpace: 'nowrap',
-              }}>{t.label}</button>
-            ))}
-          </div>
-        </div>
+    <div style={{ border: "1px dashed #333", borderRadius: 8, padding: 14, background: "#121212" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <AlertTriangle size={15} color={WARN} />
+        <span style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.16em", fontSize: 11, color: WARN }}>
+          Missing / Not tracked
+        </span>
       </div>
+      <div style={{ color: "#ddd", fontSize: 14, marginTop: 8 }}>{label}</div>
+      <div style={{ color: MUTED, fontSize: 12.5, marginTop: 5, lineHeight: 1.5 }}>{reason}</div>
+    </div>
+  );
+}
 
-      {/* ── STATS BAR ── */}
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '16px 24px 0' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-          {[
-            { label: 'Platform Modules',   value: MODULES.length,    color: BLUE,   icon: '📋' },
-            { label: 'Active Now',          value: MODULES.length,    color: GREEN,  icon: '🟢' },
-            { label: 'Appointed Staff',     value: stats.staff,       color: WHITE,  icon: '👥' },
-            { label: 'Good Business',       value: stats.confirmed,   color: GOLD,   icon: '✓'  },
-            { label: 'Awaiting Confirm',    value: pending,           color: pending > 0 ? AMBER : GREEN, icon: '⏳' },
-            { label: 'Logged Events',       value: stats.events,      color: PURPLE, icon: '🗂️' },
-          ].map((s, i) => (
-            <div key={i} style={{
-              background: CARD, border: `1px solid ${BORD}`, borderRadius: 10,
-              padding: '12px 14px',
-            }}>
-              <div style={{ fontSize: 11, color: DIM, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 4 }}>
-                {s.icon} {s.label}
-              </div>
-              <div style={{ fontSize: 26, fontWeight: 900, color: s.color }}>{s.value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+function Stat({ value, label }) {
+  return (
+    <div style={{ background: "#121212", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "14px 16px", minWidth: 118 }}>
+      <div style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: 34, lineHeight: 1, color: GOLDBR }}>{value}</div>
+      <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.16em", fontSize: 10.5, color: MUTED, marginTop: 6 }}>{label}</div>
+    </div>
+  );
+}
 
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 24px 60px' }}>
+function Row({ k, v, mono, tone }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "7px 0", borderBottom: "1px solid #1c1c1c" }}>
+      <span style={{ color: MUTED, fontSize: 12.5 }}>{k}</span>
+      <span style={{ color: tone || "#e8e8e8", fontSize: 12.5, fontFamily: mono ? "JetBrains Mono, monospace" : undefined, textAlign: "right" }}>{v}</span>
+    </div>
+  );
+}
 
-        {/* ═══════════════════════════════════════════════════════════════════
-            TAB: MODULE INDEX
-        ═══════════════════════════════════════════════════════════════════ */}
-        {tab === 'index' && (
-          <div>
-            {/* Search + Filter */}
-            <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search modules…"
-                style={{
-                  flex: 1, minWidth: 200, padding: '10px 16px',
-                  background: CARD, border: `1px solid ${BORD}`, borderRadius: 8,
-                  color: WHITE, fontSize: 13, outline: 'none',
-                }}
-              />
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {CATEGORIES.map(cat => (
-                  <button key={cat} onClick={() => setCatFilter(cat)} style={{
-                    background: catFilter === cat ? `linear-gradient(135deg, ${GOLD}, ${GOLD2})` : 'transparent',
-                    color: catFilter === cat ? '#000' : DIM,
-                    border: `1px solid ${catFilter === cat ? GOLD : BORD}`,
-                    padding: '7px 14px', borderRadius: 6,
-                    fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.5,
-                    whiteSpace: 'nowrap',
-                  }}>{cat}</button>
-                ))}
-              </div>
-            </div>
+const inputCls = {
+  background: "#0f0f0f",
+  border: `1px solid ${BORDER}`,
+  borderRadius: 6,
+  color: "#eaeaea",
+  fontFamily: "JetBrains Mono, monospace",
+  fontSize: 13,
+  padding: "9px 11px",
+  outline: "none",
+  width: "100%",
+};
 
-            <div style={{ marginBottom: 10, fontSize: 11, color: DIM, letterSpacing: 2, textTransform: 'uppercase' }}>
-              {filtered.length} module{filtered.length !== 1 ? 's' : ''} — all live
-            </div>
+const btn = (primary) => ({
+  background: primary ? GOLD : "#141414",
+  color: primary ? "#0a0a0a" : GOLD,
+  border: `1px solid ${primary ? GOLD : BORDER}`,
+  borderRadius: 6,
+  fontFamily: "Oswald, sans-serif",
+  textTransform: "uppercase",
+  letterSpacing: "0.14em",
+  fontSize: 11.5,
+  padding: "8px 14px",
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 7,
+});
 
-            {/* Module grid */}
-            {CATEGORIES.filter(c => c !== 'All' && (catFilter === 'All' || catFilter === c)).map(cat => {
-              const catMods = filtered.filter(m => m.cat === cat);
-              if (catMods.length === 0) return null;
-              return (
-                <div key={cat} style={{ marginBottom: 28 }}>
-                  <div style={{
-                    fontSize: 11, color: GOLD, letterSpacing: 3, textTransform: 'uppercase',
-                    marginBottom: 10, paddingBottom: 8,
-                    borderBottom: `1px solid ${GOLD}25`,
-                    display: 'flex', alignItems: 'center', gap: 8,
-                  }}>
-                    <span>■</span> {cat}
-                    <span style={{ color: DIM, fontWeight: 400 }}>({catMods.length})</span>
-                  </div>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                    gap: 10,
-                  }}>
-                    {catMods.map(mod => (
-                      <ModuleCard key={mod.id} mod={mod} onNavigate={connectModule} />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+async function getJSON(url) {
+  const r = await fetch(url);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `${r.status} ${r.statusText}`);
+  return j;
+}
+
+/* -------------------------------------------------------------------- page */
+
+export default function EntitledIndexPage() {
+  const [drivers, setDrivers] = useState([]);
+  const [driverId, setDriverId] = useState("");
+  const [hos, setHos] = useState([]);
+  const [loads, setLoads] = useState([]);
+  const [algo, setAlgo] = useState(null);
+  const [hr, setHr] = useState(null);
+  const [docs, setDocs] = useState([]);
+  const [people, setPeople] = useState([]);
+  const [safety, setSafety] = useState(null);
+
+  const [state, setState] = useState("loading"); // loading | ok | error
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const [medState, setMedState] = useState("Missouri");
+  const [plan, setPlan] = useState({}); // loadId -> {status, data, error}
+  const [signalled, setSignalled] = useState({}); // loadId -> 'accepted'|'declined'
+
+  const loadAll = useCallback(async () => {
+    setState("loading");
+    setErr("");
+    try {
+      const [d, h, l, s, dc, pp] = await Promise.all([
+        getJSON(`${API}/api/fleet/drivers`),
+        getJSON(`${API}/api/hos`),
+        getJSON(`${API}/api/loads`),
+        getJSON(`${API}/api/hr/summary`),
+        getJSON(`${API}/api/hr/documents`),
+        getJSON(`${API}/api/hr/people`),
+      ]);
+      const list = d.drivers || [];
+      setDrivers(list);
+      setHos(h.fleet || []);
+      setLoads(l.loads || []);
+      setHr(s || null);
+      setDocs(dc.documents || []);
+      setPeople(pp.people || []);
+      setDriverId((cur) => cur || list[0]?.id || "");
+      setState("ok");
+    } catch (e) {
+      setErr(String(e.message || e));
+      setState("error");
+    }
+  }, []);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  useEffect(() => {
+    if (!driverId) return;
+    let dead = false;
+    setAlgo(null);
+    setSafety(null);
+    getJSON(`${API}/api/algorithm/${driverId}`).then((j) => { if (!dead) setAlgo(j); }).catch(() => {});
+    getJSON(`${API}/api/safety/${driverId}`).then((j) => { if (!dead) setSafety(j); }).catch(() => {});
+    return () => { dead = true; };
+  }, [driverId]);
+
+  const driver = useMemo(() => drivers.find((d) => d.id === driverId) || null, [drivers, driverId]);
+  const clock = useMemo(() => hos.find((f) => f.driverId === driverId) || null, [hos, driverId]);
+  const remaining = clock?.clocks?.drivingRemaining ?? null;
+
+  const refreshAll = async () => {
+    setBusy(true);
+    await loadAll();
+    if (driverId) {
+      await Promise.all([
+        getJSON(`${API}/api/algorithm/${driverId}`).then(setAlgo).catch(() => {}),
+        getJSON(`${API}/api/safety/${driverId}`).then(setSafety).catch(() => {}),
+      ]);
+    }
+    setBusy(false);
+  };
+
+  /* ---- load planning ---- */
+
+  const planRoute = async (load) => {
+    setPlan((p) => ({ ...p, [load.id]: { status: "loading" } }));
+    try {
+      const j = await getJSON2(`${API}/api/routing/plan`, {
+        origin: load.origin,
+        destination: load.destination,
+      });
+      setPlan((p) => ({ ...p, [load.id]: { status: "ok", data: j } }));
+    } catch (e) {
+      setPlan((p) => ({ ...p, [load.id]: { status: "error", error: String(e.message || e) } }));
+    }
+  };
+
+  const signal = async (load, accepted) => {
+    setSignalled((s) => ({ ...s, [load.id]: accepted ? "accepted" : "declined" }));
+    try {
+      await getJSON2(`${API}/api/algorithm/signal`, {
+        driverId,
+        dimension: "load",
+        kind: accepted ? "load_accepted" : "load_declined",
+        subject: `${load.origin} → ${load.destination}`,
+        numericValue: load.rpm,
+        unit: "usd_per_mile",
+        source: "entitled-index",
+        meta: { loadId: load.id, broker: load.broker, equipment: load.equipment, miles: load.miles },
+      });
+      if (driverId) getJSON(`${API}/api/algorithm/${driverId}`).then(setAlgo).catch(() => {});
+    } catch {
+      /* a failed signal must never block the driver — the decision still stands */
+    }
+  };
+
+  /* ---- medical ---- */
+
+  const personName = useCallback(
+    (pid) => people.find((p) => p.id === pid)?.name || pid,
+    [people],
+  );
+
+  const medCards = useMemo(
+    () =>
+      docs
+        .filter((d) => d.category === "medical_card")
+        .map((d) => ({ ...d, days: daysUntil(d.expiresOn), who: personName(d.personId) }))
+        .sort((a, b) => (a.days ?? 99999) - (b.days ?? 99999)),
+    [docs, personName],
+  );
+
+  /* ---- render ---- */
+
+  const learned = algo?.patternsLearned ?? null;
+  const loadPatterns = algo?.dimensions?.load || [];
+  const routePatterns = algo?.dimensions?.route || [];
+  const custPatterns = algo?.dimensions?.customer || [];
+  const knownLoadPrefs = [...loadPatterns, ...routePatterns, ...custPatterns].filter((p) => !p.insufficient);
+
+  return (
+    <div style={{ background: "#0a0a0a", minHeight: "100vh", color: "#e8e8e8" }}>
+      <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+
+      {/* header */}
+      <div style={{ borderBottom: `1px solid ${BORDER}`, background: "linear-gradient(180deg,#111 0%,#0a0a0a 100%)", padding: "34px 26px 26px" }}>
+        <div style={{ maxWidth: 1240, margin: "0 auto" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px solid ${BORDER}`, borderRadius: 999, padding: "5px 13px", marginBottom: 14 }}>
+            <LayoutGrid size={13} color={GOLD} />
+            <span style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.2em", fontSize: 10.5, color: GOLD }}>
+              Entitled Index
+            </span>
           </div>
-        )}
 
-        {/* ═══════════════════════════════════════════════════════════════════
-            TAB: STAFF INDEX
-        ═══════════════════════════════════════════════════════════════════ */}
-        {tab === 'staff' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-              <div>
-                <div style={{ fontSize: 13, color: GOLD, letterSpacing: 3, textTransform: 'uppercase' }}>
-                  Appointed Staff Index
-                </div>
-                <div style={{ fontSize: 12, color: DIM, marginTop: 2 }}>
-                  All staff appointed by the platform owner — full record with Good Business confirmation status.
-                </div>
+          <h1 style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: 52, lineHeight: 1, margin: 0, letterSpacing: "0.01em" }}>
+            PLANNING, PEOPLE, <span style={{ color: GOLDBR }}>PHYSICALS</span>, POSITION
+          </h1>
+
+          <p style={{ color: MUTED, fontSize: 14.5, lineHeight: 1.65, maxWidth: 900, marginTop: 12 }}>
+            Four jobs on one screen, all pointed at the same driver. Pick him once at the top and
+            everything below follows: which loads actually fit the hours he has left, what HR
+            still owes him, when his medical card dies, and where his truck is right now. Every
+            number is read from a live endpoint — the endpoint is printed under each panel so you
+            can check it yourself.
+          </p>
+
+          {/* driver bar */}
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 14, marginTop: 20 }}>
+            <div style={{ minWidth: 260 }}>
+              <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.16em", fontSize: 10.5, color: MUTED, marginBottom: 6 }}>
+                Driver
               </div>
-              <button onClick={() => navigate('/staff')} style={{
-                marginLeft: 'auto', background: `linear-gradient(135deg, ${GOLD}, ${GOLD2})`,
-                color: '#000', border: 'none', padding: '10px 20px', borderRadius: 7,
-                fontSize: 12, fontWeight: 900, cursor: 'pointer', letterSpacing: 1,
-                textTransform: 'uppercase', whiteSpace: 'nowrap',
-              }}>+ Add New Staff</button>
+              <select value={driverId} onChange={(e) => setDriverId(e.target.value)} style={inputCls}>
+                {drivers.length === 0 && <option value="">No drivers loaded</option>}
+                {drivers.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name} — {d.truckNumber}</option>
+                ))}
+              </select>
             </div>
 
-            {loadingStaff ? (
-              <div style={{ color: DIM, padding: '40px 0', textAlign: 'center' }}>Loading roster…</div>
-            ) : staff.length === 0 ? (
-              <div style={{
-                background: CARD, border: `1px solid ${BORD}`, borderRadius: 12,
-                padding: '40px 24px', textAlign: 'center',
-              }}>
-                <div style={{ fontSize: 32, marginBottom: 12 }}>⭐</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: WHITE, marginBottom: 8 }}>No staff appointed yet</div>
-                <div style={{ fontSize: 13, color: DIM, marginBottom: 20 }}>
-                  Go to the Staff Appointed Index to add your first team member.
-                </div>
-                <button onClick={() => navigate('/staff')} style={{
-                  background: `linear-gradient(135deg, ${GOLD}, ${GOLD2})`,
-                  color: '#000', border: 'none', padding: '12px 28px', borderRadius: 8,
-                  fontSize: 13, fontWeight: 900, cursor: 'pointer',
-                }}>Open Staff Index</button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {staff.map(member => (
-                  <div key={member.id} style={{
-                    background: CARD,
-                    border: `1px solid ${member.alert_confirmed ? GOLD + '40' : BORD}`,
-                    borderRadius: 10, padding: '14px 18px',
-                    display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
-                  }}>
-                    <div style={{
-                      width: 40, height: 40, borderRadius: 20, flexShrink: 0,
-                      background: `linear-gradient(135deg, ${GOLD}30, ${GOLD}15)`,
-                      border: `1px solid ${GOLD}40`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 16, fontWeight: 900, color: GOLD,
-                    }}>
-                      {(member.full_name || 'S').charAt(0).toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 140 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: WHITE }}>{member.full_name}</div>
-                      <div style={{ fontSize: 12, color: DIM }}>
-                        {member.role_title}{member.department ? ` · ${member.department}` : ''}
-                      </div>
-                    </div>
-                    {member.email && (
-                      <div style={{ fontSize: 12, color: DIM }}>{member.email}</div>
-                    )}
-                    <div style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5,
-                      padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 800,
-                      letterSpacing: 1.5, textTransform: 'uppercase',
-                      background: member.alert_confirmed ? 'rgba(201,168,76,0.15)' : 'rgba(251,191,36,0.08)',
-                      color: member.alert_confirmed ? GOLD : AMBER,
-                      border: member.alert_confirmed ? `1px solid ${GOLD}40` : 'none',
-                    }}>
-                      {member.alert_confirmed ? '✓ GOOD BUSINESS' : '⏳ PENDING'}
-                    </div>
-                    {member.alert_confirmed && member.alert_sent_at && (
-                      <div style={{ fontSize: 10, color: DIM, whiteSpace: 'nowrap' }}>
-                        {new Date(member.alert_sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </div>
-                    )}
-                  </div>
-                ))}
+            <button onClick={refreshAll} disabled={busy} style={btn(true)}>
+              <RefreshCw size={13} className={busy ? "spin" : undefined} />
+              {busy ? "Refreshing" : "Refresh all"}
+            </button>
+
+            {clock && (
+              <div style={{ display: "flex", gap: 10 }}>
+                <Stat value={hhmm(remaining)} label="Drive left" />
+                <Stat value={hhmm(clock.clocks?.onDutyWindowRemaining)} label="Window left" />
+                <Stat value={safety ? safety.score : "—"} label="Safety score" />
+                <Stat value={learned === null ? "—" : `${learned}/${algo?.patternsPossible ?? "?"}`} label="Patterns learned" />
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "24px 26px 60px" }}>
+        {state === "loading" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, color: MUTED, padding: 30 }}>
+            <Loader2 size={16} className="spin" color={GOLD} /> Loading live data…
+          </div>
         )}
 
-        {/* ═══════════════════════════════════════════════════════════════════
-            TAB: ALERT & CONFIRM ALL
-        ═══════════════════════════════════════════════════════════════════ */}
-        {tab === 'alert' && (
-          <div style={{ maxWidth: 760 }}>
-            <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 13, color: GOLD, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 6 }}>
-                Platform Alert — Index All Appointed Staff
-              </div>
-              <p style={{ color: DIM, fontSize: 14, lineHeight: 1.7, margin: 0 }}>
-                Scans every staff member in the Entitled Index and confirms each one as
-                <strong style={{ color: GOLD }}> Good Business</strong> — locking their appointment
-                into the permanent platform record with a timestamped confirmation. Every event
-                is also written to the Activity Log.
+        {state === "error" && (
+          <Panel title="Hub failed to load" note="one of the six startup endpoints returned an error" icon={AlertTriangle}>
+            <Missing label="The hub could not read its data." reason={err} />
+          </Panel>
+        )}
+
+        {state === "ok" && (
+          <>
+            {/* 1. LOAD PLANNING */}
+            <Panel
+              title="1 · Load planning"
+              icon={Package}
+              note="GET /api/loads · GET /api/hos · GET /api/algorithm/:driverId · POST /api/routing/plan"
+            >
+              <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.6, marginTop: 0 }}>
+                Every load below is checked against the drive time {driver?.name || "this driver"} has
+                left on his 11-hour clock right now. The fit check is a straight{" "}
+                {AVG_MPH} mph average — it is an estimate, not a routed time. Hit{" "}
+                <strong style={{ color: GOLD }}>Plan route</strong> on any load for the real Google
+                Directions leg. Booking or passing records a signal so his profile learns what he
+                actually takes.
               </p>
-            </div>
 
-            {/* Summary stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
-              {[
-                { label: 'Total in Index',    value: staff.length, color: WHITE },
-                { label: 'Already Confirmed', value: confirmed,    color: GOLD },
-                { label: 'Will Be Confirmed', value: pending,      color: pending > 0 ? AMBER : GREEN },
-              ].map((s, i) => (
-                <div key={i} style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 10, padding: '16px 20px' }}>
-                  <div style={{ fontSize: 11, color: DIM, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 6 }}>{s.label}</div>
-                  <div style={{ fontSize: 30, fontWeight: 900, color: s.color }}>{s.value}</div>
+              {remaining === 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <Missing
+                    label="This driver has 0:00 of drive time left."
+                    reason="Every load below is marked as not fitting because the 11-hour limit is already reached. That is his real clock from /api/hos, not a placeholder."
+                  />
                 </div>
-              ))}
-            </div>
+              )}
 
-            {/* Integration notice */}
-            <div style={{
-              background: 'rgba(201,168,76,0.06)', border: `1px solid ${GOLD}30`,
-              borderRadius: 10, padding: '14px 18px', marginBottom: 24,
-              display: 'flex', gap: 12, alignItems: 'flex-start',
-            }}>
-              <span style={{ fontSize: 18, flexShrink: 0 }}>🔗</span>
-              <div style={{ fontSize: 12, color: DIM, lineHeight: 1.6 }}>
-                <strong style={{ color: GOLD }}>Integrated with all relevant functions:</strong> every confirmation is
-                simultaneously logged in the Activity Log, cross-referenced with Staff Appointed Index records,
-                and timestamped permanently in the platform. Connected modules — Daily Diagnostic, Page Guardian,
-                Agent Orchestrator — will show confirmed-staff status on their next scan.
-              </div>
-            </div>
+              <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+                {loads.length === 0 && (
+                  <Missing label="No loads on the board." reason="/api/loads returned zero rows." />
+                )}
 
-            {staff.length === 0 ? (
-              <div style={{ color: DIM, padding: '20px 0' }}>
-                No staff in the index yet. <button onClick={() => navigate('/staff')} style={{
-                  background: 'none', border: 'none', color: GOLD, cursor: 'pointer', fontSize: 14, fontWeight: 700,
-                }}>Add members →</button>
-              </div>
-            ) : !alertRunning && !alertDone && (
-              <button onClick={runBulkAlert} style={{
-                background: `linear-gradient(135deg, ${GOLD}, ${GOLD2})`,
-                color: '#000', border: 'none', padding: '16px 40px',
-                borderRadius: 9, fontSize: 15, fontWeight: 900,
-                cursor: 'pointer', letterSpacing: 2, textTransform: 'uppercase',
-              }}>
-                ⚡ Alert — Confirm All as Good Business
-              </button>
-            )}
-
-            {/* Live log */}
-            {alertLog.length > 0 && (
-              <div style={{ marginTop: 24, background: '#090909', border: `1px solid ${BORD}`, borderRadius: 12, padding: 20 }}>
-                <div style={{ fontSize: 11, color: DIM, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 14 }}>
-                  Confirmation Log
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {alertLog.map((entry, i) => (
-                    <div key={i} style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '10px 14px', borderRadius: 8, background: CARD,
-                    }}>
-                      <div style={{
-                        width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12,
-                        background: entry.status === 'confirmed' ? 'rgba(74,222,128,0.15)' : entry.status === 'error' ? 'rgba(248,113,113,0.15)' : 'rgba(251,191,36,0.15)',
-                        color: entry.status === 'confirmed' ? GREEN : entry.status === 'error' ? RED : AMBER,
-                      }}>
-                        {entry.status === 'confirmed' ? '✓' : entry.status === 'error' ? '✗' : '⟳'}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontWeight: 700, fontSize: 14 }}>{entry.name}</span>
-                        <span style={{ color: DIM, fontSize: 12, marginLeft: 8 }}>{entry.role}</span>
-                      </div>
-                      <div style={{
-                        fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1,
-                        color: entry.status === 'confirmed' ? GREEN : entry.status === 'error' ? RED : AMBER,
-                      }}>
-                        {entry.status === 'confirmed' ? 'Good Business' : entry.status === 'error' ? 'Error' : 'Processing…'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {alertDone && (
-              <div style={{
-                marginTop: 20, padding: '20px 24px', borderRadius: 12,
-                background: 'rgba(201,168,76,0.1)', border: `1px solid ${GOLD}50`,
-              }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: GOLD, marginBottom: 6 }}>
-                  ✓ All Staff Indexed & Confirmed — Good Business
-                </div>
-                <div style={{ fontSize: 13, color: DIM, marginBottom: 16 }}>
-                  Every appointed team member is confirmed with a permanent timestamp. The Activity Log has been updated.
-                </div>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <button onClick={() => setTab('staff')} style={{
-                    background: 'transparent', color: GOLD, border: `1px solid ${GOLD}`,
-                    padding: '8px 20px', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                  }}>View Staff Roster →</button>
-                  <button onClick={() => setTab('log')} style={{
-                    background: 'transparent', color: DIM, border: `1px solid ${BORD}`,
-                    padding: '8px 20px', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                  }}>View Activity Log →</button>
-                  <button onClick={() => { setAlertDone(false); setAlertLog([]); }} style={{
-                    background: 'transparent', color: DIM, border: `1px solid ${BORD}`,
-                    padding: '8px 20px', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                  }}>Run Again</button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ═══════════════════════════════════════════════════════════════════
-            TAB: ACTIVITY LOG
-        ═══════════════════════════════════════════════════════════════════ */}
-        {tab === 'log' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-              <div>
-                <div style={{ fontSize: 13, color: GOLD, letterSpacing: 3, textTransform: 'uppercase' }}>
-                  Activity Log
-                </div>
-                <div style={{ fontSize: 12, color: DIM, marginTop: 2 }}>
-                  Every platform action, staff alert, and module connection — logged permanently.
-                </div>
-              </div>
-              <button onClick={fetchLog} style={{
-                marginLeft: 'auto', background: 'transparent', color: GOLD,
-                border: `1px solid ${GOLD}`, padding: '8px 16px', borderRadius: 7,
-                fontSize: 12, fontWeight: 700, cursor: 'pointer',
-              }}>↻ Refresh</button>
-            </div>
-
-            {loadingLog ? (
-              <div style={{ color: DIM, padding: '40px 0', textAlign: 'center' }}>Loading log…</div>
-            ) : eventLog.length === 0 ? (
-              <div style={{
-                background: CARD, border: `1px solid ${BORD}`, borderRadius: 12,
-                padding: '40px 24px', textAlign: 'center', color: DIM,
-              }}>
-                No events logged yet. Module connections and staff alerts will appear here.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {eventLog.map((entry, i) => {
-                  const isStaff   = entry.event_type?.includes('STAFF');
-                  const isModule  = entry.event_type?.includes('MODULE');
-                  const isError   = entry.status === 'error';
-                  const dotColor  = isError ? RED : isStaff ? GOLD : isModule ? BLUE : GREEN;
+                {loads.map((l) => {
+                  const estSec = (l.miles / AVG_MPH) * 3600;
+                  const fits = remaining !== null && estSec <= remaining;
+                  const short = remaining !== null ? estSec - remaining : null;
+                  const p = plan[l.id];
+                  const sig = signalled[l.id];
                   return (
-                    <div key={entry.id || i} style={{
-                      background: CARD, border: `1px solid ${BORD}`, borderRadius: 10,
-                      padding: '12px 16px', display: 'flex', gap: 14, alignItems: 'flex-start',
-                    }}>
-                      <div style={{
-                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0, marginTop: 6,
-                        background: dotColor, boxShadow: `0 0 6px ${dotColor}88`,
-                      }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: WHITE, marginBottom: 2 }}>
-                          {entry.event_description}
+                    <div key={l.id} style={{ border: `1px solid ${BORDER}`, borderRadius: 8, background: "#121212", padding: 14 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "baseline" }}>
+                        <div style={{ flex: 1, minWidth: 260 }}>
+                          <div style={{ fontFamily: "Oswald, sans-serif", fontSize: 16, letterSpacing: "0.04em", color: "#f0f0f0" }}>
+                            {l.origin} → {l.destination}
+                          </div>
+                          <div style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11.5, color: DIM, marginTop: 4 }}>
+                            {l.broker} · {l.equipment} · {l.miles} mi · {money(l.rate)} · ${l.rpm}/mi · pickup {l.pickupDate}
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 11, color: DIM }}>
-                            {entry.affected_module && <span style={{ color: GOLD }}>{entry.affected_module} · </span>}
-                            {entry.initiated_by}
-                          </span>
-                        </div>
-                      </div>
-                      <div style={{ flexShrink: 0, textAlign: 'right' }}>
                         <div style={{
-                          fontSize: 9, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase',
-                          padding: '2px 8px', borderRadius: 4, marginBottom: 4,
-                          background: isError ? RED + '20' : GREEN + '20',
-                          color: isError ? RED : GREEN,
+                          fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.14em",
+                          fontSize: 11, padding: "5px 10px", borderRadius: 5,
+                          border: `1px solid ${fits ? GOLD : WARN}`, color: fits ? GOLD : WARN,
                         }}>
-                          {entry.status || 'success'}
+                          {remaining === null ? "No clock" : fits ? "Fits the clock" : `Short ${hhmm(short)}`}
                         </div>
-                        <div style={{ fontSize: 10, color: DIM }}>
-                          {entry.created ? new Date(entry.created).toLocaleString('en-US', {
-                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                          }) : '—'}
+                      </div>
+
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 18, marginTop: 10, fontSize: 12, color: MUTED }}>
+                        <span><Clock size={11} style={{ verticalAlign: -1 }} /> est {hhmm(estSec)} at {AVG_MPH} mph</span>
+                        <span><MapPin size={11} style={{ verticalAlign: -1 }} /> drive left {hhmm(remaining)}</span>
+                        <span>status {l.status}</span>
+                      </div>
+
+                      {p?.status === "ok" && p.data?.route && (
+                        <div style={{ marginTop: 10, borderTop: "1px solid #1c1c1c", paddingTop: 10 }}>
+                          <Row k="Routed distance" v={`${p.data.route.miles} mi`} mono />
+                          <Row k="Routed drive time" v={hhmm(p.data.route.seconds)} mono />
+                          <Row k="Summary" v={p.data.route.summary || "—"} mono />
+                          <Row
+                            k="Against his clock"
+                            v={remaining !== null && p.data.route.seconds <= remaining ? "Fits" : `Short ${hhmm((p.data.route.seconds || 0) - (remaining || 0))}`}
+                            mono
+                            tone={remaining !== null && p.data.route.seconds <= remaining ? GOLD : WARN}
+                          />
                         </div>
+                      )}
+                      {p?.status === "error" && (
+                        <div style={{ marginTop: 10, color: WARN, fontSize: 12, fontFamily: "JetBrains Mono, monospace" }}>
+                          Routing failed: {p.error}
+                        </div>
+                      )}
+
+                      <div style={{ display: "flex", gap: 9, marginTop: 12, flexWrap: "wrap" }}>
+                        <button onClick={() => planRoute(l)} style={btn(false)} disabled={p?.status === "loading"}>
+                          {p?.status === "loading" ? <Loader2 size={12} className="spin" /> : <RouteIcon size={12} />}
+                          Plan route
+                        </button>
+                        <button onClick={() => signal(l, true)} style={btn(sig === "accepted")} disabled={!!sig}>
+                          {sig === "accepted" ? "Booked — signal recorded" : "Book it"}
+                        </button>
+                        <button onClick={() => signal(l, false)} style={btn(false)} disabled={!!sig}>
+                          {sig === "declined" ? "Passed — signal recorded" : "Pass"}
+                        </button>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            )}
-          </div>
-        )}
-      </div>
 
-
-        {/* ROAD DANGER TAB */}
-        {tab === 'roads' && (
-          <div>
-            <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: 14, padding: '18px 22px', marginBottom: 28 }}>
-              <div style={{ fontSize: 14, fontWeight: 900, color: RED, marginBottom: 8 }}>&#x26A0;&#xFE0F; Straight Talk on Dangerous Roads</div>
-              <div style={{ fontSize: 13, color: '#ffffffd9', lineHeight: 1.7 }}>
-                No filters here. Roads that are genuinely dangerous for trucks get flagged — construction nightmares, low bridges, flooded underpasses, ice-prone grades, DOT inspection blitzes, and shippers who route you through roads your rig cannot handle. Community-confirmed. If something is wrong, report it. If a report is inaccurate, dismiss it.
-              </div>
-            </div>
-            <div style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 14, padding: 22, marginBottom: 28 }}>
-              <div style={{ fontSize: 13, fontWeight: 900, color: GOLD, marginBottom: 16 }}>&#x1F6A8; Report a Dangerous Segment</div>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 10, color: DIM, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>Route or Road Segment</label>
-                <input value={dangerForm.route_segment} onChange={e => setDangerForm(prev => ({ ...prev, route_segment: e.target.value }))} placeholder="I-80 WB near Cheyenne, WY"
-                  style={{ width: '100%', padding: '11px 14px', background: CARD2, border: `1px solid ${BORD}`, borderRadius: 9, color: WHITE, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 14 }}>
-                {[
-                  { label: 'Type', key: 'report_type', opts: ['Road Hazard','Low Bridge','Weight Limit','Flooded Route','Ice / Black Ice','Construction Zone','DOT Inspection Blitz','Truck-Unfriendly Route','Dangerous Grade','Shipper Routing Error','Other'] },
-                  { label: 'Severity', key: 'severity', opts: ['Critical — Do Not Use','High','Medium','Low — Proceed with Caution'] },
-                  { label: 'Vehicle Type', key: 'vehicle_type', opts: ['truck','van','ev','bike','all'] },
-                ].map(f => (
-                  <div key={f.key}>
-                    <label style={{ display: 'block', fontSize: 10, color: DIM, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>{f.label}</label>
-                    <select value={dangerForm[f.key]} onChange={e => setDangerForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      style={{ width: '100%', padding: '11px 14px', background: CARD2, border: `1px solid ${BORD}`, borderRadius: 9, color: WHITE, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}>
-                      {f.opts.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 10, color: DIM, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>What exactly happens here? Be specific.</label>
-                <textarea value={dangerForm.description} onChange={e => setDangerForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="13'6 bridge at mile marker 44 — GPS routes 48' combos through here. Three strikes in 2024. Avoid completely."
-                  rows={3} style={{ width: '100%', padding: '11px 14px', background: CARD2, border: `1px solid ${BORD}`, borderRadius: 9, color: WHITE, fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-              </div>
-              <button onClick={submitDangerReport} disabled={!dangerForm.route_segment || !dangerForm.description || dangerSubmitting}
-                style={{ padding: '12px 28px', borderRadius: 9, border: 'none', background: dangerSaved ? GREEN : RED, color: '#fff', fontWeight: 900, fontSize: 13, cursor: dangerForm.route_segment && dangerForm.description ? 'pointer' : 'not-allowed', opacity: dangerForm.route_segment && dangerForm.description ? 1 : 0.5 }}>
-                {dangerSaved ? '✓ Report Filed' : dangerSubmitting ? 'Filing…' : '🚨 File Danger Report'}
-              </button>
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 900, color: WHITE, marginBottom: 14 }}>Live Reports — {dangerReports.length} on record</div>
-            {dangerLoading ? <div style={{ color: DIM, padding: 40, textAlign: 'center' }}>Loading…</div>
-            : dangerReports.length === 0 ? (
-              <div style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 12, padding: '40px 24px', textAlign: 'center', color: DIM }}>No danger reports yet. Be the first to protect other drivers.</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {dangerReports.map((r, i) => {
-                  const sev = r.severity || '';
-                  const sevColor = sev.includes('Critical') ? RED : sev.includes('High') ? AMBER : sev.includes('Medium') ? BLUE : GREEN;
-                  const confirmed = r.confirmed_count || 0; const dismissed = r.dismissed_count || 0; const trust = confirmed - dismissed;
-                  return (
-                    <div key={r.id || i} style={{ background: CARD, border: `1px solid ${sevColor}30`, borderRadius: 13, padding: '16px 18px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-                        <div>
-                          <div style={{ fontWeight: 900, fontSize: 14, color: WHITE, marginBottom: 4 }}>&#x26A0;&#xFE0F; {r.route_segment}</div>
-                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 10, fontWeight: 800, background: sevColor + '20', color: sevColor, borderRadius: 8, padding: '2px 10px' }}>{r.severity}</span>
-                            <span style={{ fontSize: 10, background: CARD2, color: DIM, borderRadius: 8, padding: '2px 10px' }}>{r.report_type}</span>
-                            <span style={{ fontSize: 10, background: CARD2, color: DIM, borderRadius: 8, padding: '2px 10px' }}>{r.vehicle_type}</span>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 12, color: trust >= 2 ? RED : trust >= 1 ? AMBER : DIM, fontWeight: 800 }}>
-                            {trust >= 3 ? '🔴 CONFIRMED DANGEROUS' : trust >= 1 ? '🟡 Multiple Reports' : '🔵 New Report'}
-                          </div>
-                          <div style={{ fontSize: 10, color: DIM }}>{r.created ? new Date(r.created).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</div>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: 13, color: '#ffffffd9', lineHeight: 1.65, marginBottom: 12 }}>{r.description}</div>
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <button onClick={() => confirmDanger(r, 'confirm')} style={{ padding: '6px 14px', borderRadius: 7, border: `1px solid ${GREEN}50`, background: GREEN + '12', color: GREEN, fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>✓ Confirm — {confirmed}</button>
-                        <button onClick={() => confirmDanger(r, 'dismiss')} style={{ padding: '6px 14px', borderRadius: 7, border: `1px solid ${BORD}`, background: 'transparent', color: DIM, fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>✕ Not accurate — {dismissed}</button>
-                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.route_segment || '')}`} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 'auto', fontSize: 11, color: BLUE, textDecoration: 'none', fontWeight: 700 }}>📍 Map →</a>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* BROKER / SHIPPER RATINGS TAB */}
-        {tab === 'ratings' && (
-          <div>
-            <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 14, padding: '18px 22px', marginBottom: 28 }}>
-              <div style={{ fontSize: 14, fontWeight: 900, color: AMBER, marginBottom: 8 }}>🏴 Honest Broker & Shipper Ratings — No Sugarcoating</div>
-              <div style={{ fontSize: 13, color: '#ffffffd9', lineHeight: 1.7 }}>
-                Bad brokers keep operating because drivers don't talk. Rate every broker and shipper you work with — slow pay, detention ignored, phantom loads, bait-and-switch rates. Negative ratings are shown first so other drivers see them immediately.
-              </div>
-            </div>
-            <div style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 14, padding: 22, marginBottom: 28 }}>
-              <div style={{ fontSize: 13, fontWeight: 900, color: GOLD, marginBottom: 16 }}>📝 Rate a Broker or Shipper</div>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 10, color: DIM, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>Company Name</label>
-                <input value={ratingForm.company_name} onChange={e => setRatingForm(prev => ({ ...prev, company_name: e.target.value }))} placeholder="XYZ Freight Brokers LLC"
-                  style={{ width: '100%', padding: '11px 14px', background: CARD2, border: `1px solid ${BORD}`, borderRadius: 9, color: WHITE, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 14 }}>
-                {[
-                  { label: 'Type', key: 'company_type', opts: ['Broker','Shipper','Freight Forwarder','Dispatcher','Load Board'], isNum: false },
-                  { label: 'Overall Rating', key: 'rating', opts: [1,2,3,4,5], isNum: true },
-                  { label: 'Pay Speed', key: 'pay_speed', opts: ['Same Day','Fast (< 7 days)','Normal (7–30 days)','Slow (30–60 days)','Very Slow (60+ days)','Never Paid'], isNum: false },
-                  { label: 'Communication', key: 'communication', opts: ['Excellent','Good','Poor','Ghosted Me','Hostile'], isNum: false },
-                  { label: 'Load Accuracy', key: 'load_accuracy', opts: ['Accurate','Minor Issues','Bait & Switch','Phantom Load','Wrong Weight','Wrong Dimensions'], isNum: false },
-                  { label: 'Detention Respect', key: 'detention_respect', opts: ['Paid promptly','Respected','Pushed back','Refused to pay','Ghosted'], isNum: false },
-                ].map(f => (
-                  <div key={f.key}>
-                    <label style={{ display: 'block', fontSize: 10, color: DIM, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>{f.label}</label>
-                    <select value={ratingForm[f.key]} onChange={e => setRatingForm(prev => ({ ...prev, [f.key]: f.isNum ? +e.target.value : e.target.value }))}
-                      style={{ width: '100%', padding: '11px 14px', background: CARD2, border: `1px solid ${BORD}`, borderRadius: 9, color: f.isNum ? (ratingForm.rating <= 2 ? RED : ratingForm.rating === 3 ? AMBER : GREEN) : WHITE, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}>
-                      {f.opts.map(o => <option key={o} value={o}>{f.isNum ? '★'.repeat(o) + '☆'.repeat(5-o) + ' (' + o + '/5)' : o}</option>)}
-                    </select>
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 10, color: DIM, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>Your honest experience — details protect other drivers</label>
-                <textarea value={ratingForm.review_text} onChange={e => setRatingForm(prev => ({ ...prev, review_text: e.target.value }))}
-                  placeholder="E.g. — Booked me at $2.85/mi, called day-of to cut to $2.20 after I was already loaded. Do not accept loads from them."
-                  rows={3} style={{ width: '100%', padding: '11px 14px', background: CARD2, border: `1px solid ${BORD}`, borderRadius: 9, color: WHITE, fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-              </div>
-              <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-                <label style={{ fontSize: 12, color: '#ffffffd9' }}>Would work with again?</label>
-                <button onClick={() => setRatingForm(prev => ({ ...prev, would_work_again: !prev.would_work_again }))}
-                  style={{ padding: '7px 18px', borderRadius: 8, border: `1px solid ${ratingForm.would_work_again ? GREEN : RED}`, background: ratingForm.would_work_again ? GREEN + '15' : RED + '15', color: ratingForm.would_work_again ? GREEN : RED, fontSize: 12, fontWeight: 900, cursor: 'pointer' }}>
-                  {ratingForm.would_work_again ? '✓ Yes' : '✕ No — Never Again'}
-                </button>
-              </div>
-              <button onClick={submitRating} disabled={!ratingForm.company_name || ratingSubmitting}
-                style={{ padding: '12px 28px', borderRadius: 9, border: 'none', background: ratingSaved ? GREEN : `linear-gradient(135deg, ${GOLD}, ${GOLD2})`, color: ratingSaved ? '#fff' : '#000', fontWeight: 900, fontSize: 13, cursor: ratingForm.company_name ? 'pointer' : 'not-allowed', opacity: ratingForm.company_name ? 1 : 0.5 }}>
-                {ratingSaved ? '✓ Rating Filed — Protecting Other Drivers' : ratingSubmitting ? 'Filing…' : '📋 Submit Rating'}
-              </button>
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-              {['All','Broker','Shipper','Low Rated (1–2)','High Rated (4–5)'].map(f => (
-                <button key={f} onClick={() => setRatingFilter(f)}
-                  style={{ padding: '7px 14px', borderRadius: 8, border: `1px solid ${ratingFilter === f ? GOLD : BORD}`, background: ratingFilter === f ? GOLD + '15' : 'transparent', color: ratingFilter === f ? GOLD : DIM, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                  {f}
-                </button>
-              ))}
-            </div>
-            {ratingsLoading ? <div style={{ color: DIM, padding: 40, textAlign: 'center' }}>Loading ratings…</div>
-            : ratings.length === 0 ? (
-              <div style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 12, padding: '40px 24px', textAlign: 'center', color: DIM }}>No ratings yet. Be the first.</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {ratings
-                  .filter(r => {
-                    if (ratingFilter === 'All') return true;
-                    if (ratingFilter === 'Low Rated (1–2)') return r.rating <= 2;
-                    if (ratingFilter === 'High Rated (4–5)') return r.rating >= 4;
-                    return r.company_type === ratingFilter;
-                  })
-                  .sort((a,b) => (a.rating||3) - (b.rating||3))
-                  .map((r, i) => {
-                    const rn = r.rating || 3;
-                    const rc = rn <= 2 ? RED : rn === 3 ? AMBER : GREEN;
-                    const stars = '★'.repeat(rn) + '☆'.repeat(5-rn);
-                    return (
-                      <div key={r.id || i} style={{ background: CARD, border: `2px solid ${rc}25`, borderRadius: 13, padding: '16px 18px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-                          <div>
-                            <div style={{ fontWeight: 900, fontSize: 15, color: WHITE, marginBottom: 5 }}>{r.company_name}</div>
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: 10, background: CARD2, color: DIM, borderRadius: 8, padding: '2px 10px' }}>{r.company_type}</span>
-                              {r.mc_number && <span style={{ fontSize: 10, background: CARD2, color: DIM, borderRadius: 8, padding: '2px 10px' }}>MC# {r.mc_number}</span>}
-                              <span style={{ fontSize: 13, color: rc, fontWeight: 900, letterSpacing: 1 }}>{stars}</span>
-                            </div>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: 18, fontWeight: 900, color: rc }}>{rn}/5</div>
-                            <div style={{ fontSize: 10, color: r.would_work_again ? GREEN : RED, fontWeight: 700 }}>{r.would_work_again ? '✓ Work again' : '✕ Would NOT use again'}</div>
-                          </div>
-                        </div>
-                        {r.review_text && <div style={{ fontSize: 13, color: '#ffffffd9', lineHeight: 1.65, marginBottom: 10, fontStyle: 'italic', borderLeft: `3px solid ${rc}40`, paddingLeft: 12 }}>"{r.review_text}"</div>}
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          {[['Pay',r.pay_speed],['Comms',r.communication],['Load',r.load_accuracy],['Detention',r.detention_respect]].map(([lbl,val]) => val ? (
-                            <span key={lbl} style={{ fontSize: 10, background: CARD2, color: '#ffffffd9', borderRadius: 8, padding: '3px 10px' }}><span style={{ color: DIM }}>{lbl}: </span>{val}</span>
-                          ) : null)}
-                        </div>
-                        {rn <= 2 && <div style={{ marginTop: 10, padding: '8px 12px', background: RED + '12', borderRadius: 8, fontSize: 12, color: RED, fontWeight: 700 }}>🔴 Negatively rated — verify rate confirmation before loading.</div>}
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* MY PERFORMANCE TAB */}
-        {tab === 'performance' && (
-          <div>
-            <div style={{ background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.3)', borderRadius: 14, padding: '18px 22px', marginBottom: 28 }}>
-              <div style={{ fontSize: 14, fontWeight: 900, color: BLUE, marginBottom: 8 }}>📊 Your Entitled Index — Personal Platform Intelligence</div>
-              <div style={{ fontSize: 13, color: '#ffffffd9', lineHeight: 1.7 }}>
-                Every action you take across TruckWithEase is tracked here — not to judge you, but to give an honest picture of how you're using the platform, where you're spending time, and where you're leaving money on the table. No filters.
-              </div>
-            </div>
-            {perfLoading ? <div style={{ color: DIM, padding: 40, textAlign: 'center' }}>Loading your performance data…</div>
-            : (
-              <div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 28 }}>
-                  {[
-                    { label: 'Platform Actions', val: perfSummary.totalActions, icon: '⚡', color: GOLD, sub: 'across all modules' },
-                    { label: 'Most Used Tool', val: perfSummary.topModule || 'None yet', icon: '🏆', color: GREEN, sub: 'your go-to module' },
-                    { label: 'Routes Saved', val: perfSummary.savedRoutes, icon: '💾', color: BLUE, sub: 'planned & kept' },
-                    { label: 'Stop Ratings Given', val: perfSummary.stopFeedback, icon: '👍', color: PURPLE, sub: perfSummary.routesFeedbackPos + ' positive' },
-                  ].map(k => (
-                    <div key={k.label} style={{ background: CARD, border: `1px solid ${k.color}25`, borderRadius: 13, padding: '16px 18px' }}>
-                      <div style={{ fontSize: 24, marginBottom: 6 }}>{k.icon}</div>
-                      <div style={{ fontSize: 22, fontWeight: 900, color: k.color, marginBottom: 3 }}>{k.val}</div>
-                      <div style={{ fontSize: 11, color: WHITE, fontWeight: 700, marginBottom: 2 }}>{k.label}</div>
-                      <div style={{ fontSize: 10, color: DIM }}>{k.sub}</div>
-                    </div>
-                  ))}
+              <div style={{ marginTop: 18 }}>
+                <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.18em", fontSize: 11, color: MUTED, marginBottom: 8 }}>
+                  What his profile already knows about loads, lanes and brokers
                 </div>
-                <div style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 14, padding: '20px 22px', marginBottom: 24 }}>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: GOLD, marginBottom: 14 }}>🤖 Honest Assessment</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {perfSummary.savedRoutes === 0 && (
-                      <div style={{ display: 'flex', gap: 10, padding: '10px 14px', background: AMBER + '10', borderRadius: 9, borderLeft: `3px solid ${AMBER}` }}>
-                        <span>⚠️</span>
-                        <div style={{ fontSize: 12, color: '#ffffffd9', lineHeight: 1.6 }}><strong style={{ color: AMBER }}>No routes saved yet.</strong> Every route you plan disappears when you close the tab. Save your next run — the adaptive stop intelligence only works with saved routes.</div>
-                      </div>
-                    )}
-                    {perfSummary.stopFeedback === 0 && (
-                      <div style={{ display: 'flex', gap: 10, padding: '10px 14px', background: AMBER + '10', borderRadius: 9, borderLeft: `3px solid ${AMBER}` }}>
-                        <span>🔕</span>
-                        <div style={{ fontSize: 12, color: '#ffffffd9', lineHeight: 1.6 }}><strong style={{ color: AMBER }}>No charge stops rated yet.</strong> The route planner cannot learn without your feedback. Rate stops on your next run — good or bad.</div>
-                      </div>
-                    )}
-                    {perfSummary.totalActions === 0 && (
-                      <div style={{ display: 'flex', gap: 10, padding: '10px 14px', background: BLUE + '10', borderRadius: 9, borderLeft: `3px solid ${BLUE}` }}>
-                        <span>📋</span>
-                        <div style={{ fontSize: 12, color: '#ffffffd9', lineHeight: 1.6 }}><strong style={{ color: BLUE }}>Activity log is empty.</strong> As you move through modules — dispatch, load board, ELD — each action is logged so you see your real workflow over time.</div>
-                      </div>
-                    )}
-                    {perfSummary.routesFeedbackPos > 0 && (
-                      <div style={{ display: 'flex', gap: 10, padding: '10px 14px', background: GREEN + '10', borderRadius: 9, borderLeft: `3px solid ${GREEN}` }}>
-                        <span>✓</span>
-                        <div style={{ fontSize: 12, color: '#ffffffd9', lineHeight: 1.6 }}><strong style={{ color: GREEN }}>{perfSummary.routesFeedbackPos} trusted stops locked in.</strong> Future route plans will prioritize these automatically.</div>
-                      </div>
-                    )}
-                    {perfSummary.topModule && perfSummary.topModule !== 'None yet' && (
-                      <div style={{ display: 'flex', gap: 10, padding: '10px 14px', background: GREEN + '10', borderRadius: 9, borderLeft: `3px solid ${GREEN}` }}>
-                        <span>💡</span>
-                        <div style={{ fontSize: 12, color: '#ffffffd9', lineHeight: 1.6 }}><strong style={{ color: GREEN }}>Most-used: {perfSummary.topModule}.</strong> Check Dispatch, Load Profit Calculator, and Driver Scorecard regularly — those three together drive the most revenue per hour.</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: WHITE, marginBottom: 14 }}>Recent Activity — Last {Math.min(perfData.length, 30)} Events</div>
-                {perfData.length === 0 ? (
-                  <div style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 12, padding: '40px 24px', textAlign: 'center', color: DIM }}>No activity logged yet. Start using modules and your full history appears here.</div>
+                {knownLoadPrefs.length === 0 ? (
+                  <Missing
+                    label="Nothing learned yet about his load, lane or broker preferences."
+                    reason={`The engine needs ${algo?.minSamples ?? 5} observations in a dimension before it will state a pattern. He has booked ${algo?.signalsRecorded ?? 0} loads through the app so far. Book or pass a few above and this fills in on its own.`}
+                  />
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {perfData.slice(0, 30).map((a, i) => (
-                      <div key={a.id || i} style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 10, padding: '11px 15px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: BLUE, flexShrink: 0 }} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: 12, color: WHITE, fontWeight: 700 }}>{a.action_type}</span>
-                          {a.module && <span style={{ fontSize: 11, color: GOLD, marginLeft: 8 }}>{a.module}</span>}
-                          {a.detail && <span style={{ fontSize: 11, color: DIM, marginLeft: 8 }}>{a.detail}</span>}
-                        </div>
-                        <div style={{ fontSize: 10, color: DIM, flexShrink: 0 }}>{a.created ? new Date(a.created).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</div>
-                      </div>
+                  <div>
+                    {knownLoadPrefs.map((p, i) => (
+                      <Row key={i} k={p.label} v={`${p.value} · ${p.sampleCount} obs · ${p.confidence}`} mono />
                     ))}
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </Panel>
+
+            {/* 2. HR TOOLS */}
+            <Panel title="2 · Human resource tools" icon={Users} note="GET /api/hr/summary — the same records the HR module writes">
+              {!hr ? (
+                <Missing label="HR summary unavailable." reason="/api/hr/summary did not return." />
+              ) : (
+                <>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    <Stat value={hr.headcount} label="Headcount" />
+                    <Stat value={hr.activeDrivers} label="Active drivers" />
+                    <Stat value={hr.prospects} label="Prospects" />
+                    <Stat value={hr.openOccurrences} label="Open occurrences" />
+                    <Stat value={hr.criticalOccurrences} label="Critical" />
+                    <Stat value={hr.expiringDocs} label="Expiring docs" />
+                  </div>
+
+                  <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 18 }}>
+                    <div>
+                      <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.18em", fontSize: 11, color: MUTED, marginBottom: 6 }}>Last payroll run</div>
+                      {hr.lastPayroll ? (
+                        <>
+                          <Row k="Period" v={`${hr.lastPayroll.periodStart} → ${hr.lastPayroll.periodEnd}`} mono />
+                          <Row k="Status" v={hr.lastPayroll.status} mono />
+                          <Row k="Gross" v={money(hr.lastPayroll.totalGross)} mono />
+                          <Row k="Net" v={money(hr.lastPayroll.totalNet)} mono />
+                          <Row k="People paid" v={hr.lastPayroll.headcount} mono />
+                        </>
+                      ) : (
+                        <Missing label="No payroll run on file." reason="No rows in the payroll table yet." />
+                      )}
+                    </div>
+                    <div>
+                      <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.18em", fontSize: 11, color: MUTED, marginBottom: 6 }}>Profitability</div>
+                      {hr.profit ? (
+                        <>
+                          <Row k="Revenue" v={money(hr.profit.revenue)} mono />
+                          <Row k="Cost" v={money(hr.profit.cost)} mono />
+                          <Row k="Net" v={money(hr.profit.net)} mono tone={GOLD} />
+                        </>
+                      ) : (
+                        <Missing label="No profitability rows." reason="Nothing recorded against runs yet." />
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 9, marginTop: 16, flexWrap: "wrap" }}>
+                    <a href="/hr" style={{ ...btn(false), textDecoration: "none" }}>Open HR module</a>
+                    <a href="/driver-algorithm" style={{ ...btn(false), textDecoration: "none" }}>Driver algorithm</a>
+                    <a href="/fleet-load-board" style={{ ...btn(false), textDecoration: "none" }}>Load board</a>
+                  </div>
+                </>
+              )}
+            </Panel>
+
+            {/* 3. MEDICAL */}
+            <Panel
+              title="3 · DOT physicals & medical cards"
+              icon={Stethoscope}
+              note="GET /api/hr/documents (category=medical_card) · FMCSA National Registry deep link"
+            >
+              <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.6, marginTop: 0 }}>
+                There is no clinic list here on purpose. The FMCSA National Registry — the only
+                list that certifies who may legally perform a DOT physical — is reCAPTCHA-protected
+                with no public API and no bulk download, so no honest app can mirror it. Anything
+                else would be a directory of buildings that may not be certified. What we can do,
+                and what actually keeps a card current, is track the expiry and hand the driver
+                the official search for whatever state he is sitting in.
+              </p>
+
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.18em", fontSize: 11, color: MUTED, marginBottom: 8 }}>
+                  Medical cards on file
+                </div>
+                {medCards.length === 0 ? (
+                  <Missing
+                    label="No medical cards on file."
+                    reason="No hr_documents rows with category=medical_card. Upload cards in the HR module and the countdown starts here automatically."
+                  />
+                ) : (
+                  medCards.map((c) => {
+                    const bad = c.days !== null && c.days <= 60;
+                    return (
+                      <Row
+                        key={c.id}
+                        k={c.who}
+                        v={
+                          c.days === null
+                            ? "No expiry recorded"
+                            : c.days < 0
+                              ? `EXPIRED ${Math.abs(c.days)} days ago (${c.expiresOn})`
+                              : `${c.days} days left — expires ${c.expiresOn}`
+                        }
+                        mono
+                        tone={bad ? WARN : "#e8e8e8"}
+                      />
+                    );
+                  })
+                )}
+                <div style={{ fontSize: 11.5, color: DIM, marginTop: 8, fontFamily: "JetBrains Mono, monospace" }}>
+                  Anything inside 60 days is flagged. A card cannot be renewed retroactively — the
+                  driver is out of service the day it lapses.
+                </div>
+              </div>
+
+              <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+                <div style={{ minWidth: 240 }}>
+                  <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.16em", fontSize: 10.5, color: MUTED, marginBottom: 6 }}>
+                    Find a certified examiner in
+                  </div>
+                  <select value={medState} onChange={(e) => setMedState(e.target.value)} style={inputCls}>
+                    {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <a
+                  href={REGISTRY}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  style={{ ...btn(true), textDecoration: "none" }}
+                >
+                  <ExternalLink size={13} />
+                  Open FMCSA registry — {medState}
+                </a>
+                <a href="/medical-examiners" style={{ ...btn(false), textDecoration: "none" }}>
+                  Full examiner page
+                </a>
+              </div>
+              <div style={{ fontSize: 11.5, color: DIM, marginTop: 10, lineHeight: 1.6 }}>
+                The registry search opens on the official FMCSA site; pick the state there. We
+                cannot pre-fill it — the page is behind a captcha and rejects automated queries.
+              </div>
+            </Panel>
+
+            {/* 4. TELEMETRY */}
+            <Panel
+              title="4 · Live telemetry feed"
+              icon={Radio}
+              note="GET /api/fleet/drivers · GET /api/hos · GET /api/safety/:driverId"
+            >
+              <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.6, marginTop: 0 }}>
+                This is platform telemetry — positions, speeds and duty clocks our own server
+                holds. It is <strong style={{ color: GOLD }}>not</strong> a carrier telematics
+                integration: no third-party provider is connected. The Azuga key we were given is
+                rejected by their API (401), so nothing is flowing from an ELD vendor. Everything
+                below is real data from our database, and it is what feeds panels 1 through 3.
+              </p>
+
+              <div style={{ marginTop: 14 }}>
+                {drivers.map((d) => {
+                  const c = hos.find((f) => f.driverId === d.id);
+                  const viol = c?.violations?.length || 0;
+                  return (
+                    <div key={d.id} style={{ borderBottom: "1px solid #1c1c1c", padding: "10px 0", display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center" }}>
+                      <div style={{ minWidth: 190 }}>
+                        <span style={{ color: d.id === driverId ? GOLDBR : "#e8e8e8", fontFamily: "Oswald, sans-serif", fontSize: 14 }}>{d.name}</span>
+                        <span style={{ color: DIM, fontSize: 12 }}> · {d.truckNumber}</span>
+                      </div>
+                      <div style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11.5, color: MUTED, flex: 1, minWidth: 300 }}>
+                        {d.lat !== null && d.lat !== undefined ? `${Number(d.lat).toFixed(4)}, ${Number(d.lng).toFixed(4)}` : "no position"}
+                        {" · "}{d.speed !== null && d.speed !== undefined ? `${d.speed} mph` : "no speed"}
+                        {" · "}hdg {d.heading ?? "—"}
+                        {" · "}seen {d.lastSeen ? new Date(d.lastSeen).toLocaleString() : "never"}
+                      </div>
+                      <div style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11.5, color: viol ? WARN : GOLD, minWidth: 150, textAlign: "right" }}>
+                        drive left {hhmm(c?.clocks?.drivingRemaining)} · {viol} violation{viol === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {clock?.violations?.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.18em", fontSize: 11, color: MUTED, marginBottom: 8 }}>
+                    Open on {driver?.name}
+                  </div>
+                  {clock.violations.map((v, i) => (
+                    <Row key={i} k={v.level} v={v.msg} tone={WARN} />
+                  ))}
+                </div>
+              )}
+            </Panel>
+
+            {/* what would make this real */}
+            <Panel title="What would make this hub smarter" note="honest list of what is still missing">
+              <ol style={{ color: MUTED, fontSize: 13.5, lineHeight: 1.85, paddingLeft: 20, margin: 0 }}>
+                <li>A real telematics feed. The Azuga key is rejected at their end — a working key, or a different provider, turns panel 4 from our own database into live vehicle data.</li>
+                <li>Google Geocoding and Places enabled on the Maps project. Both are off today, which is why load fit uses a {AVG_MPH} mph average until you click Plan route.</li>
+                <li>Medical cards uploaded for every driver. The storage API is built and tested; no page uses it yet, so the countdown only covers the cards already in the HR table.</li>
+                <li>More booked loads. The profile needs {algo?.minSamples ?? 5} observations per dimension before it will state a preference, and it has {algo?.signalsRecorded ?? 0} recorded for this driver.</li>
+              </ol>
+            </Panel>
+
+            <div style={{ color: DIM, fontSize: 11.5, lineHeight: 1.7, marginTop: 8 }}>
+              This hub does not book freight with any broker, does not file anything with FMCSA,
+              does not certify a medical examiner, and is not a registered ELD. It reads the
+              platform's own records and shows them next to each other.
+            </div>
+          </>
         )}
-
-      {/* ── QUICK ACCESS STRIP ── */}
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: '#050505', borderTop: `1px solid ${BORD}`,
-        padding: '10px 20px', zIndex: 200,
-        display: 'flex', gap: 8, overflowX: 'auto', alignItems: 'center',
-      }}>
-        <span style={{ fontSize: 10, color: DIM, letterSpacing: 2, textTransform: 'uppercase', whiteSpace: 'nowrap', marginRight: 4 }}>
-          Quick Access
-        </span>
-        {[
-          { label: '⚡ Dispatch',   path: '/dispatch' },
-          { label: '🔧 Mechanic',   path: '/mechanic' },
-          { label: '⚖️ Cat Scales', path: '/catscales' },
-          { label: '🚛 Bypass',     path: '/bypass' },
-          { label: '🔍 Loads',      path: '/loads' },
-          { label: '📊 Scorecard',  path: '/driver-scorecard' },
-          { label: '🩺 Diagnostic', path: '/daily-maintenance' },
-          { label: '🤖 AI Team',    path: '/ai-team' },
-          { label: '📈 Forecast',   path: '/forecast' },
-          { label: '⭐ Staff',      path: '/staff' },
-        ].map(a => (
-          <button key={a.path} onClick={() => navigate(a.path)} style={{
-            background: 'transparent', border: `1px solid ${BORD}`,
-            color: DIM, padding: '6px 12px', borderRadius: 6,
-            fontSize: 11, fontWeight: 700, cursor: 'pointer',
-            whiteSpace: 'nowrap', flexShrink: 0,
-          }}>
-            {a.label}
-          </button>
-        ))}
       </div>
-
-      <style>{`
-        input:focus { border-color: ${GOLD} !important; outline: none; }
-        ::-webkit-scrollbar { height: 4px; width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${BORD}; border-radius: 4px; }
-        @media (max-width: 640px) {
-          .index-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
     </div>
   );
+}
+
+/* POST helper kept below the component for readability */
+async function getJSON2(url, body) {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `${r.status} ${r.statusText}`);
+  return j;
 }

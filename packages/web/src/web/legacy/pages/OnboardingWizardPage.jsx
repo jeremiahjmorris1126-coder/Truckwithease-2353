@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, CheckCircle, Zap, AlertCircle, MapPin, Users, DollarSign, TrendingUp, X } from 'lucide-react';
-import { pb } from '../lib/pb.js';
-import { logAction, getTopStops, getWorstEntities } from '../lib/fleetMemory.js';
+import { logAction } from '../lib/fleetMemory.js';
 import { buildUserProfile, getContextualHelp, suggestNextFeatures } from '../lib/truckWithEase.js';
 
 const C = {
-  black: '#060A10',
-  gold: '#c9a84c',
+  black: '#0a0a0a',
+  gold: '#C9A84C',
   goldDim: '#9b7f2e',
   white: '#f0ede8',
   white60: 'rgba(240, 237, 232, 0.6)',
   white30: 'rgba(240, 237, 232, 0.3)',
-  red: '#f87171',
-  green: '#4ade80',
-  blue: '#3b82f6',
-  card: '#0f1419',
-  border: 'rgba(201, 168, 76, 0.15)',
+  red: '#c96a4c',
+  green: '#C9A84C',
+  blue: '#FFD700',
+  card: '#161616',
+  border: '#222222',
 };
 
 const FONT_DISPLAY = 'Bebas Neue';

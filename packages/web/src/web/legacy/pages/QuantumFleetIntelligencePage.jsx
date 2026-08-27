@@ -1,318 +1,298 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, AlertTriangle, Zap, Brain, Radio, Target, Eye, Cpu } from 'lucide-react';
 
+/**
+ * Fleet Intelligence — rewired to real data.
+ *
+ * The original page called Math.random() 17 times inside a generateQuantumProfile()
+ * helper: fake driver IDs, four separate 128-element "neural vectors", cargo value,
+ * fuel price, market demand, accident risk, breakdown risk, optimal price and
+ * compliance-violation risk. It also printed an "Expected profit margin" pulled
+ * straight out of Math.floor(Math.random() * 40) + 10.
+ *
+ * All of that is gone. What is left comes from GET /api/fleet-intel/fleet, which
+ * counts real rows: drivers, trucks, loads, maintenance_records, accident_reports
+ * and dispatch_compliance_log. Anything the platform cannot measure is listed in
+ * a "Not Yet Measurable" panel with the reason, instead of a made-up number.
+ */
+
 const C = {
-  black: '#060a10',
-  card: '#0d1117',
+  black: '#0a0a0a',
+  card: '#161616',
+  nav: '#111111',
+  border: '#222222',
   white: '#ffffff',
-  white60: '#9ca3af',
-  white30: '#374151',
-  gold: '#f59e0b',
-  cyan: '#06b6d4',
-  purple: '#a855f7',
-  green: '#10b981',
-  red: '#ef4444',
+  white60: '#9a9a9a',
+  gold: '#C9A84C',
+  goldBright: '#FFD700',
+  green: '#22c55e',
+  red: '#E0483B',
 };
 
-// Quantum Fleet Intelligence Engine
-// Real-time prediction of cargo value, driver fatigue, market demand, and optimal routing
-// Across entire industry at scale - not just one fleet
+const GOLD_GRADIENT = 'linear-gradient(135deg,#C9A84C 0%,#FFD700 40%,#C9A84C 70%,#8A6E2F 100%)';
 
-const generateQuantumProfile = () => ({
-  timestamp: new Date(),
-  driverId: Math.random().toString(36).substr(2, 9),
-  fleetId: Math.random().toString(36).substr(2, 9),
-  state: Math.random() > 0.5 ? 'CA' : 'TX',
-  
-  // Quantum dimensions (128D vector space)
-  fatigueVector: Array(128).fill(0).map(() => Math.random()),
-  marketVector: Array(128).fill(0).map(() => Math.random()),
-  cargoVector: Array(128).fill(0).map(() => Math.random()),
-  weatherVector: Array(128).fill(0).map(() => Math.random()),
-  
-  // Real-time metrics
-  cargoValue: Math.floor(Math.random() * 50000) + 5000,
-  fuelPrice: (Math.random() * 1.2 + 2.8).toFixed(2),
-  marketDemand: Math.floor(Math.random() * 100),
-  riskScore: Math.floor(Math.random() * 100),
-  opportunityScore: Math.floor(Math.random() * 100),
-  
-  // Predictive insights
-  nextAccidentRisk: (Math.random() * 5).toFixed(1),
-  breakdownRisk: (Math.random() * 3).toFixed(1),
-  optimalPrice: Math.floor(Math.random() * 8000) + 2000,
-  complianceViolationRisk: (Math.random() * 2).toFixed(1),
-});
-
-const INDUSTRY_BREAKTHROUGHS = [
+// Capability roadmap. These are descriptions of what the module is designed to do —
+// deliberately carrying no performance percentages, because none have been measured.
+const CAPABILITIES = [
   {
-    title: 'Quantum Cargo Valuation',
-    desc: 'AI sees 128D cargo signatures — predicts exact value, demand surge, and perfect price in real-time across entire industry',
-    icon: '💎',
-    metric: '47% higher profits',
+    title: 'Cargo & Rate Intelligence',
+    desc: 'Rate-per-mile computed from your own booked loads. A market benchmark needs a load-board feed, which is not connected yet.',
+    icon: Target,
+    status: 'partial',
   },
   {
-    title: 'Fatigue-to-Revenue Bridge',
-    desc: 'Every driver fatigue metric converts to assignment strategy — tired drivers get shorter loads, fresh drivers get high-value hauls',
-    icon: '⚡',
-    metric: '34% fewer accidents',
+    title: 'Fatigue-Aware Assignment',
+    desc: 'ELD telemetry drives a fatigue score; dispatch can weigh it before assigning a load. Scoring is live, auto-assignment is not.',
+    icon: Zap,
+    status: 'partial',
+  },
+  {
+    title: 'Broker Risk Screening',
+    desc: 'Domain age, hosting type, MC format and email reputation produce a 0-100 risk score before you send paperwork. Live.',
+    icon: Brain,
+    status: 'live',
+  },
+  {
+    title: 'Maintenance Watch',
+    desc: 'PM intervals, open work orders and critical defects tracked per unit from real maintenance records. Live.',
+    icon: Cpu,
+    status: 'live',
+  },
+  {
+    title: 'Compliance Log',
+    desc: 'Every dispatch compliance check is written to the ledger with its alert level and the rule that triggered it. Live.',
+    icon: Radio,
+    status: 'live',
   },
   {
     title: 'Cross-Fleet Market Sync',
-    desc: 'All fleets see the same real-time market — no more underbidding. Industry-wide pricing intelligence nobody has access to',
-    icon: '📡',
-    metric: '$8K+ per owner-op/year',
-  },
-  {
-    title: 'Broker Risk Neural Net',
-    desc: 'Every broker flagged, rated, and rated in real-time by 47K drivers. Collective intelligence no single fleet has',
-    icon: '🧠',
-    metric: '99.2% fraud detection',
-  },
-  {
-    title: 'Predictive Breakdown Network',
-    desc: 'Vehicle fails before it fails — 500m radius tow truck already en route based on quantum predictive model',
-    icon: '🚨',
-    metric: '18min avg response',
-  },
-  {
-    title: 'Autonomous Load Routing',
-    desc: 'System assigns loads to drivers without human dispatcher — matches driver skill, truck specs, fatigue, and market in 2 seconds',
-    icon: '🎯',
-    metric: '73% utilization increase',
+    desc: 'Requires a multi-tenant data-sharing agreement and a market feed. Neither exists. Not built.',
+    icon: Eye,
+    status: 'planned',
   },
 ];
 
+const STATUS_STYLE = {
+  live: { label: 'LIVE', color: C.green },
+  partial: { label: 'PARTIAL', color: C.goldBright },
+  planned: { label: 'NOT BUILT', color: C.white60 },
+};
+
+function Stat({ label, value, color, sub }) {
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '18px 20px' }}>
+      <div style={{ fontSize: 11, color: C.white60, letterSpacing: '0.06em', marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 800, color: color || C.gold }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: C.white60, marginTop: 4 }}>{sub}</div>}
+    </div>
+  );
+}
+
 export default function QuantumFleetIntelligencePage() {
-  const [profiles, setProfiles] = useState([]);
-  const [selectedProfile, setSelectedProfile] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [industryMetrics, setIndustryMetrics] = useState({
-    totalLoads: 47291,
-    totalValue: '$847.3M',
-    activeDrivers: 12847,
-    fleets: 1203,
-    avgMarginGain: 23.4,
-    brokersFlagged: 284,
-    predictionsAccurate: 97.2,
-  });
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Generate initial quantum profiles
-    setProfiles(Array(6).fill(0).map(() => generateQuantumProfile()));
+    let alive = true;
+    const load = () => {
+      fetch('/api/fleet-intel/fleet')
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+        .then((j) => { if (alive) { setData(j); setError(null); } })
+        .catch((e) => { if (alive) setError(e.message); });
+    };
+    load();
+    const id = setInterval(load, 60000);
+    return () => { alive = false; clearInterval(id); };
   }, []);
+
+  const c = data?.counts;
+  const e = data?.economics;
+  const comp = data?.compliance;
 
   return (
     <div style={{ minHeight: '100vh', background: C.black, color: C.white, padding: '24px 16px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         {/* Hero */}
-        <div style={{ marginBottom: '48px', textAlign: 'center' }}>
-          <div style={{ 
-            fontSize: 64, 
-            marginBottom: '16px',
-            background: 'linear-gradient(135deg, #f59e0b, #06b6d4)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            fontWeight: 700,
-          }}>
-            🌌 Quantum Fleet Intelligence
+        <div style={{ marginBottom: 40 }}>
+          <div
+            style={{
+              fontSize: 48,
+              fontWeight: 800,
+              marginBottom: 12,
+              background: GOLD_GRADIENT,
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            Fleet Intelligence
           </div>
-          <p style={{ fontSize: 18, color: C.white60, marginBottom: '24px', lineHeight: 1.8 }}>
-            The First AI System That Sees Across Entire Trucking Industry. Predicts Cargo Value, Driver Fatigue, Broker Risk, Vehicle Failure — All Simultaneously. Real-Time Insights Nobody Else Has Access To.
+          <p style={{ fontSize: 16, color: C.white60, maxWidth: 820, lineHeight: 1.7 }}>
+            One operating picture for the fleet, built from rows that actually exist in your account. No simulated
+            drivers, no generated vectors, no invented market data.
           </p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <div style={{ textAlign: 'center', padding: '12px 24px', background: C.card, borderRadius: 8 }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: C.gold }}>{industryMetrics.activeDrivers.toLocaleString()}</div>
-              <div style={{ fontSize: 12, color: C.white60 }}>Drivers Connected</div>
-            </div>
-            <div style={{ textAlign: 'center', padding: '12px 24px', background: C.card, borderRadius: 8 }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: C.cyan }}>{industryMetrics.totalValue}</div>
-              <div style={{ fontSize: 12, color: C.white60 }}>Live Cargo Value</div>
-            </div>
-            <div style={{ textAlign: 'center', padding: '12px 24px', background: C.card, borderRadius: 8 }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: C.green }}>+{industryMetrics.avgMarginGain}%</div>
-              <div style={{ fontSize: 12, color: C.white60 }}>Avg Margin Gain</div>
-            </div>
-          </div>
         </div>
 
-        {/* Six Breakthroughs */}
-        <div style={{ marginBottom: '48px' }}>
-          <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: '24px', color: C.gold }}>Six Industry Breakthroughs</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-            {INDUSTRY_BREAKTHROUGHS.map((item, idx) => (
-              <div key={idx} style={{
-                background: C.card,
-                border: `1px solid ${C.white30}`,
-                borderRadius: 12,
-                padding: '24px',
-                cursor: 'pointer',
-                transition: 'all 0.3s',
-                ':hover': { borderColor: C.gold },
-              }}>
-                <div style={{ fontSize: 48, marginBottom: '12px' }}>{item.icon}</div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: '8px', color: C.gold }}>{item.title}</h3>
-                <p style={{ fontSize: 13, color: C.white60, marginBottom: '16px', lineHeight: 1.6 }}>{item.desc}</p>
-                <div style={{ fontSize: 14, fontWeight: 700, color: C.green }}>{item.metric}</div>
-              </div>
-            ))}
+        {error && (
+          <div style={{ background: 'rgba(224,72,59,0.1)', border: `1px solid ${C.red}55`, borderRadius: 10, padding: 16, marginBottom: 24, fontSize: 14 }}>
+            Could not load fleet data: {error}
           </div>
-        </div>
+        )}
+        {!data && !error && <div style={{ color: C.white60, fontSize: 14, marginBottom: 24 }}>Loading fleet…</div>}
 
-        {/* Live Quantum Profiles */}
-        <div style={{ marginBottom: '48px' }}>
-          <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: '24px', color: C.cyan }}>Live Quantum Profiles</h2>
-          <p style={{ fontSize: 14, color: C.white60, marginBottom: '20px' }}>
-            Each driver generates a 128-dimensional vector representing fatigue, market position, vehicle status, and cargo characteristics. System makes intelligent decisions in milliseconds.
-          </p>
-          <div style={{ display: 'grid', gap: '16px' }}>
-            {profiles.map((profile, idx) => (
-              <div 
-                key={idx}
-                onClick={() => setSelectedProfile(selectedProfile === idx ? null : idx)}
-                style={{
-                  background: selectedProfile === idx ? C.card : 'transparent',
-                  border: `1px solid ${selectedProfile === idx ? C.gold : C.white30}`,
-                  borderRadius: 12,
-                  padding: '20px',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s',
-                }}
-              >
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '20px', marginBottom: '16px' }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: C.white60 }}>DRIVER ID</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.cyan }}>{profile.driverId}</div>
+        {/* Real counts */}
+        {c && (
+          <div style={{ marginBottom: 40 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 16, color: C.gold }}>Fleet Right Now</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14 }}>
+              <Stat label="DRIVERS" value={c.drivers} sub={`${c.driversDriving} currently driving`} />
+              <Stat label="TRUCKS" value={c.trucks} sub={`${c.trucksActive} active`} />
+              <Stat label="LOADS" value={c.loadsTotal} sub={`${c.loadsBooked} booked · ${c.loadsAvailable} available`} />
+              <Stat
+                label="OPEN MAINTENANCE"
+                value={c.openMaintenance}
+                color={c.criticalMaintenance ? C.red : C.gold}
+                sub={`${c.criticalMaintenance} critical`}
+              />
+              <Stat
+                label="ACCIDENT REPORTS"
+                value={c.accidentReports}
+                color={c.accidentReports ? C.red : C.green}
+                sub="Filed in this account"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Economics */}
+        {e && (
+          <div style={{ marginBottom: 40 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 16, color: C.gold }}>Load Economics</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginBottom: 12 }}>
+              <Stat
+                label="AVG RATE / MILE"
+                value={e.avgRatePerMile === null ? '—' : `$${e.avgRatePerMile.toFixed(2)}`}
+                sub={`From ${e.ratedLoadSample} rated loads`}
+              />
+              <Stat label="BOOKED REVENUE" value={`$${Number(e.bookedRevenue).toLocaleString()}`} color={C.green} sub="Sum of booked load rates" />
+              <Stat label="BOOKED MILES" value={Number(e.bookedMiles).toLocaleString()} sub="Sum of booked load miles" />
+            </div>
+            <p style={{ fontSize: 12, color: C.white60, lineHeight: 1.7, maxWidth: 900 }}>{e.note}</p>
+          </div>
+        )}
+
+        {/* Compliance */}
+        {comp && (
+          <div style={{ marginBottom: 40 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 16, color: C.gold }}>Dispatch Compliance Ledger</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14 }}>
+              <Stat label="CHECKS LOGGED" value={comp.checksLogged} sub="Most recent 200" />
+              <Stat label="CRITICAL" value={comp.criticalChecks} color={comp.criticalChecks ? C.red : C.green} sub="Blocked or illegal dispatch" />
+              <Stat label="WARNINGS" value={comp.warningChecks} color={comp.warningChecks ? C.goldBright : C.green} sub="Needs a dispatcher decision" />
+              <Stat
+                label="LAST CHECK"
+                value={comp.lastCheckedAt ? new Date(comp.lastCheckedAt).toLocaleDateString() : '—'}
+                sub={comp.lastCheckedAt ? new Date(comp.lastCheckedAt).toLocaleTimeString() : 'No checks run yet'}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Not measurable — the honest replacement for the fabricated metrics */}
+        {data?.notAvailable && (
+          <div
+            style={{
+              background: C.card,
+              border: `1px solid ${C.border}`,
+              borderLeft: `3px solid ${C.gold}`,
+              borderRadius: 12,
+              padding: 24,
+              marginBottom: 40,
+            }}
+          >
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: C.gold, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={20} /> Not Yet Measurable
+            </h2>
+            <p style={{ fontSize: 13, color: C.white60, marginBottom: 16 }}>
+              These used to show generated numbers. They now show why the platform cannot know them.
+            </p>
+            <div style={{ display: 'grid', gap: 12 }}>
+              {Object.entries(data.notAvailable).map(([k, v]) => (
+                <div key={k} style={{ background: C.black, border: `1px solid ${C.border}`, borderRadius: 8, padding: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.goldBright, marginBottom: 4, textTransform: 'capitalize' }}>
+                    {k.replace(/([A-Z])/g, ' $1')}
                   </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: C.white60 }}>CARGO VALUE</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.green }}>${profile.cargoValue.toLocaleString()}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: C.white60 }}>FATIGUE RISK</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: profile.riskScore > 70 ? C.red : C.gold }}>
-                      {profile.nextAccidentRisk}%
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: C.white60 }}>OPPORTUNITY SCORE</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.purple }}>{profile.opportunityScore}/100</div>
-                  </div>
+                  <div style={{ fontSize: 12, color: C.white60, lineHeight: 1.6 }}>{v}</div>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-                {selectedProfile === idx && (
-                  <div style={{
-                    background: C.black,
-                    border: `1px solid ${C.white30}`,
-                    borderRadius: 8,
-                    padding: '20px',
-                    marginTop: '16px',
-                  }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                      <div>
-                        <div style={{ fontSize: 11, color: C.white60, marginBottom: '8px' }}>OPTIMAL LOAD PRICE</div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: C.green }}>${profile.optimalPrice.toLocaleString()}</div>
-                        <p style={{ fontSize: 11, color: C.white60, marginTop: '4px' }}>AI-calculated fair price for this driver + cargo combo</p>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, color: C.white60, marginBottom: '8px' }}>PREDICTED RISKS</div>
-                        <div style={{ fontSize: 12, color: C.red }}>
-                          Accident: {profile.nextAccidentRisk}% | Breakdown: {profile.breakdownRisk}% | Compliance: {profile.complianceViolationRisk}%
-                        </div>
-                        <p style={{ fontSize: 11, color: C.white60, marginTop: '4px' }}>System auto-flags risky scenarios</p>
-                      </div>
-                    </div>
-                    <div style={{
-                      background: 'rgba(6, 180, 212, 0.1)',
-                      border: `1px solid ${C.cyan}`,
-                      borderRadius: 6,
-                      padding: '12px',
-                      fontSize: 12,
-                      color: C.cyan,
-                    }}>
-                      💡 AI Recommendation: This driver is fresh (fatigue low), cargo is high-value, market demand is high. System auto-assigned highest-margin load. Expected profit margin: {Math.floor(Math.random() * 40) + 10}%.
-                    </div>
+        {/* Capability status */}
+        <div style={{ marginBottom: 40 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 16, color: C.gold }}>Module Status</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+            {CAPABILITIES.map((item) => {
+              const Icon = item.icon;
+              const st = STATUS_STYLE[item.status];
+              return (
+                <div key={item.title} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 22 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <Icon size={26} color={C.gold} />
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', color: st.color, border: `1px solid ${st.color}55`, borderRadius: 4, padding: '3px 8px' }}>
+                      {st.label}
+                    </span>
                   </div>
-                )}
-              </div>
-            ))}
+                  <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8, color: C.white }}>{item.title}</h3>
+                  <p style={{ fontSize: 13, color: C.white60, lineHeight: 1.6 }}>{item.desc}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* The Real Breakthrough */}
-        <div style={{
-          background: `linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(6, 180, 212, 0.1))`,
-          border: `2px solid ${C.gold}`,
-          borderRadius: 16,
-          padding: '32px',
-          marginBottom: '48px',
-        }}>
-          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: '16px', color: C.gold }}>
-            🚀 What Makes This Different
+        {/* Positioning — claims trimmed to what the product actually does */}
+        <div
+          style={{
+            background: C.card,
+            border: `1px solid ${C.gold}`,
+            borderRadius: 16,
+            padding: 32,
+            marginBottom: 40,
+          }}
+        >
+          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 14, color: C.gold, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <TrendingUp size={22} /> What Makes This Different
           </h2>
-          <p style={{ fontSize: 15, color: C.white, lineHeight: 1.8, marginBottom: '20px' }}>
-            Every trucking app tracks individual drivers. Morrishive Quantum Fleet Intelligence sees across the entire industry simultaneously. It understands:
-          </p>
-          <ul style={{ fontSize: 14, color: C.white60, lineHeight: 2, marginLeft: '20px' }}>
-            <li>✓ Exact moment cargo value peaks (AI knows when shippers will pay more)</li>
-            <li>✓ Which drivers are truly fresh vs fatigued (128D fatigue model, not just HOS hours)</li>
-            <li>✓ Which brokers are about to fail (analyzed across 47K drivers + years of data)</li>
-            <li>✓ When a truck will break down before it happens (5–48 hour prediction window)</li>
-            <li>✓ Optimal price for every load based on real-time market, driver skill, and fatigue</li>
-            <li>✓ Best routing for driver safety, compliance, and profitability simultaneously</li>
+          <ul style={{ fontSize: 14, color: C.white60, lineHeight: 2, marginLeft: 20 }}>
+            <li>Fatigue comes from recorded ELD telemetry, not a self-reported checkbox.</li>
+            <li>Compliance decisions are written to a ledger you can hand to an auditor.</li>
+            <li>Brokers get screened before you send paperwork, not after the load goes missing.</li>
+            <li>Maintenance is tracked against real PM intervals per unit, not a calendar reminder.</li>
+            <li>When the platform does not know something, it says so instead of showing a number.</li>
           </ul>
-          <p style={{ fontSize: 15, color: C.cyan, marginTop: '24px', fontWeight: 700 }}>
-            Result: Owner-ops earn $8K–$25K more per year. Fleets cut accidents by 34%. Nobody outside Morrishive has this data.
-          </p>
-        </div>
-
-        {/* Competitive Advantage */}
-        <div style={{ marginBottom: '48px' }}>
-          <h2 style={{ fontSize: 28, fontWeight: 707, marginBottom: '24px', color: C.purple }}>Competitive Advantage</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-            <div style={{ background: C.card, border: `1px solid ${C.white30}`, borderRadius: 12, padding: '24px' }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: '16px', color: C.gold }}>Samsara / Motive</h3>
-              <ul style={{ fontSize: 13, color: C.white60, lineHeight: 1.8 }}>
-                <li>• Track one fleet's drivers</li>
-                <li>• HOS compliance focus</li>
-                <li>• No cargo valuation</li>
-                <li>• No market intelligence</li>
-                <li>• No cross-fleet data</li>
-              </ul>
-            </div>
-            <div style={{ background: C.card, border: `2px solid ${C.cyan}`, borderRadius: 12, padding: '24px' }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: '16px', color: C.cyan }}>Morrishive Quantum</h3>
-              <ul style={{ fontSize: 13, color: C.white, lineHeight: 1.8 }}>
-                <li>• <strong>See entire industry in real-time</strong></li>
-                <li>• HOS + fatigue prediction + profitability</li>
-                <li>• <strong>Cargo value optimization</strong></li>
-                <li>• <strong>Market price intelligence</strong></li>
-                <li>• <strong>47K+ driver collective insight</strong></li>
-              </ul>
-            </div>
-          </div>
         </div>
 
         {/* CTA */}
-        <div style={{ textAlign: 'center', padding: '32px', background: C.card, borderRadius: 16, border: `1px solid ${C.white30}` }}>
-          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: '12px', color: C.gold }}>
-            Join the Quantum Revolution
-          </h2>
-          <p style={{ fontSize: 15, color: C.white60, marginBottom: '24px' }}>
-            Be part of the first trucking platform with real industry intelligence. Get $8K+ per year in additional revenue per driver.
-          </p>
-          <button style={{
-            padding: '14px 32px',
-            background: C.gold,
-            color: C.black,
-            border: 'none',
-            borderRadius: 8,
-            fontWeight: 700,
-            fontSize: 15,
-            cursor: 'pointer',
-          }}>
+        <div style={{ textAlign: 'center', padding: 32, background: C.card, borderRadius: 16, border: `1px solid ${C.border}` }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12, color: C.gold }}>Try TruckWithEase</h2>
+          <p style={{ fontSize: 14, color: C.white60, marginBottom: 22 }}>14-day free trial. No contracts, cancel anytime.</p>
+          <a
+            href="/app/billing"
+            style={{
+              display: 'inline-block',
+              padding: '14px 32px',
+              background: GOLD_GRADIENT,
+              color: C.black,
+              borderRadius: 8,
+              fontWeight: 800,
+              fontSize: 15,
+              textDecoration: 'none',
+            }}
+          >
             Start Free Trial
-          </button>
+          </a>
         </div>
       </div>
     </div>

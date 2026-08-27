@@ -39,26 +39,26 @@ export default function DvirPage() {
       {showForm && (
         <Card className="p-6 mb-6">
           <div className="flex flex-wrap gap-3 mb-4">
-            <div className="flex rounded-lg border border-[#E2E7F0] overflow-hidden">
+            <div className="flex rounded-lg border border-[#222222] overflow-hidden">
               {(["tractor", "trailer"] as const).map((v) => (
-                <button key={v} onClick={() => { setVehicleType(v); setDefects([]); }} className={`px-4 py-2 text-sm font-medium capitalize ${vehicleType === v ? "bg-[#0B2A6B] text-white" : "text-[#5B6577]"}`}>{v}</button>
+                <button key={v} onClick={() => { setVehicleType(v); setDefects([]); }} className={`px-4 py-2 text-sm font-medium capitalize ${vehicleType === v ? "bg-[#C9A84C] text-[#0a0a0a]" : "text-[#8A8A8A]"}`}>{v}</button>
               ))}
             </div>
-            <div className="flex rounded-lg border border-[#E2E7F0] overflow-hidden">
+            <div className="flex rounded-lg border border-[#222222] overflow-hidden">
               {([["pre_trip", "Pre-Trip"], ["post_trip", "Post-Trip"]] as const).map(([v, l]) => (
-                <button key={v} onClick={() => setType(v)} className={`px-4 py-2 text-sm font-medium ${type === v ? "bg-[#0B2A6B] text-white" : "text-[#5B6577]"}`}>{l}</button>
+                <button key={v} onClick={() => setType(v)} className={`px-4 py-2 text-sm font-medium ${type === v ? "bg-[#C9A84C] text-[#0a0a0a]" : "text-[#8A8A8A]"}`}>{l}</button>
               ))}
             </div>
           </div>
-          <div className="text-sm text-[#5B6577] mb-3">Tap any item that has a <b>defect</b>. Leave clear if OK.</div>
+          <div className="text-sm text-[#8A8A8A] mb-3">Tap any item that has a <b>defect</b>. Leave clear if OK.</div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
             {checklistItems.map((it) => {
               const bad = defects.includes(it);
               return (
                 <button key={it} onClick={() => setDefects((d) => bad ? d.filter((x) => x !== it) : [...d, it])}
-                  className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-sm text-left ${bad ? "border-[#E0322B] bg-[#E0322B]/5 text-[#E0322B]" : "border-[#E2E7F0] hover:border-[#1FA971]"}`}>
+                  className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-sm text-left ${bad ? "border-[#c96a4c] bg-[#c96a4c]/5 text-[#c96a4c]" : "border-[#222222] hover:border-[#C9A84C]"}`}>
                   {it}
-                  {bad ? <X className="h-4 w-4" /> : <Check className="h-4 w-4 text-[#1FA971]" />}
+                  {bad ? <X className="h-4 w-4" /> : <Check className="h-4 w-4 text-[#C9A84C]" />}
                 </button>
               );
             })}
@@ -67,7 +67,7 @@ export default function DvirPage() {
             <Button variant="amber" disabled={submit.isPending} onClick={() => submit.mutate()}>
               {submit.isPending ? "Submitting…" : `Sign & Submit${defects.length ? ` (${defects.length} defects)` : " — All Clear"}`}
             </Button>
-            <span className="text-sm text-[#5B6577]">Signed as <b>{session.name}</b></span>
+            <span className="text-sm text-[#8A8A8A]">Signed as <b>{session.name}</b></span>
           </div>
         </Card>
       )}
@@ -77,10 +77,10 @@ export default function DvirPage() {
           <Card key={insp.id} className="p-4" accent={insp.hasDefects}>
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-3">
-                <ClipboardCheck className={`h-5 w-5 ${insp.hasDefects ? "text-[#E0322B]" : "text-[#1FA971]"}`} />
+                <ClipboardCheck className={`h-5 w-5 ${insp.hasDefects ? "text-[#c96a4c]" : "text-[#C9A84C]"}`} />
                 <div>
-                  <div className="font-semibold text-[#0E1524]">{insp.truckUnit} · <span className="capitalize">{insp.vehicleType}</span> · {insp.type.replace("_", "-")}</div>
-                  <div className="text-xs text-[#5B6577]">{new Date(insp.createdAt).toLocaleString()} · {insp.signature}</div>
+                  <div className="font-semibold text-[#F5F5F5]">{insp.truckUnit} · <span className="capitalize">{insp.vehicleType}</span> · {insp.type.replace("_", "-")}</div>
+                  <div className="text-xs text-[#8A8A8A]">{new Date(insp.createdAt).toLocaleString()} · {insp.signature}</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -92,7 +92,7 @@ export default function DvirPage() {
             </div>
             {insp.hasDefects && (
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {(insp.defects as string[]).map((d) => <span key={d} className="rounded-full bg-[#E0322B]/10 text-[#E0322B] px-2.5 py-0.5 text-xs font-medium">{d}</span>)}
+                {(insp.defects as string[]).map((d) => <span key={d} className="rounded-full bg-[#c96a4c]/10 text-[#c96a4c] px-2.5 py-0.5 text-xs font-medium">{d}</span>)}
               </div>
             )}
           </Card>

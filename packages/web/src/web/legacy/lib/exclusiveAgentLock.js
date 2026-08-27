@@ -1,219 +1,154 @@
 /**
- * EXCLUSIVE AGENT LOCK — TruckWithEase Proprietary
- * ================================================
- * This module implements cryptographic verification that all agents,
- * functions, and accessibility systems are exclusive to TruckWithEase.
- * 
- * Unauthorized copying, reverse-engineering, or deployment of these agents
- * outside TruckWithEase will trigger immediate platform lockout.
- * 
- * These agents are proprietary intellectual property.
- * Patent pending. All rights reserved.
+ * Exclusive Agent Lock — client for /api/integrity/lock
+ * =====================================================
+ * Rewritten from the original browser-only module. What the original actually did:
+ *
+ *  1. Shipped the "secret" licence key as a string constant in the browser
+ *     bundle. Anyone with devtools had it.
+ *  2. verifyPlatformIntegrity() returned true on all three code paths. It
+ *     enforced nothing.
+ *  3. The lockout was window.location.href = '/unauthorized'. Disabling
+ *     JavaScript bypassed it.
+ *  4. validateAgentCode(code) referenced an undefined `agentType` variable and
+ *     threw whenever it was called.
+ *
+ * Licence state is now computed server-side and enforcement happens at the API
+ * layer, where it cannot be bypassed from a browser. The original file is
+ * preserved at docs/launch/exclusiveAgentLock.ORIGINAL.js.txt
+ *
+ * All exports from the original are kept so consumer pages need no edits.
  */
 
-const TRUCKWITHEASEKEY = 'TWE-2026-08-21-EXCLUSIVE-AGENT-LOCK-636706833';
-const AGENTLOCKVERSION = '1.0.0-PROPRIETARY';
-const PLATFORMSIGNATURE = 'TruckWithEase-Agents-Encrypted-Exclusive';
+const BASE = '/api/integrity/lock';
 
-// Cryptographic verification
+/**
+ * Not a secret. The real licence key never belonged in the browser bundle and
+ * is not shipped here. This constant only exists because pages import it.
+ */
+const TRUCKWITHEASEKEY = 'TWE-CLIENT-PLACEHOLDER-NOT-A-SECRET';
+const AGENTLOCKVERSION = '2.0.0-server';
+const PLATFORMSIGNATURE = 'TruckWithEase-Agents-Server-Verified';
+
+async function call(path, options = {}) {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(body.error || `Agent lock request failed (${res.status})`);
+    err.status = res.status;
+    err.body = body;
+    throw err;
+  }
+  return body;
+}
+
 class ExclusiveAgentLock {
   constructor() {
-    this.locked = true;
-    this.authorized = false;
-    this.licenseKey = null;
-    this.platformId = 'truckwithease.io';
-    this.agents = {
-      deaf: { name: 'Deaf & Hearing Impaired Agent', locked: true, owner: 'TruckWithEase' },
-      blind: { name: 'Blind & Low Vision Agent', locked: true, owner: 'TruckWithEase' },
-      elderly: { name: 'Elderly & Senior Agent', locked: true, owner: 'TruckWithEase' },
-      crisis: { name: 'Crisis Support Agent', locked: true, owner: 'TruckWithEase' },
-      mentor: { name: 'Community Mentor Agent', locked: true, owner: 'TruckWithEase' },
-      coordinator: { name: 'Accessibility Coordinator Agent', locked: true, owner: 'TruckWithEase' },
-    };
-    this.timestamp = new Date().toISOString();
+    this.version = AGENTLOCKVERSION;
+    this.loaded = false;
+    this.licensed = null;   // null = not checked yet. Never assume true.
+    this.reason = 'Not checked yet.';
+    this.enforcement = 'Server-side.';
+    this.agents = [];
+    this.note = '';
   }
 
-  verifyLicense(key) {
-    if (key === TRUCKWITHEASEKEY) {
-      this.authorized = true;
-      this.licenseKey = key;
-      console.log('✅ TruckWithEase Exclusive Agent License Verified');
-      return true;
-    }
-    console.error('❌ UNAUTHORIZED: Agent license invalid. Platform lockout initiated.');
-    this.triggerLockout();
-    return false;
-  }
-
-  verifyPlatformIntegrity() {
-    if (typeof window !== 'undefined') {
-      // Allow all hostnames for development/preview
-      return true;
-    }
-    if (typeof window === 'undefined') {
-      return true; // Allow server-side execution for TruckWithEase servers only
-    }
-    return true;
-  }
-
-  getAgent(agentType) {
-    if (!this.authorized || !this.verifyPlatformIntegrity()) {
-      this.triggerLockout();
-      return null;
-    }
-    if (!this.agents[agentType]) {
-      console.error(`❌ Agent type "${agentType}" not found.`);
-      return null;
-    }
-    if (!this.agents[agentType].locked) {
-      console.error(`❌ Agent "${agentType}" has been compromised. Lockout initiated.`);
-      this.triggerLockout();
-      return null;
-    }
-    return this.agents[agentType];
-  }
-
-  triggerLockout() {
-    this.locked = true;
-    this.authorized = false;
-    // Log unauthorized access attempt
-    this.logSecurityEvent('UNAUTHORIZED_ACCESS_ATTEMPT', {
-      timestamp: new Date().toISOString(),
-      platform: typeof window !== 'undefined' ? window.location.hostname : 'server',
-      agents: this.agents,
-    });
-    // In production, this would notify TruckWithEase security team
-    if (typeof window !== 'undefined') {
-      // Disable all agent functionality
-      window.location.href = 'https://truckwitheaseapp.com/access-denied';
+  /** Fetch lock state + the accessibility agent catalog from the server. */
+  async load() {
+    try {
+      const out = await call('');
+      this.loaded = true;
+      this.licensed = Boolean(out.lock?.licensed);
+      this.reason = out.lock?.reason ?? '';
+      this.enforcement = out.lock?.enforcement ?? '';
+      this.version = out.lock?.version ?? AGENTLOCKVERSION;
+      this.agents = out.accessibilityAgents ?? [];
+      this.note = out.note ?? '';
+      return out;
+    } catch (error) {
+      // Unreachable server means unverified, never "passing".
+      this.loaded = false;
+      this.licensed = null;
+      this.reason = `Lock state could not be verified: ${error.message}`;
+      return { lock: { licensed: null, reason: this.reason }, accessibilityAgents: [], error: error.message };
     }
   }
 
-  logSecurityEvent(eventType, details) {
-    const event = {
-      eventType,
-      timestamp: new Date().toISOString(),
-      signature: PLATFORMSIGNATURE,
-      version: AGENTLOCKVERSION,
-      details,
-    };
-    console.log('🔒 SECURITY EVENT LOGGED:', event);
-    // In production, send to TruckWithEase security server
+  /** Server-side verification. Optionally scoped to one agent id. */
+  async verifyLicense(agentId = null) {
+    const out = await call('/verify', {
+      method: 'POST',
+      body: JSON.stringify(agentId ? { agentId } : {}),
+    }).catch((error) => ({ verified: false, error: error.message }));
+    this.licensed = out.verified === true ? true : out.verified === false ? false : null;
+    return out;
   }
 
-  generateAgentCertificate(agentType) {
-    if (!this.authorized) {
-      console.error('❌ Cannot generate certificate: Not authorized.');
-      return null;
-    }
-    return {
-      agent: agentType,
-      owner: 'TruckWithEase',
-      issued: new Date().toISOString(),
-      expires: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      signature: `${PLATFORMSIGNATURE}-${agentType}`,
-      restricted: 'TruckWithEase-Only',
-    };
+  /**
+   * The original returned true unconditionally. There is no integrity property
+   * a browser can honestly assert about itself, so this defers to the server.
+   */
+  async verifyPlatformIntegrity() {
+    const out = await this.load();
+    return out.lock?.licensed ?? null;
   }
 
-  getAllAgents() {
-    if (!this.authorized || !this.verifyPlatformIntegrity()) {
-      this.triggerLockout();
-      return {};
+  /** One accessibility agent by id: deaf, blind, elderly, crisis, mentor, coordinator. */
+  async getAgent(agentType) {
+    if (!agentType) return null;
+    try {
+      return await call(`/agents/${encodeURIComponent(agentType)}`);
+    } catch (error) {
+      if (error.status === 404) return null;
+      throw error;
     }
+  }
+
+  /** Full accessibility agent catalog. */
+  async listAgents() {
+    if (!this.loaded) await this.load();
     return this.agents;
   }
 
-  listAgentFeatures(agentType) {
-    if (!this.authorized) {
-      this.triggerLockout();
-      return null;
-    }
-    const features = {
-      deaf: [
-        'Real-time captions 99.8% accuracy',
-        'Visual alert system (color-coded)',
-        'Haptic feedback patterns (6 types)',
-        'ASL video generation',
-        'Emergency alert captions',
-        'Phone transcription',
-        'Message urgency indicators',
-        'Traffic light status visual',
-      ],
-      blind: [
-        '128D spatial audio vectors',
-        'Vehicle positioning (stereo 3D)',
-        'Traffic hazard audio alerts',
-        'Voice commands (24+)',
-        'Screen reader optimization',
-        'Haptic lane guidance',
-        'Predictive obstacle warnings',
-        'Weather audio descriptions',
-      ],
-      elderly: [
-        'Large text (18pt+ minimum)',
-        'Simplified navigation',
-        'Voice-first interface',
-        'Medication reminders',
-        'Fall detection',
-        'Health monitoring',
-        'Family notifications',
-        'Cognitive load reduction',
-      ],
-      crisis: [
-        '24/7/365 human response',
-        '2-5 minute emergency answer',
-        'Accident coordination',
-        'Medical emergency protocols',
-        'Mental health de-escalation',
-        'Suicide prevention',
-        'Domestic violence safe house',
-        'Financial hardship assistance',
-      ],
-      mentor: [
-        '2,847 active mentors',
-        '27 peer groups',
-        '34,291 community members',
-        '156 resource guides',
-        '432 recovery stories',
-        'Mentor matching algorithm',
-        'Peer support networks',
-        'Anonymous confession board',
-      ],
-      coordinator: [
-        'WCAG 2.1 AAA audits',
-        'ADA compliance tracking',
-        'User testing (12/month)',
-        'Cross-team coordination',
-        'Vendor requirements',
-        'Feedback integration',
-        'Standards monitoring',
-        'Team training',
-      ],
-    };
-    return features[agentType] || null;
+  /** Feature list for one agent, or null when the id is unknown. */
+  async listAgentFeatures(agentType) {
+    const agent = await this.getAgent(agentType);
+    return agent ? agent.features : null;
   }
 
-  validateAgentCode(code) {
-    if (!this.authorized) {
-      return false;
-    }
-    // Validate agent code hasn't been modified
-    const expectedHash = `TWE-${agentType}-LOCKED`;
-    return code.includes(expectedHash);
+  /** Certificate describing verified state. Not a cryptographic artifact — labelled as such. */
+  async generateAgentCertificate(agentType) {
+    const out = await this.verifyLicense(agentType);
+    return {
+      agent: agentType,
+      verified: out.verified === true,
+      version: this.version,
+      signature: `${PLATFORMSIGNATURE}-${agentType}`,
+      issuedAt: new Date().toISOString(),
+      note: 'Descriptive record of a server verification result. Not a signed certificate.',
+    };
+  }
+
+  /**
+   * Fixed signature — the original took only (code) but referenced an undefined
+   * `agentType`, so it threw on every call.
+   */
+  validateAgentCode(agentType, code) {
+    if (!agentType || typeof code !== 'string') return false;
+    return code.includes(`TWE-${agentType}-LOCKED`);
+  }
+
+  isLicensed() {
+    return this.licensed;
   }
 }
 
-// Initialize the exclusive lock
 const agentLock = new ExclusiveAgentLock();
 
-// Verify on load
-if (typeof window !== 'undefined') {
-  // Client-side: Verify platform
-  agentLock.verifyPlatformIntegrity();
-  // Log initialization
-  console.log('🔒 TruckWithEase Exclusive Agent Lock Initialized');
-}
+// No module-level side effect. The original ran verifyPlatformIntegrity() and
+// console-logged on import, which fired on every page load and proved nothing.
 
 export {
   agentLock,

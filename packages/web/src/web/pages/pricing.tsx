@@ -24,8 +24,8 @@ export default function Pricing() {
     <div>
       <PageHeader title="Plans & Pricing" subtitle='No contracts. Cancel anytime. 30-day free trial on every plan. Drive Smart. Stay Compliant.' />
 
-      <div className="rounded-xl bg-[#FFB400]/10 border border-[#FFB400]/30 px-5 py-3 mb-6 text-sm text-[#0E1524] flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-[#E09E00]" />
+      <div className="rounded-xl bg-[#C9A84C]/10 border border-[#C9A84C]/30 px-5 py-3 mb-6 text-sm text-[#F5F5F5] flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-[#FFD700]" />
         <span><b>~60% below Motive</b> — and the only compliance app with built-in driver loyalty rewards. Optional annual plan saves another 15%.</span>
       </div>
 
@@ -33,21 +33,21 @@ export default function Pricing() {
         {PLANS.map((p) => {
           const Icon = p.icon;
           return (
-            <Card key={p.id} className={`p-6 flex flex-col relative ${p.popular ? "ring-2 ring-[#FFB400]" : ""}`}>
-              {p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#FFB400] px-3 py-1 text-xs font-bold text-[#0E1524]">MOST POPULAR</span>}
+            <Card key={p.id} className={`p-6 flex flex-col relative ${p.popular ? "ring-2 ring-[#C9A84C]" : ""}`}>
+              {p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#C9A84C] px-3 py-1 text-xs font-bold text-[#0a0a0a]">MOST POPULAR</span>}
               <div className="flex items-center gap-2 mb-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FA]"><Icon className="h-5 w-5 text-[#0B2A6B]" /></div>
-                <span className="font-bold text-lg text-[#0E1524]">{p.name}</span>
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1C1C1C]"><Icon className="h-5 w-5 text-[#C9A84C]" /></div>
+                <span className="font-bold text-lg text-[#F5F5F5]">{p.name}</span>
               </div>
-              <p className="text-sm text-[#5B6577] mb-4 min-h-[40px]">{p.tagline}</p>
+              <p className="text-sm text-[#8A8A8A] mb-4 min-h-[40px]">{p.tagline}</p>
               <div className="mb-5">
-                <span className="text-4xl font-bold font-mono-data text-[#0B2A6B]">${p.price}</span>
-                <span className="text-sm text-[#5B6577]">{p.unit}</span>
+                <span className="text-4xl font-bold font-mono-data text-[#C9A84C]">${p.price}</span>
+                <span className="text-sm text-[#8A8A8A]">{p.unit}</span>
               </div>
               <Button variant={p.popular ? "amber" : "primary"} className="w-full mb-5">Start 30-day free trial</Button>
               <ul className="space-y-2.5">
                 {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-[#0E1524]"><Check className="h-4 w-4 text-[#1FA971] shrink-0 mt-0.5" />{f}</li>
+                  <li key={f} className="flex items-start gap-2 text-sm text-[#F5F5F5]"><Check className="h-4 w-4 text-[#C9A84C] shrink-0 mt-0.5" />{f}</li>
                 ))}
               </ul>
             </Card>
@@ -57,10 +57,10 @@ export default function Pricing() {
 
       <Card className="mt-6 p-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FA]"><Users className="h-5 w-5 text-[#0B2A6B]" /></div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1C1C1C]"><Users className="h-5 w-5 text-[#C9A84C]" /></div>
           <div>
-            <div className="font-bold text-[#0E1524]">Add the dashcam bundle</div>
-            <div className="text-sm text-[#5B6577]">Records video, syncs to the app, cloud storage + incident clips. The Motive killer.</div>
+            <div className="font-bold text-[#F5F5F5]">Add the dashcam bundle</div>
+            <div className="text-sm text-[#8A8A8A]">Records video, syncs to the app, cloud storage + incident clips. The Motive killer.</div>
           </div>
         </div>
         <Button variant="ghost">Add hardware</Button>

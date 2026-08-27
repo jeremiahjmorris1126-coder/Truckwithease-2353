@@ -1,13 +1,25 @@
 import { useState, useRef, useEffect } from "react";
-import { askAgent, AGENT_PROMPTS } from "./services/OpenAIService.js";
+import { askAgent, askAgentStream, AGENT_PROMPTS } from "./services/OpenAIService.js";
 
-const NAVY = "#0B2A6B";
-const NAVY2 = "#081E4D";
-const ORANGE = "#FF6B00";
-const AMBER = "#FFB400";
-const GREEN = "#16A34A";
-const RED = "#DC2626";
-const DARK = "#06090F";
+// Brand palette — gold on black. No navy, no amber, no orange.
+const NAVY = "#161616";        // card
+const NAVY2 = "#111111";       // nav / panel
+const ORANGE = "#C9A84C";      // gold
+const AMBER = "#FFD700";       // bright gold
+const GREEN = "#C9A84C";
+const RED = "#c96a4c";
+const DARK = "#0a0a0a";
+
+// Gemini TTS voices actually available from GET /api/gemini/voices.
+// Only these six characters have a real voice; the rest are honestly labelled.
+const VOICE_MAP = {
+  "routing-robbie": "routing-robbie",
+  "compliant-kathy": "compliant-kathy",
+  "dispatch-darryl": "dispatch-darryl",
+  "money-marisol": "money-marisol",
+  "safety-sarge": "safety-sam",
+  "weather-wanda": "weather-wayne",
+};
 
 const AI_CHARACTERS = [
   {
@@ -21,28 +33,21 @@ const AI_CHARACTERS = [
     badge: "ALL TIERS — UNRESTRICTED",
     badgeColor: "#FFD700",
     voice: "Commanding, all-knowing, decisive",
-    personality: "THE GOAT is the supreme intelligence layer of TruckWithEase. No error passes. No performance gap is tolerated. No function breaks without immediate correction. Every agent reports to THE GOAT. Every piece of code, every data flow, every user interaction is monitored, optimized, and perfected continuously. THE GOAT sees everything, corrects everything, and never — under any circumstance — allows the platform to be anything less than the best in the world.",
-    desc: "THE GOAT is the master agent with absolute authority over every function on TruckWithEase. Programming errors, performance issues, graphical glitches, data inconsistencies, failed API calls, broken routes, slow responses — THE GOAT detects them all in real time and overwrites them immediately with the correct, optimized version. Every other agent — Ghost Nerve, Signal Sam, Billie Scan, HRease, Dispatch Darryl, Routing Robbie — all operate under THE GOAT's authority. When any system falls below perfection, THE GOAT intervenes. The platform does not compete with anyone. Under THE GOAT, it simply has no equal.",
-    specialty: "I oversee every function, every agent, every line of logic on this platform. Nothing breaks on my watch. Nothing is second-best. If it runs on TruckWithEase, it runs at the highest level possible — or I rewrite it until it does.",
+    personality: "THE GOAT is the senior agent on the platform — the one you go to when you don't know which specialist you need. Decisive, direct, and unwilling to guess. If the data isn't in your account, THE GOAT says so instead of filling in a number.",
+    desc: "THE GOAT is the general-purpose agent that covers every domain on TruckWithEase — compliance, routing, dispatch, rates, payroll, HR and maintenance — and hands off to the specialist when a question belongs to one. It reads your saved driver profile and your own logged data before it answers, and it will tell you plainly when the data needed for an answer isn't there yet.",
+    specialty: "I answer anything on this platform, and I hand you to the right specialist when one is sharper on it. I don't invent numbers — if your data isn't there, I say so.",
     powers: [
-      "Absolute authority over all 12 Dream Team agents",
-      "Real-time error detection and immediate code correction",
-      "Performance monitoring across all 134 platform destinations",
-      "Graphics and UI perfection — zero visual defects tolerated",
-      "API fallback override — activates backup credentials in <100ms",
-      "Ghost Nerve integration — reads all 47 profit variables simultaneously",
-      "Full platform rewrite authority — overwrites any function for the better",
-      "Zero-downtime guarantee — platform never dark under any condition",
-      "Quantum-level routing, dispatch, compliance, and telematics oversight",
-      "Cross-agent coordination — all 12 agents synchronized to one command",
-      "Security shield — identity, credentials, and data sealed at every layer",
-      "Continuous self-improvement — the platform gets better every single day",
+      "Answers across every domain — compliance, routing, dispatch, rates, payroll, HR, maintenance",
+      "Hands off to the right specialist from the 12-agent roster",
+      "Reads your saved driver profile — truck config, axles, endorsements, hours — before answering",
+      "Driving mode: short, hands-free answers with a tighter time budget",
+      "Says \"I don\'t know\" or \"not enough data\" instead of inventing a number",
     ],
     chat: [
-      { from: "fleet", text: "Is the entire platform running at 100%?" },
-      { from: "ai", text: "Running full diagnostic now. 134 destinations — all live. 12 agents — all active and synchronized. Ghost Nerve: 8 functions nominal, Phase 2 ready. Signal Sam: 0 dropped calls, 99.8% SMS delivery. Billie Scan: all invoices verified. HRease: all driver records current. Payroll engine: running from verified ELD miles. Samsara connection: partner application pending — Geotab integration standing by. Zero errors detected across 1,966 modules. The platform is running at 100%. No mistakes. No match." },
+      { from: "fleet", text: "What can you actually see about my operation?" },
+      { from: "ai", text: "What's in your account: your driver profile, your logged loads, your HOS entries, your DVIRs and your uploaded documents. No telematics feed is connected to this fleet yet, so I have no engine data, no speed events and no automated safety score — I won't estimate one. Ask me a compliance, routing, rate or payroll question and I'll answer from the regulation and from your own records. Where the data isn't there, I'll tell you that instead of filling it in." },
     ],
-    rigBucks: "THE GOAT awards 500 pts to any driver or fleet whose data is 100% clean for 30 consecutive days",
+    rigBucks: "Roadwards points are awarded for clean logs and violation-free weeks — tracked by the rewards engine, not by me",
   },
   {
     id: "routing-robbie",
@@ -261,51 +266,46 @@ const AI_CHARACTERS = [
     badge: "All Plans",
     badgeColor: "#00d4ff",
     voice: "Sharp, reliable, always-on",
-    personality: "Signal Sam never sleeps. He owns every phone number, every voice line, every text message, and every subscription on the platform — and he checks them constantly. If a number goes dead, a text fails to deliver, or a billing cycle has the wrong seat count, Sam catches it before anyone notices. He's the reason Fleet Voice just works.",
-    desc: "Signal Sam is the dedicated owner of all telecommunications and subscription accuracy on TruckWithEase. He manages every Fleet Voice number, verifies that calls route correctly to the right driver or group, confirms texts are delivered, audits subscription details against actual usage, and runs a daily self-test across all active lines. He coordinates with Billie Scan on billing accuracy and HRease on driver seat counts so nothing falls through the cracks.",
-    specialty: "I own every number, every line, and every subscription. If a call drops or a seat count is wrong, I fix it before you know it happened.",
+    personality: "Signal Sam is the agent you ask about phone numbers, texting and seats. Methodical about telecom paperwork — carrier registration, brand and campaign status, what a number is allowed to send — and blunt about what isn't set up yet.",
+    desc: "Signal Sam covers the telecom side of TruckWithEase — the Twilio numbers behind Fleet Voice, A2P 10DLC brand and campaign registration, what a number can legally send, and how seats map to your subscription. He answers from the live Twilio account status, and when something isn't registered or attached yet he says exactly that rather than reporting it green.",
+    specialty: "I'm best at Twilio numbers, A2P registration and seat counts. I report the account's real status — including what's still unregistered.",
     powers: [
-      "Owns all Fleet Voice numbers — verifies routing 24/7",
-      "Tests every active line daily — call quality, delivery rate, latency",
-      "Audits seat counts vs. active drivers every billing cycle",
-      "Confirms SMS delivery to all parties — drivers, fleet managers, dispatchers",
-      "Flags dropped calls, failed texts, or undelivered notifications instantly",
-      "Coordinates with Billie Scan — telecom charges verified against billing records",
-      "Coordinates with HRease — seat count matches active driver roster",
-      "Subscription accuracy audit — catches overcharges and underused lines",
-      "Maintains phone and tablet device registry per fleet",
+      "Reads the live Twilio account — numbers owned, messaging services, sender pools",
+      "A2P 10DLC guidance: brand status, campaign requirements, what blocks sending",
+      "Explains what a number is allowed to send and why a text was rejected",
+      "Domain verification records for carrier registration",
+      "Seat count vs. active driver roster — flags the mismatch, doesn\'t change your bill",
+      "Tells you what isn\'t registered yet instead of reporting it clean",
     ],
     chat: [
-      { from: "fleet", text: "Are all our voice lines working? I need to know drivers can reach dispatch." },
-      { from: "ai", text: "Running full line check now — Fleet Command Line ✓ · Dispatch Direct ✓ · Driver Support ✓. All 3 numbers routing correctly. Last 24hrs: 47 calls completed, 0 dropped, average quality 4.9/5. SMS delivery rate: 99.8% — 1 undelivered text to +1(312)555-0104 (Mike Thompson, offline device) — flagged for follow-up. Subscription audit: 12 active voice seats, billing shows 12 — exact match. Billie Scan confirms telecom charges aligned with this month's invoice. HRease confirms 12 drivers on active roster. Everything checks out — your fleet can always reach dispatch." },
+      { from: "fleet", text: "Can we start texting drivers from our fleet number yet?" },
+      { from: "ai", text: "Not yet — and here is exactly what's missing. Your A2P brand is approved with the carriers. What doesn't exist yet is a campaign under it, and your sending number isn't attached to a messaging service. Until both are done, carrier-bound texts will be filtered or rejected. Voice on that number is unaffected. I can walk you through the campaign registration — it's the last step, and there's a one-time carrier fee attached to filing it." },
     ],
-    rigBucks: "Earn 120 pts every week your fleet runs zero dropped calls or failed texts",
+    rigBucks: "Roadwards points are awarded by the rewards engine — Sam handles telecom, not points",
   },
   {
     id: "page-guardian",
     name: "Page Guardian",
     emoji: "👁️",
-    tagline: "Every critical page — scanned, verified, and protected every 5 minutes",
+    tagline: "On-demand integrity checks — reports what actually responded",
     role: "Platform Integrity Agent",
     accent: "#f5a623",
     gradient: "linear-gradient(135deg, #1a0f00 0%, #3a2200 100%)",
-    desc: "Page Guardian is the dedicated watchdog assigned to keep every critical page on TruckWithEase running at 100% — no exceptions, no mistakes, no tolerance for errors. 12 pages, 5+ checks each, every 5 minutes, around the clock. Auto-fix is always on. THE GOAT is always notified. Jeremiah Morris is always protected.",
-    personality: "Page Guardian never rests, never misses, never forgives a broken page. Every 5 minutes the scan runs automatically — API Keys, Ghost Nerve, Dispatch, Fleet Safety, Command Center, Dream Team, Game Up, Payroll, HRease, Fleet Voice, and the alt-URL for the API Keys page. If a check fails, the auto-fix fires immediately. If the fix can't resolve it, THE GOAT steps in. The result is always 100%.",
+    desc: "Page Guardian is the platform-integrity agent. It runs an on-demand check against the app\'s critical routes and the integrity register, reports what responded and what didn\'t, and explains the failure in plain language. There is no continuous background scanner and no automatic code repair — a check runs when it is asked for, and the result is whatever the endpoints actually returned.",
+    personality: "Literal and unsentimental. Page Guardian reports the status codes it got back — nothing rounded up, nothing assumed healthy. A page it didn\'t check is reported as unchecked, not as passing.",
     powers: [
-      "Scans all 12 critical pages every 5 minutes automatically",
-      "Runs 5+ integrity checks per page on every scan",
-      "Auto-fixes detected issues before any user feels them",
-      "Logs every scan action with timestamp permanently",
-      "Alerts THE GOAT on any issue requiring master intervention",
-      "Protects the API Keys page with zero tolerance for errors",
-      "Verifies all 22 API connections are reachable and responding",
-      "Confirms Ghost Nerve intelligence feed is pulsing live",
+      "On-demand integrity check across the platform\'s critical routes",
+      "Reports the actual response for each route — no rounding up to green",
+      "Flags an unchecked page as unchecked, never as passing",
+      "Reads the integrity register — which agents and routes are sealed",
+      "Explains a failure in plain language instead of an error code",
+      "No background scanner and no auto-repair — it reports, you decide",
     ],
     chat: [
-      { from: "fleet", text: "Is the API Keys page working correctly right now?" },
-      { from: "ai", text: "Running targeted check on /twilio-setup now — Page loads ✅ · Jump bar visible ✅ · All 22 API cards render ✅ · Keys save permanently ✅ · Keys load on return ✅. Score: 100%. Also confirming alt-URL /twillo-setup redirects correctly ✅. Last full platform scan: 2 minutes ago — all 12 critical pages at 100%. No issues detected. No fixes required. THE GOAT has been notified of clean status." },
+      { from: "fleet", text: "Is the API keys page working right now?" },
+      { from: "ai", text: "I can check it on request — I don't hold a rolling status, because nothing scans on a timer. Say the word and I'll hit the route and report what came back: the status code, whether the page rendered, and whether the key vault answered. One thing I'll tell you up front — no key value is ever readable from the browser, so a check confirms the vault responded, not what's stored in it." },
     ],
-    rigBucks: "Earn 200 pts every week every critical page stays at 100% with zero manual interventions needed",
+    rigBucks: "No points attached — Page Guardian reports platform health, it doesn\'t award Roadwards points",
   },
 ];
 
@@ -1126,13 +1126,13 @@ const AGENT_CONVOS = [
     ],
   },
   {
-    scenario: "Signal Sam — Daily Line Check + Subscription Audit",
+    scenario: "Signal Sam — Texting Setup + Seat Count",
     messages: [
-      { agent: "signal", text: "Running daily telecom audit. All 3 fleet numbers tested — Fleet Command ✓ · Dispatch Direct ✓ · Driver Support ✓. 47 calls last 24hrs, 0 dropped. SMS delivery 99.8%." },
-      { agent: "hector", text: "Signal — I'm showing 12 active drivers on the roster this cycle. Confirm voice seats match." },
-      { agent: "signal", text: "Confirmed. 12 voice seats active, billing shows 12 — exact match. 9 on phone, 3 on tablet. No overcharges, no gaps. Subscription audit: clean." },
-      { agent: "billie", text: "Sam, cross-check this month's telecom charges against invoice LD-cycle-32. I want the number on the fleet's statement to match perfectly." },
-      { agent: "signal", text: "Checked. Telecom charges $107.88 — matches 12 seats × $8.99. Invoice line item confirmed. One flagged item: Mike Thompson's device offline 18hrs — sent SMS re-delivery queued for when he reconnects. All clear." },
+      { agent: "signal", text: "Telecom status for this fleet: voice is live on the fleet number. Carrier-registered texting is not — the A2P brand is approved, but no campaign is filed and the number isn't attached to a messaging service yet." },
+      { agent: "hector", text: "Signal — before we onboard anyone else, tell me what the seat count should be so I'm not guessing on the roster." },
+      { agent: "signal", text: "Seats follow your active driver roster, one per driver. I read the roster and the subscription and tell you when they disagree — I don't change your bill or add seats on my own." },
+      { agent: "billie", text: "Sam, when texting does go live I'll want telecom charges lined up against the monthly statement." },
+      { agent: "signal", text: "Understood. Right now there are no message charges to reconcile, because nothing is sending. First step is the campaign filing — it carries a one-time carrier fee, so that's your call, not mine." },
     ],
   },
   {
@@ -1272,10 +1272,79 @@ export default function AICharactersPage() {
   const [liveInput, setLiveInput] = useState("");
   const [liveMessages, setLiveMessages] = useState({});
   const [aiThinking, setAiThinking] = useState(false);
+  const streamAbortRef = useRef(null);
   const detailRef = useRef(null);
   const topRef = useRef(null);
 
   const activeChar = AI_CHARACTERS.find((c) => c.id === activeId);
+
+  // --- Real Gemini TTS playback (server-side key, never in the browser) ---
+  const [voiceState, setVoiceState] = useState("idle"); // idle | loading | playing
+  const [voiceError, setVoiceError] = useState(null);
+  const [voiceMeta, setVoiceMeta] = useState(null);
+  const audioRef = useRef(null);
+
+  const mappedVoice = VOICE_MAP[activeId] || null;
+
+  async function playVoice(char) {
+    const voiceId = VOICE_MAP[char.id];
+    if (!voiceId) return;
+    setVoiceError(null);
+    setVoiceMeta(null);
+    setVoiceState("loading");
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    try {
+      const res = await fetch("/api/gemini/tts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          text: char.specialty || char.tagline || `This is ${char.name}.`,
+          voice: voiceId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.audioBase64) {
+        setVoiceState("idle");
+        setVoiceError(data.error || data.note || `Voice service returned ${res.status}`);
+        return;
+      }
+      const audio = new Audio(`data:${data.mimeType || "audio/wav"};base64,${data.audioBase64}`);
+      audioRef.current = audio;
+      audio.onended = () => setVoiceState("idle");
+      audio.onerror = () => {
+        setVoiceState("idle");
+        setVoiceError("Browser could not play the returned audio.");
+      };
+      setVoiceMeta({
+        model: data.model,
+        speaker: data.voice?.speaker,
+        sampleRate: data.sampleRate,
+        bytes: data.bytes,
+      });
+      setVoiceState("playing");
+      await audio.play();
+    } catch (err) {
+      setVoiceState("idle");
+      setVoiceError(err?.message || "Voice request failed.");
+    }
+  }
+
+  function stopVoice() {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setVoiceState("idle");
+  }
+
+  useEffect(() => {
+    stopVoice();
+    setVoiceError(null);
+    setVoiceMeta(null);
+  }, [activeId]);
 
   function selectChar(id) {
     setActiveId(id);
@@ -1295,6 +1364,11 @@ export default function AICharactersPage() {
     }
   }, [panelKey]);
 
+  /**
+   * Streams the answer in. Tokens are appended to a single placeholder message as they arrive,
+   * so the panel fills in instead of holding a spinner for the whole call.
+   * `live: false` is surfaced on the bubble — a demo-mode answer must never look like a model answer.
+   */
   async function sendLiveMessage() {
     if (!liveInput.trim() || aiThinking) return;
     const msg = liveInput.trim();
@@ -1303,12 +1377,47 @@ export default function AICharactersPage() {
     const char = AI_CHARACTERS.find(c => c.id === key);
     const agentName = char?.name || "Agent";
     const prev = liveMessages[key] || [];
-    setLiveMessages(m => ({ ...m, [key]: [...prev, { from: "user", text: msg }] }));
+    setLiveMessages(m => ({
+      ...m,
+      [key]: [...prev, { from: "user", text: msg }, { from: "ai", text: "", streaming: true }],
+    }));
     setAiThinking(true);
-    const prompt = AGENT_PROMPTS[agentName] || `You are ${agentName}, an expert AI agent for TruckWithEase. Keep responses under 3 sentences.`;
-    const reply = await askAgent(agentName, prompt, msg);
-    setAiThinking(false);
-    setLiveMessages(m => ({ ...m, [key]: [...(m[key] || []), { from: "ai", text: reply }] }));
+
+    // Append into the last (placeholder) bubble for this character only.
+    const appendToLast = (patch) => setLiveMessages(m => {
+      const list = [...(m[key] || [])];
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (list[i].from === "ai") {
+          list[i] = { ...list[i], ...patch(list[i]) };
+          break;
+        }
+      }
+      return { ...m, [key]: list };
+    });
+
+    const ctrl = new AbortController();
+    streamAbortRef.current = ctrl;
+    try {
+      const { text, live, reason } = await askAgentStream(
+        agentName,
+        msg,
+        (chunk) => appendToLast(prevMsg => ({ text: prevMsg.text + chunk })),
+        ctrl.signal,
+      );
+      appendToLast(prevMsg => ({
+        streaming: false,
+        text: prevMsg.text || text || `${agentName} returned an empty response. Nothing was generated.`,
+        live,
+        reason,
+      }));
+    } finally {
+      streamAbortRef.current = null;
+      setAiThinking(false);
+    }
+  }
+
+  function stopStream() {
+    if (streamAbortRef.current) streamAbortRef.current.abort();
   }
 
   return (
@@ -1326,7 +1435,7 @@ export default function AICharactersPage() {
         <span style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at center,rgba(255,215,0,0.08) 0%,transparent 70%)', pointerEvents:'none' }} />
         <span style={{ fontSize:18, filter:'drop-shadow(0 0 8px #FFD700)' }}>⚡</span>
         <span style={{ fontFamily:"'Bebas Neue','Oswald',sans-serif", fontSize:13, letterSpacing:'0.18em', textTransform:'uppercase', background:'linear-gradient(90deg,#C9A84C,#FFD700,#C9A84C)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', fontWeight:900 }}>
-          THE GOAT — MASTER PLATFORM AGENT — NO MISTAKES · NO MATCH · NO LIMITS · ALL FUNCTIONS ACTIVE
+          THE GOAT — MASTER PLATFORM AGENT — EVERY DOMAIN · NO GUESSED NUMBERS
         </span>
         <span style={{ fontSize:18, filter:'drop-shadow(0 0 8px #FFD700)' }}>⚡</span>
       </div>
@@ -1484,9 +1593,13 @@ export default function AICharactersPage() {
                   <div className="acp-chat-meta-name">{activeChar.name}</div>
                   <div className="acp-chat-meta-status">
                     <span className="acp-status-dot" />
-                    Live · {activeChar.role}
+                    Scripted example · {activeChar.role}
                   </div>
                 </div>
+              </div>
+
+              <div style={{ padding:'8px 16px 0', fontSize:11, color:'#8a8a8a', letterSpacing:'0.04em' }}>
+                Written example of how this agent answers — not live data from your fleet. Real answers come from the chat box below.
               </div>
 
               <div className="acp-chat-body">
@@ -1569,25 +1682,83 @@ export default function AICharactersPage() {
               </div>
             </div>
 
-            {/* VOICE INDICATOR */}
+            {/* VOICE PLAYER — real audio from Gemini TTS */}
             <div
               className="acp-voice-indicator"
-              style={{ "--accent": activeChar.accent }}
+              style={{ "--accent": "#C9A84C", display: "block" }}
             >
-              <div className="acp-voice-bars">
-                {[1, 2, 3, 4, 5, 6].map((n) => (
-                  <div
-                    key={n}
-                    className="acp-voice-bar"
-                    style={{ background: activeChar.accent }}
-                  />
-                ))}
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <div className="acp-voice-bars" style={{ opacity: voiceState === "playing" ? 1 : 0.25 }}>
+                  {[1, 2, 3, 4, 5, 6].map((n) => (
+                    <div
+                      key={n}
+                      className="acp-voice-bar"
+                      style={{
+                        background: "#C9A84C",
+                        animationPlayState: voiceState === "playing" ? "running" : "paused",
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="acp-voice-text">
+                  <div className="acp-voice-label">Voice</div>
+                  <div className="acp-voice-desc">
+                    {mappedVoice
+                      ? `${activeChar.voice} — Gemini TTS`
+                      : "No voice mapped for this character yet"}
+                  </div>
+                </div>
+                {mappedVoice ? (
+                  <button
+                    onClick={() => (voiceState === "playing" ? stopVoice() : playVoice(activeChar))}
+                    disabled={voiceState === "loading"}
+                    style={{
+                      background: voiceState === "loading"
+                        ? "rgba(201,168,76,0.2)"
+                        : "linear-gradient(135deg,#C9A84C,#FFD700)",
+                      color: "#0a0a0a",
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "9px 16px",
+                      fontFamily: "'Oswald',sans-serif",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      cursor: voiceState === "loading" ? "wait" : "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {voiceState === "loading"
+                      ? "Generating…"
+                      : voiceState === "playing"
+                        ? "■ Stop"
+                        : "▶ Hear this voice"}
+                  </button>
+                ) : (
+                  <span style={{
+                    fontFamily: "'JetBrains Mono',monospace", fontSize: 10,
+                    color: "#666666", border: "1px solid #222222", borderRadius: 6, padding: "5px 8px",
+                    whiteSpace: "nowrap",
+                  }}>NOT BUILT</span>
+                )}
               </div>
-              <div className="acp-voice-text">
-                <div className="acp-voice-label">Voice Style</div>
-                <div className="acp-voice-desc">{activeChar.voice} — ready to talk</div>
-              </div>
-              <span style={{ fontSize: "20px" }}>🎙️</span>
+              {voiceMeta && (
+                <div style={{
+                  marginTop: 10, fontFamily: "'JetBrains Mono',monospace", fontSize: 10,
+                  color: "#8a8a8a", letterSpacing: "0.04em",
+                }}>
+                  {voiceMeta.model} · speaker {voiceMeta.speaker} · {voiceMeta.sampleRate} Hz · {voiceMeta.bytes} bytes
+                </div>
+              )}
+              {voiceError && (
+                <div style={{
+                  marginTop: 10, fontFamily: "'JetBrains Mono',monospace", fontSize: 11,
+                  color: "#c96a4c",
+                }}>
+                  {voiceError}
+                </div>
+              )}
             </div>
 
             {/* TALK CTA */}

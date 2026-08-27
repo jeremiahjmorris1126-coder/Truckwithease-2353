@@ -1,140 +1,134 @@
-// IP WHOIS Intelligence Engine
-// Queries all 5 Regional Internet Registries (ARIN, RIPE NCC, APNIC, LACNIC, AFRINIC)
-// Returns owner, CIDR range, organization, abuse contacts for any IP
-// Used by: BrokerFlagsIntelligence (verify shipper identity), ComplianceAuthPage (audit trail)
-// Integration: Validates broker registrations, generates abuse reports for dangerous operators
+// IP WHOIS / ownership intelligence — thin client over /api/intel
+//
+// WHAT THIS FILE USED TO BE (preserved at docs/launch/ipWhoisIntel.ORIGINAL.js.txt):
+// a hardcoded `whoisData` object holding two fabricated records — 8.8.8.8 (Google)
+// and 1.1.1.1 (Cloudflare) — complete with invented admin/tech/abuse contacts and
+// hand-typed `raw_whois` blobs. Every other IP in the world silently fell through
+// to `whoisData["8.8.8.8"]`, so looking up a broker's IP returned Google LLC with
+// abuse@google.com and a matching-looking ARIN record. `scanIPBlockForThreats()`
+// filtered a hardcoded list of three fake "flagged" addresses in 8.8.8.0/24 and
+// reported a threat percentage off it. There were no network calls in the file.
+//
+// WHAT IT IS NOW: a client over the server-side intel proxy, which holds the
+// APIFreaks key (never in the browser bundle). Real IP ownership comes from the
+// ASN/company record: RIR, AS number, AS name, allocating organization, allocation
+// date, company name/type/domain. Anything the provider does not give us is
+// returned as null with a `note` saying why — never as a plausible-looking guess.
+//
+// NOT AVAILABLE from our provider, and therefore always null here:
+//   - registry admin / tech / abuse contact records (needs a real RIR WHOIS feed)
+//   - raw WHOIS text
+//   - CIDR block boundaries for an arbitrary IP
+//   - per-IP abuse/threat reputation inside a block
+// Export names and call signatures are unchanged so IPWhoisPage.jsx keeps working.
+
+const API = "/api/intel";
 
 export const registries = {
   ARIN: { name: "American Registry for Internet Numbers", region: "North America" },
+  RIPE: { name: "Réseaux IP Européens Network Coordination Centre", region: "Europe/Middle East/Central Asia" },
   RIPE_NCC: { name: "Réseaux IP Européens Network Coordination Centre", region: "Europe/Middle East/Central Asia" },
   APNIC: { name: "Asia-Pacific Network Information Centre", region: "Asia Pacific" },
   LACNIC: { name: "Latin America and Caribbean Network Information Centre", region: "Latin America/Caribbean" },
   AFRINIC: { name: "African Network Information Centre", region: "Africa" },
 };
 
-// Mock WHOIS database
-const whoisData = {
-  "8.8.8.8": {
-    ip: "8.8.8.8",
-    registry: "ARIN",
-    owner: "Google LLC",
-    organization: "Google Inc",
-    cidr: "8.8.8.0/24",
-    cidr_size: 256,
-    start_ip: "8.8.8.0",
-    end_ip: "8.8.8.255",
-    country: "US",
-    admin_contact: "Admin Google Inc",
-    tech_contact: "Tech Google Inc",
-    abuse_contact: "abuse@google.com",
-    whois_server: "whois.arin.net",
-    created: "2014-03-14",
-    updated: "2021-07-15",
-    description: "GOOGLE - Google Inc",
-    raw_whois: `NetRange:       8.8.8.0 - 8.8.8.255
-CIDR:           8.8.8.0/24
-NetName:        GOOGLE
-NetHandle:      NET-8-8-8-0-1
-Parent:         NET-8-0-0-0-0
-NetType:        Direct Allocation
-OriginAS:       AS15169
-Organization:   Google Inc
-RegDate:        2014-03-14
-Updated:        2021-07-15
-Ref:            https://whois.arin.net/rest/net/NET-8-8-8-0-1
-OrgName:        Google Inc
-OrgId:          GOOGL
-Address:        1600 Amphitheatre Parkway
-City:           Mountain View
-StateProv:      CA
-PostalCode:     94043
-Country:        US
-OrgAbuseHandle: ABUSE5250-ARIN
-OrgAbuseName:   Abuse
-OrgAbusePhone:  +1-650-253-0000
-OrgAbuseEmail:  abuse@google.com
-OrgTechHandle:  ZG39-ARIN
-OrgTechName:    Google Inc
-OrgTechPhone:   +1-650-253-0000
-OrgTechEmail:   tech@google.com`,
-  },
-  "1.1.1.1": {
-    ip: "1.1.1.1",
-    registry: "APNIC",
-    owner: "Cloudflare Inc",
-    organization: "Cloudflare Inc",
-    cidr: "1.1.1.0/24",
-    cidr_size: 256,
-    start_ip: "1.1.1.0",
-    end_ip: "1.1.1.255",
-    country: "US",
-    admin_contact: "Admin Cloudflare",
-    tech_contact: "Tech Cloudflare",
-    abuse_contact: "abuse@cloudflare.com",
-    whois_server: "whois.apnic.net",
-    created: "2018-04-01",
-    updated: "2023-06-10",
-    description: "APNIC-CLOUDFLARE - Cloudflare Global Network",
-    raw_whois: `inetnum:        1.1.1.0 - 1.1.1.255
-netname:        APNIC-CLOUDFLARE
-descr:          Cloudflare Global Network
-country:        US
-admin-c:        AC123-AP
-tech-c:         TC456-AP
-abuse-c:        ABU789-AP
-mnt-by:         MAINT-APNIC-AP
-mnt-lower:      MAINT-CLOUDFLARE
-created:        2018-04-01T00:00:00Z
-last-modified:  2023-06-10T12:34:56Z
-status:         ALLOCATED PORTABLE
-source:         APNIC
-remarks:        Cloudflare 1.1.1.1 DNS anycast network
-org:            ORG-CI89-AP`,
-  },
-};
+const NO_CONTACTS =
+  "Registry contact records (admin/tech/abuse) require a live RIR WHOIS feed. Our provider returns ASN and company ownership only, so these are reported as unavailable rather than guessed.";
+const NO_BLOCK =
+  "CIDR block boundaries for an arbitrary IP require a live RIR WHOIS feed. Not available from our provider.";
+const NO_THREAT =
+  "Per-IP abuse reputation inside a block requires a threat-intelligence feed. Not connected. The previous version of this screen filtered a hardcoded list of three fake addresses.";
 
+async function get(path) {
+  try {
+    const res = await fetch(API + path);
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body) {
+      return { live: false, note: `Intel API returned ${res.status}.`, data: null };
+    }
+    return { live: !!body.live, note: body.note || null, data: body.data ?? null };
+  } catch (err) {
+    return { live: false, note: `Intel API unreachable: ${err?.message || "network error"}`, data: null };
+  }
+}
+
+/**
+ * IP ownership lookup. Returns real ASN/company ownership when the provider
+ * answers, and nulls with a note when it does not. Never substitutes a
+ * different IP's record for the one that was asked about.
+ */
 export async function lookupIPWhois(ipAddress) {
-  // Query all 5 RIRs and return structured WHOIS data
-  const whoisRecord = whoisData[ipAddress] || whoisData["8.8.8.8"];
+  const r = await get(`/ip/${encodeURIComponent(ipAddress)}`);
+  const asn = r.data?.network?.asn || null;
+  const company = r.data?.network?.company || null;
+  const registryCode = asn?.rir || null;
 
   return {
     ip: ipAddress,
-    registry: whoisRecord.registry,
-    registry_info: registries[whoisRecord.registry],
-    owner: whoisRecord.owner,
-    organization: whoisRecord.organization,
-    cidr: whoisRecord.cidr,
-    cidr_size: whoisRecord.cidr_size,
-    ip_range: `${whoisRecord.start_ip} - ${whoisRecord.end_ip}`,
-    country: whoisRecord.country,
-    created: whoisRecord.created,
-    updated: whoisRecord.updated,
-    description: whoisRecord.description,
-    contacts: {
-      admin: whoisRecord.admin_contact,
-      tech: whoisRecord.tech_contact,
-      abuse: whoisRecord.abuse_contact,
-    },
-    whois_server: whoisRecord.whois_server,
-    raw_whois: whoisRecord.raw_whois,
+    live: r.live,
+    source: r.live ? "apifreaks" : "unavailable",
+    note: r.live ? NO_CONTACTS : r.note || "No ownership data returned for this address.",
+    registry: registryCode,
+    registry_info: registryCode ? registries[registryCode] || null : null,
+    owner: company?.name || asn?.organization || null,
+    organization: asn?.organization || company?.name || null,
+    company_type: company?.type || null,
+    company_domain: company?.domain || asn?.domain || null,
+    as_number: asn?.as_number || null,
+    as_name: asn?.asn_name || null,
+    as_type: asn?.type || null,
+    ipv4_routes: asn?.num_of_ipv4_routes || null,
+    country: r.data?.location?.country_code2 || asn?.country || null,
+    created: asn?.date_allocated || null,
+    updated: null,
+    description: asn ? `${asn.asn_name || asn.organization || "AS"} (${asn.as_number || "?"})` : null,
+    // Not available from this provider — reported as missing, never invented.
+    cidr: null,
+    cidr_size: null,
+    ip_range: null,
+    contacts: { admin: null, tech: null, abuse: null, note: NO_CONTACTS },
+    whois_server: null,
+    raw_whois: null,
   };
 }
 
+/**
+ * Abuse contact. Our provider does not expose registry abuse contacts, so this
+ * returns null for the email and points the user at the registry's own lookup
+ * instead of handing back a fabricated address like abuse@google.com.
+ */
 export async function getAbuseContact(ipAddress) {
-  // Return abuse contact for reporting suspicious activity
   const whois = await lookupIPWhois(ipAddress);
+  const registryLookup = {
+    ARIN: "https://search.arin.net/rdap/?query=",
+    RIPE: "https://apps.db.ripe.net/db-web-ui/query?searchtext=",
+    RIPE_NCC: "https://apps.db.ripe.net/db-web-ui/query?searchtext=",
+    APNIC: "https://wq.apnic.net/static/search.html?query=",
+    LACNIC: "https://query.milacnic.lacnic.net/search?id=",
+    AFRINIC: "https://afrinic.net/whois?query=",
+  };
 
   return {
     ip: ipAddress,
+    live: whois.live,
     owner: whois.owner,
     organization: whois.organization,
     registry: whois.registry,
-    abuse_email: whois.contacts.abuse,
-    abuse_phone: "Contact via email for fastest response",
+    abuse_email: null,
+    abuse_phone: null,
+    note: NO_CONTACTS,
+    registry_lookup_url: whois.registry
+      ? (registryLookup[whois.registry] || null) && registryLookup[whois.registry] + encodeURIComponent(ipAddress)
+      : null,
     report_template: `Abuse Report for IP ${ipAddress}
-Owner: ${whois.owner}
-Organization: ${whois.organization}
-CIDR: ${whois.cidr}
+Owner (per ASN record): ${whois.owner || "unknown"}
+Organization: ${whois.organization || "unknown"}
+AS: ${whois.as_number || "unknown"} ${whois.as_name || ""}
+Registry: ${whois.registry || "unknown"}
+
+Send to: look up the current abuse contact at the registry link above.
+This platform does not have a registry contact feed and will not guess an address.
 
 Incident Details:
 [Describe the suspicious activity]
@@ -144,69 +138,88 @@ Evidence: [Screenshots, logs, etc]`,
   };
 }
 
+/**
+ * Ownership verification against the ASN/company record. Returns
+ * verified: null (not false) when we have no ownership data — an unknown is not
+ * a failed match, and a broker should not be flagged over a missing lookup.
+ */
 export async function verifyIPOwnership(ipAddress, claimedOwner) {
-  // Verify if a claimed owner matches WHOIS records
   const whois = await lookupIPWhois(ipAddress);
-  const matches = whois.owner.toLowerCase() === claimedOwner.toLowerCase() || 
-                  whois.organization.toLowerCase() === claimedOwner.toLowerCase();
+  const claim = String(claimedOwner || "").trim().toLowerCase();
+  const known = [whois.owner, whois.organization, whois.as_name, whois.company_domain]
+    .filter(Boolean)
+    .map((v) => String(v).toLowerCase());
+
+  let verified = null;
+  let match = "no_data";
+  if (claim && known.length) {
+    if (known.some((v) => v === claim)) {
+      verified = true;
+      match = "exact";
+    } else if (known.some((v) => v.includes(claim) || claim.includes(v))) {
+      verified = true;
+      match = "partial";
+    } else {
+      verified = false;
+      match = "none";
+    }
+  }
 
   return {
     ip: ipAddress,
+    live: whois.live,
     claimed_owner: claimedOwner,
     actual_owner: whois.owner,
     organization: whois.organization,
-    verified: matches,
-    cidr: whois.cidr,
+    as_number: whois.as_number,
+    verified,
+    match_type: match,
     registry: whois.registry,
+    cidr: null,
+    note:
+      verified === null
+        ? whois.note
+        : "Matched against the ASN/company ownership record, not a registry WHOIS record. A partial match means the names overlap, not that identity is proven.",
   };
 }
 
+/** Block/allocation details. Our provider gives no CIDR boundaries — all null. */
 export async function getIPBlockInfo(ipAddress) {
-  // Get entire IP block and allocation details
   const whois = await lookupIPWhois(ipAddress);
-
   return {
-    cidr: whois.cidr,
-    size: whois.cidr_size,
-    start_ip: whois.ip_range.split(" - ")[0],
-    end_ip: whois.ip_range.split(" - ")[1],
+    ip: ipAddress,
+    live: false,
+    cidr: null,
+    size: null,
+    start_ip: null,
+    end_ip: null,
     owner: whois.owner,
     organization: whois.organization,
     country: whois.country,
     registry: whois.registry,
+    as_number: whois.as_number,
+    ipv4_routes: whois.ipv4_routes,
     allocated: whois.created,
-    last_updated: whois.updated,
+    last_updated: null,
     description: whois.description,
+    note: NO_BLOCK,
   };
 }
 
+/** Threat scan across a block. No feed is connected, so nothing is reported. */
 export async function scanIPBlockForThreats(ipAddress) {
-  // Check if any IPs in this block are flagged for abuse
-  const blockInfo = await getIPBlockInfo(ipAddress);
-
-  const flaggedIPs = [
-    "8.8.8.50",
-    "8.8.8.75",
-    "8.8.8.150",
-  ];
-
-  const whois = await lookupIPWhois(ipAddress);
-  const blockStart = parseInt(whois.ip_range.split(" - ")[0].split(".")[3]);
-  const blockEnd = parseInt(whois.ip_range.split(" - ")[1].split(".")[3]);
-  const inputOctet = parseInt(ipAddress.split(".")[3]);
-
-  const threatsInBlock = flaggedIPs.filter(ip => {
-    const octet = parseInt(ip.split(".")[3]);
-    return octet >= blockStart && octet <= blockEnd;
-  });
-
+  const block = await getIPBlockInfo(ipAddress);
   return {
-    cidr: blockInfo.cidr,
-    total_ips: blockInfo.size,
-    flagged_count: threatsInBlock.length,
-    flagged_ips: threatsInBlock,
-    threat_percentage: ((threatsInBlock.length / blockInfo.size) * 100).toFixed(2),
-    owner: blockInfo.owner,
-    recommendation: threatsInBlock.length > 0 ? "Contact abuse team" : "Block appears clean",
+    ip: ipAddress,
+    live: false,
+    available: false,
+    cidr: null,
+    total_ips: null,
+    flagged_count: null,
+    flagged_ips: [],
+    threat_percentage: null,
+    owner: block.owner,
+    recommendation: null,
+    note: NO_THREAT,
   };
 }

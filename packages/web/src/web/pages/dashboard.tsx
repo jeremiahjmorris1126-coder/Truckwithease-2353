@@ -38,23 +38,23 @@ export default function Dashboard() {
         {/* Alerts */}
         <Card className="p-5 lg:col-span-2" accent>
           <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="h-5 w-5 text-[#E0322B]" />
-            <h2 className="font-bold text-[#0E1524]">Compliance Alerts</h2>
+            <AlertTriangle className="h-5 w-5 text-[#c96a4c]" />
+            <h2 className="font-bold text-[#F5F5F5]">Compliance Alerts</h2>
           </div>
           {allViolations.length === 0 && needsRepair.length === 0 ? (
-            <p className="text-sm text-[#5B6577] py-6 text-center">All clear — no active compliance issues. </p>
+            <p className="text-sm text-[#8A8A8A] py-6 text-center">All clear — no active compliance issues. </p>
           ) : (
             <div className="space-y-2">
               {allViolations.map((v, i) => (
-                <div key={`v${i}`} className="flex items-center gap-3 rounded-lg bg-[#F4F6FB] px-3 py-2.5">
+                <div key={`v${i}`} className="flex items-center gap-3 rounded-lg bg-[#0a0a0a] px-3 py-2.5">
                   <Badge status={v.level} />
-                  <span className="text-sm text-[#0E1524]"><b>{v.name}:</b> {v.msg}</span>
+                  <span className="text-sm text-[#F5F5F5]"><b>{v.name}:</b> {v.msg}</span>
                 </div>
               ))}
               {needsRepair.map((r) => (
-                <div key={r.id} className="flex items-center gap-3 rounded-lg bg-[#F4F6FB] px-3 py-2.5">
+                <div key={r.id} className="flex items-center gap-3 rounded-lg bg-[#0a0a0a] px-3 py-2.5">
                   <Badge status="danger" />
-                  <span className="text-sm text-[#0E1524]"><b>{r.truckUnit}:</b> DVIR defect — {(r.defects as string[]).join(", ")}</span>
+                  <span className="text-sm text-[#F5F5F5]"><b>{r.truckUnit}:</b> DVIR defect — {(r.defects as string[]).join(", ")}</span>
                 </div>
               ))}
             </div>
@@ -63,7 +63,7 @@ export default function Dashboard() {
 
         {/* Quick links */}
         <Card className="p-5">
-          <h2 className="font-bold text-[#0E1524] mb-4">Quick Actions</h2>
+          <h2 className="font-bold text-[#F5F5F5] mb-4">Quick Actions</h2>
           <div className="space-y-2">
             {[
               { to: "/app/hos", label: "Log Hours (HOS)", icon: Clock },
@@ -72,9 +72,9 @@ export default function Dashboard() {
             ].map((q) => {
               const Icon = q.icon;
               return (
-                <Link key={q.to} to={q.to} className="flex items-center justify-between rounded-lg border border-[#E2E7F0] px-3 py-2.5 hover:border-[#FFB400] hover:bg-[#FFB400]/5 transition-colors">
-                  <span className="flex items-center gap-2.5 text-sm font-medium text-[#0E1524]"><Icon className="h-4 w-4 text-[#0B2A6B]" />{q.label}</span>
-                  <ArrowRight className="h-4 w-4 text-[#5B6577]" />
+                <Link key={q.to} to={q.to} className="flex items-center justify-between rounded-lg border border-[#222222] px-3 py-2.5 hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 transition-colors">
+                  <span className="flex items-center gap-2.5 text-sm font-medium text-[#F5F5F5]"><Icon className="h-4 w-4 text-[#C9A84C]" />{q.label}</span>
+                  <ArrowRight className="h-4 w-4 text-[#8A8A8A]" />
                 </Link>
               );
             })}
@@ -84,10 +84,10 @@ export default function Dashboard() {
 
       {/* Driver roster */}
       <Card className="mt-6 overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#E2E7F0]"><h2 className="font-bold text-[#0E1524]">Driver Roster</h2></div>
+        <div className="px-5 py-4 border-b border-[#222222]"><h2 className="font-bold text-[#F5F5F5]">Driver Roster</h2></div>
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-[#5B6577] text-xs uppercase tracking-wide bg-[#F4F6FB]">
+            <tr className="text-left text-[#8A8A8A] text-xs uppercase tracking-wide bg-[#0a0a0a]">
               <th className="px-5 py-2.5 font-semibold">Driver</th>
               <th className="px-5 py-2.5 font-semibold">Truck</th>
               <th className="px-5 py-2.5 font-semibold">Status</th>
@@ -98,13 +98,13 @@ export default function Dashboard() {
           </thead>
           <tbody>
             {ds.map((d) => (
-              <tr key={d.id} className="border-t border-[#E2E7F0] hover:bg-[#F4F6FB]">
-                <td className="px-5 py-3 font-medium text-[#0E1524]">{d.name}</td>
-                <td className="px-5 py-3 font-mono-data text-[#5B6577]">{d.truckNumber}</td>
+              <tr key={d.id} className="border-t border-[#222222] hover:bg-[#0a0a0a]">
+                <td className="px-5 py-3 font-medium text-[#F5F5F5]">{d.name}</td>
+                <td className="px-5 py-3 font-mono-data text-[#8A8A8A]">{d.truckNumber}</td>
                 <td className="px-5 py-3"><Badge status={d.status} /></td>
-                <td className="px-5 py-3 text-[#5B6577]">{d.homeBase}</td>
-                <td className="px-5 py-3 capitalize text-[#5B6577]">{d.tier}</td>
-                <td className="px-5 py-3 text-right font-mono-data text-[#E09E00] font-semibold">{d.points.toLocaleString()}</td>
+                <td className="px-5 py-3 text-[#8A8A8A]">{d.homeBase}</td>
+                <td className="px-5 py-3 capitalize text-[#8A8A8A]">{d.tier}</td>
+                <td className="px-5 py-3 text-right font-mono-data text-[#FFD700] font-semibold">{d.points.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>

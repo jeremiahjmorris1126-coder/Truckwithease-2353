@@ -152,6 +152,7 @@ const VehicleSelectorPage = lazy(() => import("./pages/VehicleSelectorPage"));
 const DriveWithEasePage = lazy(() => import("./pages/DriveWithEasePage"));
 const RideWithEasePage = lazy(() => import("./pages/RideWithEasePage"));
 const QuantumRoutingEngine = lazy(() => import("./pages/QuantumRoutingEngine"));
+const DriverAlgorithmPage = lazy(() => import("./pages/DriverAlgorithmPage"));
 const AdStrategyPage = lazy(() => import("./pages/AdStrategyPage"));
 const SocialCalendarPage = lazy(() => import("./pages/SocialCalendarPage"));
 const FleetSafetyIntelligencePage = lazy(() => import("./pages/FleetSafetyIntelligencePage"));
@@ -175,6 +176,7 @@ const UserDocumentAccessPage = lazy(() => import("./pages/UserDocumentAccessPage
 const CloudUsageMonitorPage = lazy(() => import("./pages/CloudUsageMonitorPage"));
 const StorageGrowthScalabilityPage = lazy(() => import("./pages/StorageGrowthScalabilityPage"));
 const HapticLanguagePage = lazy(() => import("./pages/HapticLanguagePage"));
+const LiveCaptionsPage = lazy(() => import("./pages/LiveCaptionsPage"));
 const MultiDeviceHapticsPage = lazy(() => import("./pages/MultiDeviceHapticsPage"));
 const JJKellerCompliancePage = lazy(() => import("./pages/JJKellerCompliancePage"));
 const SignLanguageLearningPage = lazy(() => import("./pages/SignLanguageLearningPage"));
@@ -473,6 +475,7 @@ export default function App() {
   if (path === "/drive-dashboard" || path === "/drive-with-ease") return <DriveWithEasePage />;
   if (path === "/ride-dashboard" || path === "/ride-with-ease") return <RideWithEasePage />;
   if (path === "/quantum-routing" || path === "/routing-engine") return <QuantumRoutingEngine />;
+  if (path === "/driver-algorithm" || path === "/my-algorithm") return <DriverAlgorithmPage />;
   if (path === "/ad-strategy" || path === "/advertise" || path === "/marketing") return <AdStrategyPage />;
   if (path === "/social-calendar" || path === "/content-calendar" || path === "/posts") return <SocialCalendarPage />;
   if (path === "/fleet-safety" || path === "/safety-intel" || path === "/insurance-intel") return <FleetSafetyIntelligencePage />;
@@ -489,7 +492,7 @@ export default function App() {
   if (path === "/hos-compliance") return <HOSComplianceAgentPage />;
   if (path === "/qa-agent") return <QualityAssuranceAgentPage />;
   if (path === "/fleet-marketing") return <FleetMarketingPage />;
-  if (path === "/api-integrations") return <APIIntegrationDashboard />;
+  if (path === "/integration-status" || path === "/wired-integrations") return <APIIntegrationDashboard />;
   if (path === "/advantages") return <CompetitiveAdvantagesPage />;
   if (path === "/competitors") return <CompetitorAnalysisPage />;
   if (path === "/traxes") return <TraxesPage />;
@@ -519,8 +522,9 @@ export default function App() {
   if (path === "/hos") return <HOSLoggerPage />;
   if (path === "/dvir") return <DVIRPage />;
   if (path === "/ai-team") return <AICharactersPage />;
-  if (path === "/api-agent" || path === "/twilio-setup" || path === "/twillo-setup" || path === "/api-keys" || path === "/apis" || path === "/activate-voice") return <APIAgentPage />;
-  if (path === "/api-diagnostic" || path === "/api-audit") return <APIDiagnosticPage />;
+  if (path === "/twilio-setup" || path === "/twillo-setup" || path === "/twilio") return <TwilioSetupPage />;
+  if (path === "/key-agent" || path === "/keys" || path === "/activate-voice") return <APIAgentPage />;
+  if (path === "/integration-diagnostic" || path === "/integration-audit") return <APIDiagnosticPage />;
   if (path === "/safety-meetings" || path === "/safety-compliance" || path === "/meetings") return <SafetyMeetingsPage />;
   if (path === "/driver-scorecard" || path === "/scorecard" || path === "/driver-scores") return <DriverScorecardPage />;
   if (path === "/predictive-maintenance" || path === "/maintenance-ai" || path === "/truck-health") return <PredictiveMaintenancePage />;
@@ -624,7 +628,7 @@ export default function App() {
   if (path === "/operation-model" || path === "/ops-model") return <OperationModelPage />;
   if (path === "/workflow-streamliner" || path === "/workflow-builder" || path === "/operations" || path === "/streamliner") return <WorkflowStreamlinerPage />;
   if (path === "/astronomy" || path === "/star-navigation" || path === "/celestial-navigation" || path === "/night-driving") return <AstronomyNavigationPage />;
-  if (path === "/api-freaks" || path === "/api-hub" || path === "/integrations" || path === "/api-marketplace") return <APIFreaksHubPage />;
+  if (path === "/integrations" || path === "/data-hub" || path === "/external-data") return <APIFreaksHubPage />;
   if (path === "/accessibility" || path === "/accessible" || path === "/inclusion" || path === "/inclusive-trucking") return <AccessibilityLandingPage />;
   if (path === "/tax-rates" || path === "/tax-intelligence" || path === "/fuel-tax" || path === "/tax-compliance") return <TaxRatesIntelligencePage />;
   if (path === "/rewards") return <RigBucksPage />;
@@ -661,7 +665,6 @@ export default function App() {
   if (path === "/competitive-intelligence" || path === "/vs-samsara" || path === "/compete") return <CompetitiveIntelligencePage />;
   if (path === "/samsara-connect" || path === "/samsara") return <SamsaraConnectPage />;
   if (path === "/fleet-voice" || path === "/voice-calls" || path === "/hands-free") return <FleetVoicePage />;
-  if (path === "/twilio-setup-legacy") return <TwilioSetupPage />;
   if (path === "/page-guardian" || path === "/guardian" || path === "/page-monitor") return <PageGuardianAgent />;
   if (path === "/neural-safety" || path === "/safety-core" || path === "/trucking-guru") return <NeuralSafetyCore />;
   if (path === "/quantum-core" || path === "/dispatch-core" || path === "/vs-autocab") return <QuantumDispatchCore />;
@@ -680,6 +683,7 @@ export default function App() {
   if (path === "/cloud-usage" || path === "/health-monitor" || path === "/system-status") return <CloudUsageMonitorPage />;
   if (path === "/storage-growth" || path === "/scalability" || path === "/growth-intelligence") return <StorageGrowthScalabilityPage />;
   if (path === "/haptic-language" || path === "/vibration-communication" || path === "/touch-language") return <HapticLanguagePage />;
+  if (path === "/captions" || path === "/live-captions" || path === "/translate") return <LiveCaptionsPage />;
   if (path === "/multi-device-haptics" || path === "/device-sync" || path === "/haptic-broadcast") return <MultiDeviceHapticsPage />;
   if (path === "/jj-keller" || path === "/compliance-training" || path === "/vehicle-compliance") return <JJKellerCompliancePage />;
   if (path === "/sign-language" || path === "/asl-learning" || path === "/deaf-communication") return <SignLanguageLearningPage />;
@@ -700,7 +704,7 @@ export default function App() {
   if (path === "/" || path === "/revolution" || path === "/the-moment") return <RevolutionPage />;
   if (path === "/driver-assistance" || path === "/universal-driver" || path === "/multilingual-support") return <DriverAssistanceQuantumPage />;
   if (path === "/agent-verification" || path === "/exclusive-lock" || path === "/agent-security") return <ExclusiveAgentVerificationPage />;
-  if (path === "/api-key-security" || path === "/key-vault" || path === "/secure-keys") return <ApiKeySecurityPage />;
+  if (path === "/key-security" || path === "/key-vault" || path === "/secure-keys") return <ApiKeySecurityPage />;
   if (path === "/google-play" || path === "/play-submit" || path === "/android-submit") return <GooglePlaySubmitPage />;
   if (path === "/asset-ease" || path === "/assets" || path === "/fleet-assets" || path === "/vehicle-assets" || path === "/trailer-assets") return <AssetEasePage />;
   if (path === "/live-gps" || path === "/gps" || path === "/fleet-map" || path === "/track") return <LiveGPSPage />;
@@ -1652,8 +1656,8 @@ export default function App() {
                 <a href="tel:636-706-8338" style={{ color: ORANGE, fontSize: 14, fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
                   📞 636-706-8338
                 </a>
-                <a href="mailto:truckwithease@gmail.com" style={{ color: AMBER, fontSize: 14, fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
-                  📧 truckwithease@gmail.com
+                <a href="mailto:truckeasecare@gmail.com" style={{ color: AMBER, fontSize: 14, fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+                  📧 truckeasecare@gmail.com
                 </a>
               </div>
             </div>

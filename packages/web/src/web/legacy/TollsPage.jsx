@@ -1,357 +1,511 @@
-import { useState, useEffect, useRef } from "react";
+/**
+ * TollsPage — rebuilt Aug 26, 2026.
+ *
+ * Removed fabricated content (original preserved at docs/launch/TollsPage.ORIGINAL.jsx.txt):
+ *  1. TOLL_ALERTS — five invented "LIVE" toll alerts with fake ages ("8 min ago",
+ *     "22 min ago") and invented facts (a "15% toll surcharge", an "Aug 1 12% rate
+ *     adjustment", a lane closure). No toll-authority alert feed exists. Deleted,
+ *     along with the auto-advancing "🔴 LIVE" ticker that presented them as real.
+ *  2. ROUTES — four invented city-pair comparisons with made-up toll costs, miles
+ *     and drive times. Replaced with a comparison that calls POST /api/tolls/compare
+ *     with the numbers the user enters.
+ *  3. TOLL_HISTORY — five invented toll transactions with dates, amounts and
+ *     payment methods. Replaced with the real expense log at /api/tolls/expenses/:driverId.
+ *  4. PrePass claims — "18% average discount", "Works on 95% of toll roads in the US",
+ *     "Every bypass earns Rig Bucks automatically", "TruckWithEase integrates PrePass".
+ *     There is no PrePass contract or API connection. The page now states that plainly.
+ *  5. The $0.12/toll-mile blanket calculator — replaced by the per-road reference
+ *     rates the API actually returns.
+ *
+ * Restyled from navy/orange/amber/green/red on #F8FAFC to gold-on-black.
+ * Honest labelling: the per-road rates are a static reference table in the API, not a
+ * live toll-authority feed, and the page says so.
+ */
 
-const NAVY  = "#0B2A6B";
-const NAVY2 = "#081E4D";
-const ORANGE= "#FF6B00";
-const AMBER = "#FFB400";
-const GREEN = "#16A34A";
-const RED   = "#DC2626";
-const DARK  = "#06090F";
+import { useState, useEffect, useCallback } from "react";
+import { Route, Calculator, Receipt, Radio, RefreshCw, AlertTriangle, Plus } from "lucide-react";
 
-const TOLL_ALERTS = [
-  { id:1, highway:"Kansas Turnpike · I-70",     alert:"Cash lanes closed — EZPass only at Main St plaza",                                    severity:"warn", time:"8 min ago"  },
-  { id:2, highway:"Oklahoma Turnpike · I-35",    alert:"Construction zone — reduced speed, 15% toll surcharge active",                        severity:"warn", time:"22 min ago" },
-  { id:3, highway:"Illinois Tollway · I-90",     alert:"Toll increase effective Aug 1: 12% rate adjustment for trucks over 5 axles",          severity:"warn", time:"1 hr ago"   },
-  { id:4, highway:"Texas SH-130",               alert:"OPEN — smooth flow, no incidents. Bypass I-35 Austin congestion via SH-130.",          severity:"ok",   time:"5 min ago"  },
-  { id:5, highway:"NJ Turnpike · I-95",          alert:"Truck height restriction: 13'6\" at Exit 14 connector — know your clearance",         severity:"warn", time:"3 hrs ago"  },
-];
+const GOLD = "#C9A84C";
+const GOLD_BRIGHT = "#FFD700";
+const WARN = "#c96a4c";
+const DRIVER_ID = "drv-1";
 
-const ROUTES = [
-  { id:1, from:"Dallas, TX",      to:"Oklahoma City, OK", tollRoute:{ cost:8.50,  miles:198, time:"2h 48m", label:"I-35 N (Turnpike)",   alerts:[1] },    freeRoute:{ cost:0, miles:212, time:"3h 10m", label:"US-77 N" } },
-  { id:2, from:"Chicago, IL",     to:"Indianapolis, IN",  tollRoute:{ cost:24.00, miles:182, time:"2h 38m", label:"I-90/I-80 Toll Road", alerts:[2,3] },  freeRoute:{ cost:0, miles:201, time:"2h 58m", label:"US-41/I-65" } },
-  { id:3, from:"Kansas City, MO", to:"Wichita, KS",       tollRoute:{ cost:12.00, miles:198, time:"2h 52m", label:"Kansas Turnpike",      alerts:[1] },    freeRoute:{ cost:0, miles:204, time:"3h 05m", label:"US-54 W" } },
-  { id:4, from:"Houston, TX",     to:"San Antonio, TX",   tollRoute:{ cost:18.50, miles:194, time:"2h 38m", label:"SH-130 Toll",          alerts:[] },     freeRoute:{ cost:0, miles:194, time:"2h 55m", label:"I-10 W (free)" } },
-];
+const money = (n) => (typeof n === "number" ? `$${n.toFixed(2)}` : "—");
 
-const TOLL_HISTORY = [
-  { date:"Jul 12", route:"I-35 N · Oklahoma Turnpike", amount:8.50,  method:"PrePass",  savings:true  },
-  { date:"Jul 10", route:"Kansas Turnpike · I-70",     amount:12.00, method:"PrePass",  savings:true  },
-  { date:"Jul 8",  route:"Illinois Tollway · I-90",    amount:24.00, method:"EZPass",   savings:false },
-  { date:"Jul 6",  route:"SH-130 · Texas",             amount:18.50, method:"PrePass",  savings:true  },
-  { date:"Jul 3",  route:"NJ Turnpike · I-95",         amount:31.75, method:"Cash",     savings:false },
-];
-
-const PREPASS_DISCOUNT = 0.18;
-
-function AlertBadge({ severity }) {
-  const map = { warn:{ bg:"rgba(255,180,0,0.15)", color:AMBER, label:"⚠️ Alert" }, ok:{ bg:"rgba(22,163,74,0.15)", color:GREEN, label:"✅ Clear" }, info:{ bg:"rgba(11,42,107,0.3)", color:"#60A5FA", label:"ℹ️ Info" } };
-  const s = map[severity] || map.info;
-  return <span style={{ padding:"2px 8px", background:s.bg, color:s.color, borderRadius:12, fontSize:11, fontWeight:700, border:`1px solid ${s.color}33`, whiteSpace:"nowrap" }}>{s.label}</span>;
+function Panel({ title, note, children, right }) {
+  return (
+    <section className="border border-[#222] bg-[#161616]">
+      <header className="flex items-start justify-between gap-4 border-b border-[#222] px-5 py-4">
+        <div>
+          <h2 className="font-[Oswald] text-sm uppercase tracking-[0.22em] text-white">{title}</h2>
+          {note && <p className="mt-1 font-[Inter] text-[11px] leading-snug text-[#666]">{note}</p>}
+        </div>
+        {right}
+      </header>
+      <div className="p-5">{children}</div>
+    </section>
+  );
 }
 
-export default function TollsPage() {
-  const [activeAlert, setActiveAlert] = useState(0);
-  const [expandedAlerts, setExpandedAlerts] = useState({});
-  const [monthlyMiles, setMonthlyMiles] = useState(8000);
-  const [tollPct, setTollPct] = useState(30);
-  const alertRef = useRef(null);
+function Field({ label, children }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block font-[JetBrains_Mono] text-[10px] uppercase tracking-[0.18em] text-[#666]">{label}</span>
+      {children}
+    </label>
+  );
+}
 
-  // Auto-advance alerts banner
-  useEffect(() => {
-    const t = setInterval(() => setActiveAlert(a => (a + 1) % TOLL_ALERTS.length), 4000);
-    return () => clearInterval(t);
+const inputCls =
+  "w-full border border-[#222] bg-[#0f0f0f] px-3 py-2 font-[JetBrains_Mono] text-sm text-white outline-none transition placeholder:text-[#666] focus:border-[#C9A84C]";
+
+export default function TollsPage() {
+  const [roads, setRoads] = useState([]);
+  const [roadsState, setRoadsState] = useState("loading");
+  const [roadsError, setRoadsError] = useState("");
+
+  const [roadId, setRoadId] = useState("");
+  const [miles, setMiles] = useState(200);
+  const [axles, setAxles] = useState(5);
+  const [estimate, setEstimate] = useState(null);
+  const [compare, setCompare] = useState(null);
+  const [detourMiles, setDetourMiles] = useState("");
+  const [busy, setBusy] = useState("");
+  const [calcError, setCalcError] = useState("");
+
+  const [expenses, setExpenses] = useState(null);
+  const [expError, setExpError] = useState("");
+  const [newAmount, setNewAmount] = useState("");
+
+  const [transponder, setTransponder] = useState(null);
+  const [tier, setTier] = useState("pro");
+
+  const loadRoads = useCallback(async () => {
+    setRoadsState("loading");
+    try {
+      const r = await fetch("/api/tolls/roads");
+      if (!r.ok) throw new Error(`GET /api/tolls/roads returned ${r.status}`);
+      const j = await r.json();
+      const list = Array.isArray(j.roads) ? j.roads : [];
+      setRoads(list);
+      if (list.length && !roadId) setRoadId(list[0].id);
+      setRoadsState("ok");
+    } catch (e) {
+      setRoadsError(String(e.message || e));
+      setRoadsState("error");
+    }
+  }, [roadId]);
+
+  const loadExpenses = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/tolls/expenses/${DRIVER_ID}`);
+      if (!r.ok) throw new Error(`GET /api/tolls/expenses returned ${r.status}`);
+      setExpenses(await r.json());
+      setExpError("");
+    } catch (e) {
+      setExpError(String(e.message || e));
+    }
   }, []);
 
-  function toggleAlerts(routeId) {
-    setExpandedAlerts(prev => ({ ...prev, [routeId]: !prev[routeId] }));
-  }
+  const loadTransponder = useCallback(async (t) => {
+    try {
+      const r = await fetch(`/api/tolls/transponder/${DRIVER_ID}?tier=${t}`);
+      if (!r.ok) throw new Error(`GET /api/tolls/transponder returned ${r.status}`);
+      setTransponder(await r.json());
+    } catch (e) {
+      setTransponder({ error: String(e.message || e) });
+    }
+  }, []);
 
-  // Calculator
-  const avgTollPerMile = 0.12;
-  const tollMiles = (monthlyMiles * tollPct) / 100;
-  const monthlyToll = tollMiles * avgTollPerMile;
-  const annualToll  = monthlyToll * 12;
-  const prepassSavingsMonthly = monthlyToll * PREPASS_DISCOUNT;
-  const prepassSavingsAnnual  = prepassSavingsMonthly * 12;
+  useEffect(() => { loadRoads(); loadExpenses(); }, [loadRoads, loadExpenses]);
+  useEffect(() => { loadTransponder(tier); }, [tier, loadTransponder]);
 
-  const totalHistorySpend = TOLL_HISTORY.reduce((s,h) => s + h.amount, 0);
+  const road = roads.find((r) => r.id === roadId) || null;
+
+  const runEstimate = async () => {
+    setBusy("estimate");
+    setCalcError("");
+    try {
+      const r = await fetch("/api/tolls/estimate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ roadId, miles: Number(miles), axles: Number(axles) }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || `POST /api/tolls/estimate returned ${r.status}`);
+      setEstimate(j);
+    } catch (e) {
+      setEstimate(null);
+      setCalcError(String(e.message || e));
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const runCompare = async () => {
+    setBusy("compare");
+    setCalcError("");
+    try {
+      const body = { roadId, miles: Number(miles) };
+      if (detourMiles !== "") body.detourMiles = Number(detourMiles);
+      const r = await fetch("/api/tolls/compare", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || `POST /api/tolls/compare returned ${r.status}`);
+      setCompare(j);
+    } catch (e) {
+      setCompare(null);
+      setCalcError(String(e.message || e));
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const logExpense = async () => {
+    const amount = Number(newAmount);
+    if (!road || !amount) return;
+    setBusy("expense");
+    try {
+      const r = await fetch(`/api/tolls/expenses/${DRIVER_ID}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ road: road.name, state: road.state, amount }),
+      });
+      if (!r.ok) throw new Error(`POST /api/tolls/expenses returned ${r.status}`);
+      setNewAmount("");
+      await loadExpenses();
+    } catch (e) {
+      setExpError(String(e.message || e));
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const activate = async () => {
+    setBusy("transponder");
+    try {
+      const r = await fetch(`/api/tolls/transponder/${DRIVER_ID}/activate`, { method: "POST" });
+      if (!r.ok) throw new Error(`activate returned ${r.status}`);
+      await loadTransponder(tier);
+    } catch (e) {
+      setTransponder({ error: String(e.message || e) });
+    } finally {
+      setBusy("");
+    }
+  };
 
   return (
-    <div style={{ fontFamily:"'Poppins', sans-serif", background:"#F8FAFC", minHeight:"100vh", color:"#1E293B" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap');
-        * { box-sizing: border-box; }
-        .alert-ticker { animation: ticker-scroll 0.5s ease; }
-        @keyframes ticker-scroll { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-        .route-card:hover { box-shadow: 0 6px 30px rgba(11,42,107,0.12) !important; transform: translateY(-1px); transition: all 0.2s; }
-        input[type=range] { accent-color: #FFB400; }
-        .calc-input:focus { outline: none; border-color: ${AMBER} !important; box-shadow: 0 0 0 3px rgba(255,180,0,0.15); }
-        @media (max-width: 900px) { .routes-grid { grid-template-columns: 1fr !important; } .calc-row { flex-direction: column !important; } }
-        @media (max-width: 600px) { .nav-links-desktop { display: none !important; } .trial-btn-nav { display: none !important; } }
-      `}</style>
-
-      {/* ── NAV ── */}
-      <nav style={{ position:"sticky", top:0, zIndex:100, background:"rgba(11,42,107,0.97)", backdropFilter:"blur(12px)", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 24px", height:60 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <img src="/static/truckwithease-icon.png" alt="TruckWithEase" style={{ width:34, height:34, borderRadius:8, objectFit:"cover" }} />
-          <span style={{ fontWeight:800, fontSize:16, color:"white" }}>TruckWith<span style={{ color:AMBER }}>Ease</span></span>
-          <span style={{ marginLeft:8, padding:"2px 10px", background:"rgba(255,180,0,0.18)", color:AMBER, borderRadius:20, fontSize:11, fontWeight:600, border:"1px solid rgba(255,180,0,0.3)" }}>🛣️ Toll Optimizer</span>
-        </div>
-        <div className="nav-links-desktop" style={{ display:"flex", alignItems:"center", gap:20 }}>
-          <a href="/" style={{ color:"rgba(255,255,255,0.7)", fontSize:13, textDecoration:"none", fontWeight:500 }}>← Back</a>
-          {["Load Profit","Fuel Finder","Expenses","Reports"].map(l => (
-            <a key={l} href={`/${l.toLowerCase().replace(" ","-")}`} style={{ color:"rgba(255,255,255,0.65)", fontSize:13, textDecoration:"none", fontWeight:500 }}>{l}</a>
-          ))}
-        </div>
-        <a href="#trial" className="trial-btn-nav" style={{ background:AMBER, color:DARK, padding:"8px 18px", borderRadius:8, fontSize:13, fontWeight:700, textDecoration:"none" }}>Free Trial</a>
-      </nav>
-
-      {/* ── LIVE ALERT BANNER ── */}
-      <div style={{ background: NAVY2, borderBottom:`1px solid rgba(255,180,0,0.2)`, padding:"0 24px", position:"relative", overflow:"hidden" }}>
-        <div style={{ maxWidth:1200, margin:"0 auto", display:"flex", alignItems:"center", gap:14, height:52 }}>
-          <span style={{ fontSize:10, fontWeight:800, color:AMBER, letterSpacing:2, textTransform:"uppercase", whiteSpace:"nowrap", flexShrink:0 }}>🔴 LIVE</span>
-          <div style={{ width:1, height:20, background:"rgba(255,255,255,0.15)" }} />
-          <div className="alert-ticker" key={activeAlert} style={{ flex:1, display:"flex", alignItems:"center", gap:10, overflow:"hidden" }}>
-            <AlertBadge severity={TOLL_ALERTS[activeAlert].severity} />
-            <span style={{ fontWeight:700, fontSize:13, color:"white", whiteSpace:"nowrap" }}>{TOLL_ALERTS[activeAlert].highway}</span>
-            <span style={{ fontSize:13, color:"rgba(255,255,255,0.65)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>— {TOLL_ALERTS[activeAlert].alert}</span>
-            <span style={{ marginLeft:"auto", fontSize:11, color:"rgba(255,255,255,0.35)", fontFamily:"'DM Mono', monospace", whiteSpace:"nowrap", flexShrink:0 }}>{TOLL_ALERTS[activeAlert].time}</span>
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
+      <div className="border-b border-[#222] bg-gradient-to-b from-[#111] to-[#0a0a0a]">
+        <div className="mx-auto max-w-6xl px-5 py-10">
+          <div className="mb-3 inline-flex items-center gap-2 border border-[#C9A84C]/40 px-2 py-1">
+            <Route size={13} style={{ color: GOLD }} />
+            <span className="font-[JetBrains_Mono] text-[10px] uppercase tracking-[0.28em]" style={{ color: GOLD }}>
+              Toll Suite
+            </span>
           </div>
-          <div style={{ display:"flex", gap:6, flexShrink:0 }}>
-            {TOLL_ALERTS.map((_,i) => (
-              <button key={i} onClick={() => setActiveAlert(i)} style={{ width:6, height:6, borderRadius:"50%", background: i === activeAlert ? AMBER : "rgba(255,255,255,0.2)", border:"none", cursor:"pointer", padding:0, transition:"background 0.2s" }} />
-            ))}
+          <h1 className="font-[Bebas_Neue] text-5xl leading-none tracking-wide md:text-6xl">
+            TOLL <span style={{ color: GOLD_BRIGHT }}>COST CONTROL</span>
+          </h1>
+          <p className="mt-3 max-w-3xl font-[Inter] text-sm leading-relaxed text-[#8a8a8a]">
+            Reference toll rates for 5-axle rigs, a real server-side estimator, toll-versus-free route math and
+            a per-driver toll expense log. Every figure here is calculated by the API from the numbers you enter —
+            there are no sample routes and no sample transactions.
+          </p>
+          <div className="mt-5 flex items-start gap-2 border border-[#222] bg-[#111] px-4 py-3">
+            <AlertTriangle size={15} className="mt-0.5 shrink-0" style={{ color: GOLD }} />
+            <p className="font-[Inter] text-xs leading-relaxed text-[#8a8a8a]">
+              <span className="text-white">Rate source:</span> a static reference table of per-mile rates maintained
+              in the API. It is <span className="text-white">not</span> a live toll-authority feed, so plaza-level
+              pricing, surcharges and lane closures are not reflected. Confirm the final amount with the toll authority.
+            </p>
           </div>
         </div>
       </div>
 
-      {/* ── ALL ALERTS STRIP (full list) ── */}
-      <div style={{ background:NAVY, padding:"10px 24px", overflowX:"auto" }}>
-        <div style={{ display:"flex", gap:10, minWidth:"max-content" }}>
-          {TOLL_ALERTS.map(a => (
-            <div key={a.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 14px", background:"rgba(255,255,255,0.06)", borderRadius:8, border:`1px solid rgba(255,255,255,0.1)`, whiteSpace:"nowrap" }}>
-              <AlertBadge severity={a.severity} />
-              <span style={{ fontSize:12, fontWeight:600, color:"white" }}>{a.highway}</span>
-              <span style={{ fontSize:11, color:"rgba(255,255,255,0.5)" }}>{a.time}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── MAIN ── */}
-      <div style={{ maxWidth:1200, margin:"0 auto", padding:"32px 24px" }}>
-
-        {/* Header */}
-        <div style={{ marginBottom:32 }}>
-          <h1 style={{ fontSize:28, fontWeight:800, color:NAVY, lineHeight:1.2 }}>Toll Route Optimizer</h1>
-          <p style={{ fontSize:15, color:"#64748B", marginTop:6 }}>Compare toll vs. free routes, track your spend, and calculate PrePass savings — all in one place.</p>
-        </div>
-
-        {/* ── ROUTE CARDS ── */}
-        <div className="routes-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:40 }}>
-          {ROUTES.map(r => {
-            const timeSaved = r.tollRoute.time < r.freeRoute.time;
-            const alertDetails = r.tollRoute.alerts.map(aid => TOLL_ALERTS.find(a => a.id === aid)).filter(Boolean);
-            const isExpanded = expandedAlerts[r.id];
-
-            return (
-              <div key={r.id} className="route-card" style={{ background:"white", borderRadius:14, border:"1px solid #E2E8F0", overflow:"hidden", boxShadow:"0 2px 12px rgba(0,0,0,0.06)", transition:"all 0.2s" }}>
-                {/* Card header */}
-                <div style={{ padding:"16px 20px 12px", borderBottom:"1px solid #F1F5F9", display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
-                  <div>
-                    <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, letterSpacing:1, textTransform:"uppercase" }}>Route {r.id}</div>
-                    <div style={{ fontWeight:700, fontSize:15, color:NAVY, marginTop:3 }}>{r.from}</div>
-                    <div style={{ fontSize:12, color:"#64748B" }}>→ {r.to}</div>
-                  </div>
-                  {alertDetails.length > 0 && (
-                    <button onClick={() => toggleAlerts(r.id)}
-                      style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 10px", background:"rgba(255,180,0,0.12)", border:"1px solid rgba(255,180,0,0.3)", borderRadius:8, cursor:"pointer", fontSize:12, color:AMBER, fontWeight:700 }}>
-                      ⚠️ {alertDetails.length} alert{alertDetails.length > 1 ? "s" : ""}
-                      <span style={{ fontSize:10 }}>{isExpanded ? "▲" : "▼"}</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Alert expansion */}
-                {isExpanded && alertDetails.length > 0 && (
-                  <div style={{ background:"#FFFBEB", borderBottom:"1px solid #FDE68A", padding:"10px 20px" }}>
-                    {alertDetails.map(a => (
-                      <div key={a.id} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:6, lastChild:{ marginBottom:0 } }}>
-                        <span style={{ color:AMBER, marginTop:1 }}>⚠️</span>
-                        <div>
-                          <span style={{ fontSize:11, fontWeight:700, color:"#92400E" }}>{a.highway} · </span>
-                          <span style={{ fontSize:11, color:"#78350F" }}>{a.alert}</span>
-                          <span style={{ fontSize:10, color:"#A16207", marginLeft:6, fontFamily:"'DM Mono', monospace" }}>{a.time}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Routes comparison */}
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:0 }}>
-                  {/* Toll route */}
-                  <div style={{ padding:"14px 16px", borderRight:"1px solid #F1F5F9", background:"#FAFEFF" }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:NAVY, letterSpacing:1.5, textTransform:"uppercase", marginBottom:8 }}>🛣️ Toll Route</div>
-                    <div style={{ fontSize:20, fontWeight:800, color:NAVY }}>${r.tollRoute.cost.toFixed(2)}</div>
-                    <div style={{ fontSize:12, color:"#64748B", marginTop:2 }}>{r.tollRoute.label}</div>
-                    <div style={{ display:"flex", gap:8, marginTop:10, flexWrap:"wrap" }}>
-                      <span style={{ padding:"3px 8px", background:"#EFF6FF", color:NAVY, borderRadius:6, fontSize:11, fontFamily:"'DM Mono', monospace" }}>📍 {r.tollRoute.miles}mi</span>
-                      <span style={{ padding:"3px 8px", background:"#EFF6FF", color:NAVY, borderRadius:6, fontSize:11, fontFamily:"'DM Mono', monospace" }}>⏱ {r.tollRoute.time}</span>
-                    </div>
-                  </div>
-                  {/* Free route */}
-                  <div style={{ padding:"14px 16px" }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:GREEN, letterSpacing:1.5, textTransform:"uppercase", marginBottom:8 }}>🆓 Free Route</div>
-                    <div style={{ fontSize:20, fontWeight:800, color:GREEN }}>$0.00</div>
-                    <div style={{ fontSize:12, color:"#64748B", marginTop:2 }}>{r.freeRoute.label}</div>
-                    <div style={{ display:"flex", gap:8, marginTop:10, flexWrap:"wrap" }}>
-                      <span style={{ padding:"3px 8px", background:"#F0FDF4", color:GREEN, borderRadius:6, fontSize:11, fontFamily:"'DM Mono', monospace" }}>📍 {r.freeRoute.miles}mi</span>
-                      <span style={{ padding:"3px 8px", background:"#F0FDF4", color:GREEN, borderRadius:6, fontSize:11, fontFamily:"'DM Mono', monospace" }}>⏱ {r.freeRoute.time}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Recommendation */}
-                <div style={{ padding:"10px 16px", background:"#F8FAFC", borderTop:"1px solid #F1F5F9", display:"flex", alignItems:"center", gap:6 }}>
-                  {r.tollRoute.cost <= 15 ? (
-                    <>
-                      <span style={{ color:AMBER }}>💡</span>
-                      <span style={{ fontSize:11, color:"#64748B" }}>Toll route saves <strong style={{ color:NAVY }}>{(parseInt(r.freeRoute.time) - parseInt(r.tollRoute.time))} min</strong> — worth it for time-sensitive loads.</span>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ color:GREEN }}>✅</span>
-                      <span style={{ fontSize:11, color:"#64748B" }}>Free route preferred — toll adds <strong style={{ color:RED }}>${r.tollRoute.cost.toFixed(2)}</strong> with minimal time benefit.</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ── TOLL COST CALCULATOR ── */}
-        <div style={{ background:"white", borderRadius:16, border:"1px solid #E2E8F0", padding:"28px 32px", marginBottom:36, boxShadow:"0 2px 16px rgba(0,0,0,0.06)" }}>
-          <h2 style={{ fontSize:20, fontWeight:800, color:NAVY, marginBottom:4 }}>🧮 Toll Cost Calculator</h2>
-          <p style={{ fontSize:13, color:"#64748B", marginBottom:24 }}>Estimate your monthly and annual toll spend — and see how much PrePass would save you.</p>
-
-          <div className="calc-row" style={{ display:"flex", gap:32, marginBottom:28 }}>
-            {/* Monthly miles input */}
-            <div style={{ flex:1 }}>
-              <label style={{ display:"block", fontSize:13, fontWeight:600, color:NAVY, marginBottom:8 }}>
-                Estimated Monthly Miles
-                <span style={{ marginLeft:10, color:ORANGE, fontFamily:"'DM Mono', monospace", fontWeight:700 }}>{monthlyMiles.toLocaleString()} mi</span>
-              </label>
-              <input type="range" min={1000} max={20000} step={500} value={monthlyMiles}
-                onChange={e => setMonthlyMiles(Number(e.target.value))}
-                style={{ width:"100%", height:6, cursor:"pointer" }} />
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#94A3B8", marginTop:4 }}>
-                <span>1,000</span><span>20,000</span>
-              </div>
-            </div>
-
-            {/* Toll percentage */}
-            <div style={{ flex:1 }}>
-              <label style={{ display:"block", fontSize:13, fontWeight:600, color:NAVY, marginBottom:8 }}>
-                Routes Using Toll Roads
-                <span style={{ marginLeft:10, color:ORANGE, fontFamily:"'DM Mono', monospace", fontWeight:700 }}>{tollPct}%</span>
-              </label>
-              <input type="range" min={0} max={100} step={5} value={tollPct}
-                onChange={e => setTollPct(Number(e.target.value))}
-                style={{ width:"100%", height:6, cursor:"pointer" }} />
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#94A3B8", marginTop:4 }}>
-                <span>0%</span><span>100%</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Results */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))", gap:16 }}>
-            {[
-              { label:"Toll Miles/Month",     value:`${Math.round(tollMiles).toLocaleString()} mi`,     color:NAVY,   bg:"#EFF6FF" },
-              { label:"Monthly Toll Cost",     value:`$${monthlyToll.toFixed(2)}`,                       color:RED,    bg:"#FEF2F2" },
-              { label:"Annual Toll Cost",      value:`$${annualToll.toFixed(2)}`,                         color:RED,    bg:"#FEF2F2" },
-              { label:"PrePass Monthly Save",  value:`$${prepassSavingsMonthly.toFixed(2)}`,              color:GREEN,  bg:"#F0FDF4" },
-              { label:"PrePass Annual Save",   value:`$${prepassSavingsAnnual.toFixed(2)}`,               color:GREEN,  bg:"#F0FDF4" },
-            ].map(item => (
-              <div key={item.label} style={{ padding:"14px 16px", background:item.bg, borderRadius:10, textAlign:"center" }}>
-                <div style={{ fontSize:11, color:"#64748B", fontWeight:600, marginBottom:6 }}>{item.label}</div>
-                <div style={{ fontSize:20, fontWeight:800, color:item.color, fontFamily:"'DM Mono', monospace" }}>{item.value}</div>
-              </div>
-            ))}
-          </div>
-
-          <p style={{ fontSize:11, color:"#94A3B8", marginTop:14 }}>* Estimate based on average $0.12/toll-mile for Class 8 vehicles. Actual rates vary by state and transponder type.</p>
-        </div>
-
-        {/* ── TWO COLUMN: HISTORY + PREPASS ── */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:24 }}>
-
-          {/* Toll History */}
-          <div style={{ background:"white", borderRadius:16, border:"1px solid #E2E8F0", padding:"24px 28px", boxShadow:"0 2px 12px rgba(0,0,0,0.05)" }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
-              <h2 style={{ fontSize:18, fontWeight:800, color:NAVY }}>📋 Toll History</h2>
-              <span style={{ fontSize:13, fontWeight:700, color:NAVY, fontFamily:"'DM Mono', monospace" }}>Total: ${totalHistorySpend.toFixed(2)}</span>
-            </div>
-            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {TOLL_HISTORY.map((h,i) => (
-                <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 12px", background:"#F8FAFC", borderRadius:8, border:"1px solid #F1F5F9" }}>
-                  <div style={{ textAlign:"center", minWidth:40 }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:"#94A3B8" }}>{h.date.split(" ")[0]}</div>
-                    <div style={{ fontSize:12, fontWeight:700, color:NAVY }}>{h.date.split(" ")[1]}</div>
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:12, fontWeight:600, color:"#1E293B", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{h.route}</div>
-                    <span style={{ padding:"2px 6px", background: h.method === "PrePass" ? "#F0FDF4" : h.method === "EZPass" ? "#EFF6FF" : "#FEF2F2", color: h.method === "PrePass" ? GREEN : h.method === "EZPass" ? NAVY : RED, borderRadius:6, fontSize:10, fontWeight:600 }}>{h.method}</span>
-                  </div>
-                  <div style={{ textAlign:"right" }}>
-                    <div style={{ fontSize:14, fontWeight:800, color: h.savings ? GREEN : "#1E293B", fontFamily:"'DM Mono', monospace" }}>${h.amount.toFixed(2)}</div>
-                    {h.savings && <div style={{ fontSize:10, color:GREEN }}>✓ PrePass saved ${(h.amount * PREPASS_DISCOUNT).toFixed(2)}</div>}
-                  </div>
-                </div>
+      <div className="mx-auto max-w-6xl space-y-6 px-5 py-10">
+        {/* RATE TABLE */}
+        <Panel
+          title="Per-mile reference rates"
+          note="GET /api/tolls/roads — 5-axle baseline. Rates scale by axle count in the estimator."
+          right={
+            <button
+              onClick={loadRoads}
+              className="flex items-center gap-2 border border-[#C9A84C]/50 px-3 py-1.5 font-[Oswald] text-[10px] uppercase tracking-[0.2em] text-[#C9A84C] transition hover:bg-[#C9A84C]/10"
+            >
+              <RefreshCw size={12} /> Reload
+            </button>
+          }
+        >
+          {roadsState === "loading" && <p className="font-[JetBrains_Mono] text-xs text-[#666]">Loading rates…</p>}
+          {roadsState === "error" && (
+            <p className="font-[JetBrains_Mono] text-xs" style={{ color: WARN }}>{roadsError}</p>
+          )}
+          {roadsState === "ok" && (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {roads.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => setRoadId(r.id)}
+                  className={`flex items-center justify-between border px-3 py-3 text-left transition ${
+                    roadId === r.id ? "border-[#C9A84C] bg-[#C9A84C]/10" : "border-[#222] bg-[#0f0f0f] hover:border-[#C9A84C]/50"
+                  }`}
+                >
+                  <span>
+                    <span className="block font-[Oswald] text-[13px] uppercase tracking-wide text-white">{r.name}</span>
+                    <span className="font-[JetBrains_Mono] text-[10px] text-[#666]">{r.state}</span>
+                  </span>
+                  <span className="font-[JetBrains_Mono] text-sm" style={{ color: GOLD_BRIGHT }}>
+                    ${r.perMile.toFixed(2)}/mi
+                  </span>
+                </button>
               ))}
             </div>
-          </div>
+          )}
+        </Panel>
 
-          {/* PrePass section */}
-          <div style={{ background:`linear-gradient(135deg, ${NAVY} 0%, ${NAVY2} 100%)`, borderRadius:16, padding:"24px 28px", color:"white", boxShadow:"0 4px 20px rgba(11,42,107,0.25)" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
-              <span style={{ fontSize:24 }}>⚡</span>
-              <h2 style={{ fontSize:20, fontWeight:800 }}>PrePass Savings</h2>
-            </div>
-            <p style={{ fontSize:13, color:"rgba(255,255,255,0.65)", marginBottom:20, lineHeight:1.6 }}>TruckWithEase integrates PrePass to auto-apply discounts at participating plazas. No manual action needed — it just saves.</p>
-
-            <div style={{ background:"rgba(255,255,255,0.08)", borderRadius:10, padding:"14px 16px", marginBottom:16 }}>
-              <div style={{ fontSize:11, color:"rgba(255,255,255,0.5)", fontWeight:600, marginBottom:6 }}>YOUR ESTIMATED PREPASS SAVINGS</div>
-              <div style={{ display:"flex", gap:20 }}>
-                <div>
-                  <div style={{ fontSize:24, fontWeight:800, color:AMBER, fontFamily:"'DM Mono', monospace" }}>${prepassSavingsMonthly.toFixed(2)}</div>
-                  <div style={{ fontSize:11, color:"rgba(255,255,255,0.5)" }}>per month</div>
-                </div>
-                <div style={{ width:1, background:"rgba(255,255,255,0.1)" }} />
-                <div>
-                  <div style={{ fontSize:24, fontWeight:800, color:AMBER, fontFamily:"'DM Mono', monospace" }}>${prepassSavingsAnnual.toFixed(2)}</div>
-                  <div style={{ fontSize:11, color:"rgba(255,255,255,0.5)" }}>per year</div>
-                </div>
+        {/* ESTIMATOR + COMPARISON */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Panel
+            title="Toll estimator"
+            note="POST /api/tolls/estimate — the server does the math; nothing is precomputed."
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Toll road">
+                <select className={inputCls} value={roadId} onChange={(e) => setRoadId(e.target.value)}>
+                  {roads.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Axles">
+                <input className={inputCls} type="number" min={2} max={9} value={axles} onChange={(e) => setAxles(e.target.value)} />
+              </Field>
+              <Field label="Toll miles">
+                <input className={inputCls} type="number" min={1} value={miles} onChange={(e) => setMiles(e.target.value)} />
+              </Field>
+              <div className="flex items-end">
+                <button
+                  onClick={runEstimate}
+                  disabled={busy === "estimate" || !roadId}
+                  className="flex w-full items-center justify-center gap-2 bg-[#C9A84C] py-2 font-[Oswald] text-xs uppercase tracking-[0.2em] text-black disabled:opacity-40"
+                >
+                  <Calculator size={14} /> {busy === "estimate" ? "Working" : "Estimate"}
+                </button>
               </div>
-              <div style={{ fontSize:10, color:"rgba(255,255,255,0.35)", marginTop:6 }}>Based on your calculator inputs above · 18% avg discount</div>
             </div>
 
-            {[
-              "18% average discount at PrePass-enabled plazas",
-              "Bypass weigh stations + save tolls in one integration",
-              "Every bypass earns Rig Bucks automatically",
-              "Works on 95% of toll roads in the US",
-            ].map((f,i) => (
-              <div key={i} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:10 }}>
-                <span style={{ color:AMBER, marginTop:1, flexShrink:0 }}>✓</span>
-                <span style={{ fontSize:13, color:"rgba(255,255,255,0.75)" }}>{f}</span>
+            {estimate && (
+              <div className="mt-4 grid grid-cols-3 gap-2 border-t border-[#222] pt-4">
+                {[
+                  ["Gross toll", money(estimate.gross)],
+                  ["With transponder", money(estimate.withPrePass)],
+                  ["Difference", money(estimate.saved)],
+                ].map(([k, v]) => (
+                  <div key={k} className="border border-[#222] bg-[#0f0f0f] px-3 py-2">
+                    <p className="font-[JetBrains_Mono] text-[10px] uppercase tracking-[0.16em] text-[#666]">{k}</p>
+                    <p className="font-[Bebas_Neue] text-2xl" style={{ color: GOLD_BRIGHT }}>{v}</p>
+                  </div>
+                ))}
+                <p className="col-span-3 font-[Inter] text-[11px] leading-snug text-[#666]">
+                  The transponder column applies the discount rate held in the API. It is an estimate of what a
+                  transponder programme would charge, not a quoted price from any provider.
+                </p>
               </div>
-            ))}
+            )}
+            {calcError && (
+              <p className="mt-3 font-[JetBrains_Mono] text-xs" style={{ color: WARN }}>{calcError}</p>
+            )}
+          </Panel>
 
-            <a href="#trial" style={{ display:"inline-flex", alignItems:"center", gap:6, marginTop:12, padding:"11px 22px", background:AMBER, color:DARK, borderRadius:9, fontWeight:700, fontSize:13, textDecoration:"none" }}>
-              Activate PrePass — Free Trial →
-            </a>
-          </div>
+          <Panel
+            title="Toll route vs free route"
+            note="POST /api/tolls/compare — compares the toll charge against the extra fuel and time of a detour."
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Toll miles">
+                <input className={inputCls} type="number" min={1} value={miles} onChange={(e) => setMiles(e.target.value)} />
+              </Field>
+              <Field label="Detour miles (optional)">
+                <input
+                  className={inputCls}
+                  type="number"
+                  placeholder="leave blank for +15%"
+                  value={detourMiles}
+                  onChange={(e) => setDetourMiles(e.target.value)}
+                />
+              </Field>
+            </div>
+            <button
+              onClick={runCompare}
+              disabled={busy === "compare" || !roadId}
+              className="mt-3 flex w-full items-center justify-center gap-2 border border-[#C9A84C]/50 py-2 font-[Oswald] text-xs uppercase tracking-[0.2em] text-[#C9A84C] transition hover:bg-[#C9A84C]/10 disabled:opacity-40"
+            >
+              <Route size={14} /> {busy === "compare" ? "Working" : "Compare routes"}
+            </button>
 
+            {compare && (
+              <div className="mt-4 space-y-2 border-t border-[#222] pt-4">
+                {[
+                  ["Toll route", compare.tollRoute],
+                  ["Free route", compare.freeRoute],
+                ].map(([label, r]) => (
+                  <div key={label} className="flex items-center justify-between border border-[#222] bg-[#0f0f0f] px-3 py-2">
+                    <span className="font-[Oswald] text-[12px] uppercase tracking-wider text-white">{label}</span>
+                    <span className="font-[JetBrains_Mono] text-xs text-[#8a8a8a]">
+                      {r.miles} mi · <span style={{ color: GOLD_BRIGHT }}>{money(r.cost)}</span> · +{r.addedMin} min
+                    </span>
+                  </div>
+                ))}
+                <p className="font-[Inter] text-xs text-[#8a8a8a]">
+                  Server recommendation: <span className="font-[Oswald] uppercase tracking-wider" style={{ color: GOLD_BRIGHT }}>{compare.recommendation}</span>
+                  {" "}· net difference {money(compare.netSaved)}
+                </p>
+                <p className="font-[Inter] text-[11px] text-[#666]">
+                  Free-route cost is extra diesel only, at the fuel price and MPG assumed in the API. It excludes
+                  wear, driver hours and any weight or height restriction on the detour.
+                </p>
+              </div>
+            )}
+          </Panel>
+        </div>
+
+        {/* EXPENSES + TRANSPONDER */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Panel
+            title={`Toll expense log — ${DRIVER_ID}`}
+            note="GET/POST /api/tolls/expenses/:driverId. Held in API memory for now, so entries clear on server restart — no fabricated history is shown."
+          >
+            <div className="mb-4 flex gap-2">
+              <input
+                className={inputCls}
+                type="number"
+                step="0.01"
+                placeholder="Amount paid"
+                value={newAmount}
+                onChange={(e) => setNewAmount(e.target.value)}
+              />
+              <button
+                onClick={logExpense}
+                disabled={busy === "expense" || !newAmount || !road}
+                className="flex items-center gap-2 bg-[#C9A84C] px-4 font-[Oswald] text-xs uppercase tracking-[0.2em] text-black disabled:opacity-40"
+              >
+                <Plus size={14} /> Log
+              </button>
+            </div>
+            <p className="mb-3 font-[JetBrains_Mono] text-[10px] text-[#666]">
+              Logs against: {road ? `${road.name} (${road.state})` : "select a road above"}
+            </p>
+
+            {expError && <p className="font-[JetBrains_Mono] text-xs" style={{ color: WARN }}>{expError}</p>}
+
+            {expenses && expenses.expenses?.length === 0 && (
+              <div className="border border-[#222] bg-[#0f0f0f] px-4 py-6 text-center">
+                <p className="font-[Oswald] text-sm uppercase tracking-wider text-[#8a8a8a]">No toll expenses logged</p>
+                <p className="mt-1 font-[Inter] text-xs text-[#666]">Nothing has been recorded for this driver yet.</p>
+              </div>
+            )}
+
+            {expenses && expenses.expenses?.length > 0 && (
+              <>
+                <div className="mb-3 flex items-center justify-between border border-[#222] bg-[#0f0f0f] px-3 py-2">
+                  <span className="font-[JetBrains_Mono] text-[10px] uppercase tracking-[0.18em] text-[#666]">Total logged</span>
+                  <span className="font-[Bebas_Neue] text-2xl" style={{ color: GOLD_BRIGHT }}>{money(expenses.total)}</span>
+                </div>
+                <div className="space-y-1">
+                  {expenses.expenses.map((e) => (
+                    <div key={e.id} className="flex items-center justify-between border-l-2 border-[#C9A84C] bg-[#0f0f0f] px-3 py-2">
+                      <span className="font-[Inter] text-xs text-[#d4d4d4]">
+                        {e.date} · {e.road} <span className="text-[#666]">({e.state})</span>
+                      </span>
+                      <span className="font-[JetBrains_Mono] text-sm text-white">{money(e.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </Panel>
+
+          <Panel
+            title="Transponder / bypass"
+            note="GET /api/tolls/transponder/:driverId — tier gated by the API."
+          >
+            <div className="mb-4 flex gap-1">
+              {["solo", "pro", "fleet"].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTier(t)}
+                  className={`px-3 py-1.5 font-[Oswald] text-[10px] uppercase tracking-[0.2em] transition ${
+                    tier === t ? "bg-[#C9A84C] text-black" : "border border-[#222] text-[#8a8a8a] hover:text-white"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            {!transponder && <p className="font-[JetBrains_Mono] text-xs text-[#666]">Checking eligibility…</p>}
+
+            {transponder?.error && (
+              <p className="font-[JetBrains_Mono] text-xs" style={{ color: WARN }}>{transponder.error}</p>
+            )}
+
+            {transponder && !transponder.error && transponder.eligible === false && (
+              <div className="border border-[#222] bg-[#0f0f0f] px-4 py-4">
+                <p className="font-[Oswald] text-sm uppercase tracking-wider" style={{ color: GOLD }}>Not included on this tier</p>
+                <p className="mt-1 font-[Inter] text-xs text-[#8a8a8a]">{transponder.reason}</p>
+              </div>
+            )}
+
+            {transponder?.eligible && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border border-[#222] bg-[#0f0f0f] px-3 py-3">
+                  <span className="font-[JetBrains_Mono] text-[10px] uppercase tracking-[0.18em] text-[#666]">Status</span>
+                  <span className="font-[Oswald] text-sm uppercase tracking-wider" style={{ color: transponder.active ? GOLD_BRIGHT : "#8a8a8a" }}>
+                    {transponder.active ? `Tag issued · ${transponder.tag}` : "Not activated"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border border-[#222] bg-[#0f0f0f] px-3 py-3">
+                  <span className="font-[JetBrains_Mono] text-[10px] uppercase tracking-[0.18em] text-[#666]">Bundle price</span>
+                  <span className="font-[JetBrains_Mono] text-sm text-white">{money(transponder.price)}/mo</span>
+                </div>
+                {!transponder.active && (
+                  <button
+                    onClick={activate}
+                    disabled={busy === "transponder"}
+                    className="flex w-full items-center justify-center gap-2 border border-[#C9A84C]/50 py-2 font-[Oswald] text-xs uppercase tracking-[0.2em] text-[#C9A84C] transition hover:bg-[#C9A84C]/10 disabled:opacity-40"
+                  >
+                    <Radio size={14} /> Issue internal tag record
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div className="mt-4 border border-[#222] bg-[#0f0f0f] px-3 py-3">
+              <p className="font-[JetBrains_Mono] text-[10px] uppercase tracking-[0.18em] text-[#666]">
+                Weigh-station bypass provider
+              </p>
+              <p className="font-[Oswald] text-sm text-[#8a8a8a]">MISSING / NOT TRACKED</p>
+              <p className="mt-1 font-[Inter] text-[11px] leading-snug text-[#666]">
+                No bypass or transponder provider is under contract and no provider API is connected. Activating
+                here only creates an internal record — it does not order hardware, open an account, or apply a
+                discount at any plaza.
+              </p>
+            </div>
+          </Panel>
+        </div>
+
+        <div className="flex items-center gap-2 border border-[#222] bg-[#111] px-5 py-4">
+          <Receipt size={15} style={{ color: GOLD }} />
+          <p className="font-[Inter] text-xs text-[#8a8a8a]">
+            Toll receipts belong in your IFTA and expense records. TruckWithEase keeps the log; it does not file
+            anything with any state or authority on your behalf.
+          </p>
         </div>
       </div>
-
-      {/* ── FOOTER ── */}
-      <footer style={{ background:NAVY2, borderTop:`1px solid rgba(255,255,255,0.08)`, padding:"24px", marginTop:40, textAlign:"center" }}>
-        <p style={{ fontSize:12, color:"rgba(255,255,255,0.4)" }}>© 2026 TruckWithEase · <a href="/" style={{ color:AMBER, textDecoration:"none" }}>← Back to Home</a></p>
-      </footer>
     </div>
   );
 }

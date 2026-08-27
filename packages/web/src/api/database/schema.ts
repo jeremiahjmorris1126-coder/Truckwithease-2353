@@ -363,3 +363,597 @@ export const platformSettings = sqliteTable("platform_settings", {
   enabled: integer("enabled", { mode: "boolean" }).default(true),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });
+
+// ── API key vault ────────────────────────────────────────────────────────────
+// Encrypted at rest with AES-256-GCM (see api/lib/crypto.ts). The ciphertext
+// never leaves the server: routes return a masked preview only. Replaces the
+// client-side base64 "vault", which was not encryption at all.
+export const apiKeyVault = sqliteTable("api_key_vault", {
+  id: text("id").primaryKey(),
+  service: text("service").notNull(), // apifreaks, google_maps, twilio, checkr, ...
+  label: text("label"),
+  ciphertext: text("ciphertext").notNull(), // iv.tag.data — base64url
+  hint: text("hint").notNull(), // last 4 chars only, safe to display
+  fingerprint: text("fingerprint").notNull(), // sha256 of plaintext, for rotation checks
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  lastRotated: integer("last_rotated", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  rotationCount: integer("rotation_count").notNull().default(0),
+  accessCount: integer("access_count").notNull().default(0),
+  lastAccessed: integer("last_accessed", { mode: "timestamp" }),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+});
+
+export const apiKeyAuditLog = sqliteTable("api_key_audit_log", {
+  id: text("id").primaryKey(),
+  service: text("service").notNull(),
+  action: text("action").notNull(), // store, rotate, use, denied, delete
+  outcome: text("outcome").notNull(), // ok, not_found, disabled, error
+  actor: text("actor").default("server"),
+  detail: text("detail"),
+  at: integer("at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+// ── Broker / shipper verification ────────────────────────────────────────────
+export const brokerVerifications = sqliteTable("broker_verifications", {
+  id: text("id").primaryKey(),
+  email: text("email"),
+  domain: text("domain"),
+  ip: text("ip"),
+  mcNumber: text("mc_number"),
+  organization: text("organization"),
+  registrar: text("registrar"),
+  country: text("country"),
+  region: text("region"),
+  domainAgeDays: integer("domain_age_days"),
+  hostingType: text("hosting_type"), // business, residential, hosting, vpn, unknown
+  riskScore: integer("risk_score").notNull().default(0), // 0 clean .. 100 do-not-load
+  verdict: text("verdict").notNull().default("unverified"), // verified, caution, unverified, high_risk
+  reasons: text("reasons"), // JSON string[]
+  source: text("source").notNull().default("heuristic"), // apifreaks, heuristic
+  raw: text("raw"), // JSON provider payload
+  checkedAt: integer("checked_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+// ── Agent integrity ─────────────────────────────────────────────────────────
+// Baseline sha256 of each agent's composed system prompt. Verification is
+// server-side: a modified prompt changes its hash and is actually detected.
+export const agentIntegrity = sqliteTable("agent_integrity", {
+  id: text("id").primaryKey(), // agent id
+  name: text("name").notNull(),
+  baselineHash: text("baseline_hash").notNull(),
+  promptChars: integer("prompt_chars").notNull().default(0),
+  guardrailsPresent: integer("guardrails_present", { mode: "boolean" }).notNull().default(true),
+  sealedAt: integer("sealed_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  lastCheckedAt: integer("last_checked_at", { mode: "timestamp" }),
+  lastResult: text("last_result"), // ok, drift, missing_guardrails
+});
+
+// ── ELD hardware ─────────────────────────────────────────────────────────────
+// Physical device registry + telemetry. Replaces the client-side eldIntegration
+// lib, which wrote to PocketBase collections that never existed.
+export const eldDevices = sqliteTable("eld_devices", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id").notNull(),
+  truckId: text("truck_id"),
+  deviceType: text("device_type").notNull(), // gps_tracker, obd2_reader, dash_cam, cellular_modem, haptic_*
+  deviceSerial: text("device_serial").notNull(),
+  firmwareVersion: text("firmware_version"),
+  status: text("status").notNull().default("active"), // active, offline, retired, fault
+  batteryLevel: integer("battery_level").default(100),
+  signalStrength: integer("signal_strength").default(-75), // dBm
+  syncIntervalSeconds: integer("sync_interval_seconds").notNull().default(30),
+  lastSync: integer("last_sync", { mode: "timestamp" }),
+  registeredAt: integer("registered_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const eldTelemetry = sqliteTable("eld_telemetry", {
+  id: text("id").primaryKey(),
+  deviceId: text("device_id").notNull(),
+  driverId: text("driver_id").notNull(),
+  speedMph: real("speed_mph"),
+  rpm: integer("rpm"),
+  engineHours: real("engine_hours"),
+  odometer: real("odometer"),
+  lat: real("lat"),
+  lng: real("lng"),
+  harshBrake: integer("harsh_brake", { mode: "boolean" }).default(false),
+  harshAccel: integer("harsh_accel", { mode: "boolean" }).default(false),
+  laneDeparture: integer("lane_departure", { mode: "boolean" }).default(false),
+  fatigueScore: integer("fatigue_score"), // 0 alert .. 100 critical
+  recordedAt: integer("recorded_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+// ── Dispatch compliance ─────────────────────────────────────────────────────
+export const dispatchComplianceLog = sqliteTable("dispatch_compliance_log", {
+  id: text("id").primaryKey(),
+  loadId: text("load_id"),
+  driverId: text("driver_id"),
+  originState: text("origin_state"),
+  destinationState: text("destination_state"),
+  distanceMiles: real("distance_miles"),
+  estimatedDriveHours: real("estimated_drive_hours"),
+  status: text("status").notNull().default("clear"), // clear, warning, critical
+  alerts: text("alerts"), // JSON
+  estimatedFuelTax: real("estimated_fuel_tax"),
+  checkedAt: integer("checked_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+// ── DOT physical failure recovery ───────────────────────────────────────────
+export const healthRecoveryPlans = sqliteTable("health_recovery_plans", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id").notNull(),
+  failureCategory: text("failure_category").notNull(), // VISION, HEARING, BLOOD_PRESSURE, ...
+  failureDetails: text("failure_details"), // JSON
+  status: text("status").notNull().default("active"), // active, retest_ready, cleared, abandoned
+  completedSteps: text("completed_steps"), // JSON number[]
+  minDays: integer("min_days").notNull().default(30),
+  maxDays: integer("max_days").notNull().default(90),
+  estimatedCost: text("estimated_cost"),
+  retestEarliest: integer("retest_earliest", { mode: "timestamp" }),
+  retestLatest: integer("retest_latest", { mode: "timestamp" }),
+  retestScheduled: integer("retest_scheduled", { mode: "timestamp" }),
+  clearedAt: integer("cleared_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+// ── Checkout fraud screening (server-side, replaces the client-side mock) ────
+export const checkoutScreenings = sqliteTable("checkout_screenings", {
+  id: text("id").primaryKey(),
+  transactionId: text("transaction_id"),
+  ipAddress: text("ip_address"),
+  amount: real("amount"),
+  paymentMethod: text("payment_method"),
+  riskScore: integer("risk_score").notNull(),
+  riskLevel: text("risk_level").notNull(), // low, elevated, high, critical
+  recommendation: text("recommendation").notNull(), // allow, verify, block
+  requiresVerification: integer("requires_verification", { mode: "boolean" }).notNull().default(false),
+  riskFactors: text("risk_factors"), // JSON
+  source: text("source").notNull().default("heuristic"), // apifreaks | heuristic
+  live: integer("live", { mode: "boolean" }).notNull().default(false),
+  actionTaken: text("action_taken"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+// ── Customer support tickets ─────────────────────────────────────────────────
+export const supportTickets = sqliteTable("support_tickets", {
+  id: text("id").primaryKey(),
+  ticketNumber: text("ticket_number").notNull(),
+  category: text("category").notNull(), // TECHNICAL, BILLING, COMPLIANCE, ...
+  priority: text("priority").notNull().default("normal"),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  driverId: text("driver_id"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  status: text("status").notNull().default("open"), // open, in_progress, resolved, closed
+  resolution: text("resolution"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+// ── RideWithEase (second product: bike / car courier) ────────────────────────
+// Separate product from TruckWithEase. No FMCSA/HOS surface here — a bicycle
+// courier is not a CMV driver and none of 49 CFR 395 applies to them.
+export const rideCouriers = sqliteTable("ride_couriers", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  vehicleType: text("vehicle_type").notNull(), // ebike, road_bike, cargo_bike, hybrid, fat_tire_ebike, car, scooter
+  city: text("city"),
+  platforms: text("platforms"), // JSON array of platform keys the courier actually works
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const rideDeliveries = sqliteTable("ride_deliveries", {
+  id: text("id").primaryKey(),
+  courierId: text("courier_id").notNull(),
+  platform: text("platform").notNull(),
+  externalId: text("external_id"), // the platform's own order id, if the courier types it in
+  pickupAddress: text("pickup_address"),
+  dropoffAddress: text("dropoff_address"),
+  distanceMi: real("distance_mi"),
+  payout: real("payout"),
+  tip: real("tip"),
+  platformFee: real("platform_fee"),
+  status: text("status").notNull().default("pending"), // pending, in_progress, delivered, cancelled
+  proofPhotoUrl: text("proof_photo_url"),
+  acceptedAt: integer("accepted_at", { mode: "timestamp" }),
+  deliveredAt: integer("delivered_at", { mode: "timestamp" }),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const rideExpenses = sqliteTable("ride_expenses", {
+  id: text("id").primaryKey(),
+  courierId: text("courier_id").notNull(),
+  category: text("category").notNull(), // gear, maintenance, platform_fee, phone, insurance, charging, other
+  description: text("description").notNull(),
+  amount: real("amount").notNull(),
+  businessPct: integer("business_pct").notNull().default(100),
+  receiptUrl: text("receipt_url"),
+  incurredAt: integer("incurred_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const rideMaintenance = sqliteTable("ride_maintenance", {
+  id: text("id").primaryKey(),
+  courierId: text("courier_id").notNull(),
+  item: text("item").notNull(), // chain_lube, tires, brake_pads, battery, ...
+  lastServiceAt: integer("last_service_at", { mode: "timestamp" }),
+  lastServiceMi: real("last_service_mi"),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Signup, subscriptions, A2P and billing cases.
+//
+// These five tables back legacy pages that were writing to PocketBase
+// collections that never existed on any server: SignupPage, SubscriptionsAdminPage,
+// A2PRegistrationPage and SupportAgentBilling. Every submit on those pages
+// showed a success message and threw the record away.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const signups = sqliteTable("signups", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  name: text("name"),
+  phone: text("phone"),
+  company: text("company"),
+  mcNumber: text("mc_number"),
+  dotNumber: text("dot_number"),
+  fleetSize: integer("fleet_size"),
+  role: text("role").notNull().default("driver"), // driver, owner_operator, dispatcher, fleet_manager
+  plan: text("plan"), // solo, pro, fleet_lease, fleet_owned
+  vehicleWorld: text("vehicle_world").notNull().default("truck"), // truck, car, bike
+  source: text("source"), // reddit_beta, referral, landing, trial_link
+  trialCode: text("trial_code"),
+  status: text("status").notNull().default("new"), // new, contacted, activated, rejected
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const trialLinks = sqliteTable("trial_links", {
+  id: text("id").primaryKey(),
+  code: text("code").notNull(),
+  label: text("label"),
+  plan: text("plan"),
+  trialDays: integer("trial_days").notNull().default(14),
+  maxUses: integer("max_uses"),
+  uses: integer("uses").notNull().default(0),
+  expiresAt: integer("expires_at", { mode: "timestamp" }),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdBy: text("created_by"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const subscriptions = sqliteTable("subscriptions", {
+  id: text("id").primaryKey(),
+  signupId: text("signup_id"),
+  accountName: text("account_name").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  plan: text("plan").notNull(), // solo, pro, fleet_lease, fleet_owned
+  seats: integer("seats").notNull().default(1),
+  trucks: integer("trucks").notNull().default(0),
+  unitPrice: real("unit_price").notNull(),
+  status: text("status").notNull().default("trialing"), // trialing, active, past_due, cancelled
+  trialEndsAt: integer("trial_ends_at", { mode: "timestamp" }),
+  startedAt: integer("started_at", { mode: "timestamp" }),
+  cancelledAt: integer("cancelled_at", { mode: "timestamp" }),
+  cancelReason: text("cancel_reason"),
+  // Set only when a real payment provider has the record. Null means nobody
+  // has ever been charged for this row.
+  provider: text("provider"),
+  providerRef: text("provider_ref"),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const billingCases = sqliteTable("billing_cases", {
+  id: text("id").primaryKey(),
+  subscriptionId: text("subscription_id"),
+  contactEmail: text("contact_email").notNull(),
+  category: text("category").notNull(), // overcharge, refund, failed_payment, plan_change, invoice_request, cancellation, other
+  subject: text("subject").notNull(),
+  description: text("description").notNull(),
+  amountDisputed: real("amount_disputed"),
+  priority: text("priority").notNull().default("normal"), // low, normal, high
+  status: text("status").notNull().default("open"), // open, in_review, resolved, refunded, rejected
+  assignedTo: text("assigned_to"),
+  resolution: text("resolution"),
+  resolvedAt: integer("resolved_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const a2pRegistrations = sqliteTable("a2p_registrations", {
+  id: text("id").primaryKey(),
+  legalBusinessName: text("legal_business_name").notNull(),
+  dbaName: text("dba_name"),
+  ein: text("ein"),
+  businessType: text("business_type"), // sole_proprietor, llc, corporation, partnership, non_profit
+  street: text("street"),
+  city: text("city"),
+  state: text("state"),
+  postalCode: text("postal_code"),
+  country: text("country").notNull().default("US"),
+  website: text("website"),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  useCaseCategory: text("use_case_category"), // mixed, customer_care, 2fa, marketing, delivery_notification
+  useCaseDescription: text("use_case_description"),
+  sampleMessages: text("sample_messages"), // JSON array
+  optInDescription: text("opt_in_description"),
+  optInProofUrl: text("opt_in_proof_url"),
+  estimatedMonthlyVolume: integer("estimated_monthly_volume"),
+  // Assigned by The Campaign Registry THROUGH a messaging provider. Null until
+  // a real provider account submits this brand/campaign.
+  provider: text("provider"),
+  brandId: text("brand_id"),
+  campaignId: text("campaign_id"),
+  // Twilio TrustHub bundle SIDs. Required by Twilio before a brand can be filed.
+  // Created in the Twilio console (Trust Hub > Customer Profiles / A2P Profile).
+  customerProfileBundleSid: text("customer_profile_bundle_sid"),
+  a2pProfileBundleSid: text("a2p_profile_bundle_sid"),
+  lastCarrierResponse: text("last_carrier_response"),
+  status: text("status").notNull().default("draft"), // draft, ready, submitted, approved, rejected
+  submittedAt: integer("submitted_at", { mode: "timestamp" }),
+  decisionAt: integer("decision_at", { mode: "timestamp" }),
+  rejectionReason: text("rejection_reason"),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+// ── Twilio account setup: domain verification + Trust Hub bundles ────────────
+// Twilio verifies domain ownership with a DNS TXT record. Nothing here proves
+// verification by itself — `verifiedAt` is only set after a real DNS lookup
+// finds the token in the zone.
+export const twilioDomainVerifications = sqliteTable("twilio_domain_verifications", {
+  id: text("id").primaryKey(),
+  domain: text("domain").notNull(),
+  token: text("token").notNull(),
+  recordName: text("record_name"),
+  purpose: text("purpose"), // link_shortening, organization, messaging
+  lastCheckedAt: integer("last_checked_at", { mode: "timestamp" }),
+  lastCheckResult: text("last_check_result"),
+  verifiedAt: integer("verified_at", { mode: "timestamp" }),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+// ── Accessibility (from the pasted PocketBase schema, rebuilt server-side) ───
+export const driverAccessibility = sqliteTable("driver_accessibility", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id").notNull(),
+  preferredLanguage: text("preferred_language").notNull().default("en"),
+  needs: text("needs"), // json array: deaf, hard_of_hearing, low_vision, dyslexia, ...
+  captionsEnabled: integer("captions_enabled", { mode: "boolean" }).notNull().default(false),
+  hapticsEnabled: integer("haptics_enabled", { mode: "boolean" }).notNull().default(false),
+  signLanguage: text("sign_language"), // ASL, BSL, LSF, ...
+  hapticDevice: text("haptic_device"), // phone, smartwatch, steering_wheel, dashboard
+  vehicleWorld: text("vehicle_world").notNull().default("truck"), // truck, car, bike
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const hapticEvents = sqliteTable("haptic_events", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id").notNull(),
+  patternType: text("pattern_type").notNull(),
+  sequence: text("sequence"), // json array of ms on/off
+  deviceType: text("device_type").notNull().default("phone"),
+  urgency: text("urgency").notNull().default("low"), // low, medium, high, critical
+  message: text("message"),
+  delivered: integer("delivered", { mode: "boolean" }).notNull().default(false),
+  deliveryNote: text("delivery_note"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+// One table for caption / translation / sign-language requests. Nothing is
+// fulfilled until a real provider is connected — `fulfilled` stays false and
+// `note` says why. No fabricated confidence scores, no fake media urls.
+export const accessibilityRequests = sqliteTable("accessibility_requests", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id").notNull(),
+  kind: text("kind").notNull(), // caption, translation, sign_language
+  sourceText: text("source_text"),
+  sourceLanguage: text("source_language").notNull().default("en"),
+  targetLanguage: text("target_language"),
+  resultText: text("result_text"),
+  resultSource: text("result_source"), // static_catalog | provider | null
+  provider: text("provider"), // null until a real one is wired
+  fulfilled: integer("fulfilled", { mode: "boolean" }).notNull().default(false),
+  note: text("note"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+// Load board seats. Credentials are NOT stored here — `credentialRef` points at
+// an api_key_vault row (AES-256-GCM). A password hash cannot be used to log in,
+// so the pasted `password_hash` field was dropped on purpose.
+export const loadBoardLicenses = sqliteTable("load_board_licenses", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id").notNull(),
+  fleetId: text("fleet_id"),
+  service: text("service").notNull(), // dat, uber_freight, truckstop, internal
+  username: text("username"),
+  credentialRef: text("credential_ref"), // api_key_vault.id, null = no credential stored
+  status: text("status").notNull().default("pending"), // pending, active, expired, revoked
+  seatLabel: text("seat_label"),
+  purchased: integer("purchased", { mode: "boolean" }).notNull().default(false),
+  expiresAt: integer("expires_at", { mode: "timestamp" }),
+  lastLoginAt: integer("last_login_at", { mode: "timestamp" }),
+  loginCount: integer("login_count").notNull().default(0),
+  revokedReason: text("revoked_reason"),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+// ── Safety scoring ──────────────────────────────────────────────────────────
+// Composite driver safety score. Every component is computed from rows that
+// actually exist (hos_logs, dvir_inspections, hr_occurrences, speeding_events,
+// eld_telemetry). There is deliberately no `accidentRisk` column: the platform
+// has no crash-outcome dataset, so an accident-probability number would be
+// invented. The API returns accidentRisk: null for that reason.
+export const safetyScores = sqliteTable("safety_scores", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id").notNull(),
+  score: integer("score"),                       // 0-100, null when insufficient data
+  grade: text("grade"),                          // platinum, gold, silver, needs_work, at_risk
+  windowDays: integer("window_days").notNull().default(30),
+  milesDriven: real("miles_driven").notNull().default(0),
+  speedingComponent: integer("speeding_component"),
+  hosComponent: integer("hos_component"),
+  dvirComponent: integer("dvir_component"),
+  violationComponent: integer("violation_component"),
+  fatigueComponent: integer("fatigue_component"),
+  insufficientData: integer("insufficient_data", { mode: "boolean" }).notNull().default(true),
+  missing: text("missing"),                      // JSON array of component names with no data
+  note: text("note"),
+  computedAt: integer("computed_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const speedingEvents = sqliteTable("speeding_events", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id").notNull(),
+  truckUnit: text("truck_unit"),
+  speedMph: real("speed_mph").notNull(),
+  limitMph: real("limit_mph").notNull(),
+  overBy: real("over_by").notNull(),
+  severity: text("severity").notNull().default("minor"), // minor (1-9), moderate (10-14), severe (15+)
+  lat: real("lat"),
+  lng: real("lng"),
+  roadName: text("road_name"),
+  source: text("source").notNull().default("eld"),       // eld, gps, manual, citation
+  occurredAt: integer("occurred_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+/**
+ * Fleet Memory — driver-sourced intelligence on brokers, shippers, receivers and stops.
+ *
+ * These four tables replace four PocketBase collections that legacy/lib/fleetMemory.js
+ * wrote to and that never existed on any server. They were not in SERVER_COLLECTIONS,
+ * so every note, rating and stop review lived in one browser's localStorage and the
+ * "cross-fleet intelligence" pages rendered an empty array as if the fleet were clean.
+ */
+
+export const activityLog = sqliteTable("activity_log", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  module: text("module").notNull(),
+  actionType: text("action_type").notNull(),
+  detail: text("detail"),
+  value: text("value"),
+  device: text("device"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const fleetNotes = sqliteTable("fleet_intelligence_notes", {
+  id: text("id").primaryKey(),
+  entityName: text("entity_name").notNull(),
+  entityNameKey: text("entity_name_key").notNull(),   // lowercased, trimmed — what lookups match on
+  entityType: text("entity_type").notNull(),          // Broker, Shipper, Receiver
+  noteType: text("note_type").notNull(),              // Payment Issue, Detention, Facility, Safety, Other
+  severity: text("severity").notNull().default("Medium"), // Critical, High, Medium, Low
+  noteText: text("note_text").notNull(),
+  fleetName: text("fleet_name"),
+  driverName: text("driver_name"),
+  loadNumber: text("load_number"),
+  mcNumber: text("mc_number"),
+  resolved: integer("resolved", { mode: "boolean" }).notNull().default(false),
+  sessionId: text("session_id"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const entityRatings = sqliteTable("shipper_broker_ratings", {
+  id: text("id").primaryKey(),
+  companyName: text("company_name").notNull(),
+  companyNameKey: text("company_name_key").notNull(),
+  companyType: text("company_type").notNull().default("Broker"),
+  rating: integer("rating").notNull(),                // 1-5, submitted by a driver
+  paySpeed: text("pay_speed"),
+  communication: text("communication"),
+  reviewText: text("review_text"),
+  mcNumber: text("mc_number"),
+  sessionId: text("session_id"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const stopFeedback = sqliteTable("route_stop_feedback", {
+  id: text("id").primaryKey(),
+  stopName: text("stop_name").notNull(),
+  stopNameKey: text("stop_name_key").notNull(),
+  vehicleType: text("vehicle_type").notNull().default("truck"),
+  rating: integer("rating").notNull(),                // +1 thumbs up, -1 thumbs down
+  routeOrigin: text("route_origin"),
+  routeDest: text("route_dest"),
+  sessionId: text("session_id"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+/**
+ * Week In Review — weekly driver recap.
+ *
+ * The legacy page constructed its own `new PocketBase()` client and wrote to a
+ * `week_reviews` collection that existed on no server, so every emailed-recap
+ * signup lived in one browser's localStorage. This table is the real store for
+ * the recap subscription; the recap figures themselves are aggregated live from
+ * trips / loads / hos_logs / dvir_inspections / speeding_events / safety_scores
+ * and are never persisted as a snapshot of invented numbers.
+ */
+export const weekReviewSubscriptions = sqliteTable("week_review_subscriptions", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id"),
+  email: text("email").notNull(),
+  weekEnding: text("week_ending"),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+/**
+ * Driver Algorithm — the per-driver learning layer.
+ *
+ * Jeremiah asked for the agents to "gain the algorithm of the user" across driving
+ * skill, customer frequency, loads and routes. The honest way to do that is to learn
+ * from what the driver actually did, never from a model's guess about him.
+ *
+ * driver_signals is the capture layer that did not exist. Nothing in the app recorded
+ * a decision — which load was taken, which was passed, which broker was worked, which
+ * lane was run — so there was no history for any algorithm to read. Every row here is
+ * an observed event with a real source, written at the moment it happens.
+ *
+ * driver_patterns is the computed rollup. It stores sampleCount alongside every value
+ * so the UI and the agents can refuse to act on a pattern built from two data points.
+ * A pattern is never invented: if there are no signals, there is no row, and the
+ * caller renders NOT ENOUGH DATA with the real count.
+ */
+
+export const driverSignals = sqliteTable("driver_signals", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id").notNull(),
+  // dimension: driving | customer | load | route
+  dimension: text("dimension").notNull(),
+  // kind: load_accepted, load_declined, lane_run, broker_worked, hard_brake,
+  // speeding, dvir_defect, shift_start, break_taken, route_planned, fuel_stop
+  kind: text("kind").notNull(),
+  subject: text("subject"),              // broker name, lane string, road name, equipment
+  numericValue: real("numeric_value"),   // rate, rpm, miles, mph over, hours
+  unit: text("unit"),                    // usd, usd_per_mile, miles, mph, seconds
+  source: text("source").notNull(),      // which endpoint or user action produced this
+  meta: text("meta"),                    // JSON blob of the raw observation
+  occurredAt: integer("occurred_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+

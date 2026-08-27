@@ -1,4 +1,5 @@
-import { generateText } from "ai";
+import { generateText, generateObject, streamText } from "ai";
+import { z } from "zod";
 import dedent from "dedent";
 import { gateway, hasAI } from "./gateway";
 import { DRIVER_ASSISTANT, PLATFORM_GUARDRAILS, DRIVING_MODE } from "./driver-assistant";
@@ -145,6 +146,14 @@ const SYSTEMS: Record<AgentId, string> = {
   "page-guardian": `${PLATFORM_GUARDRAILS}\n\n${PAGE_GUARDIAN}`,
 };
 
+/**
+ * Raw composed system prompt for an agent, guardrails included.
+ * Used by /api/integrity to hash and verify each agent server-side.
+ */
+export function agentSystemPrompt(agent: AgentId): string {
+  return SYSTEMS[agent];
+}
+
 /** Display names + blurbs for the /ai-team roster page. */
 export const AGENT_ROSTER: { id: AgentId; name: string; role: string }[] = [
   { id: "the-goat", name: "THE GOAT", role: "Supreme master agent — scans the operation, enforces your fleet procedure, final authority" },
@@ -178,23 +187,227 @@ function buildSystem(agent: AgentId, contextNote?: string, opts?: RunOpts) {
   return system;
 }
 
-async function run(agent: AgentId, messages: { role: string; content: string }[], contextNote?: string, opts?: RunOpts) {
+/**
+ * Why a request produced a fallback instead of a model answer.
+ * Before this existed, a real 500, a provider timeout and "no key configured" were all
+ * indistinguishable — every failure went through the same `catch -> demoReply`.
+ */
+export type AgentFailure = "no_key" | "timeout" | "provider_error" | null;
+
+export type AgentResult = {
+  text: string;
+  /** True only when a model actually answered. */
+  live: boolean;
+  reason: AgentFailure;
+  note?: string;
+};
+
+/** Wall-clock budget for one agent call. Driving mode is tighter: a driver will not wait. */
+const TIMEOUT_MS = 30_000;
+const DRIVING_TIMEOUT_MS = 15_000;
+/** Bounded retries. Must stay well inside the timeout budget above. */
+const MAX_RETRIES = 2;
+/** Output caps. Driving mode is voice-shaped and short by design (see DRIVING_MODE). */
+const MAX_TOKENS = 1600;
+const DRIVING_MAX_TOKENS = 400;
+
+function isTimeout(e: unknown) {
+  const name = (e as { name?: string })?.name ?? "";
+  const msg = String((e as { message?: string })?.message ?? "");
+  return name === "TimeoutError" || name === "AbortError" || /timed? ?out|aborted/i.test(msg);
+}
+
+async function runDetailed(
+  agent: AgentId,
+  messages: { role: string; content: string }[],
+  contextNote?: string,
+  opts?: RunOpts,
+): Promise<AgentResult> {
   const system = buildSystem(agent, contextNote, opts);
   const last = messages[messages.length - 1]?.content ?? "";
-  if (!hasAI()) return demoReply(agent, last);
+
+  if (!hasAI()) {
+    return {
+      text: demoReply(agent, last),
+      live: false,
+      reason: "no_key",
+      note: "No AI Gateway key configured — this is a demo-mode answer, not a model answer.",
+    };
+  }
+
+  const driving = !!opts?.driving;
+  const started = Date.now();
+
   try {
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       // Haiku in driving mode: answers must land fast when the wheels are turning.
-      model: gateway(opts?.driving ? "anthropic/claude-haiku-4.5" : "anthropic/claude-sonnet-4.6"),
+      model: gateway(driving ? "anthropic/claude-haiku-4.5" : "anthropic/claude-sonnet-4.6"),
       system,
       messages: messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+      maxOutputTokens: driving ? DRIVING_MAX_TOKENS : MAX_TOKENS,
+      maxRetries: MAX_RETRIES,
+      abortSignal: AbortSignal.timeout(driving ? DRIVING_TIMEOUT_MS : TIMEOUT_MS),
     });
-    return text;
+
+    // Cost visibility. `cachedInputTokens` is what prompt caching actually saved us.
+    console.log(
+      JSON.stringify({
+        evt: "ai_usage",
+        agent,
+        driving,
+        ms: Date.now() - started,
+        inputTokens: usage?.inputTokens ?? null,
+        outputTokens: usage?.outputTokens ?? null,
+        cachedInputTokens: (usage as { cachedInputTokens?: number } | undefined)?.cachedInputTokens ?? null,
+      }),
+    );
+
+    return { text, live: true, reason: null };
   } catch (e) {
-    console.error("AI error:", e);
-    return demoReply(agent, last);
+    const timedOut = isTimeout(e);
+    console.error(
+      JSON.stringify({
+        evt: "ai_error",
+        agent,
+        driving,
+        ms: Date.now() - started,
+        reason: timedOut ? "timeout" : "provider_error",
+        message: String((e as { message?: string })?.message ?? e),
+      }),
+    );
+    return {
+      text: demoReply(agent, last),
+      live: false,
+      reason: timedOut ? "timeout" : "provider_error",
+      note: timedOut
+        ? `The AI provider did not respond within ${(driving ? DRIVING_TIMEOUT_MS : TIMEOUT_MS) / 1000}s. This is a fallback answer, not a model answer.`
+        : "The AI provider returned an error. This is a fallback answer, not a model answer.",
+    };
   }
 }
+
+/**
+ * Streaming form. Same system prompt, same model choice, same timeout/retry/token budget as
+ * runDetailed — the only difference is that tokens leave the server as they arrive instead of
+ * after the whole answer is built. Chat surfaces use this; every JSON helper stays on generateText.
+ *
+ * Failure handling is deliberately different from runDetailed: once the first token has been
+ * flushed we cannot retract it, so a mid-stream provider failure appends an honest marker line
+ * rather than silently swapping in a demo answer. A failure *before* the first token still
+ * degrades to the same demoReply path.
+ */
+async function streamDetailed(
+  agent: AgentId,
+  messages: { role: string; content: string }[],
+  contextNote?: string,
+  opts?: RunOpts,
+): Promise<{ stream: ReadableStream<Uint8Array>; live: boolean; reason: AgentFailure; note?: string }> {
+  const system = buildSystem(agent, contextNote, opts);
+  const last = messages[messages.length - 1]?.content ?? "";
+  const enc = new TextEncoder();
+
+  if (!hasAI()) {
+    const text = demoReply(agent, last);
+    return {
+      stream: new ReadableStream({
+        start(ctrl) {
+          ctrl.enqueue(enc.encode(text));
+          ctrl.close();
+        },
+      }),
+      live: false,
+      reason: "no_key",
+      note: "No AI Gateway key configured — this is a demo-mode answer, not a model answer.",
+    };
+  }
+
+  const driving = !!opts?.driving;
+  const started = Date.now();
+
+  const result = streamText({
+    model: gateway(driving ? "anthropic/claude-haiku-4.5" : "anthropic/claude-sonnet-4.6"),
+    system,
+    messages: messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    maxOutputTokens: driving ? DRIVING_MAX_TOKENS : MAX_TOKENS,
+    maxRetries: MAX_RETRIES,
+    abortSignal: AbortSignal.timeout(driving ? DRIVING_TIMEOUT_MS : TIMEOUT_MS),
+  });
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(ctrl) {
+      let chars = 0;
+      try {
+        for await (const chunk of result.textStream) {
+          chars += chunk.length;
+          ctrl.enqueue(enc.encode(chunk));
+        }
+        const usage = await result.usage.catch(() => undefined);
+        console.log(
+          JSON.stringify({
+            evt: "ai_usage",
+            agent,
+            driving,
+            streamed: true,
+            ms: Date.now() - started,
+            chars,
+            inputTokens: usage?.inputTokens ?? null,
+            outputTokens: usage?.outputTokens ?? null,
+            cachedInputTokens: (usage as { cachedInputTokens?: number } | undefined)?.cachedInputTokens ?? null,
+          }),
+        );
+      } catch (e) {
+        const timedOut = isTimeout(e);
+        console.error(
+          JSON.stringify({
+            evt: "ai_error",
+            agent,
+            driving,
+            streamed: true,
+            ms: Date.now() - started,
+            chars,
+            reason: timedOut ? "timeout" : "provider_error",
+            message: String((e as { message?: string })?.message ?? e),
+          }),
+        );
+        // Never fabricate the rest of the answer. Say the stream broke.
+        ctrl.enqueue(
+          enc.encode(
+            chars === 0
+              ? demoReply(agent, last)
+              : `\n\n[Answer cut off — ${timedOut ? "the AI provider stopped responding" : "the AI provider returned an error"}. Nothing above this line was invented, but the answer is incomplete. Ask again.]`,
+          ),
+        );
+      }
+      ctrl.close();
+    },
+    cancel() {
+      // Client navigated away or hit stop; nothing to clean up beyond letting the signal fire.
+    },
+  });
+
+  return { stream, live: true, reason: null };
+}
+
+/** Back-compatible string form. Callers that only need the text keep working unchanged. */
+async function run(agent: AgentId, messages: { role: string; content: string }[], contextNote?: string, opts?: RunOpts) {
+  return (await runDetailed(agent, messages, contextNote, opts)).text;
+}
+
+/**
+ * Schemas for the two structured-output helpers. Previously both parsed JSON by slicing
+ * text between the first and last bracket, so one stray bracket in prose silently dropped
+ * HR pre-screen back to canned questions.
+ */
+const ScreeningQuestionsSchema = z.object({
+  questions: z.array(z.string()).min(1).max(12).describe("Legally-compliant pre-screen interview questions"),
+});
+
+const ScreeningEvaluationSchema = z.object({
+  score: z.number().min(0).max(100).describe("Job-relevant fit score"),
+  recommendation: z.enum(["advance", "hold", "reject"]),
+  summary: z.string().describe("2-4 sentence summary of the candidate against the role"),
+  redFlags: z.array(z.string()).describe("Job-relevant concerns; empty array if none"),
+});
 
 /** AI-generated pre-screen interview question set for a role. Demo fallback included. */
 async function generateScreeningQuestions(position: string, experience?: string) {
@@ -209,21 +422,22 @@ async function generateScreeningQuestions(position: string, experience?: string)
   ];
   if (!hasAI()) return fallback;
   try {
-    const { text } = await generateText({
+    // Schema-validated instead of slicing JSON out of prose with indexOf/lastIndexOf.
+    const { object } = await generateObject({
       model: gateway("anthropic/claude-sonnet-4.6"),
+      schema: ScreeningQuestionsSchema,
       system: HUMANAI,
+      maxRetries: MAX_RETRIES,
+      abortSignal: AbortSignal.timeout(TIMEOUT_MS),
       prompt: dedent`
         Generate 7 legally-compliant pre-screen interview questions for a "${position}" role at a trucking company.
         ${experience ? `Candidate reports about ${experience} years experience — tailor a couple of questions to probe that.` : ""}
         Rules: no questions about protected classes (age, race, religion, disability, family, national origin).
         Cover: experience/equipment, safety record, HOS/ELD competence, situational judgment, endorsements,
         motivation/fit, and ability to pass DOT physical + drug screen + Clearinghouse.
-        Return ONLY a JSON array of question strings, nothing else.
       `,
     });
-    const parsed = JSON.parse(text.slice(text.indexOf("["), text.lastIndexOf("]") + 1));
-    if (Array.isArray(parsed) && parsed.length) return parsed.map(String);
-    return fallback;
+    return object.questions.length ? object.questions.map(String) : fallback;
   } catch {
     return fallback;
   }
@@ -240,28 +454,30 @@ async function evaluateScreening(position: string, transcript: { q: string; a: s
   };
   if (!hasAI()) return fallback;
   try {
-    const { text } = await generateText({
+    // Schema-validated. The recommendation enum can no longer come back as free text.
+    const { object } = await generateObject({
       model: gateway("anthropic/claude-sonnet-4.6"),
+      schema: ScreeningEvaluationSchema,
       system: HUMANAI,
+      maxRetries: MAX_RETRIES,
+      abortSignal: AbortSignal.timeout(TIMEOUT_MS),
       prompt: dedent`
         Evaluate this pre-screen interview for a "${position}" role. Transcript (JSON):
         ${JSON.stringify(transcript)}
         Score fit 0-100, give a recommendation of exactly "advance", "hold", or "reject",
         a 2-4 sentence summary, and a list of red flags (empty if none).
-        Judge only job-relevant, legal factors. Return ONLY JSON:
-        {"score": number, "recommendation": "advance|hold|reject", "summary": string, "redFlags": string[]}
+        Judge only job-relevant, legal factors.
       `,
     });
-    const parsed = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
     return {
-      score: Number(parsed.score) || fallback.score,
-      recommendation: ["advance", "hold", "reject"].includes(parsed.recommendation) ? parsed.recommendation : fallback.recommendation,
-      summary: String(parsed.summary || fallback.summary),
-      redFlags: Array.isArray(parsed.redFlags) ? parsed.redFlags.map(String) : [],
+      score: object.score,
+      recommendation: object.recommendation,
+      summary: object.summary,
+      redFlags: object.redFlags,
     };
   } catch {
     return fallback;
   }
 }
 
-export { run as runAgent, generateScreeningQuestions, evaluateScreening };
+export { run as runAgent, runDetailed as runAgentDetailed, streamDetailed as streamAgent, generateScreeningQuestions, evaluateScreening };

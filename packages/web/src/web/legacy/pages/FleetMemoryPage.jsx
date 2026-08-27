@@ -1,161 +1,167 @@
 /**
- * Fleet Memory Intelligence — /fleet-memory
- * Cross-fleet aggregated intelligence: top charge stops, worst brokers/shippers/receivers,
- * live notes & complaints, entity warning lookup, user performance index.
+ * Fleet Memory — /fleet-memory
+ *
+ * Driver-submitted reports on brokers, shippers, receivers and stops. Counted, not scored.
+ *
+ * WHAT CHANGED: this page used to import `pb` directly and read two PocketBase collections
+ * that never existed on any server, so every list rendered empty and the copy told the driver
+ * the fleet was clean. It now reads /api/fleet-memory (real Turso tables) and every empty
+ * state says nobody has reported anything — which is not the same as a clean record.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { pb } from '../lib/pb.js';
-import { checkEntityWarnings, submitEntityNote, getTopStops, getWorstEntities, logAction } from '../lib/fleetMemory.js';
+import { checkEntityWarnings, submitEntityNote, getTopStops, getWorstEntities, getRecentIntel, logAction } from '../lib/fleetMemory.js';
 
-const BG    = '#060A10';
-const CARD  = '#0d1117';
-const CARD2 = '#111820';
-const BORD  = 'rgba(201,168,76,0.15)';
-const BORD2 = 'rgba(0,229,255,0.12)';
-const GOLD  = '#c9a84c';
-const GOLD2 = '#f5d78e';
-const GREEN = '#4ade80';
-const RED   = '#f87171';
-const AMBER = '#fbbf24';
-const BLUE  = '#00E5FF';
-const PURPLE= '#a78bfa';
+const BG    = '#0a0a0a';
+const CARD  = '#161616';
+const CARD2 = '#111111';
+const BORD  = '#222222';
+const GOLD  = '#C9A84C';
+const GOLD2 = '#FFD700';
+const WARN  = '#c96a4c';
 const WHITE = '#f0ede8';
-const DIM   = 'rgba(240,237,232,0.45)';
+const DIM   = '#666666';
+const MUTED = '#8a8a8a';
 const TEXT  = 'rgba(240,237,232,0.85)';
 
-const SEVERITY_COLOR = { critical: RED, high: AMBER, medium: '#fb923c', low: BLUE, none: GREEN };
-const SEVERITY_LABEL = { critical: '🔴 CRITICAL', high: '🟠 HIGH', medium: '🟡 MEDIUM', low: '🔵 LOW', none: '✓ CLEAR' };
+const SEV_COLOR = { critical: WARN, high: WARN, medium: GOLD, low: MUTED, none: MUTED };
+const SEV_LABEL = { critical: 'CRITICAL', high: 'HIGH', medium: 'MEDIUM', low: 'LOW', none: 'NO REPORTS' };
 
-function WarningBanner({ severity, notes, ratings }) {
-  if (severity === 'none' || !notes) return null;
-  const col = SEVERITY_COLOR[severity] || AMBER;
+const inputStyle = {
+  width: '100%', padding: '12px 14px', background: CARD2, border: `1px solid ${BORD}`,
+  borderRadius: 9, color: WHITE, fontSize: 13, outline: 'none', boxSizing: 'border-box',
+  fontFamily: 'Inter, system-ui, sans-serif',
+};
+const labelStyle = { display: 'block', fontSize: 10, color: MUTED, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6, fontFamily: 'Oswald, system-ui, sans-serif' };
+const monoStyle = { fontFamily: 'JetBrains Mono, ui-monospace, monospace' };
+
+function EmptyState({ children }) {
   return (
-    <div style={{ background: col + '12', border: `2px solid ${col}40`, borderRadius: 12, padding: '14px 18px', marginTop: 14 }}>
-      <div style={{ fontWeight: 900, fontSize: 13, color: col, marginBottom: 8 }}>
-        {SEVERITY_LABEL[severity]} — Previous issues flagged by fleet intelligence
-      </div>
-      {notes.slice(0, 3).map((n, i) => (
-        <div key={i} style={{ fontSize: 12, color: TEXT, lineHeight: 1.6, marginBottom: 6, paddingLeft: 12, borderLeft: `2px solid ${col}50` }}>
-          <span style={{ color: col, fontWeight: 700 }}>{n.note_type}: </span>{n.note_text}
-          {n.fleet_name && <span style={{ color: DIM }}> — {n.fleet_name}</span>}
-        </div>
-      ))}
-      {ratings && ratings.filter(r => r.rating <= 2).slice(0, 2).map((r, i) => (
-        <div key={`r${i}`} style={{ fontSize: 12, color: TEXT, lineHeight: 1.6, marginBottom: 6, paddingLeft: 12, borderLeft: `2px solid ${RED}50` }}>
-          <span style={{ color: RED, fontWeight: 700 }}>{'★'.repeat(r.rating)}{'☆'.repeat(5-r.rating)} Rating: </span>
-          {r.review_text || `${r.pay_speed} pay · ${r.communication} comms`}
-        </div>
-      ))}
+    <div style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 12, padding: '32px 24px', color: MUTED, fontSize: 13, lineHeight: 1.7 }}>
+      {children}
     </div>
   );
 }
 
+function ts(v) {
+  if (!v) return '';
+  const d = new Date(typeof v === 'number' ? v : v);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 export default function FleetMemoryPage() {
   const [tab, setTab] = useState('lookup');
+
   const [lookupName, setLookupName] = useState('');
   const [lookupResult, setLookupResult] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookedUp, setLookedUp] = useState('');
 
-  const [noteForm, setNoteForm] = useState({ entity_name: '', entity_type: 'Broker', note_type: 'Payment Issue', severity: 'High', note_text: '', fleet_name: '', driver_name: '', load_number: '', mc_number: '' });
+  const blankNote = { entityName: '', entityType: 'Broker', noteType: 'Payment Issue', severity: 'High', noteText: '', fleetName: '', driverName: '', loadNumber: '', mcNumber: '' };
+  const [noteForm, setNoteForm] = useState(blankNote);
   const [noteSubmitting, setNoteSubmitting] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
+  const [noteError, setNoteError] = useState('');
 
-  const [topStops, setTopStops]       = useState([]);
+  const [topStops, setTopStops] = useState([]);
+  const [stopsMeta, setStopsMeta] = useState(null);
   const [stopsLoading, setStopsLoading] = useState(false);
   const [stopsVehicle, setStopsVehicle] = useState('all');
 
   const [worstEntities, setWorstEntities] = useState([]);
-  const [worstLoading, setWorstLoading]   = useState(false);
+  const [worstMeta, setWorstMeta] = useState(null);
+  const [worstLoading, setWorstLoading] = useState(false);
 
-  const [recentNotes, setRecentNotes]     = useState([]);
-  const [notesLoading, setNotesLoading]   = useState(false);
+  const [recentNotes, setRecentNotes] = useState([]);
+  const [allRatings, setAllRatings] = useState([]);
+  const [feedUnavailable, setFeedUnavailable] = useState(false);
+  const [notesLoading, setNotesLoading] = useState(false);
 
-  const [allRatings, setAllRatings]       = useState([]);
-
-  useEffect(() => { logAction('Fleet Memory Intelligence', 'VIEW', 'Opened fleet memory hub'); }, []);
+  useEffect(() => { logAction('Fleet Memory', 'VIEW', 'Opened fleet memory hub'); }, []);
 
   const loadTopStops = useCallback(async (vt) => {
     setStopsLoading(true);
     const stops = await getTopStops(vt === 'all' ? null : vt, 15);
-    setTopStops(stops);
+    setTopStops(Array.from(stops));
+    setStopsMeta(stops.meta || null);
     setStopsLoading(false);
   }, []);
 
   const loadWorst = useCallback(async () => {
     setWorstLoading(true);
     const worst = await getWorstEntities(20);
-    setWorstEntities(worst);
+    setWorstEntities(Array.from(worst));
+    setWorstMeta(worst.meta || null);
     setWorstLoading(false);
   }, []);
 
-  const loadRecentNotes = useCallback(async () => {
+  const loadFeed = useCallback(async () => {
     setNotesLoading(true);
-    try {
-      const [notesRes, ratingsRes] = await Promise.all([
-        pb.collection('fleet_intelligence_notes').getList(1, 30, { sort: '-created' }),
-        pb.collection('shipper_broker_ratings').getList(1, 30, { sort: '-created' }),
-      ]);
-      setRecentNotes(notesRes.items);
-      setAllRatings(ratingsRes.items);
-    } catch { setRecentNotes([]); }
+    const d = await getRecentIntel(30);
+    setRecentNotes(d.notes || []);
+    setAllRatings(d.ratings || []);
+    setFeedUnavailable(!!d.unavailable);
     setNotesLoading(false);
   }, []);
 
   useEffect(() => {
     if (tab === 'stops') loadTopStops(stopsVehicle);
-    if (tab === 'worst') { loadWorst(); loadRecentNotes(); }
-    if (tab === 'notes') loadRecentNotes();
-  }, [tab, loadTopStops, loadWorst, loadRecentNotes]);
-
-  useEffect(() => { if (tab === 'stops') loadTopStops(stopsVehicle); }, [stopsVehicle]);
+    if (tab === 'worst') loadWorst();
+    if (tab === 'notes') loadFeed();
+  }, [tab, stopsVehicle, loadTopStops, loadWorst, loadFeed]);
 
   const doLookup = async () => {
-    if (!lookupName.trim()) return;
+    const name = lookupName.trim();
+    if (!name) return;
     setLookupLoading(true);
     setLookupResult(null);
-    const result = await checkEntityWarnings(lookupName.trim());
+    const result = await checkEntityWarnings(name);
+    setLookedUp(name);
     setLookupResult(result);
     setLookupLoading(false);
-    logAction('Fleet Memory Intelligence', 'LOOKUP', lookupName.trim());
+    logAction('Fleet Memory', 'LOOKUP', name);
   };
 
   const doSubmitNote = async () => {
-    if (!noteForm.entity_name || !noteForm.note_text) return;
+    if (!noteForm.entityName || !noteForm.noteText) return;
     setNoteSubmitting(true);
+    setNoteError('');
     try {
       await submitEntityNote(noteForm);
       setNoteSaved(true);
-      setNoteForm({ entity_name: '', entity_type: 'Broker', note_type: 'Payment Issue', severity: 'High', note_text: '', fleet_name: '', driver_name: '', load_number: '', mc_number: '' });
-      setTimeout(() => setNoteSaved(false), 4000);
-    } catch (_) {}
+      setNoteForm(blankNote);
+      logAction('Fleet Memory', 'SUBMIT', 'Filed intelligence note');
+      setTimeout(() => setNoteSaved(false), 5000);
+    } catch (err) {
+      setNoteError(err?.message || 'Could not save the note. Nothing was filed — try again.');
+    }
     setNoteSubmitting(false);
   };
 
-  const stopColor = { ev: GREEN, van: BLUE, truck: AMBER, bike: PURPLE };
-
   const tabs = [
-    { id: 'lookup', label: '🔍 Entity Lookup' },
-    { id: 'report', label: '🚨 File a Note' },
-    { id: 'worst',  label: '🏴 Flagged Entities' },
-    { id: 'stops',  label: '⚡ Top Charge Stops' },
-    { id: 'notes',  label: '📋 Live Intelligence Feed' },
+    { id: 'lookup', label: 'Company Lookup' },
+    { id: 'report', label: 'File a Note' },
+    { id: 'worst',  label: 'Flagged Companies' },
+    { id: 'stops',  label: 'Stop Feedback' },
+    { id: 'notes',  label: 'Recent Reports' },
   ];
+
+  const negRatingsFeed = allRatings.filter((r) => r.rating <= 2);
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #0d1117 0%, #060A10 100%)', borderBottom: `1px solid ${BORD}`, padding: '28px 24px 20px' }}>
+      <div style={{ background: CARD2, borderBottom: `1px solid ${BORD}`, padding: '28px 24px 20px' }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 12, background: `linear-gradient(135deg, ${GOLD}, ${GOLD2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🧠</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: `linear-gradient(135deg, #A9762A, ${GOLD2}, #F5E79E)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#000', fontWeight: 900 }}>FM</div>
             <div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: WHITE, letterSpacing: '-0.3px' }}>Fleet Memory Intelligence</div>
-              <div style={{ fontSize: 12, color: DIM, marginTop: 2 }}>Cross-fleet learning · Broker & shipper warnings · Charge stop rankings · Live complaint feed</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: WHITE, letterSpacing: '0.5px', fontFamily: 'Bebas Neue, Oswald, system-ui, sans-serif' }}>FLEET MEMORY</div>
+              <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>Driver-submitted reports on brokers, shippers, receivers and stops</div>
             </div>
           </div>
-          {/* Candid statement */}
           <div style={{ background: 'rgba(201,168,76,0.07)', border: `1px solid ${BORD}`, borderRadius: 12, padding: '14px 18px', fontSize: 13, color: TEXT, lineHeight: 1.7 }}>
-            <span style={{ color: GOLD, fontWeight: 900 }}>The platform memory is a collective.</span> Every rating, every complaint, every charge stop a driver thumbs up or down — that knowledge is stored and shared across every fleet subscriber. When you look up a broker before accepting a load, you're getting the honest history from every driver who's worked with them. No PR. No spin. Just what happened and who said so.
+            <span style={{ color: GOLD, fontWeight: 900 }}>What this is.</span> Every note and rating below was typed in by a driver using this platform. It is counted, not verified, and nothing here is scored or predicted. <span style={{ color: GOLD, fontWeight: 700 }}>An empty result means nobody has reported anything — it does not mean the company is in good standing.</span> TruckWithEase does not rate brokers.
           </div>
         </div>
       </div>
@@ -163,9 +169,9 @@ export default function FleetMemoryPage() {
       {/* Tabs */}
       <div style={{ background: CARD, borderBottom: `1px solid ${BORD}`, padding: '0 24px' }}>
         <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', gap: 4, overflowX: 'auto' }}>
-          {tabs.map(t => (
+          {tabs.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              style={{ padding: '14px 18px', border: 'none', background: 'transparent', color: tab === t.id ? GOLD : DIM, borderBottom: `3px solid ${tab === t.id ? GOLD : 'transparent'}`, fontWeight: tab === t.id ? 900 : 600, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }}>
+              style={{ padding: '14px 18px', border: 'none', background: 'transparent', color: tab === t.id ? GOLD : MUTED, borderBottom: `3px solid ${tab === t.id ? GOLD : 'transparent'}`, fontWeight: tab === t.id ? 900 : 600, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', letterSpacing: 1, textTransform: 'uppercase', fontFamily: 'Oswald, system-ui, sans-serif' }}>
               {t.label}
             </button>
           ))}
@@ -174,162 +180,178 @@ export default function FleetMemoryPage() {
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 24px 60px' }}>
 
-        {/* ── LOOKUP TAB ── */}
+        {/* ── LOOKUP ── */}
         {tab === 'lookup' && (
-          <div>
-            <div style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 16, padding: 28, marginBottom: 24 }}>
-              <div style={{ fontSize: 16, fontWeight: 900, color: WHITE, marginBottom: 6 }}>🔍 Check Any Broker, Shipper, or Receiver</div>
-              <div style={{ fontSize: 13, color: DIM, lineHeight: 1.65, marginBottom: 22 }}>
-                Before you load. Before you deliver. Before you accept the rate con. Type the company name and get every flag, complaint, and rating the fleet has on file. If they've shorted someone, ghosted on detention, or pulled a bait-and-switch — it shows up here.
-              </div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <input value={lookupName} onChange={e => setLookupName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && doLookup()}
-                  placeholder="e.g. XYZ Freight Brokers, Walmart DC Chicago, J.B. Hunt..."
-                  style={{ flex: 1, minWidth: 200, padding: '13px 16px', background: CARD2, border: `1px solid ${BORD2}`, borderRadius: 10, color: WHITE, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
-                <button onClick={doLookup} disabled={!lookupName.trim() || lookupLoading}
-                  style={{ padding: '13px 28px', borderRadius: 10, border: 'none', background: lookupName.trim() ? `linear-gradient(135deg, ${GOLD}, ${GOLD2})` : CARD2, color: lookupName.trim() ? '#000' : DIM, fontWeight: 900, fontSize: 14, cursor: lookupName.trim() ? 'pointer' : 'not-allowed' }}>
-                  {lookupLoading ? 'Checking…' : '🔍 Check Intel'}
-                </button>
-              </div>
-
-              {lookupResult && (
-                <div style={{ marginTop: 22 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: WHITE }}>Intelligence on: <span style={{ color: GOLD }}>{lookupName}</span></div>
-                    <span style={{ fontSize: 11, fontWeight: 900, padding: '3px 12px', borderRadius: 20, background: SEVERITY_COLOR[lookupResult.worstSeverity] + '20', color: SEVERITY_COLOR[lookupResult.worstSeverity] }}>
-                      {SEVERITY_LABEL[lookupResult.worstSeverity]}
-                    </span>
-                  </div>
-
-                  {!lookupResult.hasWarnings ? (
-                    <div style={{ background: GREEN + '10', border: `1px solid ${GREEN}30`, borderRadius: 12, padding: '16px 20px' }}>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: GREEN, marginBottom: 6 }}>✓ No flags found in fleet history</div>
-                      <div style={{ fontSize: 13, color: TEXT, lineHeight: 1.65 }}>
-                        No complaints, no negative ratings, no notes on record for this entity. That doesn't mean they're perfect — it may mean no one in the fleet has worked with them yet. Proceed normally, verify your rate con, and file a note after the run.
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <WarningBanner severity={lookupResult.worstSeverity} notes={lookupResult.notes} ratings={lookupResult.ratings} />
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 18 }}>
-                        {[
-                          { label: 'Fleet Notes', val: lookupResult.notes.length, color: AMBER },
-                          { label: 'Negative Ratings', val: (lookupResult.negRatings || []).length, color: RED },
-                          { label: 'Total Ratings', val: lookupResult.ratings.length, color: BLUE },
-                        ].map(k => (
-                          <div key={k.label} style={{ background: k.color + '10', border: `1px solid ${k.color}25`, borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
-                            <div style={{ fontSize: 26, fontWeight: 900, color: k.color }}>{k.val}</div>
-                            <div style={{ fontSize: 11, color: DIM }}>{k.label}</div>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ marginTop: 14, padding: '12px 16px', background: RED + '08', borderRadius: 10, fontSize: 12, color: RED, fontWeight: 700 }}>
-                        ⚠️ Agent advisory: Verify every detail on the rate con before loading. Document detention time immediately. If pay terms differ from what was agreed verbally, do not load — get it in writing first.
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+          <div style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 16, padding: 28 }}>
+            <div style={{ fontSize: 16, fontWeight: 900, color: WHITE, marginBottom: 6 }}>Check a broker, shipper, or receiver</div>
+            <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.65, marginBottom: 22 }}>
+              Type a company name to see every report drivers on this platform have filed against it. This searches driver submissions only — it is not an FMCSA lookup, a credit check, or a safety rating.
             </div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <input value={lookupName} onChange={(e) => setLookupName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && doLookup()}
+                placeholder="Company name — e.g. XYZ Freight Brokers LLC"
+                style={{ ...inputStyle, flex: 1, minWidth: 200, padding: '13px 16px', fontSize: 14 }} />
+              <button onClick={doLookup} disabled={!lookupName.trim() || lookupLoading}
+                style={{ padding: '13px 28px', borderRadius: 10, border: 'none', background: lookupName.trim() ? `linear-gradient(135deg,${GOLD} 0%,${GOLD2} 40%,${GOLD} 70%,#8A6E2F 100%)` : CARD2, color: lookupName.trim() ? '#000' : DIM, fontWeight: 900, fontSize: 13, letterSpacing: 1, textTransform: 'uppercase', cursor: lookupName.trim() ? 'pointer' : 'not-allowed' }}>
+                {lookupLoading ? 'Checking…' : 'Search Reports'}
+              </button>
+            </div>
+
+            {lookupResult && (
+              <div style={{ marginTop: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 15, fontWeight: 900, color: WHITE }}>Reports on: <span style={{ color: GOLD }}>{lookedUp}</span></div>
+                  <span style={{ ...monoStyle, fontSize: 10, fontWeight: 900, padding: '3px 12px', borderRadius: 20, border: `1px solid ${BORD}`, background: CARD2, color: SEV_COLOR[lookupResult.worstSeverity] || MUTED, letterSpacing: 1 }}>
+                    {SEV_LABEL[lookupResult.worstSeverity] || 'NO REPORTS'}
+                  </span>
+                  <span style={{ ...monoStyle, fontSize: 11, color: MUTED }}>{lookupResult.reportCount} report(s)</span>
+                </div>
+
+                {lookupResult.unavailable ? (
+                  <div style={{ background: 'rgba(201,106,76,0.08)', border: `1px solid ${WARN}55`, borderRadius: 12, padding: '16px 20px' }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: WARN, marginBottom: 6, letterSpacing: 1 }}>LOOKUP FAILED — NOTHING WAS CHECKED</div>
+                    <div style={{ fontSize: 13, color: TEXT, lineHeight: 1.65 }}>{lookupResult.note}</div>
+                  </div>
+                ) : lookupResult.reportCount === 0 ? (
+                  <div style={{ background: CARD2, border: `1px solid ${BORD}`, borderRadius: 12, padding: '16px 20px' }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: GOLD, marginBottom: 6, letterSpacing: 1 }}>NO REPORTS ON FILE</div>
+                    <div style={{ fontSize: 13, color: TEXT, lineHeight: 1.7 }}>{lookupResult.note}</div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 18 }}>
+                      {[
+                        { label: 'Driver Notes', val: lookupResult.notes.length },
+                        { label: '1-2 Star Ratings', val: (lookupResult.negRatings || []).length },
+                        { label: 'Total Ratings', val: lookupResult.ratings.length },
+                      ].map((k) => (
+                        <div key={k.label} style={{ background: CARD2, border: `1px solid ${BORD}`, borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
+                          <div style={{ ...monoStyle, fontSize: 26, fontWeight: 900, color: GOLD }}>{k.val}</div>
+                          <div style={{ fontSize: 10, color: MUTED, letterSpacing: 1, textTransform: 'uppercase' }}>{k.label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {lookupResult.notes.slice(0, 5).map((n) => (
+                      <div key={n.id} style={{ fontSize: 12, color: TEXT, lineHeight: 1.6, marginBottom: 8, padding: '10px 14px', background: CARD2, borderRadius: 8, borderLeft: `3px solid ${SEV_COLOR[String(n.severity).toLowerCase()] || GOLD}` }}>
+                        <span style={{ color: GOLD, fontWeight: 700 }}>{n.severity} · {n.noteType}: </span>{n.noteText}
+                        {n.fleetName ? <span style={{ color: DIM }}> — {n.fleetName}</span> : null}
+                        <div style={{ ...monoStyle, fontSize: 10, color: DIM, marginTop: 4 }}>{ts(n.createdAt)}</div>
+                      </div>
+                    ))}
+                    {(lookupResult.negRatings || []).slice(0, 3).map((r) => (
+                      <div key={r.id} style={{ fontSize: 12, color: TEXT, lineHeight: 1.6, marginBottom: 8, padding: '10px 14px', background: CARD2, borderRadius: 8, borderLeft: `3px solid ${WARN}` }}>
+                        <span style={{ color: WARN, fontWeight: 700 }}>{r.rating}/5 rating: </span>
+                        {r.reviewText || [r.paySpeed && `${r.paySpeed} pay`, r.communication && `${r.communication} comms`].filter(Boolean).join(' · ') || 'No comment left.'}
+                      </div>
+                    ))}
+                    <div style={{ marginTop: 12, padding: '12px 16px', background: CARD2, border: `1px solid ${BORD}`, borderRadius: 10, fontSize: 12, color: MUTED, lineHeight: 1.65 }}>
+                      These are unverified driver accounts, not findings. Get every term of the rate confirmation in writing before you load, and document detention as it happens.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── FILE A NOTE TAB ── */}
+        {/* ── FILE A NOTE ── */}
         {tab === 'report' && (
           <div>
-            <div style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
-              <div style={{ fontSize: 14, fontWeight: 900, color: RED, marginBottom: 6 }}>🚨 File an Intelligence Note</div>
+            <div style={{ background: CARD2, border: `1px solid ${BORD}`, borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: GOLD, marginBottom: 6, letterSpacing: 1 }}>FILE A REPORT</div>
               <div style={{ fontSize: 13, color: TEXT, lineHeight: 1.65 }}>
-                Had an issue with a broker, shipper, or receiver? File it here. Every note is stored in the fleet intelligence system and will surface as a warning to any driver or dispatcher who looks up that entity in the future. Be specific — vague notes don't protect anyone.
+                What you file here is stored on the server and shown to any driver who looks that company up. Stick to what happened — dates, dollar amounts, who said what. Vague reports help nobody, and anything you write here is attributable to your fleet if you fill that field in.
               </div>
             </div>
             <div style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 16, padding: 26 }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 16 }}>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', fontSize: 10, color: DIM, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>Company / Entity Name *</label>
-                  <input value={noteForm.entity_name} onChange={e => setNoteForm(p => ({ ...p, entity_name: e.target.value }))} placeholder="XYZ Freight Brokers LLC"
-                    style={{ width: '100%', padding: '12px 14px', background: CARD2, border: `1px solid ${BORD2}`, borderRadius: 9, color: WHITE, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                  <label style={labelStyle}>Company / Entity Name *</label>
+                  <input value={noteForm.entityName} onChange={(e) => setNoteForm((p) => ({ ...p, entityName: e.target.value }))} placeholder="XYZ Freight Brokers LLC" style={inputStyle} />
                 </div>
                 {[
-                  { label: 'Entity Type', key: 'entity_type', opts: ['Broker', 'Shipper', 'Receiver', 'Factoring Company', 'Load Board', 'Dispatcher', 'Other'] },
-                  { label: 'Issue Type', key: 'note_type', opts: ['Payment Issue', 'Short Pay', 'Non-Payment', 'Bait & Switch', 'Phantom Load', 'Detention Denied', 'False Weight / Dimensions', 'Hostile Staff', 'Safety Violation', 'DOT Compliance Issue', 'Routing Error', 'Communication Blackout', 'Other'] },
+                  { label: 'Entity Type', key: 'entityType', opts: ['Broker', 'Shipper', 'Receiver', 'Factoring Company', 'Load Board', 'Dispatcher', 'Other'] },
+                  { label: 'Issue Type', key: 'noteType', opts: ['Payment Issue', 'Short Pay', 'Non-Payment', 'Bait & Switch', 'Phantom Load', 'Detention Denied', 'False Weight / Dimensions', 'Hostile Staff', 'Safety Violation', 'DOT Compliance Issue', 'Routing Error', 'Communication Blackout', 'Other'] },
                   { label: 'Severity', key: 'severity', opts: ['Critical', 'High', 'Medium', 'Low'] },
-                  { label: 'Your Fleet Name', key: 'fleet_name', input: true, ph: 'Morris Hive Logistics' },
-                  { label: 'Driver Name (optional)', key: 'driver_name', input: true, ph: 'John D.' },
-                  { label: 'Load / BOL Number', key: 'load_number', input: true, ph: 'LD-00492' },
-                  { label: 'MC Number (if known)', key: 'mc_number', input: true, ph: 'MC-123456' },
-                ].map(f => (
+                  { label: 'Your Fleet Name', key: 'fleetName', input: true, ph: 'My Dads Trucking LLC' },
+                  { label: 'Driver Name (optional)', key: 'driverName', input: true, ph: 'John D.' },
+                  { label: 'Load / BOL Number', key: 'loadNumber', input: true, ph: 'LD-00492' },
+                  { label: 'MC Number (if known)', key: 'mcNumber', input: true, ph: 'MC-123456' },
+                ].map((f) => (
                   <div key={f.key}>
-                    <label style={{ display: 'block', fontSize: 10, color: DIM, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>{f.label}</label>
+                    <label style={labelStyle}>{f.label}</label>
                     {f.input ? (
-                      <input value={noteForm[f.key]} onChange={e => setNoteForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.ph}
-                        style={{ width: '100%', padding: '12px 14px', background: CARD2, border: `1px solid ${BORD2}`, borderRadius: 9, color: WHITE, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                      <input value={noteForm[f.key]} onChange={(e) => setNoteForm((p) => ({ ...p, [f.key]: e.target.value }))} placeholder={f.ph} style={inputStyle} />
                     ) : (
-                      <select value={noteForm[f.key]} onChange={e => setNoteForm(p => ({ ...p, [f.key]: e.target.value }))}
-                        style={{ width: '100%', padding: '12px 14px', background: CARD2, border: `1px solid ${BORD2}`, borderRadius: 9, color: WHITE, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}>
-                        {f.opts.map(o => <option key={o} value={o}>{o}</option>)}
+                      <select value={noteForm[f.key]} onChange={(e) => setNoteForm((p) => ({ ...p, [f.key]: e.target.value }))} style={inputStyle}>
+                        {f.opts.map((o) => <option key={o} value={o}>{o}</option>)}
                       </select>
                     )}
                   </div>
                 ))}
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', fontSize: 10, color: DIM, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>What happened? Be specific and factual. *</label>
-                  <textarea value={noteForm.note_text} onChange={e => setNoteForm(p => ({ ...p, note_text: e.target.value }))}
-                    placeholder="Booked at $2.85/mi confirmed via email. Day of pickup they called demanding $2.20. Already loaded. Refused to honor original rate. Load delivered, invoice sent, no response for 47 days. Filed freight claim."
-                    rows={4} style={{ width: '100%', padding: '12px 14px', background: CARD2, border: `1px solid ${BORD2}`, borderRadius: 9, color: WHITE, fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  <label style={labelStyle}>What happened? Be specific and factual. *</label>
+                  <textarea value={noteForm.noteText} onChange={(e) => setNoteForm((p) => ({ ...p, noteText: e.target.value }))}
+                    placeholder="Booked at $2.85/mi confirmed by email. Day of pickup they called demanding $2.20. Load delivered, invoice sent, no response for 47 days."
+                    rows={4} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
                 </div>
               </div>
-              <button onClick={doSubmitNote} disabled={!noteForm.entity_name || !noteForm.note_text || noteSubmitting}
-                style={{ padding: '13px 32px', borderRadius: 10, border: 'none', background: noteSaved ? GREEN : RED, color: '#fff', fontWeight: 900, fontSize: 14, cursor: noteForm.entity_name && noteForm.note_text ? 'pointer' : 'not-allowed', opacity: noteForm.entity_name && noteForm.note_text ? 1 : 0.5 }}>
-                {noteSaved ? '✓ Note Filed — Fleet Intelligence Updated' : noteSubmitting ? 'Filing…' : '🚨 File Intelligence Note'}
+              <button onClick={doSubmitNote} disabled={!noteForm.entityName || !noteForm.noteText || noteSubmitting}
+                style={{ padding: '13px 32px', borderRadius: 10, border: `1px solid ${GOLD}`, background: noteForm.entityName && noteForm.noteText ? `linear-gradient(135deg,${GOLD} 0%,${GOLD2} 40%,${GOLD} 70%,#8A6E2F 100%)` : CARD2, color: noteForm.entityName && noteForm.noteText ? '#000' : DIM, fontWeight: 900, fontSize: 13, letterSpacing: 1, textTransform: 'uppercase', cursor: noteForm.entityName && noteForm.noteText ? 'pointer' : 'not-allowed' }}>
+                {noteSaved ? 'Saved to the server' : noteSubmitting ? 'Filing…' : 'File Report'}
               </button>
+              {noteSaved && <div style={{ marginTop: 12, fontSize: 12, color: GOLD }}>Stored. It will show up for anyone who looks that company up.</div>}
+              {noteError && <div style={{ marginTop: 12, fontSize: 12, color: WARN, fontWeight: 700 }}>NOT SAVED — {noteError}</div>}
             </div>
           </div>
         )}
 
-        {/* ── FLAGGED ENTITIES TAB ── */}
+        {/* ── FLAGGED COMPANIES ── */}
         {tab === 'worst' && (
           <div>
-            <div style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
-              <div style={{ fontSize: 14, fontWeight: 900, color: RED, marginBottom: 6 }}>🏴 Most Flagged Brokers, Shippers & Receivers</div>
+            <div style={{ background: CARD2, border: `1px solid ${BORD}`, borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: GOLD, marginBottom: 6, letterSpacing: 1 }}>MOST-REPORTED COMPANIES</div>
               <div style={{ fontSize: 13, color: TEXT, lineHeight: 1.65 }}>
-                Sorted by total fleet flags — complaints plus negative ratings. Most problematic at the top. This is the industry blacklist the load boards won't show you.
+                Ordered by how many reports drivers filed — notes plus 1-2 star ratings. This is a count of complaints, not a blacklist and not a rating.
               </div>
             </div>
-            {worstLoading ? <div style={{ color: DIM, padding: 40, textAlign: 'center' }}>Loading fleet intelligence…</div>
+            {worstLoading ? <EmptyState>Loading reports…</EmptyState>
             : worstEntities.length === 0 ? (
-              <div style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 12, padding: '40px 24px', textAlign: 'center', color: DIM }}>
-                No flagged entities yet. The fleet is clean — or nobody has filed notes yet. Every note you file protects other drivers.
-              </div>
+              <EmptyState>
+                <div style={{ color: GOLD, fontWeight: 900, letterSpacing: 1, marginBottom: 8 }}>NOTHING REPORTED YET</div>
+                {worstMeta?.note || 'No driver has filed a report yet. This list is built entirely from driver submissions, so an empty list means nothing has been reported — not that every broker is clean.'}
+              </EmptyState>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ ...monoStyle, fontSize: 11, color: MUTED }}>{worstMeta?.totalReports ?? 0} total reports on file</div>
                 {worstEntities.map((e, i) => (
-                  <div key={i} style={{ background: CARD, border: `2px solid ${RED}20`, borderRadius: 14, padding: '16px 20px' }}>
+                  <div key={e.name + i} style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 14, padding: '16px 20px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
                       <div>
-                        <div style={{ fontSize: 16, fontWeight: 900, color: WHITE, marginBottom: 4 }}>#{i+1} — {e.name}</div>
-                        <span style={{ fontSize: 10, background: CARD2, color: DIM, borderRadius: 8, padding: '2px 10px' }}>{e.type}</span>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: WHITE, marginBottom: 4 }}>#{i + 1} — {e.name}</div>
+                        <span style={{ fontSize: 10, background: CARD2, color: MUTED, borderRadius: 8, padding: '2px 10px', border: `1px solid ${BORD}` }}>{e.type}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 10 }}>
-                        {e.complaints > 0 && <div style={{ textAlign: 'center', background: RED + '10', borderRadius: 8, padding: '8px 14px' }}>
-                          <div style={{ fontSize: 20, fontWeight: 900, color: RED }}>{e.complaints}</div>
-                          <div style={{ fontSize: 9, color: DIM }}>COMPLAINTS</div>
-                        </div>}
-                        {e.negRatings > 0 && <div style={{ textAlign: 'center', background: AMBER + '10', borderRadius: 8, padding: '8px 14px' }}>
-                          <div style={{ fontSize: 20, fontWeight: 900, color: AMBER }}>{e.negRatings}</div>
-                          <div style={{ fontSize: 9, color: DIM }}>NEG RATINGS</div>
-                        </div>}
+                        <div style={{ textAlign: 'center', background: CARD2, border: `1px solid ${BORD}`, borderRadius: 8, padding: '8px 14px' }}>
+                          <div style={{ ...monoStyle, fontSize: 20, fontWeight: 900, color: GOLD }}>{e.complaints}</div>
+                          <div style={{ fontSize: 9, color: MUTED, letterSpacing: 1 }}>NOTES</div>
+                        </div>
+                        <div style={{ textAlign: 'center', background: CARD2, border: `1px solid ${BORD}`, borderRadius: 8, padding: '8px 14px' }}>
+                          <div style={{ ...monoStyle, fontSize: 20, fontWeight: 900, color: WARN }}>{e.negRatings}</div>
+                          <div style={{ fontSize: 9, color: MUTED, letterSpacing: 1 }}>LOW RATINGS</div>
+                        </div>
                       </div>
                     </div>
-                    {e.notes.slice(0, 2).map((n, j) => (
-                      <div key={j} style={{ fontSize: 12, color: TEXT, lineHeight: 1.6, padding: '8px 12px', background: RED + '08', borderRadius: 8, marginBottom: 6, borderLeft: `3px solid ${RED}40` }}>
-                        <span style={{ color: AMBER, fontWeight: 700 }}>{n.note_type}: </span>{n.note_text.slice(0, 180)}{n.note_text.length > 180 ? '…' : ''}
-                        {n.fleet_name && <span style={{ color: DIM }}> — {n.fleet_name}</span>}
+                    {(e.notes || []).slice(0, 2).map((n) => (
+                      <div key={n.id} style={{ fontSize: 12, color: TEXT, lineHeight: 1.6, padding: '8px 12px', background: CARD2, borderRadius: 8, marginBottom: 6, borderLeft: `3px solid ${GOLD}` }}>
+                        <span style={{ color: GOLD, fontWeight: 700 }}>{n.noteType}: </span>{String(n.noteText).slice(0, 180)}{String(n.noteText).length > 180 ? '…' : ''}
+                        {n.fleetName ? <span style={{ color: DIM }}> — {n.fleetName}</span> : null}
                       </div>
                     ))}
-                    <div style={{ marginTop: 8, fontSize: 11, color: RED, fontWeight: 700 }}>
-                      ⚠️ Agent advisory: {e.totalFlags} total flags. Look this entity up before accepting any load. Demand written confirmation of all terms before loading.
+                    <div style={{ marginTop: 8, fontSize: 11, color: MUTED }}>
+                      {e.totalFlags} driver report(s). Unverified accounts — read them and make your own call.
                     </div>
                   </div>
                 ))}
@@ -338,52 +360,57 @@ export default function FleetMemoryPage() {
           </div>
         )}
 
-        {/* ── TOP CHARGE STOPS TAB ── */}
+        {/* ── STOP FEEDBACK ── */}
         {tab === 'stops' && (
           <div>
-            <div style={{ background: 'rgba(0,229,255,0.06)', border: `1px solid ${BORD2}`, borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
-              <div style={{ fontSize: 14, fontWeight: 900, color: BLUE, marginBottom: 6 }}>⚡ Top-Rated Charge Stops — Fleet-Wide Rankings</div>
+            <div style={{ background: CARD2, border: `1px solid ${BORD}`, borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: GOLD, marginBottom: 6, letterSpacing: 1 }}>STOP FEEDBACK</div>
               <div style={{ fontSize: 13, color: TEXT, lineHeight: 1.65 }}>
-                Every charge stop rated across every fleet, aggregated. These are the stops real drivers actually recommend — not the ones paid to be on a list. Sorted by net positive score.
+                Thumbs up and thumbs down from drivers who stopped there. A stop needs at least <span style={{ ...monoStyle, color: GOLD }}>{stopsMeta?.minReports ?? 3}</span> reports before it appears here — one review is not a recommendation.
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-              {[['all', '🔌 All Vehicles'], ['ev', '🚗 EV Car'], ['van', '🚐 EV Van'], ['truck', '🚛 Electric Truck'], ['bike', '🚲 E-Bike']].map(([id, label]) => (
+              {[['all', 'All'], ['truck', 'Truck'], ['van', 'Van'], ['ev', 'EV'], ['bike', 'Bike']].map(([id, label]) => (
                 <button key={id} onClick={() => setStopsVehicle(id)}
-                  style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${stopsVehicle === id ? BLUE : BORD2}`, background: stopsVehicle === id ? BLUE + '15' : 'transparent', color: stopsVehicle === id ? BLUE : DIM, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${stopsVehicle === id ? GOLD : BORD}`, background: stopsVehicle === id ? 'rgba(201,168,76,0.12)' : 'transparent', color: stopsVehicle === id ? GOLD : MUTED, fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', cursor: 'pointer' }}>
                   {label}
                 </button>
               ))}
             </div>
-            {stopsLoading ? <div style={{ color: DIM, padding: 40, textAlign: 'center' }}>Loading fleet stop intelligence…</div>
+            {stopsLoading ? <EmptyState>Loading stop feedback…</EmptyState>
             : topStops.length === 0 ? (
-              <div style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 12, padding: '40px 24px', textAlign: 'center', color: DIM }}>
-                No stop ratings yet across the fleet. Rate stops on your next route to start building the fleet intelligence map.
-              </div>
+              <EmptyState>
+                <div style={{ color: GOLD, fontWeight: 900, letterSpacing: 1, marginBottom: 8 }}>NOTHING RANKED YET</div>
+                {stopsMeta?.note || 'No stop has enough driver reports to be ranked.'}
+              </EmptyState>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ ...monoStyle, fontSize: 11, color: MUTED }}>
+                  {stopsMeta?.totalReports ?? 0} reports · {stopsMeta?.stopsBelowThreshold ?? 0} stop(s) below the {stopsMeta?.minReports ?? 3}-report threshold and not shown
+                </div>
                 {topStops.map((s, i) => {
-                  const col = stopColor[s.vehicle_type] || GREEN;
-                  const pct = s.pct || 0;
+                  const pct = s.pct;
                   return (
-                    <div key={i} style={{ background: CARD, border: `1px solid ${col}25`, borderRadius: 13, padding: '16px 20px' }}>
+                    <div key={s.stop_name + i} style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 13, padding: '16px 20px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
                         <div>
-                          <div style={{ fontSize: 15, fontWeight: 900, color: WHITE, marginBottom: 4 }}>#{i+1} — {s.stop_name}</div>
-                          <span style={{ fontSize: 10, background: col + '20', color: col, borderRadius: 8, padding: '2px 10px', fontWeight: 700 }}>{s.vehicle_type || 'All'}</span>
+                          <div style={{ fontSize: 15, fontWeight: 900, color: WHITE, marginBottom: 4 }}>#{i + 1} — {s.stop_name}</div>
+                          <span style={{ fontSize: 10, background: CARD2, color: MUTED, borderRadius: 8, padding: '2px 10px', border: `1px solid ${BORD}` }}>{s.vehicle_type || 'all'}</span>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 22, fontWeight: 900, color: pct >= 70 ? GREEN : pct >= 40 ? AMBER : RED }}>{pct}%</div>
-                          <div style={{ fontSize: 9, color: DIM }}>APPROVAL</div>
+                          <div style={{ ...monoStyle, fontSize: 22, fontWeight: 900, color: pct === null ? MUTED : GOLD }}>{pct === null ? '—' : `${pct}%`}</div>
+                          <div style={{ fontSize: 9, color: MUTED, letterSpacing: 1 }}>{pct === null ? 'TOO FEW REPORTS' : 'THUMBS UP'}</div>
                         </div>
                       </div>
-                      <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, marginBottom: 10 }}>
-                        <div style={{ height: '100%', width: `${pct}%`, background: pct >= 70 ? GREEN : pct >= 40 ? AMBER : RED, borderRadius: 3, transition: 'width 0.6s ease' }} />
-                      </div>
-                      <div style={{ display: 'flex', gap: 14 }}>
-                        <span style={{ fontSize: 11, color: GREEN, fontWeight: 700 }}>👍 {s.pos} positive</span>
-                        <span style={{ fontSize: 11, color: RED, fontWeight: 700 }}>👎 {s.neg} negative</span>
-                        <span style={{ fontSize: 11, color: DIM }}>from {s.total} driver{s.total !== 1 ? 's' : ''}</span>
+                      {pct !== null && (
+                        <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, marginBottom: 10 }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg,${GOLD},${GOLD2})`, borderRadius: 3 }} />
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: 14, ...monoStyle, fontSize: 11 }}>
+                        <span style={{ color: GOLD, fontWeight: 700 }}>+{s.pos} up</span>
+                        <span style={{ color: WARN, fontWeight: 700 }}>-{s.neg} down</span>
+                        <span style={{ color: MUTED }}>from {s.total} report{s.total !== 1 ? 's' : ''}</span>
                       </div>
                     </div>
                   );
@@ -393,46 +420,48 @@ export default function FleetMemoryPage() {
           </div>
         )}
 
-        {/* ── LIVE INTELLIGENCE FEED TAB ── */}
+        {/* ── RECENT REPORTS ── */}
         {tab === 'notes' && (
           <div>
-            <div style={{ fontSize: 14, fontWeight: 900, color: WHITE, marginBottom: 18 }}>📋 Live Intelligence Feed — Recent Notes & Ratings</div>
-            {notesLoading ? <div style={{ color: DIM, padding: 40, textAlign: 'center' }}>Loading…</div>
-            : (
+            <div style={{ fontSize: 13, fontWeight: 900, color: GOLD, marginBottom: 18, letterSpacing: 1 }}>RECENT REPORTS — NEWEST FIRST</div>
+            {notesLoading ? <EmptyState>Loading…</EmptyState>
+            : feedUnavailable ? (
+              <EmptyState>
+                <div style={{ color: WARN, fontWeight: 900, letterSpacing: 1, marginBottom: 8 }}>FEED UNAVAILABLE</div>
+                The server did not answer. This is not an empty feed — nothing was loaded.
+              </EmptyState>
+            ) : recentNotes.length === 0 && negRatingsFeed.length === 0 ? (
+              <EmptyState>
+                <div style={{ color: GOLD, fontWeight: 900, letterSpacing: 1, marginBottom: 8 }}>NO REPORTS FILED YET</div>
+                Nobody has filed a note or a low rating. The feed fills in as drivers submit them.
+              </EmptyState>
+            ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
-                  ...recentNotes.map(n => ({ ...n, _kind: 'note' })),
-                  ...allRatings.filter(r => r.rating <= 2).map(r => ({ ...r, _kind: 'rating' })),
+                  ...recentNotes.map((n) => ({ ...n, _kind: 'note' })),
+                  ...negRatingsFeed.map((r) => ({ ...r, _kind: 'rating' })),
                 ]
-                .sort((a, b) => new Date(b.created) - new Date(a.created))
-                .slice(0, 40)
-                .map((item, i) => {
-                  if (item._kind === 'note') {
-                    const sevCol = item.severity === 'Critical' ? RED : item.severity === 'High' ? AMBER : BLUE;
-                    return (
-                      <div key={i} style={{ background: CARD, border: `1px solid ${sevCol}25`, borderRadius: 11, padding: '13px 16px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
-                          <div style={{ fontWeight: 800, fontSize: 13, color: WHITE }}>{item.entity_name} <span style={{ color: DIM, fontWeight: 400 }}>— {item.entity_type}</span></div>
-                          <span style={{ fontSize: 10, fontWeight: 800, background: sevCol + '20', color: sevCol, borderRadius: 8, padding: '2px 8px' }}>{item.severity} · {item.note_type}</span>
-                        </div>
-                        <div style={{ fontSize: 12, color: TEXT, lineHeight: 1.6, marginBottom: 6 }}>{item.note_text}</div>
-                        <div style={{ fontSize: 10, color: DIM }}>{item.fleet_name && `Fleet: ${item.fleet_name} · `}{item.created ? new Date(item.created).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</div>
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                  .slice(0, 40)
+                  .map((item) => item._kind === 'note' ? (
+                    <div key={item.id} style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 11, padding: '13px 16px', borderLeft: `3px solid ${SEV_COLOR[String(item.severity).toLowerCase()] || GOLD}` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                        <div style={{ fontWeight: 800, fontSize: 13, color: WHITE }}>{item.entityName} <span style={{ color: MUTED, fontWeight: 400 }}>— {item.entityType}</span></div>
+                        <span style={{ ...monoStyle, fontSize: 10, fontWeight: 800, background: CARD2, color: GOLD, borderRadius: 8, padding: '2px 8px', border: `1px solid ${BORD}` }}>{item.severity} · {item.noteType}</span>
                       </div>
-                    );
-                  } else {
-                    const rn = item.rating || 1;
-                    return (
-                      <div key={i} style={{ background: CARD, border: `1px solid ${RED}20`, borderRadius: 11, padding: '13px 16px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
-                          <div style={{ fontWeight: 800, fontSize: 13, color: WHITE }}>{item.company_name} <span style={{ color: DIM, fontWeight: 400 }}>— {item.company_type}</span></div>
-                          <span style={{ fontSize: 11, color: RED, fontWeight: 900 }}>{'★'.repeat(rn)}{'☆'.repeat(5-rn)} {rn}/5</span>
-                        </div>
-                        {item.review_text && <div style={{ fontSize: 12, color: TEXT, lineHeight: 1.6, marginBottom: 6, fontStyle: 'italic' }}>"{item.review_text}"</div>}
-                        <div style={{ fontSize: 10, color: RED, fontWeight: 700 }}>Would work again: {item.would_work_again ? 'Yes' : 'No — Never Again'}</div>
+                      <div style={{ fontSize: 12, color: TEXT, lineHeight: 1.6, marginBottom: 6 }}>{item.noteText}</div>
+                      <div style={{ ...monoStyle, fontSize: 10, color: DIM }}>{item.fleetName ? `${item.fleetName} · ` : ''}{ts(item.createdAt)}</div>
+                    </div>
+                  ) : (
+                    <div key={item.id} style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 11, padding: '13px 16px', borderLeft: `3px solid ${WARN}` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                        <div style={{ fontWeight: 800, fontSize: 13, color: WHITE }}>{item.companyName} <span style={{ color: MUTED, fontWeight: 400 }}>— {item.companyType}</span></div>
+                        <span style={{ ...monoStyle, fontSize: 11, color: WARN, fontWeight: 900 }}>{item.rating}/5</span>
                       </div>
-                    );
-                  }
-                })}
+                      {item.reviewText && <div style={{ fontSize: 12, color: TEXT, lineHeight: 1.6, marginBottom: 6 }}>{item.reviewText}</div>}
+                      <div style={{ ...monoStyle, fontSize: 10, color: DIM }}>{ts(item.createdAt)}</div>
+                    </div>
+                  ))}
               </div>
             )}
           </div>

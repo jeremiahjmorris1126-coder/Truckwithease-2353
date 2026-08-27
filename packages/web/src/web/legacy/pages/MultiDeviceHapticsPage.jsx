@@ -7,23 +7,29 @@ import {
   createSmartGlassesPattern, createVehicleHapticPattern
 } from '../lib/multiDeviceHaptics';
 
+// Brand palette: gold on black. Aliases kept so the rest of the file is unchanged.
+const GOLD = '#C9A84C';
+const WARN = '#c96a4c';
 const C = {
-  black: '#060A10',
+  black: '#0a0a0a',
   white: '#f0ede8',
   white80: 'rgba(240, 237, 232, 0.8)',
   white60: 'rgba(240, 237, 232, 0.6)',
   white30: 'rgba(240, 237, 232, 0.3)',
-  white10: 'rgba(240, 237, 232, 0.1)',
-  card: '#0f1419',
-  gold: '#c9a84c',
-  green: '#22c55e',
-  greenDim: 'rgba(34, 197, 94, 0.15)',
-  red: '#ef4444',
-  redDim: 'rgba(239, 68, 68, 0.15)',
-  orange: '#f59e0b',
-  blue: '#3b82f6',
-  cyan: '#06b6d4',
-  purple: '#a855f7',
+  white10: 'rgba(34, 34, 34, 1)',
+  card: '#161616',
+  gold: GOLD,
+  goldBright: '#FFD700',
+  green: GOLD,
+  greenDim: 'rgba(201, 168, 76, 0.15)',
+  red: WARN,
+  redDim: 'rgba(201, 106, 76, 0.15)',
+  orange: WARN,
+  blue: '#8a8a8a',
+  cyan: GOLD,
+  purple: '#8a8a8a',
+  muted: '#8a8a8a',
+  dim: '#666666',
 };
 
 export default function MultiDeviceHapticsPage() {
@@ -65,22 +71,16 @@ export default function MultiDeviceHapticsPage() {
     }
   };
 
-  const getQualityColor = (quality) => {
-    if (quality > 80) return C.green;
-    if (quality > 60) return C.orange;
-    return C.red;
-  };
-
   return (
     <div style={{ minHeight: '100vh', background: C.black, color: C.white, padding: '24px 16px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         {/* Header */}
         <div style={{ marginBottom: '40px' }}>
-          <h1 style={{ fontSize: 42, fontWeight: 700, marginBottom: '12px', background: `linear-gradient(135deg, ${C.gold}, ${C.cyan})`, backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', color: C.gold }}>
+          <h1 style={{ fontSize: 42, fontWeight: 700, marginBottom: '12px', background: `linear-gradient(135deg, ${C.gold}, ${C.goldBright})`, backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', color: C.gold }}>
             📱 Multi-Device Haptic Sync
           </h1>
           <p style={{ fontSize: 16, color: C.white60, lineHeight: 1.7, maxWidth: 800 }}>
-            One vibration pattern across all devices simultaneously. Phone, smartwatch, steering wheel, smart glasses, dashboard — every device a deaf driver touches delivers the same haptic language. Real-time synchronization with zero latency.
+            One vibration pattern across all devices simultaneously. Phone, smartwatch, steering wheel, smart glasses, dashboard — every device a deaf driver touches delivers the same haptic language. Only the phone/tablet vibrate path is built (browser Vibration API). Smartwatch, steering wheel, glasses and dashboard have no BLE or WebSocket transport yet, so they report UNSUPPORTED instead of faking delivery.
           </p>
         </div>
 
@@ -118,42 +118,42 @@ export default function MultiDeviceHapticsPage() {
             <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '24px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: C.cyan }}>📳 Universal Haptic Language</h3>
               <p style={{ fontSize: '14px', color: C.white60, lineHeight: 1.6 }}>
-                One vibration pattern. Every device. Deaf drivers hold their phone, touch the steering wheel, wear a smartwatch, use smart glasses — all deliver the same haptic message simultaneously. No confusion. Perfect sync.
+                One vibration vocabulary shared across every device we plan to support. Built today: the phone/tablet path through the browser Vibration API. Smartwatch, steering wheel, glasses and dashboard are defined in the pattern library but have no transport code yet.
               </p>
             </div>
 
             <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '24px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: C.green }}>⚡ Device-Aware Adaptation</h3>
               <p style={{ fontSize: '14px', color: C.white60, lineHeight: 1.6 }}>
-                Each device adapts the pattern to its capabilities. Phone sends full pattern. Smartwatch adapts for size. Steering wheel spreads vibration across grip points. Smart glasses use left/right channels. All deliver the same meaning.
+                The pattern builders scale a message per device class — full pattern on a phone, shortened for a watch, spread across grip points on a wheel, left/right on glasses. The builders are real; only the phone path can currently play them.
               </p>
             </div>
 
             <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: C.purple }}>🔄 Real-Time Sync</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: C.purple }}>🔄 Broadcast</h3>
               <p style={{ fontSize: '14px', color: C.white60, lineHeight: 1.6 }}>
-                Vibrations broadcast to all connected devices within 50ms. No lag. No missed messages. Driver feels the haptic on every device they're in contact with — reinforces the meaning through redundancy.
+                Broadcast fans one pattern out to every registered device and reports per-device delivery honestly: delivered, or not delivered with the reason. Latency is not measured — there is no timing instrumentation in this build.
               </p>
             </div>
 
             <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '24px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: C.orange }}>🚗 Steering Wheel Haptics</h3>
               <p style={{ fontSize: '14px', color: C.white60, lineHeight: 1.6 }}>
-                Vibration distributed across left grip, right grip, center. Turn-left pattern vibrates the left grip. Turn-right vibrates right grip. Deaf driver "feels" the direction without looking.
+                Planned: vibration split across left grip, right grip and center so a turn is felt on the side it happens. The pattern definitions exist; the wheel hardware link (BLE or vehicle bus) is not built.
               </p>
             </div>
 
             <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '24px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: C.blue }}>👓 Smart Glasses Spatial</h3>
               <p style={{ fontSize: '14px', color: C.white60, lineHeight: 1.6 }}>
-                Left/right haptic channels create spatial awareness. Hazard on left feels like left vibration. Distance encoded in intensity. Driver navigates visually and haptically at the same time.
+                Planned: left/right channels for spatial hazard cues with distance encoded in intensity. Patterns are defined; no glasses SDK is integrated.
               </p>
             </div>
 
             <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '24px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: C.red }}>🛢️ Vehicle Integration</h3>
               <p style={{ fontSize: '14px', color: C.white60, lineHeight: 1.6 }}>
-                Full-body haptic feedback: seat back pulses, steering wheel shakes, footrest alerts, armrest vibrates, floor tremors, dashboard confirms. Immersive 360° haptic awareness.
+                Planned: seat back, wheel, footrest, armrest, floor and dashboard actuators driven from the same pattern. Requires a vehicle bus integration that does not exist yet.
               </p>
             </div>
           </div>
@@ -182,7 +182,7 @@ export default function MultiDeviceHapticsPage() {
                       fontWeight: '700',
                       color: device.isActive ? C.green : C.red,
                     }}>
-                      {device.isActive ? '✓ ACTIVE' : '○ INACTIVE'}
+                      {device.isActive ? '✓ CAN VIBRATE' : '○ UNSUPPORTED'}
                     </div>
                   </div>
 
@@ -196,16 +196,23 @@ export default function MultiDeviceHapticsPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
                     <div style={{ background: C.black, borderRadius: '4px', padding: '8px' }}>
                       <p style={{ fontSize: '11px', color: C.white60, margin: '0 0 4px 0' }}>Battery</p>
-                      <p style={{ fontSize: '13px', fontWeight: '700', color: device.battery > 50 ? C.green : C.orange, margin: 0 }}>
-                        {device.battery}%
+                      <p style={{ fontSize: '11px', fontWeight: '700', color: C.dim, margin: 0 }}>
+                        {device.battery === null ? 'NOT TRACKED' : `${device.battery}%`}
                       </p>
                     </div>
                     <div style={{ background: C.black, borderRadius: '4px', padding: '8px' }}>
                       <p style={{ fontSize: '11px', color: C.white60, margin: '0 0 4px 0' }}>Signal</p>
-                      <p style={{ fontSize: '13px', fontWeight: '700', color: device.signal > 70 ? C.green : C.orange, margin: 0 }}>
-                        {device.signal}%
+                      <p style={{ fontSize: '11px', fontWeight: '700', color: C.dim, margin: 0 }}>
+                        {device.signal === null ? 'NOT TRACKED' : `${device.signal}%`}
                       </p>
                     </div>
+                  </div>
+
+                  <div style={{ background: C.black, borderRadius: '4px', padding: '8px', marginBottom: '12px' }}>
+                    <p style={{ fontSize: '11px', color: C.white60, margin: '0 0 4px 0' }}>Transport</p>
+                    <p style={{ fontSize: '11px', fontWeight: '700', color: device.transport ? C.gold : C.orange, margin: 0 }}>
+                      {device.transport || device.status}
+                    </p>
                   </div>
 
                   <p style={{ fontSize: '11px', color: C.white30, margin: 0 }}>
@@ -287,7 +294,7 @@ export default function MultiDeviceHapticsPage() {
                         <div>
                           <p style={{ color: C.white60, margin: '0 0 4px 0' }}>Devices</p>
                           <p style={{ color: C.green, fontWeight: '700', margin: 0 }}>
-                            {broadcast.sentTo} / {broadcast.totalConnected}
+                            {broadcast.sentTo} / {broadcast.totalRegistered ?? broadcast.totalConnected}
                           </p>
                         </div>
                         <div>
@@ -367,33 +374,33 @@ export default function MultiDeviceHapticsPage() {
             <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '24px' }}>System Health Status</h2>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-              <div style={{ background: C.black, borderRadius: '6px', padding: '20px', border: `2px solid ${health.isHealthy ? C.green : C.orange}` }}>
+              <div style={{ background: C.black, borderRadius: '6px', padding: '20px', border: `2px solid ${C.white10}` }}>
                 <p style={{ fontSize: '12px', color: C.white60, marginBottom: '8px' }}>Overall Health</p>
-                <p style={{ fontSize: '32px', fontWeight: '700', color: health.isHealthy ? C.green : C.orange, margin: 0 }}>
-                  {health.overallHealth}%
+                <p style={{ fontSize: '20px', fontWeight: '700', color: C.dim, margin: 0 }}>
+                  NOT TRACKED
                 </p>
                 <p style={{ fontSize: '12px', color: C.white60, marginTop: '8px' }}>
-                  {health.isHealthy ? '✓ All systems operational' : '⚠️ Attention needed'}
+                  {health.overallHealthReason}
                 </p>
               </div>
 
               <div style={{ background: C.black, borderRadius: '6px', padding: '20px', border: `1px solid ${C.white10}` }}>
-                <p style={{ fontSize: '12px', color: C.white60, marginBottom: '8px' }}>Connected Devices</p>
-                <p style={{ fontSize: '32px', fontWeight: '700', color: C.cyan, margin: 0 }}>
-                  {health.connectedDevices}
+                <p style={{ fontSize: '12px', color: C.white60, marginBottom: '8px' }}>Registered Devices</p>
+                <p style={{ fontSize: '32px', fontWeight: '700', color: C.gold, margin: 0 }}>
+                  {health.registeredDevices}
                 </p>
                 <p style={{ fontSize: '12px', color: C.white60, marginTop: '8px' }}>
-                  Synced and ready
+                  {health.usableDevices} can actually vibrate
                 </p>
               </div>
 
               <div style={{ background: C.black, borderRadius: '6px', padding: '20px', border: `1px solid ${C.white10}` }}>
-                <p style={{ fontSize: '12px', color: C.white60, marginBottom: '8px' }}>Broadcast Latency</p>
-                <p style={{ fontSize: '32px', fontWeight: '700', color: C.blue, margin: 0 }}>
-                  &lt;50ms
+                <p style={{ fontSize: '12px', color: C.white60, marginBottom: '8px' }}>Vibration API</p>
+                <p style={{ fontSize: '20px', fontWeight: '700', color: health.vibrateSupported ? C.gold : C.orange, margin: 0 }}>
+                  {health.vibrateSupported ? 'SUPPORTED' : 'NOT SUPPORTED'}
                 </p>
                 <p style={{ fontSize: '12px', color: C.white60, marginTop: '8px' }}>
-                  Real-time sync guaranteed
+                  {health.note}
                 </p>
               </div>
             </div>
@@ -414,20 +421,20 @@ export default function MultiDeviceHapticsPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div>
                       <p style={{ color: C.white60, margin: '0 0 4px 0' }}>Quality</p>
-                      <p style={{ color: getQualityColor(device.quality), fontWeight: '700', margin: 0 }}>
-                        {device.quality}%
+                      <p style={{ color: C.dim, fontWeight: '700', margin: 0 }}>
+                        {device.quality === null ? 'NOT TRACKED' : `${device.quality}%`}
                       </p>
                     </div>
                     <div>
-                      <p style={{ color: C.white60, margin: '0 0 4px 0' }}>Battery</p>
-                      <p style={{ color: device.battery > 50 ? C.green : C.orange, fontWeight: '700', margin: 0 }}>
-                        {device.battery}%
+                      <p style={{ color: C.white60, margin: '0 0 4px 0' }}>Transport</p>
+                      <p style={{ color: device.transport ? C.gold : C.orange, fontWeight: '700', margin: 0 }}>
+                        {device.transport || 'NONE'}
                       </p>
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
-                      <p style={{ color: C.white60, margin: '0 0 4px 0' }}>Signal</p>
-                      <p style={{ color: device.signal > 70 ? C.green : C.orange, fontWeight: '700', margin: 0 }}>
-                        {device.signal}% 📶
+                      <p style={{ color: C.white60, margin: '0 0 4px 0' }}>Status</p>
+                      <p style={{ color: C.white60, fontWeight: '600', margin: 0, fontSize: '11px' }}>
+                        {device.qualityReason || device.status}
                       </p>
                     </div>
                   </div>

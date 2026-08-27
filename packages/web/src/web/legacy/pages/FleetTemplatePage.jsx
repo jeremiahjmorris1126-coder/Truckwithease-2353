@@ -552,7 +552,7 @@ export default function FleetTemplatePage() {
     fleet_name: "",
     address: "",
     phone: "",
-    email: "truckwithease@gmail.com",
+    email: "truckeasecare@gmail.com",
     mc_number: "",
     dot_number: "",
     logo_url: "",

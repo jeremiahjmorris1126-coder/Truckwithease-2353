@@ -1,24 +1,40 @@
-// iDrive E2 AI Dashcam Service
-// Wires camera events into Safety Score, Accident Reports, and Driver Scorecards
+// iDrive Cam (AI dashcam) service — NOT WIRED.
+//
+// Honest state, 2026-08-24:
+//   * This file targets iDrive *Cam* (https://api.idrivecam.com/v1), a dashcam
+//     product. It is unrelated to iDrive *e2*, the S3-compatible object storage
+//     that IS wired (see packages/web/src/api/lib/s3.ts).
+//   * TruckWithEase has no dashcam account, no camera hardware, and no API
+//     credential for any camera vendor.
+//   * Therefore this module never invents events. getLiveCameraEvents() and
+//     getFleetCameraSummary() return empty arrays until a real integration and
+//     a server-side credential exist.
+//   * Camera keys must never live in the browser. When a dashcam vendor is
+//     signed, the key goes in the root .env and the calls go through a server
+//     route (packages/web/src/api/routes/), like every other provider here.
+//
+// The deterministic parts of this module (CAMERA_EVENTS, detectFleetPatterns,
+// prefillAccidentReport) are real logic that operate on events you pass in, so
+// they stay.
 
-const IDRIVE_BASE = 'https://api.idrivecam.com/v1';
+export const IDRIVE_STATUS = {
+  live: false,
+  provider: 'iDrive Cam',
+  source: null,
+  note:
+    'No dashcam integration is wired. TruckWithEase has no camera vendor account or API credential, so no camera events exist. Nothing on this page is live telemetry.',
+};
 
+// No client-side key storage. A camera credential would be server-side only.
 export function getiDriveKey() {
-  try {
-    const saved = localStorage.getItem('platform_api_keys');
-    if (saved) {
-      const keys = JSON.parse(saved);
-      return keys.idrive_api_key || null;
-    }
-  } catch(e) {}
   return null;
 }
 
 export function hasiDrive() {
-  return !!getiDriveKey();
+  return false;
 }
 
-// Camera event types
+// Event taxonomy + scoring weights. Reference data, not observations.
 export const CAMERA_EVENTS = {
   DISTRACTION:  { label: 'Phone Distraction',    icon: '📱', severity: 'HIGH',     points: -15 },
   DROWSINESS:   { label: 'Drowsiness Alert',      icon: '😴', severity: 'CRITICAL', points: -25 },
@@ -32,50 +48,27 @@ export const CAMERA_EVENTS = {
   SPEEDING:     { label: 'Speed Violation',       icon: '🚨', severity: 'HIGH',     points: -15 },
 };
 
-// Simulate live camera events for demo
-export function getLiveCameraEvents(driverName) {
-  const eventKeys = Object.keys(CAMERA_EVENTS);
-  const count = Math.floor(Math.random() * 3);
-  const events = [];
-  for (let i = 0; i < count; i++) {
-    const key = eventKeys[Math.floor(Math.random() * eventKeys.length)];
-    const event = CAMERA_EVENTS[key];
-    events.push({
-      id: `EVT-${Date.now()}-${i}`,
-      type: key,
-      ...event,
-      driver: driverName || 'Unknown Driver',
-      timestamp: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-      location: 'I-80 W, Mile Marker ' + Math.floor(Math.random() * 300 + 100),
-      clipUrl: null, // would be a real S3 URL in production
-      resolved: false,
-    });
-  }
-  return events;
+// No camera source connected → no events. Never fabricate rows.
+export function getLiveCameraEvents() {
+  return [];
 }
 
-// Get fleet-wide camera summary
-export function getFleetCameraSummary(drivers = []) {
-  return drivers.map(driver => ({
-    driver,
-    safetyScore: Math.floor(Math.random() * 30 + 70),
-    eventsToday: Math.floor(Math.random() * 5),
-    criticalEvents: Math.floor(Math.random() * 2),
-    lastEvent: Math.random() > 0.5 ? new Date(Date.now() - Math.random() * 86400000).toISOString() : null,
-    status: Math.random() > 0.8 ? 'REVIEW' : 'CLEAN',
-  }));
+// No camera source connected → no per-driver camera summary.
+export function getFleetCameraSummary() {
+  return [];
 }
 
-// Ghost Nerve pattern detection
+// Pattern detection over events the caller supplies. Deterministic, no data of
+// its own — returns [] when there are no events, which is the current state.
 export function detectFleetPatterns(events = []) {
   const patterns = [];
-  
+
   const drowsinessCount = events.filter(e => e.type === 'DROWSINESS').length;
   if (drowsinessCount >= 2) {
     patterns.push({
       type: 'FATIGUE_CORRIDOR',
       severity: 'CRITICAL',
-      message: `${drowsinessCount} drowsiness alerts detected on same route — Ghost Nerve recommends mandatory rest stop alert for all drivers on this corridor`,
+      message: `${drowsinessCount} drowsiness alerts detected on same route — recommend a mandatory rest stop alert for all drivers on this corridor`,
       action: 'Add rest stop waypoint to all active routes on this corridor',
     });
   }
@@ -85,7 +78,7 @@ export function detectFleetPatterns(events = []) {
     patterns.push({
       type: 'PHONE_USE_PATTERN',
       severity: 'HIGH',
-      message: `${distractionCount} phone distraction events detected — Game Up auto-enrolling drivers in Safety Training module`,
+      message: `${distractionCount} phone distraction events detected — enroll affected drivers in Safety Training`,
       action: 'Enroll affected drivers in Phone Distraction Training',
     });
   }
@@ -93,17 +86,20 @@ export function detectFleetPatterns(events = []) {
   return patterns;
 }
 
-// Auto-fill accident report from camera event
+// Maps a camera event onto accident-report fields. Pure transform of its input.
 export function prefillAccidentReport(cameraEvent) {
+  if (!cameraEvent) return null;
   return {
-    driver: cameraEvent.driver,
-    date: cameraEvent.timestamp,
-    location: cameraEvent.location,
+    driver: cameraEvent.driver ?? null,
+    date: cameraEvent.timestamp ?? null,
+    location: cameraEvent.location ?? null,
     type: cameraEvent.type === 'COLLISION' ? 'Collision' : 'Near Miss',
-    severity: cameraEvent.severity,
-    videoClip: cameraEvent.clipUrl,
+    severity: cameraEvent.severity ?? null,
+    videoClip: cameraEvent.clipUrl ?? null,
     autoDetected: true,
-    source: 'iDrive E2 AI Dashcam',
-    description: `${cameraEvent.label} detected automatically by iDrive E2 AI dashcam system. Video clip saved and attached. Insurance notification sent automatically.`,
+    source: cameraEvent.source ?? 'dashcam',
+    // No claim about clips being saved or carriers being notified — neither
+    // happens today.
+    description: `${cameraEvent.label ?? 'Camera event'} reported by the dashcam integration. Review required before filing.`,
   };
 }

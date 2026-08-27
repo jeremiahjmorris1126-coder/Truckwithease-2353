@@ -1,8 +1,18 @@
 import { useState, useEffect } from "react";
-import PocketBase from "pocketbase";
-import { getTopStops, getWorstEntities } from "./lib/fleetMemory.js";
 
-const pb = new PocketBase();
+/**
+ * Command Center — admin / dispatch overview.
+ *
+ * Every counter on this page is read from the real API. The previous version read
+ * `signups`, `contact_messages`, `hos_daily_certs` and `site_visits` through a
+ * browser PocketBase client: only `signups` has a server route, so the other three
+ * silently resolved against localStorage and rendered as zeros that looked measured.
+ * It also pulled "Fleet Blacklist" and "Top Charge Stops" from lib/fleetMemory.js,
+ * whose collections (fleet_intelligence_notes, shipper_broker_ratings,
+ * route_stop_feedback) do not exist server-side — that data was per-device and empty.
+ *
+ * Counters that have no source say NOT TRACKED. None of them render as 0 or 100%.
+ */
 
 // ─── Brand tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -18,14 +28,10 @@ const C = {
   white60:  "rgba(240,237,232,0.55)",
   white30:  "rgba(240,237,232,0.28)",
   white10:  "rgba(240,237,232,0.07)",
-  green:    "#16A34A",
-  greenDim: "rgba(22,163,74,0.12)",
-  red:      "#DC2626",
-  redDim:   "rgba(220,38,38,0.12)",
-  amber:    "#D97706",
-  amberDim: "rgba(217,119,6,0.12)",
-  blue:     "#2563EB",
-  blueDim:  "rgba(37,99,235,0.12)",
+  goldBright: "#FFD700",
+  warn:     "#c96a4c",
+  warnDim:  "rgba(201,106,76,0.10)",
+  goldFaint: "rgba(201,168,76,0.10)",
 };
 
 const FONT_DISPLAY = "'Bebas Neue', 'Oswald', sans-serif";
@@ -102,7 +108,7 @@ const NAV = [
     { icon: "🛡", label: "Neural Safety",   path: "/neural-safety" },
     { icon: "📊", label: "Operations",      path: "/operations-health" },
     { icon: "🔬", label: "Diagnostics",     path: "/app-maintenance" },
-    { icon: "🔑", label: "API Keys",        path: "/api-agent" },
+    { icon: "🔑", label: "API Keys",        path: "/key-agent" },
     { icon: "💻", label: "Code Vault",      path: "/code-vault" },
   ]},
 ];
@@ -153,59 +159,54 @@ function StatBadge({ label, value, color, path }) {
 
 export default function CommandCenterPage() {
   const [activeSection, setActiveSection] = useState(null);
-  const [stats, setStats]   = useState({ members: 0, messages: 0, hosCerts: 0, visits: 0, todayVisits: 0 });
+  const [stats, setStats] = useState({ members: null, tickets: null, drivers: null, openHos: null });
   const [members, setMembers] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [recentVisits, setRecentVisits] = useState([]);
-  const [topPages, setTopPages] = useState([]);
-  const [memTopStops, setMemTopStops] = useState([]);
-  const [memWorstEntities, setMemWorstEntities] = useState([]);
+  const [loadErrors, setLoadErrors] = useState([]);
 
   useEffect(() => {
     const controller = new AbortController();
-    const signal = controller.signal;
+    const { signal } = controller;
+    // An aborted fetch is a React StrictMode remount, not a failed load. Reporting it
+    // would print "COULD NOT LOAD" next to numbers that actually arrived.
+    const fail = (what, err) => {
+      if (err && (err.name === "AbortError" || signal.aborted)) return;
+      setLoadErrors((e) => (e.includes(what) ? e : [...e, what]));
+    };
 
-    pb.collection("signups").getList(1, 50, { sort: "-created", signal })
-      .then(r => {
-        setMembers(r.items);
-        setStats(s => ({ ...s, members: r.totalItems }));
-      }).catch(() => {});
+    fetch("/api/signup/list", { signal })
+      .then((r) => r.json())
+      .then((d) => {
+        setMembers(Array.isArray(d.signups) ? d.signups.slice(0, 50) : []);
+        setStats((st) => ({ ...st, members: typeof d.total === "number" ? d.total : null }));
+      })
+      .catch((err) => fail("signups", err));
 
-    pb.collection("contact_messages").getList(1, 10, { sort: "-created", signal })
-      .then(r => {
-        setMessages(r.items);
-        setStats(s => ({ ...s, messages: r.totalItems }));
-      }).catch(() => {});
+    fetch("/api/support/tickets", { signal })
+      .then((r) => r.json())
+      .then((d) => {
+        const rows = Array.isArray(d.tickets) ? d.tickets : Array.isArray(d) ? d : [];
+        setMessages(rows.slice(0, 10));
+        setStats((st) => ({ ...st, tickets: rows.length }));
+      })
+      .catch((err) => fail("support tickets", err));
 
-    pb.collection("hos_daily_certs").getList(1, 1, { signal })
-      .then(r => setStats(s => ({ ...s, hosCerts: r.totalItems })))
-      .catch(() => {});
-
-    // Site visits
-    pb.collection("site_visits").getList(1, 200, { sort: "-created", signal })
-      .then(r => {
-        const today = new Date().toDateString();
-        const todayCount = r.items.filter(v => new Date(v.created).toDateString() === today).length;
-        setStats(s => ({ ...s, visits: r.totalItems, todayVisits: todayCount }));
-        setRecentVisits(r.items.slice(0, 12));
-        // tally top pages
-        const pageCounts = {};
-        r.items.forEach(v => {
-          const p = v.page || "/";
-          pageCounts[p] = (pageCounts[p] || 0) + 1;
-        });
-        const sorted = Object.entries(pageCounts).sort((a,b) => b[1]-a[1]).slice(0,6);
-        setTopPages(sorted);
-      }).catch(() => {});
+    fetch("/api/hos", { signal })
+      .then((r) => r.json())
+      .then((d) => {
+        const fleet = Array.isArray(d.fleet) ? d.fleet : [];
+        setStats((st) => ({
+          ...st,
+          drivers: fleet.length,
+          openHos: fleet.filter((f) => f.violations && f.violations.length > 0).length,
+        }));
+      })
+      .catch((err) => fail("HOS fleet", err));
 
     return () => controller.abort();
   }, []);
 
-  // Load fleet memory intelligence
-  useEffect(() => {
-    getTopStops(null, 5).then(setMemTopStops).catch(() => {});
-    getWorstEntities(5).then(setMemWorstEntities).catch(() => {});
-  }, []);
+  const show = (v) => (v === null || v === undefined ? "—" : v);
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: FONT_BODY, color: C.white }}>
@@ -249,9 +250,9 @@ export default function CommandCenterPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <LiveClock />
           <div style={{ width: 1, height: 16, background: C.border }} />
-          <StatBadge label="Members" value={stats.members} color={C.green} path="/admin/subscriptions" />
-          <StatBadge label="Messages" value={stats.messages} color={C.amber} path="/contact-inbox" />
-          <StatBadge label="System" value="100%" color={C.green} path="/app-maintenance" />
+          <StatBadge label="Signups" value={show(stats.members)} color={C.gold} path="/admin/subscriptions" />
+          <StatBadge label="Tickets" value={show(stats.tickets)} color={C.gold} path="/contact-inbox" />
+          <StatBadge label="Drivers" value={show(stats.drivers)} color={C.goldBright} path="/hos" />
         </div>
       </div>
 
@@ -307,7 +308,7 @@ export default function CommandCenterPage() {
               color: C.white, textTransform: "uppercase", margin: 0, lineHeight: 1,
             }}>Fleet Operations</h1>
             <p style={{ color: C.white60, fontSize: 13, margin: "6px 0 0" }}>
-              TruckWithEase Command Center — real-time fleet intelligence
+              TruckWithEase Command Center — live counts from the API, nothing simulated
             </p>
           </div>
 
@@ -317,11 +318,11 @@ export default function CommandCenterPage() {
             marginBottom: 28, animation: "fadeIn 0.4s ease 0.05s both",
           }}>
             {[
-              { label: "Active Members", value: stats.members, sub: "Live accounts", color: C.green, icon: "👥", path: "/admin/subscriptions" },
-              { label: "Site Visitors", value: stats.visits, sub: `${stats.todayVisits} today`, color: "#06b6d4", icon: "👁", path: null },
-              { label: "HOS Certifications", value: stats.hosCerts, sub: "Logs certified", color: C.gold, icon: "⏱", path: "/hos" },
-              { label: "Inbox Messages", value: stats.messages, sub: "Contact requests", color: C.amber, icon: "💬", path: "/contact-inbox" },
-              { label: "Platform Health", value: "100%", sub: "All systems live", color: C.green, icon: "🛡", path: "/app-maintenance" },
+              { label: "Signups", value: show(stats.members), sub: "Rows in the signups table", color: C.gold, icon: "👥", path: "/admin/subscriptions" },
+              { label: "Drivers On File", value: show(stats.drivers), sub: "From /api/hos", color: C.goldBright, icon: "🚚", path: "/hos" },
+              { label: "HOS Flags", value: show(stats.openHos), sub: "Drivers with a violation flag", color: C.warn, icon: "⏱", path: "/hos" },
+              { label: "Support Tickets", value: show(stats.tickets), sub: "From /api/support/tickets", color: C.gold, icon: "💬", path: "/contact-inbox" },
+              { label: "Site Traffic", value: "NOT TRACKED", sub: "No analytics route in this app", color: C.white30, icon: "👁", path: null },
             ].map((kpi, i) => (
               <button
                 key={i}
@@ -346,59 +347,30 @@ export default function CommandCenterPage() {
             ))}
           </div>
 
-          {/* ── Fleet Memory Intelligence Strip ── */}
-          {/* Driver Alerts from Road Context */}
+          {/* ── Data source notice ── */}
           <div style={{ marginBottom: 22, animation: "fadeIn 0.4s ease 0.06s both" }}>
-            <div style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.1), rgba(0,229,255,0.05))", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 8, padding: "14px 18px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <div style={{ fontFamily: FONT_DISPLAY, fontSize: 13, letterSpacing: "0.06em", textTransform: "uppercase", color: "#3b82f6" }}>📍 Driver Alerts Live</div>
-                <button onClick={() => navigate("/road-context")} style={{ background: "none", border: "none", color: C.gold, fontSize: 10, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.06em" }}>Monitor →</button>
+            <div style={{
+              background: C.goldFaint, border: `1px solid ${C.borderHi}`,
+              borderLeft: `3px solid ${C.gold}`, borderRadius: 8, padding: "14px 18px",
+            }}>
+              <div style={{
+                fontFamily: FONT_DISPLAY, fontSize: 13, letterSpacing: "0.06em",
+                textTransform: "uppercase", color: C.gold, marginBottom: 8,
+              }}>Where these numbers come from</div>
+              <div style={{ fontSize: 11.5, color: C.white60, lineHeight: 1.6 }}>
+                Signups, drivers, HOS flags and support tickets are read live from the API.
+                Fleet blacklist, charge-stop ratings and site analytics are not shown: those
+                collections exist only in browser storage on this device, so anything displayed
+                for them would be per-device and effectively empty. They return when there is a
+                server route behind them.
               </div>
-              <div style={{ fontSize: 11, color: C.white60, lineHeight: 1.5 }}>
-                Real-time intel: your drivers see danger reports, broker flags, top charge stops, and weather alerts at their location. Dispatchers get the same view here in seconds. Every driver decision is smarter.
-              </div>
+              {loadErrors.length > 0 && (
+                <div style={{ marginTop: 10, fontSize: 11, color: C.warn, fontFamily: FONT_MONO }}>
+                  COULD NOT LOAD: {loadErrors.join(", ")} — showing — instead of a number.
+                </div>
+              )}
             </div>
           </div>
-
-          {(memWorstEntities.length > 0 || memTopStops.length > 0) && (
-            <div style={{ marginBottom: 22, animation: "fadeIn 0.4s ease 0.08s both", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              {/* Flagged entities */}
-              {memWorstEntities.length > 0 && (
-                <div style={{ background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 8, padding: "14px 18px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <div style={{ fontFamily: FONT_DISPLAY, fontSize: 13, letterSpacing: "0.06em", textTransform: "uppercase", color: "#f87171" }}>🏴 Fleet Blacklist</div>
-                    <button onClick={() => navigate("/fleet-memory")} style={{ background: "none", border: "none", color: C.gold, fontSize: 10, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.06em" }}>View All →</button>
-                  </div>
-                  {memWorstEntities.slice(0, 4).map((e, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: i < 3 ? "1px solid rgba(220,38,38,0.1)" : "none" }}>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: C.white }}>{e.name}</div>
-                        <div style={{ fontSize: 10, color: "rgba(240,237,232,0.4)" }}>{e.type}</div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <span style={{ fontSize: 10, fontWeight: 800, background: "rgba(220,38,38,0.15)", color: "#f87171", borderRadius: 6, padding: "2px 8px" }}>{e.totalFlags} flags</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {/* Top charge stops */}
-              {memTopStops.length > 0 && (
-                <div style={{ background: "rgba(0,229,255,0.05)", border: "1px solid rgba(0,229,255,0.15)", borderRadius: 8, padding: "14px 18px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <div style={{ fontFamily: FONT_DISPLAY, fontSize: 13, letterSpacing: "0.06em", textTransform: "uppercase", color: "#00E5FF" }}>⚡ Top Charge Stops</div>
-                    <button onClick={() => navigate("/charging-stations")} style={{ background: "none", border: "none", color: C.gold, fontSize: 10, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.06em" }}>Route Planner →</button>
-                  </div>
-                  {memTopStops.slice(0, 4).map((s, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: i < 3 ? "1px solid rgba(0,229,255,0.08)" : "none" }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "65%" }}>{s.stop_name}</div>
-                      <span style={{ fontSize: 10, fontWeight: 800, background: s.pct >= 70 ? "rgba(74,222,128,0.15)" : "rgba(251,191,36,0.15)", color: s.pct >= 70 ? "#4ade80" : "#fbbf24", borderRadius: 6, padding: "2px 8px", flexShrink: 0 }}>{s.pct}% 👍</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* ── Two column layout ── */}
           <div style={{
@@ -420,7 +392,7 @@ export default function CommandCenterPage() {
                     Active Members
                   </div>
                   <div style={{ fontSize: 11, color: C.white60, marginTop: 1 }}>
-                    {stats.members} account{stats.members !== 1 ? "s" : ""} on platform
+                    {show(stats.members)} signup{stats.members !== 1 ? "s" : ""} recorded
                   </div>
                 </div>
                 <button
@@ -461,9 +433,9 @@ export default function CommandCenterPage() {
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
                       <div style={{
                         display: "inline-flex", alignItems: "center", gap: 4,
-                        background: C.greenDim, border: "1px solid rgba(22,163,74,0.2)",
+                        background: C.goldFaint, border: `1px solid ${C.goldDim}`,
                         borderRadius: 20, padding: "2px 8px",
-                        fontSize: 10, fontWeight: 700, color: "#4ade80",
+                        fontSize: 10, fontWeight: 700, color: C.goldText,
                         textTransform: "uppercase", letterSpacing: "0.04em",
                       }}>
                         ● {m.plan || "Pro"}
@@ -488,10 +460,10 @@ export default function CommandCenterPage() {
               }}>
                 <div>
                   <div style={{ fontFamily: FONT_DISPLAY, fontSize: 16, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                    Contact Inbox
+                    Support Tickets
                   </div>
                   <div style={{ fontSize: 11, color: C.white60, marginTop: 1 }}>
-                    {stats.messages} message{stats.messages !== 1 ? "s" : ""} received
+                    {show(stats.tickets)} ticket{stats.tickets !== 1 ? "s" : ""} on file
                   </div>
                 </div>
                 <button
@@ -515,9 +487,9 @@ export default function CommandCenterPage() {
                   <div key={i} className="cmd-member-row">
                     <div style={{
                       width: 34, height: 34, borderRadius: "50%",
-                      background: C.amberDim, border: "1px solid rgba(217,119,6,0.2)",
+                      background: C.goldFaint, border: `1px solid ${C.goldDim}`,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontFamily: FONT_DISPLAY, fontSize: 14, color: C.amber, flexShrink: 0,
+                      fontFamily: FONT_DISPLAY, fontSize: 14, color: C.gold, flexShrink: 0,
                     }}>
                       {(m.name || "?")[0].toUpperCase()}
                     </div>
@@ -534,78 +506,6 @@ export default function CommandCenterPage() {
                     </div>
                     <div style={{ fontSize: 10, color: C.white30, flexShrink: 0 }}>
                       {m.created ? new Date(m.created).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* ── Visitor Analytics ── */}
-          <div style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20,
-            marginBottom: 28, animation: "fadeIn 0.4s ease 0.13s both",
-          }}>
-            {/* Top Pages */}
-            <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
-              <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.border}` }}>
-                <div style={{ fontFamily: FONT_DISPLAY, fontSize: 16, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                  👁 Top Pages Visited
-                </div>
-                <div style={{ fontSize: 11, color: C.white60, marginTop: 1 }}>Most popular destinations on your site</div>
-              </div>
-              <div style={{ padding: "8px 20px 16px" }}>
-                {topPages.length === 0 ? (
-                  <div style={{ padding: "20px 0", textAlign: "center", color: C.white30, fontSize: 13 }}>No visits recorded yet</div>
-                ) : topPages.map(([page, count], i) => {
-                  const pct = topPages[0] ? Math.round((count / topPages[0][1]) * 100) : 0;
-                  return (
-                    <div key={i} style={{ padding: "8px 0", borderBottom: i < topPages.length-1 ? `1px solid ${C.border}` : "none" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                        <span style={{ fontSize: 12, color: C.white, fontWeight: 600 }}>{page || "/"}</span>
-                        <span style={{ fontSize: 12, color: "#06b6d4", fontWeight: 700 }}>{count} visit{count !== 1 ? "s" : ""}</span>
-                      </div>
-                      <div style={{ height: 4, background: C.border, borderRadius: 2 }}>
-                        <div style={{ height: "100%", width: `${pct}%`, background: "#06b6d4", borderRadius: 2, transition: "width 0.6s ease" }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Recent Visitors */}
-            <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
-              <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.border}` }}>
-                <div style={{ fontFamily: FONT_DISPLAY, fontSize: 16, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                  🕐 Recent Visitors
-                </div>
-                <div style={{ fontSize: 11, color: C.white60, marginTop: 1 }}>Live feed — every person who opened the site</div>
-              </div>
-              <div style={{ padding: "4px 20px 12px", maxHeight: 280, overflowY: "auto" }}>
-                {recentVisits.length === 0 ? (
-                  <div style={{ padding: "20px 0", textAlign: "center", color: C.white30, fontSize: 13 }}>No visits yet — share the site link!</div>
-                ) : recentVisits.map((v, i) => (
-                  <div key={i} className="cmd-member-row">
-                    <div style={{
-                      width: 32, height: 32, borderRadius: "50%",
-                      background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.2)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 14, flexShrink: 0,
-                    }}>
-                      {v.device === "Mobile" ? "📱" : "💻"}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {v.page || "/"}
-                      </div>
-                      <div style={{ fontSize: 11, color: C.white60 }}>
-                        {v.device || "Desktop"} · {v.browser || "Browser"}
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 10, color: C.white30, flexShrink: 0, textAlign: "right" }}>
-                      {v.created ? new Date(v.created).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}
-                      <div style={{ color: "#06b6d4", fontWeight: 700 }}>{new Date(v.created).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
                     </div>
                   </div>
                 ))}
@@ -654,7 +554,7 @@ export default function CommandCenterPage() {
                 { icon: "📋", label: "Safety Meetings", path: "/safety-meetings", tag: "DOT" },
                 { icon: "🏛", label: "FMCSA Status", path: "/fmcsa-registration", tag: "REGISTERED" },
                 { icon: "📘", label: "Customer Book", path: "/customer-book", tag: "CRM" },
-                { icon: "🔑", label: "API Keys", path: "/api-agent", tag: "22 LIVE" },
+                { icon: "🔑", label: "API Keys", path: "/key-agent", tag: "22 LIVE" },
                 { icon: "💻", label: "Code Vault", path: "/code-vault", tag: "SECURE" },
               ].map((f, i) => (
                 <button

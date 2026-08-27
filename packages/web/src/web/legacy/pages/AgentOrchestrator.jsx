@@ -178,7 +178,7 @@ export default function AgentOrchestrator() {
               ))}
             </div>
             <div style={{ marginTop: 16, padding: 16, background: `${C.gold}10`, border: `1px solid ${C.gold}44`, borderRadius: 10, textAlign: 'center', fontSize: 13, color: C.muted }}>
-              Paste pending API keys at <a href="/apis" style={{ color: C.gold }}>morrishive.com/apis</a> to activate remaining services
+              Paste pending API keys at <a href="/key-agent" style={{ color: C.gold }}>morrishive.com/apis</a> to activate remaining services
             </div>
           </div>
         )}

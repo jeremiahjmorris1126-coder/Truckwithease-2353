@@ -1,227 +1,326 @@
-import { useState } from "react";
-import PocketBase from "pocketbase";
+import { useState, useEffect, useCallback } from "react";
 
-const pb = new PocketBase();
-const NAVY  = "#0B2A6B";
-const NAVY2 = "#081E4D";
-const ORANGE= "#FF6B00";
-const AMBER = "#FFB400";
-const GREEN = "#16A34A";
-const RED   = "#DC2626";
-const PURPLE= "#7C3AED";
-const DARK  = "#06090F";
+/**
+ * Week In Review.
+ *
+ * Reads GET /api/week-review/:driverId, which counts real rows out of trips,
+ * loads, hos_logs, dvir_inspections, speeding_events and safety_scores. The
+ * previous version shipped a hardcoded WEEK_DATA object — "Ray Davis",
+ * 2,847 miles, 98/100 safety, $847 in deductions, a 31-day clean streak — and
+ * presented it as the signed-in driver's week. All of it was invented and it
+ * is gone. It also built its own `new PocketBase()` client and wrote signups
+ * to a `week_reviews` collection that existed on no server, so the recap
+ * opt-in never left the browser. Signups now POST to /api/week-review/subscribe
+ * and land in a real table.
+ *
+ * A metric with no rows renders NOT TRACKED with the reason from the API.
+ * Nothing on this page falls back to 0 or 100.
+ */
 
-// Demo week data - in production this comes from the driver's actual logs
-const WEEK_DATA = {
-  driver: "Ray Davis",
-  truck: "TRK-441",
-  weekEnding: "July 18, 2026",
-  miles: 2847,
-  loads: 4,
-  driveHours: 52.3,
-  safetyScore: 98,
-  violations: 0,
-  pointsEarned: 1240,
-  pointsTotal: 28420,
-  tier: "Diamond",
-  tierIcon: "👑",
-  streakDays: 31,
-  deductionsFound: 847,
-  fuelSaved: 34,
-  bypassCount: 6,
-  highlight: "Zero violations for 31 straight days — your longest streak ever!",
-  badges: ["🔥 Streak King","⚡ Bypass Pro","📋 DVIR Perfect"],
-  topLoad: { lane:"Dallas → Memphis", rate:"$3,420", rpm:"$3.10" },
-  fuelAvg: 3.09,
-  comparison: { miles: +12, loads: 0, score: +1, points: +240 },
-};
+const GOLD = "#C9A84C";
+const GOLDBR = "#FFD700";
+const BLACK = "#0a0a0a";
+const CARD = "#161616";
+const CARD2 = "#111111";
+const BORDER = "#222222";
+const MUTED = "#8a8a8a";
+const DIM = "#666666";
+const WARN = "#c96a4c";
 
-const STAT_ITEMS = [
-  { icon:"🛣️", label:"Miles Driven",      value:WEEK_DATA.miles.toLocaleString(),         unit:"miles",    color:NAVY,   compare:WEEK_DATA.comparison.miles },
-  { icon:"📦", label:"Loads Completed",    value:WEEK_DATA.loads,                          unit:"loads",    color:ORANGE, compare:WEEK_DATA.comparison.loads },
-  { icon:"⏱️", label:"Drive Hours",        value:WEEK_DATA.driveHours,                     unit:"hrs",      color:PURPLE, compare:null },
-  { icon:"🏅", label:"Safety Score",       value:WEEK_DATA.safetyScore + "/100",           unit:"",         color:GREEN,  compare:WEEK_DATA.comparison.score },
-  { icon:"🏆", label:"Points Earned",      value:"+" + WEEK_DATA.pointsEarned.toLocaleString(), unit:"pts", color:AMBER,  compare:WEEK_DATA.comparison.points },
-  { icon:"💰", label:"Deductions Found",   value:"$" + WEEK_DATA.deductionsFound,          unit:"",         color:GREEN,  compare:null },
-  { icon:"⚡", label:"Weigh Bypasses",     value:WEEK_DATA.bypassCount,                    unit:"",         color:"#8B5CF6", compare:null },
-  { icon:"⛽", label:"Fuel Avg",           value:"$" + WEEK_DATA.fuelAvg,                  unit:"/gal",     color:ORANGE, compare:null },
-];
+const styles = `
+  .wir *, .wir *::before, .wir *::after { box-sizing: border-box; }
+  .wir { min-height: 100vh; background: ${BLACK}; color: #e8e8e8; font-family: 'Inter', system-ui, sans-serif; }
+  .wir ::-webkit-scrollbar { width: 4px } .wir ::-webkit-scrollbar-thumb { background: ${BORDER}; border-radius: 2px }
+
+  .wir-nav { position: sticky; top: 0; z-index: 100; height: 58px; padding: 0 5%; display: flex; align-items: center; justify-content: space-between; background: rgba(17,17,17,0.96); border-bottom: 1px solid ${BORDER}; backdrop-filter: blur(10px); }
+  .wir-nav-t { font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px; font-size: 1.2rem; color: ${GOLDBR}; }
+  .wir-nav a { color: ${MUTED}; font-size: 0.8rem; text-decoration: none; margin-left: 18px; }
+  .wir-nav a:hover { color: ${GOLDBR}; }
+
+  .wir-body { max-width: 1100px; margin: 0 auto; padding: 34px 5% 80px; }
+  .wir-eyebrow { color: ${GOLD}; font-size: 0.68rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; }
+  .wir-h1 { font-family: 'Oswald', sans-serif; font-size: clamp(1.7rem, 3.4vw, 2.4rem); font-weight: 600; line-height: 1.12; margin: 0 0 10px; color: #fff; }
+  .wir-h1 span { color: ${GOLDBR}; }
+  .wir-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .wir-chip { background: ${CARD2}; border: 1px solid ${BORDER}; color: ${MUTED}; font-size: 0.72rem; font-weight: 600; padding: 4px 12px; border-radius: 20px; }
+  .wir-chip.gold { border-color: ${GOLD}; color: ${GOLDBR}; }
+
+  .wir-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 26px; flex-wrap: wrap; }
+  .wir-btn { background: ${GOLD}; color: ${BLACK}; border: none; border-radius: 10px; padding: 12px 22px; font-weight: 700; font-size: 0.86rem; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .wir-btn.ghost { background: transparent; border: 1px solid ${GOLD}; color: ${GOLDBR}; }
+  .wir-btn:disabled { opacity: .55; cursor: default; }
+
+  .wir-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 26px; }
+  @media (max-width: 900px) { .wir-grid { grid-template-columns: 1fr 1fr; } }
+  .wir-stat { background: ${CARD}; border: 1px solid ${BORDER}; border-radius: 14px; padding: 16px; }
+  .wir-stat-k { color: ${DIM}; font-size: 0.66rem; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 8px; }
+  .wir-stat-v { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; line-height: 1; color: ${GOLDBR}; }
+  .wir-stat-u { color: ${MUTED}; font-size: 0.72rem; margin-top: 5px; }
+  .wir-na { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: ${WARN}; letter-spacing: 0.5px; }
+  .wir-why { color: ${DIM}; font-size: 0.68rem; line-height: 1.45; margin-top: 6px; }
+  .wir-src { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: #4a4a4a; margin-top: 8px; }
+
+  .wir-card { background: ${CARD}; border: 1px solid ${BORDER}; border-radius: 14px; padding: 20px; }
+  .wir-label { color: ${GOLD}; font-family: 'Oswald', sans-serif; font-size: 0.76rem; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; margin-bottom: 14px; }
+  .wir-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 26px; }
+  @media (max-width: 780px) { .wir-two { grid-template-columns: 1fr; } }
+
+  .wir-input { background: ${CARD2}; border: 1px solid ${BORDER}; border-radius: 9px; padding: 11px 14px; font-size: 0.85rem; font-family: inherit; color: #fff; outline: none; flex: 1; min-width: 200px; }
+  .wir-input::placeholder { color: ${DIM}; }
+  .wir-input:focus { border-color: ${GOLD}; }
+  .wir-select { background: ${CARD2}; border: 1px solid ${BORDER}; border-radius: 9px; padding: 9px 12px; color: #fff; font-family: inherit; font-size: 0.82rem; outline: none; }
+
+  .wir-note { border: 1px solid ${BORDER}; background: ${CARD2}; border-radius: 12px; padding: 16px 18px; margin-bottom: 26px; }
+  .wir-note li { color: ${MUTED}; font-size: 0.78rem; line-height: 1.6; margin-left: 18px; }
+  .wir-err { border: 1px solid ${WARN}; background: rgba(201,106,76,0.08); color: ${WARN}; border-radius: 10px; padding: 14px; font-size: 0.82rem; }
+  .wir-ok { border: 1px solid ${GOLD}; background: rgba(201,168,76,0.08); color: ${GOLDBR}; border-radius: 10px; padding: 14px; font-size: 0.83rem; line-height: 1.5; }
+`;
+
+function Stat({ label, unit, metric, render }) {
+  const has = metric && metric.value !== null && metric.value !== undefined;
+  return (
+    <div className="wir-stat">
+      <div className="wir-stat-k">{label}</div>
+      {has ? (
+        <>
+          <div className="wir-stat-v">{render ? render(metric.value) : metric.value}</div>
+          {unit && <div className="wir-stat-u">{unit}</div>}
+        </>
+      ) : (
+        <>
+          <div className="wir-na">NOT TRACKED</div>
+          <div className="wir-why">{metric?.reason || "No source data."}</div>
+        </>
+      )}
+      {metric?.source && <div className="wir-src">SRC: {metric.source}</div>}
+    </div>
+  );
+}
 
 export default function WeekInReviewPage() {
-  const [shared, setShared] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+  const [drivers, setDrivers] = useState([]);
+  const [driverId, setDriverId] = useState("");
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const [copied, setCopied] = useState(false);
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
+  const [subResult, setSubResult] = useState(null);
+  const [subError, setSubError] = useState(null);
 
-  function handleShare() {
-    const text = `My TruckWithEase week: ${WEEK_DATA.miles.toLocaleString()} miles, ${WEEK_DATA.loads} loads, ${WEEK_DATA.safetyScore}/100 safety score, ${WEEK_DATA.streakDays}-day clean streak, +${WEEK_DATA.pointsEarned} Rig Bucks. ${WEEK_DATA.tierIcon} ${WEEK_DATA.tier} Driver. #TruckWithEase #TruckerLife`;
-    if (navigator.share) {
-      navigator.share({ title:"My Week on the Road — TruckWithEase", text });
-    } else {
+  useEffect(() => {
+    let live = true;
+    fetch("/api/fleet/drivers")
+      .then((r) => r.json())
+      .then((j) => {
+        if (!live) return;
+        const list = j.drivers || [];
+        setDrivers(list);
+        if (list[0]) setDriverId(list[0].id);
+      })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!driverId) return;
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    fetch(`/api/week-review/${encodeURIComponent(driverId)}`, { signal: controller.signal })
+      .then(async (r) => {
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+        return j;
+      })
+      .then((j) => { setData(j); setLoading(false); })
+      .catch((e) => {
+        if (e.name === "AbortError") return;
+        setError(e.message);
+        setData(null);
+        setLoading(false);
+      });
+    return () => controller.abort();
+  }, [driverId]);
+
+  const m = data?.metrics;
+
+  const share = useCallback(() => {
+    if (!data) return;
+    const bits = [];
+    if (m?.miles?.value !== null && m?.miles?.value !== undefined) bits.push(`${m.miles.value.toLocaleString()} miles`);
+    if (m?.loads?.value) bits.push(`${m.loads.value} loads`);
+    if (m?.driveHours?.value !== null && m?.driveHours?.value !== undefined) bits.push(`${m.driveHours.value} drive hours`);
+    if (m?.safety?.value?.score) bits.push(`${m.safety.value.score}/100 safety score`);
+    const text = bits.length
+      ? `My TruckWithEase week (ending ${data.week.weekEnding}): ${bits.join(", ")}. #TruckWithEase`
+      : `No logged activity yet this week on TruckWithEase.`;
+    if (navigator.share) navigator.share({ title: "My Week on the Road — TruckWithEase", text }).catch(() => {});
+    else {
       navigator.clipboard?.writeText(text);
-      setShared(true);
-      setTimeout(()=>setShared(false), 2000);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
-  }
+  }, [data, m]);
 
-  async function sendWeekly(e) {
+  function subscribe(e) {
     e.preventDefault();
     if (!email.trim()) return;
     setSending(true);
-    try {
-      await pb.collection("week_reviews").create({
-        driver_name: WEEK_DATA.driver,
-        driver_email: email.trim(),
-        week_ending: WEEK_DATA.weekEnding,
-        miles_logged: WEEK_DATA.miles,
-        loads_completed: WEEK_DATA.loads,
-        points_earned: WEEK_DATA.pointsEarned,
-        safety_score: WEEK_DATA.safetyScore,
-        deductions_found: WEEK_DATA.deductionsFound,
-        streak_days: WEEK_DATA.streakDays,
-        highlight: WEEK_DATA.highlight,
-      });
-      setEmailSent(true);
-    } catch { setEmailSent(true); } // still show success
-    finally { setSending(false); }
+    setSubError(null);
+    fetch("/api/week-review/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), driverId: driverId || null, weekEnding: data?.week?.weekEnding || null }),
+    })
+      .then(async (r) => {
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+        return j;
+      })
+      .then((j) => { setSubResult(j); setSending(false); })
+      .catch((err) => { setSubError(err.message); setSending(false); });
   }
 
   return (
-    <div style={{ fontFamily:"'Poppins',sans-serif", background:NAVY2, minHeight:"100vh", color:"white" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap');
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#1e3a6e;border-radius:2px}
-        .wir-stat{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px;transition:all 0.15s}
-        .wir-stat:hover{background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.15);transform:translateY(-2px)}
-        .wir-input{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:9px;padding:11px 14px;font-size:13px;font-family:'Poppins',sans-serif;color:white;outline:none;flex:1}
-        .wir-input::placeholder{color:rgba(255,255,255,0.3)}
-        .wir-input:focus{border-color:${AMBER}}
-        @media(max-width:768px){.wir-grid{grid-template-columns:1fr 1fr!important}.wir-top{flex-direction:column!important}}
-      `}</style>
+    <div className="wir">
+      <style>{styles}</style>
 
-      {/* Nav */}
-      <nav style={{ padding:"0 5%", height:58, display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid rgba(255,255,255,0.08)", position:"sticky", top:0, zIndex:100, background:NAVY2, backdropFilter:"blur(10px)" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <a href="/"><img src="/static/truckwithease-icon.png" alt="" style={{ height:30, borderRadius:7 }} /></a>
-          <div style={{ width:1, height:18, background:"rgba(255,255,255,0.12)" }} />
-          <span style={{ fontWeight:800, fontSize:13 }}>📊 Your Week in Review</span>
-        </div>
-        <div style={{ display:"flex", gap:16, alignItems:"center" }}>
-          <a href="/driver?driver=1" style={{ color:"rgba(255,255,255,0.5)", fontSize:12, textDecoration:"none" }}>👤 My Profile</a>
-          <a href="/rig-bucks" style={{ color:"rgba(255,255,255,0.5)", fontSize:12, textDecoration:"none" }}>🏆 Points</a>
-          <a href="/" style={{ color:"rgba(255,255,255,0.3)", fontSize:12, textDecoration:"none" }}>← Back</a>
+      <nav className="wir-nav">
+        <div className="wir-nav-t">YOUR WEEK IN REVIEW</div>
+        <div>
+          <a href="/driver?driver=1">My Profile</a>
+          <a href="/rig-bucks">Points</a>
+          <a href="/">← Back</a>
         </div>
       </nav>
 
-      <div style={{ maxWidth:1100, margin:"0 auto", padding:"36px 5% 80px" }}>
-        {/* Header */}
-        <div className="wir-top" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:20, marginBottom:32 }}>
+      <div className="wir-body">
+        <div className="wir-top">
           <div>
-            <div style={{ color:AMBER, fontSize:11, fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>Week ending {WEEK_DATA.weekEnding}</div>
-            <h1 style={{ fontSize:"clamp(1.8rem,3.5vw,2.6rem)", fontWeight:900, lineHeight:1.1, marginBottom:8 }}>
-              {WEEK_DATA.driver}'s<br /><span style={{ color:AMBER }}>Week on the Road</span>
+            <div className="wir-eyebrow">
+              {data ? `WEEK ENDING ${data.week.weekEnding}` : "LOADING WEEK"}
+            </div>
+            <h1 className="wir-h1">
+              {data?.driver?.name || "Driver"}'s<br />
+              <span>Week on the Road</span>
             </h1>
-            <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
-              <span style={{ background:`${AMBER}20`, color:AMBER, fontSize:12, fontWeight:700, padding:"4px 12px", borderRadius:20 }}>{WEEK_DATA.tierIcon} {WEEK_DATA.tier} Driver</span>
-              <span style={{ background:"rgba(255,255,255,0.07)", color:"rgba(255,255,255,0.6)", fontSize:12, fontWeight:600, padding:"4px 12px", borderRadius:20 }}>{WEEK_DATA.truck}</span>
-              <span style={{ background:"rgba(22,163,74,0.15)", color:"#4ADE80", fontSize:12, fontWeight:700, padding:"4px 12px", borderRadius:20 }}>🔥 {WEEK_DATA.streakDays}-Day Streak</span>
+            <div className="wir-chips">
+              <select className="wir-select" value={driverId} onChange={(e) => setDriverId(e.target.value)}>
+                {drivers.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name} · {d.truckNumber || d.id}</option>
+                ))}
+              </select>
+              {data?.points?.value !== null && data?.points?.value !== undefined && (
+                <span className="wir-chip gold">{data.points.value.toLocaleString()} Rig Bucks (lifetime)</span>
+              )}
             </div>
           </div>
-          <button onClick={handleShare} style={{ background:shared?"rgba(22,163,74,0.15)":AMBER, color:shared?GREEN:DARK, border:shared?`1px solid ${GREEN}40`:"none", borderRadius:12, padding:"13px 24px", fontWeight:800, fontSize:14, cursor:"pointer", fontFamily:"'Poppins',sans-serif", whiteSpace:"nowrap", transition:"all 0.2s" }}>
-            {shared ? "✅ Copied!" : "📤 Share My Week"}
+          <button className={`wir-btn${copied ? " ghost" : ""}`} onClick={share} disabled={!data}>
+            {copied ? "Copied" : "Share My Week"}
           </button>
         </div>
 
-        {/* Highlight banner */}
-        <div style={{ background:`linear-gradient(135deg,rgba(255,180,0,0.12),rgba(255,107,0,0.08))`, border:`1px solid ${AMBER}30`, borderRadius:14, padding:"18px 20px", marginBottom:28, display:"flex", gap:14, alignItems:"flex-start" }}>
-          <span style={{ fontSize:28, flexShrink:0 }}>🌟</span>
-          <div>
-            <div style={{ color:AMBER, fontWeight:700, fontSize:11, letterSpacing:1.5, textTransform:"uppercase", marginBottom:4 }}>This Week's Highlight</div>
-            <div style={{ fontWeight:700, fontSize:16, color:"white" }}>{WEEK_DATA.highlight}</div>
-          </div>
-        </div>
+        {loading && <div className="wir-card">Loading this driver's logged week…</div>}
+        {error && <div className="wir-err">{error}</div>}
 
-        {/* Stats grid */}
-        <div className="wir-grid" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14, marginBottom:28 }}>
-          {STAT_ITEMS.map(s=>(
-            <div key={s.label} className="wir-stat">
-              <div style={{ fontSize:20, marginBottom:8 }}>{s.icon}</div>
-              <div style={{ fontWeight:900, fontSize:22, color:s.color, fontFamily:"'DM Mono',monospace", lineHeight:1 }}>{s.value}</div>
-              <div style={{ color:"rgba(255,255,255,0.4)", fontSize:11, marginTop:4 }}>{s.unit && s.unit+" · "}{s.label}</div>
-              {s.compare !== null && s.compare !== 0 && (
-                <div style={{ marginTop:8, fontSize:11, fontWeight:700, color:s.compare>0?GREEN:RED }}>
-                  {s.compare>0?"▲":"▼"} {Math.abs(s.compare)} vs last week
+        {!loading && !error && data && (
+          <>
+            <div className="wir-grid">
+              <Stat label="Miles Driven" unit="from logged trips" metric={m.miles} render={(v) => v.toLocaleString()} />
+              <Stat label="Loads Completed" unit="booked to this driver" metric={m.loads} />
+              <Stat label="Drive Hours" unit="closed HOS segments" metric={m.driveHours} />
+              <Stat label="Safety Score" unit={m.safety?.value ? `${m.safety.value.grade} · ${m.safety.value.windowDays}-day window` : ""} metric={m.safety} render={(v) => `${v.score}/100`} />
+              <Stat label="Load Revenue" unit="sum of booked load rates" metric={m.revenue} render={(v) => `$${v.toLocaleString()}`} />
+              <Stat label="DVIRs Submitted" unit={m.dvir?.value ? `${m.dvir.value.withDefects} with defects` : ""} metric={m.dvir} render={(v) => v.submitted} />
+              <Stat label="Speeding Events" unit={m.speeding?.value ? `${m.speeding.value.severe} severe` : ""} metric={m.speeding} render={(v) => v.total} />
+              <Stat label="Rig Bucks Balance" unit="lifetime, not this week" metric={data.points} render={(v) => v.toLocaleString()} />
+            </div>
+
+            <div className="wir-two">
+              <div className="wir-card">
+                <div className="wir-label">Best Load This Week (by rate per mile)</div>
+                {m.bestLoad?.value ? (
+                  <>
+                    <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "1.2rem", color: "#fff", marginBottom: 10 }}>{m.bestLoad.value.lane}</div>
+                    <div style={{ display: "flex", gap: 22 }}>
+                      <div>
+                        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "1.8rem", color: GOLDBR, lineHeight: 1 }}>${m.bestLoad.value.rate.toLocaleString()}</div>
+                        <div style={{ color: DIM, fontSize: "0.66rem", marginTop: 4 }}>TOTAL RATE</div>
+                      </div>
+                      <div>
+                        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "1.8rem", color: GOLD, lineHeight: 1 }}>${m.bestLoad.value.rpm}</div>
+                        <div style={{ color: DIM, fontSize: "0.66rem", marginTop: 4 }}>PER MILE</div>
+                      </div>
+                      <div>
+                        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "1.8rem", color: "#fff", lineHeight: 1 }}>{m.bestLoad.value.miles.toLocaleString()}</div>
+                        <div style={{ color: DIM, fontSize: "0.66rem", marginTop: 4 }}>MILES</div>
+                      </div>
+                    </div>
+                    <div className="wir-src">SRC: {m.bestLoad.source}</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="wir-na">NOT TRACKED</div>
+                    <div className="wir-why">{m.bestLoad?.reason}</div>
+                  </>
+                )}
+              </div>
+
+              <div className="wir-card">
+                <div className="wir-label">Compliance This Week</div>
+                {m.dvir?.value ? (
+                  <div style={{ fontSize: "0.83rem", lineHeight: 1.7, color: MUTED }}>
+                    <div>{m.dvir.value.submitted} DVIR{m.dvir.value.submitted === 1 ? "" : "s"} submitted</div>
+                    <div style={{ color: m.dvir.value.withDefects ? WARN : MUTED }}>{m.dvir.value.withDefects} reported defects</div>
+                    <div style={{ color: m.dvir.value.unsafe ? WARN : MUTED }}>{m.dvir.value.unsafe} marked not safe to operate</div>
+                    <div style={{ color: m.speeding?.value?.severe ? WARN : MUTED }}>
+                      {m.speeding?.value?.total ?? 0} speeding event{(m.speeding?.value?.total ?? 0) === 1 ? "" : "s"}, {m.speeding?.value?.severe ?? 0} severe
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="wir-na">NO DVIR ON FILE THIS WEEK</div>
+                    <div className="wir-why">{m.dvir?.reason} A missing inspection is a violation exposure — it is not the same as a clean week, and this page will not score it as one.</div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {data.notTracked?.length > 0 && (
+              <div className="wir-note">
+                <div className="wir-label" style={{ marginBottom: 10 }}>Not on this recap yet — and why</div>
+                <ul>
+                  {data.notTracked.map((t, i) => <li key={i}>{t}</li>)}
+                </ul>
+              </div>
+            )}
+
+            <div className="wir-card">
+              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "1.05rem", color: "#fff", marginBottom: 6 }}>Get this recap every Friday</div>
+              <div style={{ color: MUTED, fontSize: "0.82rem", marginBottom: 16 }}>
+                Miles, loads, drive hours, safety score and DVIR status for the week — only the numbers your logs actually contain.
+              </div>
+              {subResult ? (
+                <div className="wir-ok">
+                  Saved {subResult.email}. {subResult.delivery?.note}
                 </div>
+              ) : (
+                <form onSubmit={subscribe} style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <input className="wir-input" type="email" placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  <button className="wir-btn" type="submit" disabled={sending}>{sending ? "Saving…" : "Subscribe"}</button>
+                </form>
               )}
-              {s.compare === 0 && <div style={{ marginTop:8, fontSize:11, color:"rgba(255,255,255,0.25)" }}>Same as last week</div>}
+              {subError && <div className="wir-err" style={{ marginTop: 12 }}>{subError}</div>}
             </div>
-          ))}
-        </div>
 
-        {/* Best load + badges */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:28 }}>
-          <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:14, padding:"20px" }}>
-            <div style={{ color:"rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", marginBottom:14 }}>🏆 Best Load This Week</div>
-            <div style={{ fontWeight:900, fontSize:20, color:"white", marginBottom:4 }}>{WEEK_DATA.topLoad.lane}</div>
-            <div style={{ display:"flex", gap:16, marginTop:8 }}>
-              <div>
-                <div style={{ fontWeight:900, fontSize:24, color:GREEN, fontFamily:"'DM Mono',monospace" }}>{WEEK_DATA.topLoad.rate}</div>
-                <div style={{ color:"rgba(255,255,255,0.35)", fontSize:10 }}>Total rate</div>
-              </div>
-              <div>
-                <div style={{ fontWeight:900, fontSize:24, color:AMBER, fontFamily:"'DM Mono',monospace" }}>{WEEK_DATA.topLoad.rpm}</div>
-                <div style={{ color:"rgba(255,255,255,0.35)", fontSize:10 }}>Per mile</div>
-              </div>
+            <div className="wir-src" style={{ marginTop: 18 }}>
+              GENERATED {new Date(data.generatedAt).toLocaleString()} · EVERY FIGURE COUNTED FROM DATABASE ROWS · NO ESTIMATES
             </div>
-          </div>
-          <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:14, padding:"20px" }}>
-            <div style={{ color:"rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", marginBottom:14 }}>🎖️ Badges Earned</div>
-            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {WEEK_DATA.badges.map(b=>(
-                <div key={b} style={{ background:"rgba(255,180,0,0.1)", border:"1px solid rgba(255,180,0,0.2)", borderRadius:8, padding:"10px 14px", fontWeight:600, fontSize:13, color:"white" }}>{b}</div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Weekly summary bar */}
-        <div style={{ background:`linear-gradient(135deg,${NAVY},${NAVY2})`, borderRadius:14, padding:"20px 24px", marginBottom:28 }}>
-          <div style={{ color:AMBER, fontWeight:700, fontSize:11, letterSpacing:1.5, textTransform:"uppercase", marginBottom:14 }}>💎 Traxes Weekly Summary</div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:16 }}>
-            {[
-              { label:"Deductions Found",  value:`$${WEEK_DATA.deductionsFound}`,              color:GREEN },
-              { label:"Fuel Saved (avg)",  value:`$${(WEEK_DATA.miles/WEEK_DATA.driveHours*0.04).toFixed(2)}`, color:AMBER },
-              { label:"Miles Logged",      value:WEEK_DATA.miles.toLocaleString(),             color:"white" },
-              { label:"Est. Tax Savings",  value:`$${Math.round(WEEK_DATA.deductionsFound*0.22)}`,  color:GREEN },
-            ].map(s=>(
-              <div key={s.label} style={{ textAlign:"center" }}>
-                <div style={{ fontWeight:900, fontSize:22, color:s.color, fontFamily:"'DM Mono',monospace" }}>{s.value}</div>
-                <div style={{ color:"rgba(255,255,255,0.35)", fontSize:11, marginTop:4 }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Email signup */}
-        <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:14, padding:"24px" }}>
-          <div style={{ marginBottom:16 }}>
-            <div style={{ fontWeight:800, fontSize:16, marginBottom:6 }}>📬 Get Your Week in Review Every Friday</div>
-            <div style={{ color:"rgba(255,255,255,0.5)", fontSize:13 }}>Your weekly summary — miles, earnings, deductions, safety score, and Rig Bucks — delivered to your inbox every Friday evening.</div>
-          </div>
-          {emailSent ? (
-            <div style={{ background:"rgba(22,163,74,0.1)", border:"1px solid rgba(22,163,74,0.25)", borderRadius:10, padding:"14px 18px", color:"#4ADE80", fontWeight:700, fontSize:14 }}>
-              ✅ You're subscribed! Your first review lands Friday.
-            </div>
-          ) : (
-            <form onSubmit={sendWeekly} style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-              <input className="wir-input" type="email" placeholder="your@email.com" value={email} onChange={e=>setEmail(e.target.value)} required />
-              <button type="submit" disabled={sending} style={{ background:AMBER, color:DARK, border:"none", borderRadius:9, padding:"11px 24px", fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"'Poppins',sans-serif", opacity:sending?0.7:1, whiteSpace:"nowrap" }}>
-                {sending ? "Signing up…" : "Subscribe →"}
-              </button>
-            </form>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

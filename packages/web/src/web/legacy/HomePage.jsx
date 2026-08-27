@@ -155,7 +155,7 @@ export default function HomePage() {
       <footer className="border-t border-gray-800 py-12 px-6 bg-gray-950/50">
         <div className="max-w-6xl mx-auto flex justify-between items-center text-gray-400 text-sm">
           <p>&copy; 2026 TruckWithEase. Built for drivers.</p>
-          <a href="mailto:truckwithease@gmail.com" className="hover:text-yellow-400 transition-colors">Contact Us</a>
+          <a href="mailto:truckeasecare@gmail.com" className="hover:text-yellow-400 transition-colors">Contact Us</a>
         </div>
       </footer>
     </div>

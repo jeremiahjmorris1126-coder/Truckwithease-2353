@@ -163,6 +163,13 @@
   .twe-gold-grad {
     background: linear-gradient(135deg, #C9A84C 0%, #FFD700 40%, #C9A84C 70%, #8A6E2F 100%);
   }
+  /* Legacy class name kept because 6 /app pages reference it. It never had a
+     definition anywhere in the repo, so every element using it rendered with no
+     background at all. Defined here as the brand black panel gradient — the
+     name says navy, the paint is black on purpose. */
+  .twe-navy-grad {
+    background: linear-gradient(160deg, #161616 0%, #111111 55%, #0a0a0a 100%);
+  }
   .text-gold-gradient {
     background: linear-gradient(135deg, #C9A84C 0%, #FFD700 40%, #C9A84C 70%, #8A6E2F 100%);
     -webkit-background-clip: text;

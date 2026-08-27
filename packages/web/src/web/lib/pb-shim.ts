@@ -25,6 +25,13 @@ const SERVER_COLLECTIONS: Record<string, string> = {
   accident_reports: "/api/incidents",
   fleet_branding: "/api/branding",
   platform_settings: "/api/settings",
+  api_key_vault: "/api/vault",
+  broker_verifications: "/api/intel/broker/history",
+  agent_integrity: "/api/integrity",
+  eld_devices: "/api/eld/devices",
+  eld_telemetry: "/api/eld/telemetry",
+  dispatch_compliance_log: "/api/dispatch/history",
+  health_recovery_plans: "/api/recovery/plans",
 };
 
 export type Record_ = { id: string; created: string; updated: string; [k: string]: unknown };

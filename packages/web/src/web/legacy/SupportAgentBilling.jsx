@@ -1,419 +1,370 @@
-import React, { useState } from "react";
-import PocketBase from "pocketbase";
+import { useEffect, useState } from "react";
 
-const pb = new PocketBase();
+/**
+ * SupportAgentBilling — server-backed.
+ *
+ * The original created and updated PocketBase `billing_cases`, a collection that
+ * existed on no server: every dispute a support agent logged disappeared, and the
+ * case list was local component state that emptied on refresh. Original kept at
+ * docs/launch/SupportAgentBilling.ORIGINAL.jsx.txt.
+ *
+ * Two other things were removed on purpose:
+ *  1. The old resolution playbooks quoted policy that contradicts the published
+ *     terms — a "$50 mid-cycle cancellation fee", tiered partial refunds at
+ *     30/90 days, a "$200 referral credit", "invoices archived 7 years".
+ *     TruckWithEase advertises no contracts and cancel anytime. Handing an agent
+ *     a fee schedule nobody approved is how a chargeback becomes a complaint.
+ *     What is left is the procedural checklist, labelled draft internal guidance.
+ *  2. Nothing here moves money. There is no live payment provider, so a case can
+ *     be recorded and decided, but no refund is ever sent from this screen.
+ */
 
-const NAVY = "#001f3f";
-const ORANGE = "#ff6b35";
-const GREEN = "#4caf50";
-const RED = "#dc2626";
-const AMBER = "#ffc107";
+const GOLD = "#C9A84C";
+const GOLD_BRIGHT = "#FFD700";
+const BLACK = "#0a0a0a";
+const CARD = "#161616";
+const BORDER = "#222222";
+const MUTED = "#777";
+
+/** Procedural steps only. No dollar figures, no fee schedule — those are not
+ *  approved policy. Mapped to the API's real category values. */
+const PLAYBOOKS = {
+  plan_change: {
+    label: "Subscription change / upgrade / downgrade",
+    steps: [
+      "Confirm the plan they want and the current plan on the record.",
+      "Check seat and truck counts — fleet lease bills per truck, the others per driver.",
+      "State the effective date in writing: immediately or next cycle.",
+      "Update the subscription record and note who authorized it.",
+      "Send written confirmation of the new monthly total.",
+    ],
+  },
+  overcharge: {
+    label: "Billing error / duplicate charge",
+    steps: [
+      "Pull every charge on the account and compare against the subscription record.",
+      "Confirm whether a duplicate actually exists before promising anything.",
+      "If it is our error, say so plainly and document it on the case.",
+      "Issue the correction wherever the original charge was taken — not from this screen.",
+      "Send an itemized statement showing what was charged and what was reversed.",
+    ],
+  },
+  refund: {
+    label: "Refund request",
+    steps: [
+      "Record the amount and the date of the charge in question.",
+      "Do not quote a refund percentage or a fee — no such policy is approved. Escalate to Jeremiah for the decision.",
+      "Write the decision and the reason on the case so it can be defended later.",
+      "Process the refund in the payment provider, then mark the case refunded here.",
+    ],
+  },
+  failed_payment: {
+    label: "Payment failed",
+    steps: [
+      "Get the decline reason from the provider before contacting the driver.",
+      "Ask for updated payment details — never re-enter a card yourself.",
+      "Retry once. If it fails again, stop retrying and call them.",
+      "Tell them exactly when access is affected. Do not surprise a driver mid-load.",
+    ],
+  },
+  invoice_request: {
+    label: "Invoice / receipt",
+    steps: [
+      "Pull the invoice and cross-check it against the subscription record.",
+      "Correct any discrepancy before sending.",
+      "Email the corrected copy and attach it to the case.",
+    ],
+  },
+  cancellation: {
+    label: "Cancellation",
+    steps: [
+      "Ask the reason and write it down verbatim — that is the most useful data we get.",
+      "Offer a downgrade if it fits. Do not offer a discount you have not been authorized to give.",
+      "Confirm the effective date, then cancel the subscription record.",
+      "Cancel it with the payment provider too if a provider reference exists.",
+      "Confirm in writing what access ends and when.",
+    ],
+  },
+  other: {
+    label: "Something else",
+    steps: [
+      "Write down what the driver actually asked for, in their words.",
+      "Log the case so it does not live in someone's inbox.",
+      "Route it to whoever can decide, and put that name on the case.",
+    ],
+  },
+};
+
+const STATUS_COLOR = {
+  open: GOLD_BRIGHT,
+  in_review: "#60a5fa",
+  resolved: "#4ade80",
+  refunded: "#4ade80",
+  rejected: "#a1a1aa",
+};
 
 export default function SupportAgentBilling() {
+  const [config, setConfig] = useState(null);
   const [cases, setCases] = useState([]);
-  const [activeCase, setActiveCase] = useState(null);
-  const [newCase, setNewCase] = useState({
-    fleet: "",
-    email: "",
-    issue: "",
-    type: "subscription",
-    description: ""
+  const [meta, setMeta] = useState(null);
+  const [subs, setSubs] = useState([]);
+  const [form, setForm] = useState({
+    contactEmail: "",
+    subscriptionId: "",
+    category: "plan_change",
+    subject: "",
+    description: "",
+    amountDisputed: "",
+    priority: "normal",
   });
-  const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [openCase, setOpenCase] = useState(null);
+  const [resolution, setResolution] = useState("");
 
-  const issueTypes = [
-    { id: "subscription", label: "Subscription Change / Upgrade" },
-    { id: "billing-error", label: "Billing Error / Duplicate Charge" },
-    { id: "refund", label: "Refund Request" },
-    { id: "payment-failed", label: "Payment Failed" },
-    { id: "invoice", label: "Invoice / Receipt Issue" },
-    { id: "hardware", label: "Hardware Rental / Return" },
-    { id: "trial", label: "Trial Extension" },
-    { id: "discount", label: "Discount / Promotion Code" },
-    { id: "downgrade", label: "Plan Downgrade" },
-    { id: "cancel", label: "Cancellation" }
-  ];
+  async function load() {
+    try {
+      const [c, l, s] = await Promise.all([
+        fetch("/api/subscriptions").then((r) => r.json()),
+        fetch("/api/subscriptions/billing-cases/list").then((r) => r.json()),
+        fetch("/api/subscriptions/list").then((r) => r.json()),
+      ]);
+      setConfig(c);
+      setCases(l.cases || []);
+      setMeta(l);
+      setSubs(s.subscriptions || []);
+    } catch {
+      setMsg({ err: true, text: "Could not reach the server. Nothing on this page is live." });
+    }
+  }
 
-  const handleBillingIssue = async () => {
-    if (!newCase.fleet || !newCase.email || !newCase.description) {
-      setResponse("Please fill in all fields.");
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function submitCase() {
+    if (!form.contactEmail || !form.subject.trim() || !form.description.trim()) {
+      setMsg({ err: true, text: "Email, subject and description are all required." });
       return;
     }
-
     setLoading(true);
+    setMsg(null);
     try {
-      const billingCase = await pb.collection("billing_cases").create({
-        fleet_name: newCase.fleet,
-        fleet_email: newCase.email,
-        issue_type: newCase.type,
-        description: newCase.description,
-        status: "open",
-        created_at: new Date().toISOString(),
-        agent: "Billing Support",
-        resolution: "",
-        notes: ""
+      const r = await fetch("/api/subscriptions/billing-cases", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          contactEmail: form.contactEmail.trim(),
+          subscriptionId: form.subscriptionId || null,
+          category: form.category,
+          subject: form.subject.trim(),
+          description: form.description.trim(),
+          amountDisputed: form.amountDisputed ? Number(form.amountDisputed) : null,
+          priority: form.priority,
+        }),
       });
-
-      const resolution = generateBillingResolution(newCase);
-      
-      const updated = await pb.collection("billing_cases").update(billingCase.id, {
-        resolution: resolution.action,
-        notes: JSON.stringify(resolution.details)
-      });
-
-      setCases([...cases, updated]);
-      setResponse(resolution.action);
-      setActiveCase(updated.id);
-      setNewCase({ fleet: "", email: "", issue: "", type: "subscription", description: "" });
-    } catch (err) {
-      setResponse("Error creating case. Please try again.");
-      console.error(err);
+      const d = await r.json();
+      if (!r.ok) {
+        setMsg({ err: true, text: d.error || "Case was not saved." });
+        return;
+      }
+      setMsg({ text: `Case ${d.case.id} saved. ${d.refundNote}` });
+      setForm({ ...form, subject: "", description: "", amountDisputed: "" });
+      await load();
+    } catch {
+      setMsg({ err: true, text: "Server unreachable. The case was NOT saved — write it down." });
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const generateBillingResolution = (billingCase) => {
-    const resolutions = {
-      subscription: {
-        action: "📈 Subscription Upgrade/Change Approved\n\nProcess:\n1. Confirm new plan tier (Solo $29.99, Pro $39.99, Fleet $49.99+)\n2. Verify payment method on file is current\n3. Pro-rate current billing cycle\n4. Update billing effective immediately\n5. Send confirmation email with new invoice\n6. Fleet gets access to new features instantly",
-        details: {
-          timeline: "Immediate",
-          proRating: "Yes - adjust for days remaining",
-          invoice: "New invoice generated",
-          features: "Activate within 60 seconds"
-        }
-      },
-      "billing-error": {
-        action: "🔍 Billing Error Investigation\n\nDiagnosis & Resolution:\n1. Retrieve subscription and recent charges\n2. Verify no duplicate transactions exist\n3. If duplicate found: Initiate refund immediately\n4. Check if payment processor issue (Stripe timeout)\n5. Contact processor if needed for reversal\n6. Provide itemized receipt showing all charges\n7. Credit account if billing error was our fault",
-        details: {
-          refund: "48 hours if approved",
-          documentation: "Full audit trail provided",
-          credits: "Applied to next billing cycle if requested",
-          prevention: "Enable payment alerts"
-        }
-      },
-      refund: {
-        action: "💳 Refund Request Processing\n\nApproval Criteria:\n• Within 30 days of purchase: Full refund (minus $50 processing fee if mid-cycle)\n• 30-90 days: 50% refund\n• 90+ days: Service provided, no refund (upgrade/downgrade option offered)\n\nProcess:\n1. Verify purchase date and amount\n2. Check contract terms and cancellation clause\n3. Approve/deny and document reason\n4. Process refund to original payment method\n5. Confirm transaction within 24 hours\n6. Send refund receipt",
-        details: {
-          processing: "3-5 business days",
-          method: "Original payment method",
-          fee: "$50 mid-cycle cancellation fee may apply",
-          alternative: "Plan downgrade offered as option"
-        }
-      },
-      "payment-failed": {
-        action: "❌ Payment Failed - Recovery Steps\n\nRoot Cause & Fix:\n1. Check card decline reason (insufficient funds, expired, fraud hold)\n2. Contact customer with decline code\n3. Request updated card information\n4. Retry payment immediately\n5. If retry fails: Escalate to fraud investigation\n6. Provide grace period (7 days) to update payment\n7. Suspend service if unpaid after grace period\n8. Send daily reminder emails during grace period",
-        details: {
-          graceperiod: "7 days to update payment",
-          reminders: "Sent daily after day 3",
-          suspension: "Service paused until payment resolves",
-          manual: "Can process payment manually via admin"
-        }
-      },
-      invoice: {
-        action: "📄 Invoice / Receipt Issue Resolution\n\nCommon Issues & Fixes:\n• Missing invoice: Regenerate and email immediately\n• Wrong amount shown: Verify against subscription record and correction\n• Tax calculated wrong: Recalculate based on fleet location\n• Invoice for cancelled service: Explain billing to cancellation date\n• Need alternative format: Provide PDF, CSV, or custom report\n\nAction:\n1. Pull invoice from billing history\n2. Cross-check against subscription records\n3. Correct any discrepancies\n4. Email corrected invoice to fleet",
-        details: {
-          delivery: "Within 2 hours via email",
-          formats: "PDF, CSV, or plain text available",
-          taxation: "Calculated per fleet location",
-          archival: "All invoices archived for 7 years"
-        }
-      },
-      hardware: {
-        action: "📱 Hardware Rental / Return Management\n\nRental Process:\n1. Confirm hardware included in Fleet plan (Rental vs. Owned)\n2. Track tablet & ELD serial numbers\n3. Shipping address confirmed\n4. Devices shipped within 24 hours\n5. Tracking number provided to fleet\n6. Delivery confirmation required\n\nReturn Process (if downgrading from Fleet to Pro):\n1. Schedule pickup with logistics partner\n2. Provide prepaid shipping label\n3. Confirm receipt and device condition\n4. Prorated refund if applicable\n5. Credit returned to subscription",
-        details: {
-          shipping: "24-hour fulfillment",
-          tracking: "Real-time tracking provided",
-          return: "Prepaid return shipping label",
-          condition: "Devices inspected upon return",
-          restocking: "Returned devices refurbished and redeployed"
-        }
-      },
-      trial: {
-        action: "⏱️ Trial Extension Request\n\nEligibility:\n• First-time users only\n• Extension granted once per account\n• Max 7 additional days (total 21 days free)\n\nProcess:\n1. Verify customer never paid (trial-only account)\n2. Check trial expiration date\n3. Extend billing date by 7 days\n4. Send confirmation to fleet\n5. Offer discount code for conversion (10% off first 3 months)",
-        details: {
-          eligible: "First-time trial users",
-          extension: "+7 days maximum",
-          offer: "10% discount for 3-month commitment",
-          conversion: "Follow-up call on day 20 (before expiration)"
-        }
-      },
-      discount: {
-        action: "🎁 Promotion Code / Discount Processing\n\nDiscount Rules:\n• Volume discount: $50+ monthly → 5% off, $100+ monthly → 10% off\n• Loyalty discount: Renewed 3+ times → 10% off\n• Early-pay discount: Pay annually → 15% off\n• Referral credit: $200 credit per referred fleet\n• Partnership discount: Pre-approved partners → case-by-case\n\nProcess:\n1. Validate code is active and not expired\n2. Verify customer is eligible\n3. Apply discount to next billing cycle\n4. Send confirmation with new total\n5. Document discount reason in account notes",
-        details: {
-          volume: "5-10% based on MRR",
-          loyalty: "10% for 3+ year customers",
-          annual: "15% for year-upfront payment",
-          referral: "$200 credit per new customer",
-          combined: "Max discount 20% (cannot stack all)"
-        }
-      },
-      downgrade: {
-        action: "📉 Plan Downgrade Processing\n\nDowngrade Options:\n• Fleet → Pro: Lose multi-fleet admin, keep all features\n• Pro → Solo: Keep essentials, remove dispatch/fuel/factoring\n• Solo → Free: Limited to 1 driver, no support\n\nProcess:\n1. Confirm new plan tier and effective date\n2. Verify no conflicts (e.g., fleet with 5+ trucks can't use Solo)\n3. Pro-rate current cycle\n4. Remove features not in new tier\n5. Send confirmation with new billing\n6. Data preserved (no deletion)",
-        details: {
-          effective: "Immediate or next billing cycle (customer choice)",
-          prorate: "Credit for remaining days if downgrading mid-cycle",
-          data: "All historical data preserved",
-          upgrade: "Can upgrade anytime"
-        }
-      },
-      cancel: {
-        action: "⚠️ Cancellation - Retention Attempt\n\nBefore cancelling, try:\n1. Ask reason for cancellation (feedback loop)\n2. Offer pause instead of cancel (freeze 30 days, resume later)\n3. Offer downgrade to lower-cost tier\n4. Present customer success report (ROI achieved)\n5. Offer special retention discount (15% off next 6 months)\n\nIf customer still wants to cancel:\n1. Verify effective date (end of cycle or immediate)\n2. Process refund per refund policy\n3. Remove access after final billing\n4. Preserve data (archived 6 months, then deleted)\n5. Send offboarding checklist\n6. Schedule exit interview in 30 days",
-        details: {
-          pause: "30-day free pause option",
-          discount: "15% retention offer",
-          refund: "Per refund policy based on days used",
-          data: "Archived 6 months, then auto-deleted",
-          feedback: "Exit survey to improve service"
-        }
-      }
-    };
-
-    return resolutions[billingCase.type] || resolutions.subscription;
-  };
-
-  const resolveCase = async (caseId) => {
-    try {
-      const updated = await pb.collection("billing_cases").update(caseId, {
-        status: "resolved",
-        resolved_at: new Date().toISOString()
-      });
-      setCases(cases.map(c => c.id === caseId ? updated : c));
-      setActiveCase(null);
-      setResponse("Case resolved and closed. Customer notified via email.");
-    } catch (err) {
-      console.error(err);
+  async function resolveCase(id, status) {
+    if (status !== "in_review" && !resolution.trim()) {
+      setMsg({ err: true, text: "Write what you decided before closing a case." });
+      return;
     }
-  };
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/subscriptions/billing-cases/${id}/resolve`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status, resolution: resolution.trim() }),
+      });
+      const d = await r.json();
+      setMsg({ text: d.moneyNote || `Case marked ${status}.` });
+      setResolution("");
+      setOpenCase(null);
+      await load();
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const activeData = cases.find(c => c.id === activeCase);
+  const playbook = PLAYBOOKS[form.category] || PLAYBOOKS.other;
+  const input = { width: "100%", background: "#0f0f0f", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 12px", color: "#e5e5e5", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
+  const label = { display: "block", marginBottom: 6, fontSize: 10, letterSpacing: 1.4, textTransform: "uppercase", color: MUTED, fontWeight: 700 };
 
   return (
-    <div style={{ background: NAVY, color: "white", minHeight: "100vh", padding: "40px 20px" }}>
-      <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
-        <h1 style={{ fontSize: "36px", fontWeight: "bold", marginBottom: "10px" }}>
-          💰 Billing & Account Support Agent
-        </h1>
-        <p style={{ opacity: 0.8, marginBottom: "40px" }}>
-          Manage subscriptions, process refunds, handle disputes. Every billing issue resolved with transparency.
-        </p>
+    <div style={{ background: BLACK, color: "#e5e5e5", minHeight: "100vh", padding: "32px 20px", fontFamily: "Inter, system-ui, sans-serif" }}>
+      <div style={{ maxWidth: 1300, margin: "0 auto" }}>
+        <div style={{ fontSize: 10, color: GOLD, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>Support Desk</div>
+        <h1 style={{ fontFamily: "'Bebas Neue',Oswald,sans-serif", fontSize: 36, letterSpacing: 1, margin: "0 0 6px", color: "#fff" }}>BILLING & ACCOUNT SUPPORT</h1>
+        <p style={{ color: MUTED, fontSize: 13, marginBottom: 22 }}>Every case here is written to the database. Refunds are not issued from this screen.</p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "30px" }}>
-          {/* New Case Form */}
-          <div style={{ background: "rgba(255,255,255,0.05)", padding: "30px", borderRadius: "12px" }}>
-            <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "25px" }}>New Billing Case</h2>
-
-            <div style={{ marginBottom: "20px" }}>
-              <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", opacity: 0.8 }}>Fleet Name</label>
-              <input
-                type="text"
-                value={newCase.fleet}
-                onChange={(e) => setNewCase({ ...newCase, fleet: e.target.value })}
-                placeholder="e.g., Smith Fleet Corp"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  background: "rgba(255,255,255,0.1)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  borderRadius: "6px",
-                  color: "white",
-                  fontSize: "14px",
-                  boxSizing: "border-box"
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: "20px" }}>
-              <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", opacity: 0.8 }}>Fleet Email</label>
-              <input
-                type="email"
-                value={newCase.email}
-                onChange={(e) => setNewCase({ ...newCase, email: e.target.value })}
-                placeholder="billing@fleet.com"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  background: "rgba(255,255,255,0.1)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  borderRadius: "6px",
-                  color: "white",
-                  fontSize: "14px",
-                  boxSizing: "border-box"
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: "20px" }}>
-              <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", opacity: 0.8 }}>Issue Type</label>
-              <select
-                value={newCase.type}
-                onChange={(e) => setNewCase({ ...newCase, type: e.target.value })}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  background: "rgba(255,255,255,0.1)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  borderRadius: "6px",
-                  color: "white",
-                  fontSize: "14px",
-                  boxSizing: "border-box"
-                }}
-              >
-                {issueTypes.map(type => (
-                  <option key={type.id} value={type.id} style={{ background: NAVY }}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ marginBottom: "25px" }}>
-              <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", opacity: 0.8 }}>Details</label>
-              <textarea
-                value={newCase.description}
-                onChange={(e) => setNewCase({ ...newCase, description: e.target.value })}
-                placeholder="What is the customer asking for? Any special circumstances?"
-                style={{
-                  width: "100%",
-                  height: "120px",
-                  padding: "10px",
-                  background: "rgba(255,255,255,0.1)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  borderRadius: "6px",
-                  color: "white",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
-                  fontFamily: "inherit"
-                }}
-              />
-            </div>
-
-            <button
-              onClick={handleBillingIssue}
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "12px",
-                background: loading ? "rgba(255,107,53,0.5)" : ORANGE,
-                color: NAVY,
-                border: "none",
-                borderRadius: "6px",
-                fontWeight: "bold",
-                cursor: loading ? "not-allowed" : "pointer"
-              }}
-            >
-              {loading ? "Processing..." : "Process Case"}
-            </button>
+        {meta?.billing && !meta.billing.live && (
+          <div style={{ background: CARD, border: `1px solid ${GOLD}44`, borderRadius: 12, padding: "13px 18px", marginBottom: 20 }}>
+            <div style={{ fontWeight: 700, color: GOLD, fontSize: 13, marginBottom: 3 }}>Read before you promise a driver anything</div>
+            <div style={{ color: MUTED, fontSize: 12, lineHeight: 1.6 }}>{meta.billing.note}</div>
           </div>
+        )}
 
-          {/* Active Case & Resolution */}
-          <div style={{ background: "rgba(255,255,255,0.05)", padding: "30px", borderRadius: "12px" }}>
-            <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "25px" }}>Resolution & Action Items</h2>
+        {msg && (
+          <div style={{ background: msg.err ? "#1a1212" : "#141a14", border: `1px solid ${msg.err ? "#5c2f2f" : "#2f5c2f"}`, borderRadius: 10, padding: "11px 16px", color: msg.err ? "#fca5a5" : "#86efac", fontSize: 13, marginBottom: 20, whiteSpace: "pre-wrap" }}>
+            {msg.text}
+          </div>
+        )}
 
-            {activeData ? (
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(320px,1fr) minmax(340px,1.2fr)", gap: 22, alignItems: "start" }}>
+          {/* New case */}
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 22 }}>
+            <h2 style={{ fontFamily: "Oswald,sans-serif", fontSize: 18, fontWeight: 600, margin: "0 0 18px" }}>New billing case</h2>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
-                <div style={{ marginBottom: "20px", paddingBottom: "20px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "8px" }}>{activeData.fleet_name}</h3>
-                  <p style={{ opacity: 0.7, fontSize: "13px", marginBottom: "10px" }}>
-                    {activeData.fleet_email} • {activeData.issue_type.replace(/-/g, " ").toUpperCase()}
-                  </p>
-                  <div style={{
-                    display: "inline-block",
-                    padding: "6px 12px",
-                    background: activeData.status === "resolved" ? GREEN : AMBER,
-                    color: NAVY,
-                    borderRadius: "4px",
-                    fontSize: "12px",
-                    fontWeight: "bold"
-                  }}>
-                    {activeData.status === "resolved" ? "✓ Resolved" : "🔄 Open"}
-                  </div>
-                </div>
-
-                {activeData.resolution && (
-                  <div style={{ marginBottom: "25px" }}>
-                    <h4 style={{ fontSize: "14px", fontWeight: "bold", marginBottom: "12px", color: ORANGE }}>📋 Resolution Plan</h4>
-                    <p style={{ fontSize: "13px", opacity: 0.8, whiteSpace: "pre-wrap", lineHeight: "1.6" }}>
-                      {activeData.resolution}
-                    </p>
-                  </div>
-                )}
-
-                {activeData.notes && (
-                  <div style={{ marginBottom: "25px" }}>
-                    <h4 style={{ fontSize: "14px", fontWeight: "bold", marginBottom: "12px", color: GREEN }}>📌 Details & Timeline</h4>
-                    <div style={{ fontSize: "13px", opacity: 0.8, background: "rgba(255,255,255,0.03)", padding: "12px", borderRadius: "6px" }}>
-                      <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
-                        {JSON.stringify(JSON.parse(activeData.notes), null, 2)}
-                      </pre>
-                    </div>
-                  </div>
-                )}
-
-                {activeData.status !== "resolved" && (
-                  <button
-                    onClick={() => resolveCase(activeData.id)}
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      background: GREEN,
-                      color: NAVY,
-                      border: "none",
-                      borderRadius: "6px",
-                      fontWeight: "bold",
-                      cursor: "pointer"
-                    }}
-                  >
-                    ✓ Mark as Resolved
-                  </button>
-                )}
+                <label style={label}>Driver / fleet email *</label>
+                <input style={input} type="email" placeholder="billing@fleet.com" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} />
               </div>
-            ) : (
-              <p style={{ opacity: 0.6, textAlign: "center", paddingTop: "40px" }}>
-                Create a new case to see resolution plan and action items here.
-              </p>
-            )}
-          </div>
-        </div>
+              <div>
+                <label style={label}>Link to a subscription (optional)</label>
+                <select style={{ ...input, cursor: "pointer" }} value={form.subscriptionId} onChange={(e) => setForm({ ...form, subscriptionId: e.target.value })}>
+                  <option value="">— not linked —</option>
+                  {subs.map((s) => (
+                    <option key={s.id} value={s.id}>{s.accountName} · {s.plan} · {s.status}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={label}>Issue type</label>
+                <select style={{ ...input, cursor: "pointer" }} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                  {(config?.caseCategories || Object.keys(PLAYBOOKS)).map((c) => (
+                    <option key={c} value={c}>{PLAYBOOKS[c]?.label || c}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={label}>Subject *</label>
+                <input style={input} placeholder="Charged twice on Aug 12" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
+              </div>
+              <div>
+                <label style={label}>What happened *</label>
+                <textarea style={{ ...input, minHeight: 100, resize: "vertical" }} placeholder="In the driver's words." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={label}>Amount disputed</label>
+                  <input style={input} type="number" step="0.01" placeholder="49.99" value={form.amountDisputed} onChange={(e) => setForm({ ...form, amountDisputed: e.target.value })} />
+                </div>
+                <div>
+                  <label style={label}>Priority</label>
+                  <select style={{ ...input, cursor: "pointer" }} value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
+                    {(config?.casePriorities || ["low", "normal", "high"]).map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <button onClick={submitCase} disabled={loading} style={{ background: GOLD, color: BLACK, border: "none", borderRadius: 10, padding: "13px", fontWeight: 800, fontSize: 14, cursor: "pointer", opacity: loading ? 0.6 : 1, fontFamily: "inherit" }}>
+                {loading ? "SAVING…" : "SAVE CASE"}
+              </button>
+            </div>
 
-        {/* Open Cases */}
-        {cases.length > 0 && (
-          <div style={{ marginTop: "40px", background: "rgba(255,255,255,0.05)", padding: "30px", borderRadius: "12px" }}>
-            <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "25px" }}>Open & Recent Cases</h2>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gap: "15px"
-            }}>
-              {cases.slice(-10).reverse().map(c => (
-                <div
-                  key={c.id}
-                  onClick={() => setActiveCase(c.id)}
-                  style={{
-                    background: activeCase === c.id ? "rgba(255,107,53,0.2)" : "rgba(255,255,255,0.05)",
-                    border: activeCase === c.id ? `2px solid ${ORANGE}` : "1px solid rgba(255,255,255,0.1)",
-                    padding: "15px",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    transition: "all 0.3s"
-                  }}
-                >
-                  <div style={{ fontSize: "13px", fontWeight: "bold", marginBottom: "8px" }}>
-                    {c.fleet_name}
-                  </div>
-                  <div style={{ fontSize: "12px", opacity: 0.7, marginBottom: "8px" }}>
-                    {c.issue_type.replace(/-/g, " ").charAt(0).toUpperCase() + c.issue_type.replace(/-/g, " ").slice(1)}
-                  </div>
-                  <div style={{ fontSize: "11px", opacity: 0.6 }}>
-                    {c.status === "resolved" ? "✓ Resolved" : "🔄 Open"}
-                  </div>
+            <div style={{ marginTop: 22, borderTop: `1px solid ${BORDER}`, paddingTop: 16 }}>
+              <div style={{ fontSize: 10, letterSpacing: 1.6, textTransform: "uppercase", color: GOLD, fontWeight: 700, marginBottom: 4 }}>Handling steps — {playbook.label}</div>
+              <div style={{ color: "#555", fontSize: 11, marginBottom: 10 }}>Draft internal guidance. Not published policy, and it quotes no fees or refund percentages because none are approved.</div>
+              <ol style={{ margin: 0, paddingLeft: 18, color: "#bbb", fontSize: 12.5, lineHeight: 1.75 }}>
+                {playbook.steps.map((s) => <li key={s}>{s}</li>)}
+              </ol>
+            </div>
+          </div>
+
+          {/* Case list */}
+          <div>
+            <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+              {[
+                { v: cases.length, l: "Cases" },
+                { v: cases.filter((c) => c.status === "open").length, l: "Open" },
+                { v: meta ? `$${(meta.openDisputedAmount ?? 0).toFixed(2)}` : "—", l: "Open disputed" },
+              ].map((s) => (
+                <div key={s.l} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "11px 16px", textAlign: "center", minWidth: 100 }}>
+                  <div style={{ color: GOLD_BRIGHT, fontSize: 19, fontWeight: 800, fontFamily: "'JetBrains Mono',monospace" }}>{s.v}</div>
+                  <div style={{ color: MUTED, fontSize: 10, letterSpacing: 1, textTransform: "uppercase", fontWeight: 700, marginTop: 3 }}>{s.l}</div>
                 </div>
               ))}
             </div>
+
+            {cases.length === 0 ? (
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 40, textAlign: "center", color: MUTED, fontSize: 13 }}>
+                No billing cases in the database yet.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {cases.map((c) => {
+                  const color = STATUS_COLOR[c.status] || GOLD;
+                  const isOpen = openCase === c.id;
+                  return (
+                    <div key={c.id} style={{ background: CARD, border: `1px solid ${BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 12, padding: "14px 16px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: "#fff" }}>{c.subject}</div>
+                          <div style={{ color: MUTED, fontSize: 12 }}>{c.contactEmail} · {PLAYBOOKS[c.category]?.label || c.category}</div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                          {c.amountDisputed != null && (
+                            <span style={{ color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "'JetBrains Mono',monospace" }}>${c.amountDisputed.toFixed(2)}</span>
+                          )}
+                          {c.priority === "high" && (
+                            <span style={{ border: `1px solid ${GOLD}66`, color: GOLD_BRIGHT, borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>HIGH</span>
+                          )}
+                          <span style={{ border: `1px solid ${color}55`, color, borderRadius: 6, padding: "2px 9px", fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>{c.status.replace("_", " ")}</span>
+                        </div>
+                      </div>
+
+                      <div style={{ color: "#aaa", fontSize: 12.5, lineHeight: 1.6, marginTop: 9, whiteSpace: "pre-wrap" }}>{c.description}</div>
+                      {c.resolution && (
+                        <div style={{ marginTop: 9, background: "#101010", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 12px", fontSize: 12, color: "#bbb" }}>
+                          <span style={{ color: GOLD, fontWeight: 700 }}>Decision: </span>{c.resolution}
+                        </div>
+                      )}
+
+                      {["open", "in_review"].includes(c.status) && (
+                        <div style={{ marginTop: 11 }}>
+                          {isOpen ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                              <textarea style={{ ...input, minHeight: 70, resize: "vertical" }} placeholder="What was decided, and who decided it." value={resolution} onChange={(e) => setResolution(e.target.value)} />
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                {["resolved", "refunded", "rejected", "in_review"].map((s) => (
+                                  <button key={s} onClick={() => resolveCase(c.id, s)} disabled={loading} style={{ background: s === "resolved" ? GOLD : "#1c1c1c", color: s === "resolved" ? BLACK : "#ddd", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 13px", fontSize: 11.5, fontWeight: 700, cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase", fontFamily: "inherit" }}>
+                                    {s.replace("_", " ")}
+                                  </button>
+                                ))}
+                                <button onClick={() => { setOpenCase(null); setResolution(""); }} style={{ background: "transparent", color: MUTED, border: "none", fontSize: 11.5, cursor: "pointer", fontFamily: "inherit" }}>cancel</button>
+                              </div>
+                              <div style={{ color: "#555", fontSize: 11 }}>Marking a case refunded records a decision. It does not send money — do that in the payment provider.</div>
+                            </div>
+                          ) : (
+                            <button onClick={() => { setOpenCase(c.id); setResolution(""); }} style={{ background: "#1c1c1c", color: GOLD, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "7px 13px", fontSize: 11.5, fontWeight: 700, cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase", fontFamily: "inherit" }}>
+                              Decide
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

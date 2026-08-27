@@ -1,8 +1,26 @@
 /**
- * Multi-Device Haptic Synchronization Engine
- * Vibration patterns sync across phone, smartwatch, smart glasses,
- * steering wheel controllers, dashboard displays, and any connected device.
- * One haptic language across all devices simultaneously.
+ * Multi-Device Haptic Engine
+ *
+ * HONESTY NOTE (rewritten 2026-08-26):
+ * The original version of this file claimed to sync vibration across phones,
+ * smartwatches, smart glasses, steering wheels and vehicle haptics. There was
+ * no Web Bluetooth, no WebSocket and no BLE code anywhere in it - sendToDevice()
+ * was a console.log plus a setTimeout that faked completion, so
+ * broadcastHapticToAllDevices() reported "sentTo: 4" for messages that were
+ * never sent. Registered devices were hardcoded to battery 100 and signal 100
+ * and nothing ever updated them, so getDeviceQualityScore() always returned
+ * 100 and getHapticSystemHealth() always reported "isHealthy: true" for
+ * hardware that was not there.
+ *
+ * What is real now:
+ *   - PHONE / TABLET vibrate through navigator.vibrate() when the browser
+ *     supports it. Delivery is reported from the actual return value.
+ *   - Every other device type registers with transport: null and
+ *     status: 'UNSUPPORTED' because no BLE or WebSocket transport is built.
+ *   - battery and signal are null (UNKNOWN) until a real transport reports
+ *     them. Quality score returns null with a reason - never 100.
+ *   - The pattern builders (steering wheel, glasses, vehicle, scenarios) are
+ *     kept: they are valid pattern definitions and cost nothing.
  */
 
 // Device types that support haptic feedback
@@ -95,16 +113,36 @@ let deviceHapticState = new Map();
  * @param {string} deviceType - Type of device (DEVICE_TYPES.*)
  * @param {object} config - Device-specific config
  */
+// Device types this app can actually drive from a browser.
+const LOCAL_VIBRATE_TYPES = [DEVICE_TYPES.PHONE, DEVICE_TYPES.TABLET];
+
+/**
+ * True when this browser exposes the Vibration API.
+ */
+export function isVibrateSupported() {
+  return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+}
+
 export function registerDevice(deviceId, deviceType, config = {}) {
   const capabilities = DEVICE_CAPABILITIES[deviceType] || DEVICE_CAPABILITIES[DEVICE_TYPES.PHONE];
-  
+  const local = LOCAL_VIBRATE_TYPES.includes(deviceType);
+  const vibrateOk = local && isVibrateSupported();
+
   const device = {
     id: deviceId,
     type: deviceType,
     registered: new Date(),
-    isActive: true,
-    battery: 100, // will update from device
-    signal: 100, // wireless signal strength
+    isActive: vibrateOk,
+    // Never fake telemetry. null means UNKNOWN, and stays null until a real
+    // transport reports it.
+    battery: null,
+    signal: null,
+    transport: vibrateOk ? 'navigator.vibrate' : null,
+    status: vibrateOk
+      ? 'READY'
+      : local
+        ? 'UNSUPPORTED - this browser has no Vibration API'
+        : 'UNSUPPORTED - no BLE/WebSocket transport built for this device type',
     capabilities,
     customConfig: config,
     lastVibration: null,
@@ -112,8 +150,6 @@ export function registerDevice(deviceId, deviceType, config = {}) {
 
   connectedDevices.set(deviceId, device);
   deviceHapticState.set(deviceId, { isVibrating: false, pattern: null });
-  
-  console.log(`📳 Device registered: ${deviceType} (${deviceId})`);
   return device;
 }
 
@@ -123,7 +159,6 @@ export function registerDevice(deviceId, deviceType, config = {}) {
 export function unregisterDevice(deviceId) {
   connectedDevices.delete(deviceId);
   deviceHapticState.delete(deviceId);
-  console.log(`📳 Device unregistered: ${deviceId}`);
 }
 
 /**
@@ -152,31 +187,33 @@ export function broadcastHapticToAllDevices(pattern, options = {}) {
   const adaptedPatterns = {};
   let sentCount = 0;
 
-  connectedDevices.forEach((device, deviceId) => {
-    if (!device.isActive) return;
+  const notDelivered = [];
 
-    // Adapt pattern to device capabilities
+  connectedDevices.forEach((device, deviceId) => {
     const adapted = adaptPatternForDevice(pattern, device);
-    
-    if (adapted) {
-      // Send to device (in real implementation, via WebSocket/BLE)
-      sendToDevice(deviceId, adapted, options);
+    if (!adapted) {
+      notDelivered.push({ deviceId, type: device.type, reason: 'Pattern not supported by device profile' });
+      return;
+    }
+
+    const outcome = sendToDevice(deviceId, adapted, options);
+    if (outcome.delivered) {
       adaptedPatterns[deviceId] = adapted;
       sentCount++;
+    } else {
+      notDelivered.push({ deviceId, type: device.type, reason: outcome.reason });
     }
   });
 
-  const result = {
+  // sentTo counts only patterns the platform actually accepted.
+  return {
     sentTo: sentCount,
-    totalConnected: connectedDevices.size,
+    notDelivered,
+    totalRegistered: connectedDevices.size,
     devices: adaptedPatterns,
     timestamp,
     options,
   };
-
-  // Log broadcast
-  console.log(`📳 Broadcast to ${sentCount} devices:`, result);
-  return result;
 }
 
 /**
@@ -197,10 +234,14 @@ export function sendHapticToDevices(deviceIds, pattern, options = {}) {
     }
 
     const adapted = adaptPatternForDevice(pattern, device);
-    if (adapted) {
-      sendToDevice(deviceId, adapted, options);
-      results[deviceId] = { success: true, pattern: adapted };
+    if (!adapted) {
+      results[deviceId] = { success: false, reason: 'Pattern not supported by device profile' };
+      return;
     }
+    const outcome = sendToDevice(deviceId, adapted, options);
+    results[deviceId] = outcome.delivered
+      ? { success: true, pattern: adapted, transport: outcome.transport }
+      : { success: false, reason: outcome.reason };
   });
 
   return results;
@@ -231,35 +272,42 @@ function adaptPatternForDevice(pattern, device) {
 }
 
 /**
- * Internal: Send pattern to device via its transport layer
- * (In production: WebSocket, BLE, USB, HTTP request, etc.)
+ * Internal: deliver a pattern. Only navigator.vibrate is implemented; every
+ * other transport returns delivered: false with a reason. Do not add a
+ * setTimeout that pretends the pattern was delivered.
  */
 function sendToDevice(deviceId, pattern, options) {
   const device = connectedDevices.get(deviceId);
-  if (!device) return;
+  if (!device) return { delivered: false, reason: 'Device not registered' };
 
-  // Update device state
+  if (device.transport !== 'navigator.vibrate') {
+    return { delivered: false, reason: device.status };
+  }
+
+  let ok = false;
+  try {
+    ok = navigator.vibrate(pattern) !== false;
+  } catch {
+    ok = false;
+  }
+
+  if (!ok) {
+    return { delivered: false, reason: 'navigator.vibrate refused the pattern (needs a user gesture, or the device has no vibrator)' };
+  }
+
+  const duration = pattern.reduce((a, b) => a + b, 0);
+  device.lastVibration = new Date();
   deviceHapticState.set(deviceId, {
     isVibrating: true,
     pattern,
     startTime: new Date(),
-    duration: pattern.reduce((a, b) => a + b, 0),
+    duration,
   });
-
-  device.lastVibration = new Date();
-
-  // In a real app, this would:
-  // 1. Open WebSocket/BLE connection
-  // 2. Send pattern in device's native format
-  // 3. Receive confirmation
-  // 4. Update state when complete
-
-  console.log(`📳 → ${device.type} (${deviceId}): [${pattern.join(',')}]`);
-
-  // Simulate completion
   setTimeout(() => {
     deviceHapticState.set(deviceId, { isVibrating: false, pattern: null });
-  }, pattern.reduce((a, b) => a + b, 0) + 100);
+  }, duration + 100);
+
+  return { delivered: true, transport: 'navigator.vibrate', duration, options };
 }
 
 /**
@@ -373,8 +421,7 @@ export function updateDeviceStatus(deviceId, status) {
   if (status.battery !== undefined) device.battery = status.battery;
   if (status.signal !== undefined) device.signal = status.signal;
   if (status.isActive !== undefined) device.isActive = status.isActive;
-  
-  console.log(`📳 ${device.type} updated:`, status);
+  return device;
 }
 
 /**
@@ -407,7 +454,10 @@ export function translateHapticToText(pattern, deviceType) {
     meaning,
     urgency,
     action,
-    confidence: 0.85,
+    // This is rule-based pattern shape matching, not a scored model. There is
+    // no confidence number to report.
+    confidence: null,
+    method: 'rule-based pattern shape match',
     deviceType,
     timestamp: new Date(),
   };
@@ -419,13 +469,22 @@ export function translateHapticToText(pattern, deviceType) {
  */
 export function getDeviceQualityScore(deviceId) {
   const device = connectedDevices.get(deviceId);
-  if (!device) return 0;
+  if (!device) return { score: null, reason: 'Device not registered' };
 
-  const signalScore = device.signal || 0;
-  const batteryScore = device.battery || 0;
+  // No transport reports battery or signal, so there is nothing to score.
+  // Returning null is correct - returning 100 was a fabricated metric.
+  if (device.battery === null || device.signal === null) {
+    return {
+      score: null,
+      reason: device.transport
+        ? 'NOT TRACKED - the Vibration API does not report battery or signal'
+        : device.status,
+      transport: device.transport,
+    };
+  }
+
   const activeScore = device.isActive ? 100 : 0;
-
-  return Math.round((signalScore + batteryScore + activeScore) / 3);
+  return { score: Math.round((device.signal + device.battery + activeScore) / 3), reason: null };
 }
 
 /**
@@ -434,22 +493,33 @@ export function getDeviceQualityScore(deviceId) {
  */
 export function getHapticSystemHealth() {
   const devices = getConnectedDevices();
-  const deviceQualities = devices.map(d => ({
-    type: d.type,
-    quality: getDeviceQualityScore(d.id),
-    battery: d.battery,
-    signal: d.signal,
-  }));
+  const deviceBreakdown = devices.map((d) => {
+    const q = getDeviceQualityScore(d.id);
+    return {
+      id: d.id,
+      type: d.type,
+      transport: d.transport,
+      status: d.status,
+      quality: q.score,          // null = NOT TRACKED
+      qualityReason: q.reason,
+      battery: d.battery,        // null = UNKNOWN
+      signal: d.signal,          // null = UNKNOWN
+    };
+  });
 
-  const avgQuality = deviceQualities.length > 0
-    ? Math.round(deviceQualities.reduce((a, b) => a + b.quality, 0) / deviceQualities.length)
-    : 0;
+  const usable = deviceBreakdown.filter((d) => d.transport === 'navigator.vibrate').length;
 
   return {
-    connectedDevices: devices.length,
-    deviceBreakdown: deviceQualities,
-    overallHealth: avgQuality,
-    isHealthy: avgQuality > 70,
+    registeredDevices: devices.length,
+    usableDevices: usable,
+    deviceBreakdown,
+    // No telemetry exists, so there is no health percentage to report.
+    overallHealth: null,
+    overallHealthReason: 'NOT TRACKED - no device reports battery or signal strength',
+    vibrateSupported: isVibrateSupported(),
+    note: usable === 0
+      ? 'No device on this platform can receive haptics.'
+      : `${usable} of ${devices.length} registered device(s) can vibrate through this browser. All other device types are UNSUPPORTED - no BLE or WebSocket transport is built.`,
     timestamp: new Date(),
   };
 }

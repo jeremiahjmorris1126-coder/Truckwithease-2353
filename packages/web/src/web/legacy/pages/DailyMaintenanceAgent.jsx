@@ -30,7 +30,7 @@ const _pageManifest = (() => {
     ['/hours','HOS Logger'],
     ['/dvir','DVIR Inspection'],
     ['/ai-team','AI Characters'],
-    ['/api-agent','API Agent'],
+    ['/key-agent','API Agent'],
     ['/scan','Scan Bill'],
     ['/mechanic','THE KNOW IT ALL'],
     ['/catscales','SCALES'],
@@ -79,7 +79,7 @@ const _pageManifest = (() => {
     ['/state-patrol','State Patrol'],
     ['/voice-dispatch','Voice Dispatch'],
     ['/ai-characters','AI Characters'],
-    ['/api-diagnostic','API Diagnostic'],
+    ['/integration-diagnostic','API Diagnostic'],
   ];
   return raw;
 })();

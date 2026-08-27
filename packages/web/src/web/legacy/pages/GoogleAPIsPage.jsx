@@ -1,7 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { Check, AlertCircle, Settings, Eye, EyeOff } from 'lucide-react';
-import { 
-  loadGoogleMaps, 
+// Google APIs status page.
+//
+// REWRITTEN Aug 25, 2026. What this page used to do and why it was wrong:
+//   - claimed "all 11 Google APIs integrated with TruckWithEase". Six of them had
+//     no client code at all, and the code the other six relied on was stripped
+//     from maps-config.js the same day.
+//   - showed a "Test Connection" button on APIs with no test function, which only
+//     popped an alert telling you to go set it up yourself.
+//   - left every untested card sitting on "Checking..." forever.
+//   - printed "Daily Quota Remaining ~80% (checks daily)". Nothing checks quota.
+//     That number was invented.
+//   - had an input that saved a Google Cloud API key into localStorage. A
+//     credential must never be pasted into or stored in the browser.
+//
+// Now: only the APIs with real client code are testable. Everything else is
+// labeled NOT WIRED with the reason. Nothing claims a status it did not read.
+
+import { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
+import {
+  loadGoogleMaps,
   GOOGLE_MAPS_KEY,
   getDirections,
   getDistanceMatrix,
@@ -11,493 +28,317 @@ import {
 } from '../maps-config.js';
 
 const C = {
-  black: '#060A10',
+  black: '#0a0a0a',
+  card: '#161616',
+  nav: '#111111',
+  border: '#222222',
   white: '#f0ede8',
-  white60: 'rgba(240, 237, 232, 0.6)',
-  white30: 'rgba(240, 237, 232, 0.3)',
-  card: '#0f1419',
-  gold: '#c9a84c',
-  green: '#22c55e',
-  red: '#ef4444',
-  blue: '#3b82f6',
+  muted: '#8a8a8a',
+  dim: '#666666',
+  gold: '#C9A84C',
+  goldBright: '#FFD700',
+  warn: '#c96a4c',
 };
 
-const GOOGLE_APIS = [
+// APIs with real client code in maps-config.js. These can actually be tested.
+const WIRED = [
   {
     name: 'Maps JavaScript API',
     service: 'maps',
-    description: 'Real-time mapping, directions, routing, markers',
-    usage: ['Route planning', 'Charge stops map', 'Geofencing', 'Fleet tracking'],
+    description: 'Loads the Maps script. Everything below depends on it.',
+    usedBy: 'Fuel Finder, Parking, Charging Stations',
     testFn: loadGoogleMaps,
-    required: true,
-    quota: '25,000 requests/day',
   },
   {
     name: 'Directions API',
     service: 'directions',
-    description: 'Calculate routes between two or more points',
-    usage: ['Trip planning', 'Route optimization', 'ETA calculation'],
-    testFn: () => getDirections('New York', 'Los Angeles'),
-    required: true,
-    quota: '2,500 requests/day',
+    description: 'Route between two or more points, via the Maps JS DirectionsService.',
+    usedBy: 'Trip Planner (embed map)',
+    testFn: () => getDirections('St. Louis, MO', 'Dallas, TX'),
   },
   {
     name: 'Distance Matrix API',
     service: 'distance_matrix',
-    description: 'Calculate distances and travel times between multiple locations',
-    usage: ['Fleet dispatch', 'Stop optimization', 'Cost calculation'],
-    testFn: () => getDistanceMatrix(['New York'], ['Los Angeles']),
-    required: true,
-    quota: '2,500 requests/day',
+    description: 'Distances and drive times between many points.',
+    usedBy: 'Not called by any page yet',
+    testFn: () => getDistanceMatrix(['St. Louis, MO'], ['Dallas, TX']),
   },
   {
     name: 'Geocoding API',
     service: 'geocoding',
-    description: 'Convert addresses to coordinates and vice versa',
-    usage: ['Address validation', 'Stop location lookup', 'Driver address verification'],
-    testFn: () => geocodeAddress('New York, NY'),
-    required: true,
-    quota: '50,000 requests/day',
+    description: 'Address to coordinates and back.',
+    usedBy: 'Not called by any page yet',
+    testFn: () => geocodeAddress('Springfield, MO'),
   },
   {
     name: 'Places API',
     service: 'places',
-    description: 'Find and get details about places (charge stops, fuel stations, etc.)',
-    usage: ['Charge stop discovery', 'Fuel finder', 'Parking location search', 'Restaurant ratings'],
-    testFn: () => searchNearby(40.7128, -74.0060, 'gas_station'),
-    required: true,
-    quota: '25,000 requests/day',
+    description: 'Nearby search for fuel stops, parking, chargers.',
+    usedBy: 'Fuel Finder, Parking, Charging Stations',
+    testFn: () => searchNearby(37.2089, -93.2923, 'gas_station'),
   },
   {
     name: 'Elevation API',
     service: 'elevation',
-    description: 'Get elevation data for routes and locations',
-    usage: ['Terrain analysis', 'Grade calculation', 'Truck capability assessment'],
-    testFn: () => getElevation(40.7128, -74.0060),
-    required: false,
-    quota: '25,000 requests/day',
-  },
-  {
-    name: 'Vision API (REST)',
-    service: 'vision',
-    description: 'Image recognition, text extraction, label detection',
-    usage: ['DVIR photo analysis', 'Accident report document scanning', 'Plate recognition'],
-    testFn: null,
-    required: false,
-    quota: '1,000 requests/day',
-    note: 'Requires separate API key setup in Google Cloud Console',
-  },
-  {
-    name: 'Speech-to-Text API (REST)',
-    service: 'speech',
-    description: 'Convert audio to text with high accuracy',
-    usage: ['Voice commands', 'Voice clone training', 'Accident report dictation', 'HOS logging by voice'],
-    testFn: null,
-    required: false,
-    quota: '60,000 minutes/month',
-    note: 'Requires separate API key setup in Google Cloud Console',
-  },
-  {
-    name: 'Natural Language API (REST)',
-    service: 'nlp',
-    description: 'Analyze sentiment, entities, and syntax in text',
-    usage: ['Broker rating sentiment analysis', 'Complaint classification', 'Driver feedback analysis'],
-    testFn: null,
-    required: false,
-    quota: '5,000 requests/day',
-    note: 'Requires separate API key setup in Google Cloud Console',
-  },
-  {
-    name: 'Text-to-Speech API (REST)',
-    service: 'text_to_speech',
-    description: 'Convert text to natural-sounding audio',
-    usage: ['Voice clone agent responses', 'Alert narration', 'Navigation audio', 'Accessibility'],
-    testFn: null,
-    required: false,
-    quota: '4 million characters/month',
-    note: 'CRITICAL for Voice Clone feature — must enable & test',
-  },
-  {
-    name: 'Translation API (REST)',
-    service: 'translation',
-    description: 'Translate text between languages',
-    usage: ['Multi-language support', 'Driver communications', 'Broker message translation'],
-    testFn: null,
-    required: false,
-    quota: '500,000 characters/month',
-    note: 'Requires separate API key setup in Google Cloud Console',
-  },
-  {
-    name: 'Roads API',
-    service: 'roads',
-    description: 'Snap coordinates to roads, get speed limits',
-    usage: ['Route accuracy', 'Speed limit alerts', 'Regulatory compliance'],
-    testFn: null,
-    required: false,
-    quota: '20,000 requests/day',
+    description: 'Elevation at a point. Grade estimation.',
+    usedBy: 'Not called by any page yet',
+    testFn: () => getElevation(37.2089, -93.2923),
   },
 ];
 
+// No client code exists for these. They are listed so nobody assumes they work.
+const NOT_WIRED = [
+  {
+    name: 'Vision API',
+    reason: 'Client code removed Aug 25, 2026 — it called Vision from the browser with the Maps key. Document reading now runs server-side at POST /api/gemini/ocr.',
+  },
+  {
+    name: 'Speech-to-Text API',
+    reason: 'Client code removed. No voice-to-text feature is built.',
+  },
+  {
+    name: 'Natural Language API',
+    reason: 'Client code removed. Nothing in the app does sentiment or entity analysis.',
+  },
+  {
+    name: 'Text-to-Speech API',
+    reason: 'Not used. Voice runs on Gemini TTS server-side at POST /api/gemini/tts.',
+  },
+  {
+    name: 'Translation API',
+    reason: 'Client code removed. Safety message translations are static strings in the repo, not API calls.',
+  },
+  {
+    name: 'Roads API',
+    reason: 'Client code removed (snapToRoads, speedLimits). No GPS trace is collected to snap.',
+  },
+  {
+    name: 'Route Optimization API',
+    reason: 'Client code removed. Multi-stop optimization is not built.',
+  },
+  {
+    name: 'Document AI API',
+    reason: 'Client code removed — it pointed at a processor ID that was never created.',
+  },
+];
+
+const STATUS = {
+  untested: { label: 'NOT TESTED', color: C.dim },
+  testing: { label: 'TESTING…', color: C.gold },
+  ok: { label: 'RESPONDED', color: C.goldBright },
+  fail: { label: 'FAILED', color: C.warn },
+};
+
 export default function GoogleAPIsPage() {
-  const [apiStatus, setApiStatus] = useState({});
+  const [status, setStatus] = useState({});
+  const [errors, setErrors] = useState({});
   const [testing, setTesting] = useState(null);
-  const [customKey, setCustomKey] = useState('');
   const [showKey, setShowKey] = useState(false);
 
-  useEffect(() => {
-    // Load initial status for all APIs
-    const checkAPIs = async () => {
-      const status = {};
-      for (const api of GOOGLE_APIS) {
-        status[api.service] = 'checking';
-      }
-      setApiStatus(status);
-
-      // Test each API
-      for (const api of GOOGLE_APIS) {
-        try {
-          if (api.testFn) {
-            await api.testFn();
-            status[api.service] = 'active';
-          } else {
-            status[api.service] = 'pending';
-          }
-        } catch (err) {
-          status[api.service] = 'error';
-        }
-        setApiStatus({ ...status });
-      }
-    };
-    checkAPIs();
-  }, []);
-
-  const testAPI = async (api) => {
-    if (!api.testFn) {
-      alert('This API requires manual setup in Google Cloud Console.');
-      return;
-    }
+  const runTest = async (api) => {
     setTesting(api.service);
+    setStatus((p) => ({ ...p, [api.service]: 'testing' }));
+    setErrors((p) => ({ ...p, [api.service]: null }));
     try {
       await api.testFn();
-      setApiStatus(prev => ({ ...prev, [api.service]: 'active' }));
+      setStatus((p) => ({ ...p, [api.service]: 'ok' }));
     } catch (err) {
-      setApiStatus(prev => ({ ...prev, [api.service]: 'error' }));
-      alert(`Error testing ${api.name}: ${err.message}`);
+      setStatus((p) => ({ ...p, [api.service]: 'fail' }));
+      setErrors((p) => ({ ...p, [api.service]: err?.message || 'Request failed' }));
     }
     setTesting(null);
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'active': return C.green;
-      case 'error': return C.red;
-      case 'pending': return C.gold;
-      default: return C.white30;
+  const runAll = async () => {
+    for (const api of WIRED) {
+      // eslint-disable-next-line no-await-in-loop
+      await runTest(api);
     }
   };
 
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'active': return '✓ Active';
-      case 'error': return '✗ Error';
-      case 'pending': return '⏳ Manual Setup';
-      case 'checking': return '🔄 Checking…';
-      default: return 'Unknown';
-    }
+  const counts = {
+    ok: Object.values(status).filter((s) => s === 'ok').length,
+    fail: Object.values(status).filter((s) => s === 'fail').length,
+    untested: WIRED.length - Object.values(status).filter((s) => s === 'ok' || s === 'fail').length,
   };
+
+  const keyPresent = !!GOOGLE_MAPS_KEY;
 
   return (
-    <div style={{ minHeight: '100vh', background: C.black, color: C.white, padding: '24px 16px' }}>
+    <div style={{ minHeight: '100vh', background: C.black, color: C.white, padding: '24px 16px', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        {/* Header */}
-        <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ fontSize: 36, fontWeight: 700, marginBottom: '8px', color: C.gold }}>
-            🔌 Google APIs Control Center
-          </h1>
-          <p style={{ fontSize: 15, color: C.white60, lineHeight: 1.6 }}>
-            Manage all 11 Google APIs integrated with TruckWithEase. Check status, test connectivity, and monitor quota usage. API key:
-            <span style={{
-              marginLeft: '8px',
-              fontSize: 13,
-              fontFamily: 'monospace',
-              background: C.card,
-              padding: '4px 8px',
-              borderRadius: 4,
-              display: 'inline-block',
-            }}>
-              {showKey ? GOOGLE_MAPS_KEY : '••••••••••••••••••••••••••••••••••••••••'}
+
+        <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 40, letterSpacing: 1, color: C.gold, margin: 0 }}>
+          GOOGLE API STATUS
+        </h1>
+        <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.6, marginTop: 6, maxWidth: 760 }}>
+          Six Google APIs have working client code in this app. Eight more are enabled on the
+          Cloud project but have no code behind them. Nothing on this page reports a status it
+          did not read from an actual request.
+        </p>
+
+        {/* Key */}
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: 16, marginTop: 20 }}>
+          <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, letterSpacing: 0.5, marginBottom: 8 }}>
+            BROWSER MAPS KEY — VITE_GOOGLE_MAPS_KEY
+          </div>
+          {keyPresent ? (
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span>{showKey ? GOOGLE_MAPS_KEY : '•'.repeat(39)}</span>
               <button
                 onClick={() => setShowKey(!showKey)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: C.gold,
-                  cursor: 'pointer',
-                  marginLeft: '8px',
-                  padding: 0,
-                }}
+                style={{ background: 'none', border: 'none', color: C.gold, cursor: 'pointer', padding: 0, display: 'flex' }}
+                aria-label={showKey ? 'Hide key' : 'Show key'}
               >
                 {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
-            </span>
-          </p>
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: C.warn, fontWeight: 700 }}>
+              MISSING — VITE_GOOGLE_MAPS_KEY is not set in the root .env. Every map on the site will fail.
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: C.dim, marginTop: 10, lineHeight: 1.6 }}>
+            This is a browser key and is visible to anyone using the site — that is normal for Maps, which is why
+            it must stay restricted by HTTP referrer in the Cloud Console. Server credentials are never sent to the
+            browser and cannot be entered here.
+          </div>
         </div>
 
-        {/* Status Summary */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px',
-          marginBottom: '32px',
-        }}>
+        {/* Summary */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 20 }}>
           {[
-            { label: 'APIs Active', value: Object.values(apiStatus).filter(s => s === 'active').length },
-            { label: 'APIs Pending', value: Object.values(apiStatus).filter(s => s === 'pending').length },
-            { label: 'APIs Error', value: Object.values(apiStatus).filter(s => s === 'error').length },
-            { label: 'Daily Quota Remaining', value: '~80% (checks daily)' },
-          ].map((stat, idx) => (
-            <div key={idx} style={{
-              background: C.card,
-              border: `1px solid ${C.white30}`,
-              borderRadius: 8,
-              padding: '16px',
-              textAlign: 'center',
-            }}>
-              <div style={{ fontSize: 12, color: C.white60, marginBottom: '8px' }}>{stat.label}</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: C.gold }}>{stat.value}</div>
+            { label: 'RESPONDED', value: counts.ok },
+            { label: 'FAILED', value: counts.fail },
+            { label: 'NOT TESTED', value: counts.untested },
+            { label: 'NO CODE BEHIND THEM', value: NOT_WIRED.length },
+          ].map((s) => (
+            <div key={s.label} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: 14, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 6, letterSpacing: 0.5 }}>{s.label}</div>
+              <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 26, fontWeight: 700, color: C.gold }}>{s.value}</div>
             </div>
           ))}
         </div>
 
-        {/* API List */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-          gap: '16px',
-          marginBottom: '32px',
-        }}>
-          {GOOGLE_APIS.map(api => {
-            const status = apiStatus[api.service] || 'checking';
-            const statusColor = getStatusColor(status);
+        <div style={{ fontSize: 11, color: C.dim, marginTop: 10 }}>
+          Quota usage is NOT TRACKED here. Check it in Cloud Console → APIs &amp; Services → Quotas.
+        </div>
 
+        <button
+          onClick={runAll}
+          disabled={!!testing || !keyPresent}
+          style={{
+            marginTop: 18,
+            padding: '11px 20px',
+            background: testing || !keyPresent ? C.border : 'linear-gradient(135deg,#C9A84C 0%,#FFD700 40%,#C9A84C 70%,#8A6E2F 100%)',
+            color: testing || !keyPresent ? C.dim : C.black,
+            border: 'none',
+            borderRadius: 6,
+            fontWeight: 700,
+            fontSize: 13,
+            letterSpacing: 0.5,
+            cursor: testing || !keyPresent ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {testing ? 'TESTING…' : 'TEST ALL SIX'}
+        </button>
+
+        {/* Wired */}
+        <h2 style={{ fontFamily: 'Oswald, sans-serif', fontSize: 18, color: C.gold, marginTop: 32, marginBottom: 4, letterSpacing: 0.5 }}>
+          WIRED — {WIRED.length} APIS WITH CLIENT CODE
+        </h2>
+        <p style={{ fontSize: 12, color: C.dim, marginTop: 0, marginBottom: 14 }}>
+          These call Google through the Maps JavaScript API. Each one must also be enabled on the key itself,
+          or the test below fails at runtime.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 14 }}>
+          {WIRED.map((api) => {
+            const st = STATUS[status[api.service] || 'untested'];
             return (
-              <div key={api.service} style={{
-                background: C.card,
-                border: `1px solid ${C.white30}`,
-                borderRadius: 10,
-                overflow: 'hidden',
-              }}>
-                {/* Header */}
-                <div style={{
-                  padding: '16px',
-                  borderBottom: `1px solid ${C.white30}`,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                }}>
-                  <div>
-                    <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: '4px', color: C.white }}>
-                      {api.name}
-                    </h3>
-                    <p style={{ fontSize: 12, color: C.white60 }}>{api.description}</p>
-                  </div>
-                  {api.required && (
-                    <span style={{
-                      fontSize: 11,
-                      background: C.gold,
-                      color: C.black,
-                      padding: '4px 10px',
-                      borderRadius: 4,
-                      fontWeight: 700,
-                      whiteSpace: 'nowrap',
-                    }}>
-                      Required
-                    </span>
-                  )}
+              <div key={api.service} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: C.white, margin: 0 }}>{api.name}</h3>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: st.color, whiteSpace: 'nowrap', letterSpacing: 0.5 }}>
+                    {st.label}
+                  </span>
                 </div>
-
-                {/* Body */}
-                <div style={{ padding: '16px' }}>
-                  {/* Status */}
-                  <div style={{
-                    padding: '12px',
-                    background: C.black,
+                <p style={{ fontSize: 12, color: C.muted, lineHeight: 1.5, marginTop: 8, marginBottom: 8 }}>{api.description}</p>
+                <div style={{ fontSize: 11, color: C.dim, marginBottom: 12 }}>
+                  USED BY: {api.usedBy}
+                </div>
+                {errors[api.service] && (
+                  <div style={{ fontSize: 11, color: C.warn, background: 'rgba(201,106,76,0.10)', border: `1px solid rgba(201,106,76,0.28)`, borderRadius: 4, padding: 8, marginBottom: 12, fontFamily: 'JetBrains Mono, monospace' }}>
+                    {errors[api.service]}
+                  </div>
+                )}
+                <button
+                  onClick={() => runTest(api)}
+                  disabled={!!testing || !keyPresent}
+                  style={{
+                    width: '100%',
+                    padding: 10,
+                    background: 'transparent',
+                    color: testing || !keyPresent ? C.dim : C.gold,
+                    border: `1px solid ${testing || !keyPresent ? C.border : C.gold}`,
                     borderRadius: 6,
-                    marginBottom: '12px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: statusColor }}>
-                      {getStatusLabel(status)}
-                    </div>
-                    <div style={{ fontSize: 11, color: C.white60 }}>{api.quota}</div>
-                  </div>
-
-                  {/* Usage */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontSize: 11, color: C.white60, fontWeight: 600, marginBottom: '6px' }}>
-                      USAGE:
-                    </div>
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                      {api.usage.map((use, idx) => (
-                        <li key={idx} style={{ fontSize: 12, color: C.white60, marginBottom: '4px' }}>
-                          • {use}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Note */}
-                  {api.note && (
-                    <div style={{
-                      fontSize: 11,
-                      color: api.note.includes('CRITICAL') ? C.red : C.gold,
-                      background: api.note.includes('CRITICAL') ? 'rgba(239, 68, 68, 0.1)' : 'rgba(201, 168, 76, 0.1)',
-                      padding: '8px',
-                      borderRadius: 4,
-                      marginBottom: '12px',
-                      border: `1px solid ${api.note.includes('CRITICAL') ? C.red + '33' : C.gold + '33'}`,
-                    }}>
-                      ⓘ {api.note}
-                    </div>
-                  )}
-
-                  {/* Action Button */}
-                  {api.testFn && (
-                    <button
-                      onClick={() => testAPI(api)}
-                      disabled={testing === api.service}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        background: testing === api.service ? C.white30 : C.blue,
-                        color: C.white,
-                        border: 'none',
-                        borderRadius: 6,
-                        fontWeight: 700,
-                        fontSize: 12,
-                        cursor: testing === api.service ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      {testing === api.service ? 'Testing…' : 'Test Connection'}
-                    </button>
-                  )}
-                  {!api.testFn && (
-                    <a
-                      href="https://console.cloud.google.com/apis/dashboard"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        padding: '10px',
-                        background: C.gold,
-                        color: C.black,
-                        border: 'none',
-                        borderRadius: 6,
-                        fontWeight: 700,
-                        fontSize: 12,
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        textDecoration: 'none',
-                      }}
-                    >
-                      Go to Google Cloud Console
-                    </a>
-                  )}
-                </div>
+                    fontWeight: 700,
+                    fontSize: 12,
+                    letterSpacing: 0.5,
+                    cursor: testing || !keyPresent ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {testing === api.service ? 'TESTING…' : 'TEST'}
+                </button>
               </div>
             );
           })}
         </div>
 
-        {/* Setup Instructions */}
-        <div style={{
-          background: C.card,
-          border: `1px solid ${C.white30}`,
-          borderRadius: 10,
-          padding: '24px',
-        }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: '16px', color: C.gold }}>
-            ⚙️ Setup Instructions
+        {/* Not wired */}
+        <h2 style={{ fontFamily: 'Oswald, sans-serif', fontSize: 18, color: C.gold, marginTop: 36, marginBottom: 4, letterSpacing: 0.5 }}>
+          NOT WIRED — {NOT_WIRED.length} APIS WITH NO CODE BEHIND THEM
+        </h2>
+        <p style={{ fontSize: 12, color: C.dim, marginTop: 0, marginBottom: 14 }}>
+          Enabling one of these in Cloud Console does not make it work in the app. Each needs code written first.
+        </p>
+
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
+          {NOT_WIRED.map((api, i) => (
+            <div
+              key={api.name}
+              style={{
+                padding: 14,
+                borderTop: i === 0 ? 'none' : `1px solid ${C.border}`,
+                display: 'grid',
+                gridTemplateColumns: '220px 1fr',
+                gap: 14,
+                alignItems: 'start',
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.white }}>
+                {api.name}
+                <div style={{ fontSize: 10, color: C.warn, fontWeight: 700, marginTop: 4, letterSpacing: 0.5 }}>NOT WIRED</div>
+              </div>
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>{api.reason}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Setup */}
+        <div style={{ background: C.nav, border: `1px solid ${C.border}`, borderRadius: 10, padding: 20, marginTop: 28 }}>
+          <h2 style={{ fontFamily: 'Oswald, sans-serif', fontSize: 16, color: C.gold, marginTop: 0, marginBottom: 12, letterSpacing: 0.5 }}>
+            KEY SETUP
           </h2>
-          <ol style={{ paddingLeft: '20px', lineHeight: 1.8, color: C.white60, fontSize: 13 }}>
-            <li style={{ marginBottom: '12px' }}>
-              <strong>Enable APIs:</strong> Go to Google Cloud Console → APIs & Services → Enable the APIs above for your project
-            </li>
-            <li style={{ marginBottom: '12px' }}>
-              <strong>Billing:</strong> Add a payment method to unlock higher quotas (pay-as-you-go, no fixed fees)
-            </li>
-            <li style={{ marginBottom: '12px' }}>
-              <strong>API Keys:</strong> For REST APIs (Vision, Speech, NLP, Translate), create API keys in Cloud Console and add them below
-            </li>
-            <li style={{ marginBottom: '12px' }}>
-              <strong>Text-to-Speech (CRITICAL for Voice Clone):</strong> Must enable Google Cloud Text-to-Speech API. This powers the voice clone agent.
-            </li>
-            <li style={{ marginBottom: '12px' }}>
-              <strong>Test:</strong> Click "Test Connection" on each API to verify it's working
-            </li>
-            <li>
-              <strong>Monitor:</strong> Check quota usage in Cloud Console → Quotas & System Limits
-            </li>
+          <ol style={{ paddingLeft: 20, margin: 0, lineHeight: 1.9, color: C.muted, fontSize: 13 }}>
+            <li>The browser key lives in the root <code style={{ color: C.gold }}>.env</code> as <code style={{ color: C.gold }}>VITE_GOOGLE_MAPS_KEY</code>. Nowhere else. Vite must be restarted after changing it.</li>
+            <li>Restrict it by HTTP referrer in Cloud Console, and enable only the Maps APIs this app actually calls.</li>
+            <li>Native Android and iOS cannot use a referrer-restricted key. Those need their own key restricted by package name + SHA-1 (Android) or bundle ID (iOS).</li>
+            <li>Billing must be enabled on the Cloud project or Google returns limited responses.</li>
+            <li>If a key is ever exposed, delete the credential in Cloud Console. Rotating the code alone does not revoke it.</li>
           </ol>
         </div>
 
-        {/* API Key Management */}
-        <div style={{
-          marginTop: '32px',
-          background: C.card,
-          border: `1px solid ${C.white30}`,
-          borderRadius: 10,
-          padding: '24px',
-        }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: '16px', color: C.gold }}>
-            🔑 Add Additional API Keys
-          </h2>
-          <p style={{ fontSize: 13, color: C.white60, marginBottom: '16px' }}>
-            For REST APIs (Vision, Speech, NLP, Translate), paste your Google Cloud API key here:
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: '12px' }}>
-            <input
-              type={showKey ? 'text' : 'password'}
-              value={customKey}
-              onChange={e => setCustomKey(e.target.value)}
-              placeholder="Paste your Google Cloud API key here"
-              style={{
-                padding: '12px',
-                background: C.black,
-                border: `1px solid ${C.white30}`,
-                borderRadius: 6,
-                color: C.white,
-                fontSize: 12,
-                fontFamily: 'monospace',
-              }}
-            />
-            <button
-              onClick={() => {
-                if (customKey) {
-                  localStorage.setItem('google_cloud_key', customKey);
-                  alert('API key saved successfully!');
-                  setCustomKey('');
-                } else {
-                  alert('Please paste an API key first.');
-                }
-              }}
-              style={{
-                padding: '12px',
-                background: C.gold,
-                color: C.black,
-                border: 'none',
-                borderRadius: 6,
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              Save
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -199,7 +199,7 @@ export default function AndroidNativeSetupPage() {
                   overflow: 'auto',
                 }}>
                   API_BASE_URL=https://api.truckwithease.com<br />
-                  GOOGLE_MAPS_KEY=AIzaSyBWlIo4ZSmkKWW1Z9QViAReZ7M561SxBlU<br />
+                  GOOGLE_MAPS_KEY=&lt;paste from .env&gt;<br />
                   VOICE_CLONE_KEY=your_tts_api_key<br />
                   FCM_SERVER_KEY=your_fcm_key<br />
                   APP_VERSION=1.0.0<br />

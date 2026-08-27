@@ -1,7 +1,23 @@
 /**
- * Maintenance Scheduler
- * Automatically runs diagnostics, scans, and data operations during off-peak hours
- * Prevents performance impact during peak usage times
+ * Maintenance Window Scheduler (client-side)
+ *
+ * HONESTY NOTE (rewritten 2026-08-26):
+ * The original version of this file ran a browser setInterval and claimed to
+ * perform database-vacuum, full-backup, storage-audit, analytics-rollup,
+ * index-optimization and log-rotation. A browser tab cannot do any of those.
+ * Every one of those task callbacks returned hardcoded numbers - "45MB
+ * reclaimed", "1,247 files deleted", "89,403 records processed", "2.3GB
+ * backup", "99.99% uptime" - so the dashboard showed green success for work
+ * that never happened. All of that fabricated output has been deleted.
+ *
+ * What this file actually does now:
+ *   - real date math for peak hours and maintenance windows (kept as-is)
+ *   - a real cacheClear task that removes localStorage keys prefixed "cache_"
+ *   - every server-side task returns { status: 'NOT_IMPLEMENTED' } with a
+ *     reason, because TruckWithEase has no worker, cron or scheduled job.
+ *
+ * Server maintenance is NOT scheduled by this app. When a worker exists, these
+ * tasks move to it and this file becomes a read-only view of its results.
  */
 
 // Peak hours by day and region (in UTC, converted to local on client)
@@ -185,7 +201,10 @@ class MaintenanceScheduler {
       timestamp: new Date(),
       window: windowStatus.window,
       tasksRun: results.length,
+      // A task can "succeed" and still have done nothing - check status.
       allSucceeded: results.every(r => r.success),
+      implemented: results.filter(r => r.result && r.result.status === 'OK').length,
+      notImplemented: results.filter(r => r.result && r.result.status === 'NOT_IMPLEMENTED').length,
       details: results,
     };
     
@@ -337,7 +356,9 @@ class MaintenanceScheduler {
       lastRun: this.lastMaintenanceRun,
       metrics: {
         ...this.performanceMetrics,
-        uptime: '99.99%',
+        uptime: null, // NOT TRACKED - no uptime monitor is wired to this app
+        serverTasks: 'NOT_IMPLEMENTED - no worker or cron exists',
+        scope: 'This browser tab only. Closing the tab stops the scheduler.',
         peakHours: Object.keys(this.performanceMetrics.peakUsageHours)
           .filter(h => this.performanceMetrics.peakUsageHours[h] > 0)
           .map(h => `${h}:00-${h}:59`),
@@ -375,135 +396,52 @@ class MaintenanceScheduler {
 // Initialize the scheduler
 const maintenanceScheduler = new MaintenanceScheduler();
 
-// Pre-built diagnostic tasks
+// Diagnostic tasks.
+//
+// cacheClear is the only task a browser can genuinely perform. Everything else
+// requires a server-side worker that does not exist, so those tasks report
+// NOT_IMPLEMENTED instead of inventing results. Do not replace these with
+// placeholder numbers.
+const notImplemented = (name, needs) => () =>
+  Promise.resolve({
+    task: name,
+    status: 'NOT_IMPLEMENTED',
+    reason: `Server-side task - no worker or cron exists. Needs: ${needs}.`,
+    ranAt: new Date().toISOString(),
+  });
+
 export const diagnosticTasks = {
   /**
-   * Cache clearing (low impact, always safe)
+   * Cache clearing. REAL: removes localStorage keys prefixed "cache_".
+   * The PocketBase shim does not use that prefix, so app data is untouched.
    */
   cacheClear: () => {
     return new Promise((resolve) => {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const cacheKeys = Object.keys(localStorage).filter(k => k.startsWith('cache_'));
-        cacheKeys.slice(0, 100).forEach(k => localStorage.removeItem(k)); // Clear old cache in batches
-        resolve({ clearedKeys: Math.min(cacheKeys.length, 100) });
-      } else {
-        resolve({ clearedKeys: 0 });
+      if (typeof window === 'undefined' || !window.localStorage) {
+        resolve({ task: 'cache-clear', status: 'SKIPPED', reason: 'No localStorage in this environment', clearedKeys: 0 });
+        return;
       }
-    });
-  },
-
-  /**
-   * Index optimization (database indexing stats)
-   */
-  indexOptimization: () => {
-    return new Promise((resolve) => {
-      // Simulate index analysis
+      const cacheKeys = Object.keys(localStorage).filter((k) => k.startsWith('cache_'));
+      const batch = cacheKeys.slice(0, 100);
+      batch.forEach((k) => localStorage.removeItem(k));
       resolve({
-        indexesAnalyzed: 12,
-        optimizationsApplied: 3,
-        estimatedImprovement: '2.3%',
+        task: 'cache-clear',
+        status: 'OK',
+        clearedKeys: batch.length,
+        remaining: Math.max(0, cacheKeys.length - batch.length),
+        scope: 'This browser only',
       });
     });
   },
 
-  /**
-   * Log rotation (old logs archived)
-   */
-  logRotation: () => {
-    return new Promise((resolve) => {
-      resolve({
-        logsArchived: 5,
-        spaceSaved: '125MB',
-        retentionPeriod: '90 days',
-      });
-    });
-  },
-
-  /**
-   * Database vacuum (compaction)
-   */
-  databaseVacuum: () => {
-    return new Promise((resolve) => {
-      resolve({
-        fragmentation: '2.1%',
-        spaceClaimed: '45MB',
-        duration: '1m 23s',
-      });
-    });
-  },
-
-  /**
-   * File cleanup (temporary files)
-   */
-  fileCleanup: () => {
-    return new Promise((resolve) => {
-      resolve({
-        filesDeleted: 1247,
-        tempSpaceFreed: '82MB',
-        uploadDir: 'clean',
-      });
-    });
-  },
-
-  /**
-   * Analytics rollup (aggregate daily stats)
-   */
-  analyticsRollup: () => {
-    return new Promise((resolve) => {
-      resolve({
-        recordsProcessed: 89403,
-        aggregationsGenerated: 42,
-        duration: '2m 15s',
-      });
-    });
-  },
-
-  /**
-   * Full backup verification
-   */
-  fullBackup: () => {
-    return new Promise((resolve) => {
-      resolve({
-        backupSize: '2.3GB',
-        filesBackedUp: 456789,
-        verificationStatus: 'PASSED',
-        nextBackup: 'tomorrow 2 AM',
-      });
-    });
-  },
-
-  /**
-   * Storage audit
-   */
-  storageAudit: () => {
-    return new Promise((resolve) => {
-      resolve({
-        totalUsed: '234GB',
-        largestCollections: [
-          { name: 'user_activity_index', size: '45GB' },
-          { name: 'road_danger_reports', size: '32GB' },
-          { name: 'fleet_intelligence_notes', size: '28GB' },
-        ],
-        unusedData: '3.2GB',
-        recommendations: ['Archive old danger reports', 'Compress image attachments'],
-      });
-    });
-  },
-
-  /**
-   * Performance analysis
-   */
-  performanceAnalysis: () => {
-    return new Promise((resolve) => {
-      resolve({
-        avgResponseTime: '85ms',
-        p95ResponseTime: '240ms',
-        p99ResponseTime: '520ms',
-        downtime: '0s',
-        errorRate: '0.02%',
-      });
-    });
-  },
+  indexOptimization: notImplemented('index-optimization', 'Turso admin access from a server job'),
+  logRotation: notImplemented('log-rotation', 'server log retention policy'),
+  databaseVacuum: notImplemented('database-vacuum', 'Turso VACUUM run from a server job'),
+  fileCleanup: notImplemented('file-cleanup', 'S3 lifecycle rules or a storage worker'),
+  analyticsRollup: notImplemented('analytics-rollup', 'a scheduled aggregation job'),
+  fullBackup: notImplemented('full-backup', 'Turso backup API called from a server job'),
+  storageAudit: notImplemented('storage-audit', 'S3 bucket listing from the server'),
+  performanceAnalysis: notImplemented('performance-analysis', 'request-level metrics collection'),
 };
 
 export {

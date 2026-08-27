@@ -1,13 +1,30 @@
+/*
+ * ContextualHelp — per-module, per-role help accordion.
+ *
+ * Jeremiah's original is preserved verbatim at docs/launch/ContextualHelp.ORIGINAL.jsx.txt.
+ * Structure, props (`module`, `userType`) and default export are unchanged.
+ *
+ * Changed:
+ *  - Palette moved to brand tokens (was card #0f1419, blue #3b82f6, black #060A10).
+ *  - REMOVED the "each subscription includes 2 login seats per service" and
+ *    "$15 per seat per month" claims. No seat pricing exists in PLANS (api/routes/signup.ts),
+ *    and there is no DAT or Uber Freight integration — no credentials, no contract.
+ *    Shipping that text would be quoting a fee schedule that does not exist.
+ *  - REMOVED the `subscription-seats` module entirely: the subscription_seats table
+ *    does not exist in schema.ts and is not in SERVER_COLLECTIONS.
+ *  - REMOVED `workflow-streamliner`: workflow_operations / workflow_steps /
+ *    workflow_ai_insights do not exist either.
+ *  Kept: dispatch, load-board, fleet-memory, road-context — all server-backed and accurate.
+ */
 import React, { useState } from 'react';
 import { HelpCircle, ChevronDown } from 'lucide-react';
 
 const C = {
-  gold: '#c9a84c',
-  white: '#f0ede8',
-  white60: 'rgba(240, 237, 232, 0.6)',
-  card: '#0f1419',
-  blue: '#3b82f6',
-  black: '#060A10',
+  gold: '#C9A84C',
+  white: '#f5f3ef',
+  white60: '#8a8a8a',
+  card: '#161616',
+  border: '#222222',
 };
 
 const contextualHelpText = {
@@ -42,7 +59,6 @@ const contextualHelpText = {
       title: 'Load Board - Manage Multiple Drivers',
       sections: [
         { title: 'Post Your Truck Capacity', text: 'Tell the load board how much you can move. Equipment type, rate range, preferred lanes. Brokers see you and reach out directly.' },
-        { title: 'DAT and Uber Freight Seats', text: 'Each subscription includes 2 login seats per service. Manage driver logins at Settings. Going over Upgrade for 15 dollars per seat per month.' },
         { title: 'Track Claims Across Drivers', text: 'See which driver claimed which load, status updates, delivery confirmations. All in one place.' },
       ],
     },
@@ -65,24 +81,6 @@ const contextualHelpText = {
       ],
     },
   },
-  'workflow-streamliner': {
-    fleet_manager: {
-      title: 'Workflow Streamliner - Model and Automate Operations',
-      sections: [
-        { title: 'What to Model', text: 'Pick an operation. Dispatch, Driver Ops, Finance, Compliance, HR. Break it into step by step processes. Assign owners, set KPIs, mark what is automated.' },
-        { title: 'Model Score Ring', text: 'As you complete steps and automate processes, your Model Score climbs. Fully automated, fully owned, fully measured equals 100. This is your operational health.' },
-        { title: 'AI Insights', text: 'Run analysis and get honest findings. Bottleneck steps, automation gaps that save money, unmeasured KPIs, long cycle steps blocking cash. Prioritized by impact.' },
-      ],
-    },
-    owner_op: {
-      title: 'Workflow Streamliner - Simplify Your Business',
-      sections: [
-        { title: 'Your Solo Operation', text: 'Model your process. Dispatch messaging, fuel stops, load tracking, payment follow up. Even a solo operation has workflows that can be streamlined.' },
-        { title: 'Automation Ideas', text: 'AI suggests automation for each step. Auto reply scripts, load status alerts, fuel stop routing. Implement what makes sense.' },
-        { title: 'Track What Matters', text: 'Set one KPI per step. Average dispatch response time, fuel spend per mile, payment collection days. Watch the trend week to week.' },
-      ],
-    },
-  },
   'road-context': {
     owner_op: {
       title: 'Road Context - Survival Toolkit on the Road',
@@ -90,16 +88,6 @@ const contextualHelpText = {
         { title: 'Live Danger Reports', text: 'See dangerous roads, weather, weigh station activity, police patterns. All for your current location and route ahead. Community reports, verified confidence voting.' },
         { title: 'Broker Flags in Real Time', text: 'Your current load shows the brokers rating and any fleet complaints about them. Know what you are delivering for before you arrive.' },
         { title: 'Top Charge Stops Ahead', text: 'Ranked by your fleets ratings for your vehicle type. Best fuel, best service, best reputation. Route to them and save time.' },
-      ],
-    },
-  },
-  'subscription-seats': {
-    fleet_manager: {
-      title: 'Subscription Seats - Control Load Board Access',
-      sections: [
-        { title: 'Your Seat Limit', text: 'Each subscription includes 2 logins per load board service. Add drivers and they use a login seat. Going over triggers upgrade prompt.' },
-        { title: 'Adding Drivers', text: 'Search driver by name or email. Add them to DAT, Uber Freight, or both. They get access instantly. Remove them anytime and free up a seat.' },
-        { title: 'Upgrade Path', text: 'Hit your limit Upgrade to 3, 4, or 5 seats per service at 15 dollars per seat per month. Billed to your fleet subscription.' },
       ],
     },
   },
@@ -118,7 +106,7 @@ export default function ContextualHelp({ module, userType = 'owner_op' }) {
     <div style={{
       padding: '16px',
       background: C.card,
-      border: `1px solid rgba(201, 168, 76, 0.15)`,
+      border: `1px solid ${C.border}`,
       borderRadius: 8,
       marginBottom: '16px',
     }}>
@@ -147,7 +135,7 @@ export default function ContextualHelp({ module, userType = 'owner_op' }) {
       </button>
 
       {expanded && (
-        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `1px solid rgba(201, 168, 76, 0.1)` }}>
+        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${C.border}` }}>
           {helpData.sections.map((section, idx) => (
             <div key={idx} style={{ marginBottom: '12px' }}>
               <button

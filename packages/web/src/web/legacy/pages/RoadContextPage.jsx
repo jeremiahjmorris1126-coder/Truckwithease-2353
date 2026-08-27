@@ -1,341 +1,249 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { AlertCircle, Navigation, Zap, TrendingUp, MapPin, Clock, AlertTriangle, CheckCircle, Phone, MessageSquare } from 'lucide-react';
-import { pb } from '../lib/pb';
+import React, { useState, useEffect } from 'react';
+import {
+  AlertCircle, Navigation, Zap, MapPin, AlertTriangle, CheckCircle, Phone, MessageSquare, Truck,
+} from 'lucide-react';
+
+/**
+ * Road Context — rewired to real data.
+ *
+ * The original page simulated GPS with Math.random() on a 5-second interval, and
+ * decided whether a hazard was "nearby" with `return Math.random() > 0.7;`
+ * (his own comment: "Simulate finding nearby dangers"). It also read four
+ * PocketBase collections that were never created — road_danger_reports,
+ * shipper_broker_ratings, route_stop_feedback and user_activity_index — which
+ * failed silently and rendered as empty arrays, i.e. "all clear on your route".
+ * An empty list that means "we never checked" is worse than no list at all.
+ *
+ * This version reads GET /api/fleet-intel/road-context/:driverId: the driver's
+ * last reported position from the drivers table, their booked load, incidents
+ * from accident_reports within 150 straight-line miles, and broker risk flags
+ * from broker_verifications. Everything the platform does not collect is
+ * rendered explicitly as "not collected", never as "all clear".
+ */
+
+const GOLD = '#C9A84C';
+const GOLD_BRIGHT = '#FFD700';
+const RED = '#E0483B';
 
 const RoadContextPage = () => {
-  const [driverLocation, setDriverLocation] = useState(null);
-  const [currentLoad, setCurrentLoad] = useState(null);
-  const [contextIntel, setContextIntel] = useState({
-    dangerNearby: [],
-    brokerFlags: [],
-    topStopsAhead: [],
-    weatherAlerts: [],
-    brokerMessages: [],
-    recentActivityNearby: [],
-  });
-  const [loading, setLoading] = useState(false);
+  const [driverId, setDriverId] = useState('drv-1');
+  const [drivers, setDrivers] = useState([]);
+  const [ctx, setCtx] = useState(null);
+  const [error, setError] = useState(null);
   const [selectedAlert, setSelectedAlert] = useState(null);
-  const mapRef = useRef(null);
 
-  // Simulate live GPS tracking
   useEffect(() => {
-    const simulateGPS = setInterval(() => {
-      // Random location in US (simulated)
-      setDriverLocation({
-        lat: 40.7 + (Math.random() - 0.5) * 5,
-        lng: -95.4 + (Math.random() - 0.5) * 5,
-        speed: Math.floor(Math.random() * 75) + 20,
-        bearing: Math.floor(Math.random() * 360),
-      });
-    }, 5000);
-    return () => clearInterval(simulateGPS);
+    fetch('/api/fleet-intel/hos')
+      .then((r) => r.json())
+      .then((j) => setDrivers(j.drivers ?? []))
+      .catch(() => {});
   }, []);
 
-  // Fetch context intelligence based on location
   useEffect(() => {
-    const fetchContextIntel = async () => {
-      if (!driverLocation) return;
-      setLoading(true);
-      try {
-        // Fetch danger reports nearby
-        const dangerReports = await pb.collection('road_danger_reports').getList(1, 50);
-        const dangerNearby = dangerReports.items.filter(report => {
-          // Rough proximity check (in real app, parse coordinates)
-          return Math.random() > 0.7; // Simulate finding nearby dangers
-        }).slice(0, 3);
-
-        // Fetch broker flags for current load
-        let brokerFlags = [];
-        if (currentLoad?.shipper) {
-          const brokerRatings = await pb.collection('shipper_broker_ratings').getList(1, 50, {
-            filter: `company_name = "${currentLoad.shipper}"`,
-          });
-          brokerFlags = brokerRatings.items.filter(r => r.rating <= 2);
-        }
-
-        // Fetch top nearby charge stops
-        const topStops = await pb.collection('route_stop_feedback').getList(1, 50);
-        const topStopsAhead = topStops.items
-          .sort((a, b) => (b.rating || 0) - (a.rating || 0))
-          .slice(0, 4);
-
-        // Fetch recent activity nearby (simulated)
-        const recentActivity = await pb.collection('user_activity_index').getList(1, 50);
-
-        setContextIntel({
-          dangerNearby,
-          brokerFlags,
-          topStopsAhead,
-          weatherAlerts: [
-            { type: 'snow', region: 'I-80 East', severity: 'high', details: 'Heavy snow expected next 2 hrs' },
-            { type: 'wind', region: 'I-25', severity: 'medium', details: 'Gusts to 45 mph' },
-          ],
-          brokerMessages: currentLoad ? [
-            { from: currentLoad.shipper, subject: 'Load Confirmed', time: '2m ago' },
-          ] : [],
-          recentActivityNearby: recentActivity.items.slice(0, 5),
-        });
-      } catch (err) {
-        console.log('Context fetch:', err);
-      } finally {
-        setLoading(false);
-      }
+    let alive = true;
+    const load = () => {
+      fetch(`/api/fleet-intel/road-context/${driverId}`)
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+        .then((j) => { if (alive) { setCtx(j); setError(null); } })
+        .catch((e) => { if (alive) setError(e.message); });
     };
+    load();
+    const id = setInterval(load, 30000);
+    return () => { alive = false; clearInterval(id); };
+  }, [driverId]);
 
-    fetchContextIntel();
-  }, [driverLocation, currentLoad]);
-
-  const AlertCard = ({ alert, icon: Icon, severity = 'medium' }) => {
-    const severityColor = {
-      critical: 'border-red-500 bg-red-50',
-      high: 'border-orange-500 bg-orange-50',
-      medium: 'border-yellow-500 bg-yellow-50',
-      low: 'border-blue-500 bg-blue-50',
-    };
-
-    return (
-      <div
-        onClick={() => setSelectedAlert(alert)}
-        className={`border-l-4 p-4 rounded cursor-pointer hover:shadow-md transition ${
-          severityColor[severity] || severityColor.medium
-        }`}
-      >
-        <div className="flex items-start gap-3">
-          <Icon className="w-5 h-5 mt-0.5 flex-shrink-0" />
-          <div className="flex-1">
-            <h4 className="font-bold text-sm">{alert.title || alert.type}</h4>
-            <p className="text-xs text-gray-700 mt-1">{alert.description || alert.details}</p>
-            {alert.time && <p className="text-xs text-gray-500 mt-2">{alert.time}</p>}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const DangerBanner = () => {
-    if (contextIntel.dangerNearby.length === 0) return null;
-    return (
-      <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-4 rounded-lg mb-4 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <h3 className="font-bold">⚠️ DANGER AHEAD</h3>
-          <p className="text-sm mt-1">
-            {contextIntel.dangerNearby[0]?.description || 'Road hazard reported on your route'}
-          </p>
-          <p className="text-xs opacity-90 mt-2">Confirmed by {contextIntel.dangerNearby[0]?.confirmed_count || 1} drivers</p>
-        </div>
-      </div>
-    );
-  };
-
-  const BrokerFlagBanner = () => {
-    if (contextIntel.brokerFlags.length === 0) return null;
-    return (
-      <div className="bg-gradient-to-r from-red-500 to-orange-600 text-white p-4 rounded-lg mb-4 flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <h3 className="font-bold">🚩 BROKER ALERT</h3>
-          <p className="text-sm mt-1">
-            <strong>{currentLoad?.shipper}</strong> has multiple negative ratings
-          </p>
-          <p className="text-xs opacity-90 mt-1">
-            {contextIntel.brokerFlags.length} low ratings • Pay issues reported • Consider follow-up
-          </p>
-        </div>
-      </div>
-    );
-  };
-
-  const TopStopsSection = () => {
-    return (
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-        <h3 className="font-bold flex items-center gap-2 mb-3">
-          <Zap className="w-5 h-5 text-amber-500" />
-          Top Charge Stops Ahead
-        </h3>
-        <div className="space-y-2">
-          {contextIntel.topStopsAhead.map((stop, i) => (
-            <div key={i} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
-              <div>
-                <p className="font-semibold">{stop.stop_name || 'Stop ' + (i + 1)}</p>
-                <p className="text-xs text-gray-600">{stop.vehicle_type}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-amber-600 font-bold">{stop.rating ? (stop.rating * 20) + '%' : '85%'}</p>
-                <p className="text-xs text-gray-500">{stop.rating || 0} ratings</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const WeatherSection = () => {
-    return (
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-        <h3 className="font-bold flex items-center gap-2 mb-3">
-          <Navigation className="w-5 h-5 text-blue-500" />
-          Weather & Road Conditions
-        </h3>
-        <div className="space-y-2">
-          {contextIntel.weatherAlerts.map((alert, i) => (
-            <div key={i} className="p-2 bg-blue-50 border-l-2 border-blue-400 rounded text-sm">
-              <p className="font-semibold">{alert.region}</p>
-              <p className="text-xs text-gray-700">{alert.details}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const LocationHeader = () => {
-    return (
-      <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white p-4 rounded-lg mb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h2 className="text-lg font-bold flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              Road Context Live
-            </h2>
-            {driverLocation && (
-              <p className="text-xs opacity-80 mt-2">
-                Lat {driverLocation.lat.toFixed(2)}, Lng {driverLocation.lng.toFixed(2)} •{' '}
-                {driverLocation.speed} mph
-              </p>
-            )}
-          </div>
-          <div className="text-right">
-            <p className="text-xs opacity-75 mb-1">Connected</p>
-            <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const CurrentLoadCard = () => {
-    if (!currentLoad)
-      return (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-center text-sm">
-          <p className="text-gray-700">Load data will populate when you claim a load on the Load Board</p>
-        </div>
-      );
-
-    return (
-      <div className="bg-white border-2 border-blue-400 rounded-lg p-4 mb-4">
-        <div className="flex items-start justify-between mb-3">
-          <h3 className="font-bold">📦 Current Load</h3>
-          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Active</span>
-        </div>
-        <div className="text-sm space-y-1 text-gray-700">
-          <p>
-            <strong>{currentLoad.origin}</strong> → <strong>{currentLoad.destination}</strong>
-          </p>
-          <p>{currentLoad.miles} mi • ${currentLoad.rate}/mi</p>
-          <p className="text-xs text-gray-600">{currentLoad.commodity}</p>
-        </div>
-      </div>
-    );
-  };
-
-  const AlertsSidebar = () => {
-    const allAlerts = [
-      ...contextIntel.dangerNearby.map(d => ({
-        ...d,
-        type: 'danger',
-        severity: 'critical',
-        icon: AlertTriangle,
-      })),
-      ...contextIntel.brokerFlags.map(b => ({
-        title: `${currentLoad?.shipper} - Low Rating`,
-        description: `Rating: ${b.rating}/5`,
-        type: 'broker',
-        severity: 'high',
-        icon: AlertCircle,
-      })),
-      ...contextIntel.weatherAlerts.map(w => ({
-        title: `Weather: ${w.region}`,
-        description: w.details,
-        type: 'weather',
-        severity: w.severity === 'high' ? 'high' : 'medium',
-        icon: Navigation,
-      })),
-    ].sort((a, b) => {
-      const severityRank = { critical: 0, high: 1, medium: 2, low: 3 };
-      return severityRank[a.severity] - severityRank[b.severity];
-    });
-
-    return (
-      <div className="space-y-3">
-        {allAlerts.length === 0 ? (
-          <div className="text-center text-gray-500 text-sm py-4">
-            <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
-            <p>All clear on your route</p>
-          </div>
-        ) : (
-          allAlerts.map((alert, i) => <AlertCard key={i} alert={alert} icon={alert.icon} severity={alert.severity} />)
-        )}
-      </div>
-    );
-  };
+  const pos = ctx?.position ?? null;
+  const incidents = ctx?.nearbyIncidents ?? [];
+  const brokerFlags = ctx?.brokerFlags ?? [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+    <div className="min-h-screen bg-[#0a0a0a] text-white p-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <LocationHeader />
+        <div className="bg-[#161616] border border-[#222222] rounded-lg p-4 mb-4">
+          <div className="flex items-start justify-between flex-wrap gap-3">
+            <div className="flex-1">
+              <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: GOLD_BRIGHT }}>
+                <MapPin className="w-5 h-5" />
+                Road Context
+              </h2>
+              {pos ? (
+                <p className="text-xs text-neutral-400 mt-2 font-mono">
+                  {pos.lat.toFixed(4)}, {pos.lng.toFixed(4)}
+                  {pos.speed != null && ` • ${pos.speed} mph`}
+                  {pos.heading != null && ` • heading ${pos.heading}°`}
+                  {pos.lastSeen && ` • last seen ${new Date(pos.lastSeen).toLocaleString()}`}
+                </p>
+              ) : (
+                <p className="text-xs text-neutral-500 mt-2">{ctx?.positionNote ?? 'No position on file.'}</p>
+              )}
+            </div>
+            <select
+              value={driverId}
+              onChange={(e) => setDriverId(e.target.value)}
+              className="bg-[#0a0a0a] border border-[#222222] rounded px-3 py-2 text-sm"
+              style={{ color: GOLD }}
+            >
+              {drivers.map((d) => (
+                <option key={d.driverId} value={d.driverId}>{d.name}</option>
+              ))}
+              {drivers.length === 0 && <option value={driverId}>{driverId}</option>}
+            </select>
+          </div>
+          {pos && <p className="text-[11px] text-neutral-500 mt-2">{ctx.positionNote}</p>}
+        </div>
 
-        {/* Current Load */}
-        <CurrentLoadCard />
-
-        {/* Critical Alerts */}
-        {(contextIntel.dangerNearby.length > 0 || contextIntel.brokerFlags.length > 0) && (
-          <div className="space-y-3 mb-4">
-            <DangerBanner />
-            <BrokerFlagBanner />
+        {error && (
+          <div className="mb-4 p-4 rounded-lg border text-sm" style={{ borderColor: `${RED}88`, background: `${RED}18` }}>
+            Could not load road context: {error}
           </div>
         )}
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left: Intelligence Feed */}
-          <div className="lg:col-span-2 space-y-4">
-            <TopStopsSection />
-            <WeatherSection />
+        {/* Current load */}
+        {ctx && (
+          ctx.currentLoad ? (
+            <div className="bg-[#161616] border rounded-lg p-4 mb-4" style={{ borderColor: GOLD }}>
+              <div className="flex items-start justify-between mb-3">
+                <h3 className="font-bold flex items-center gap-2"><Truck className="w-4 h-4" style={{ color: GOLD }} /> Current Load</h3>
+                <span className="text-xs px-2 py-1 rounded" style={{ background: `${GOLD}22`, color: GOLD_BRIGHT }}>
+                  {ctx.currentLoad.status ?? 'booked'}
+                </span>
+              </div>
+              <div className="text-sm space-y-1 text-neutral-300">
+                <p><strong>{ctx.currentLoad.origin}</strong> → <strong>{ctx.currentLoad.destination}</strong></p>
+                <p className="font-mono text-xs">
+                  {ctx.currentLoad.miles} mi
+                  {ctx.currentLoad.rate != null && ` • $${ctx.currentLoad.rate.toLocaleString()}`}
+                  {ctx.currentLoad.miles && ctx.currentLoad.rate
+                    ? ` • $${(ctx.currentLoad.rate / ctx.currentLoad.miles).toFixed(2)}/mi`
+                    : ''}
+                </p>
+                {ctx.currentLoad.commodity && <p className="text-xs text-neutral-500">{ctx.currentLoad.commodity}</p>}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-[#161616] border border-[#222222] rounded-lg p-4 mb-4 text-center text-sm text-neutral-400">
+              No load booked to this driver. Claim one on the Load Board.
+            </div>
+          )
+        )}
 
-            {/* Broker Messages */}
-            {contextIntel.brokerMessages.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h3 className="font-bold flex items-center gap-2 mb-3">
-                  <MessageSquare className="w-5 h-5 text-purple-500" />
-                  Messages
-                </h3>
+        {/* Critical banners */}
+        {incidents.length > 0 && (
+          <div className="p-4 rounded-lg mb-4 flex items-start gap-3" style={{ background: `${RED}1f`, border: `1px solid ${RED}` }}>
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: RED }} />
+            <div className="flex-1">
+              <h3 className="font-bold" style={{ color: RED }}>Incident reported near you</h3>
+              <p className="text-sm mt-1 text-neutral-300">
+                {incidents[0].description ?? incidents[0].type ?? 'Recorded incident'} — {incidents[0].milesAway} mi away
+                (straight line)
+              </p>
+            </div>
+          </div>
+        )}
+
+        {brokerFlags.length > 0 && (
+          <div className="p-4 rounded-lg mb-4 flex items-start gap-3" style={{ background: `${GOLD}1a`, border: `1px solid ${GOLD}` }}>
+            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: GOLD_BRIGHT }} />
+            <div className="flex-1">
+              <h3 className="font-bold" style={{ color: GOLD_BRIGHT }}>Broker risk flags</h3>
+              <p className="text-sm mt-1 text-neutral-300">
+                {brokerFlags.length} verified broker{brokerFlags.length > 1 ? 's' : ''} scored 40 or higher. Check before
+                sending paperwork.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 space-y-4">
+            {/* Incidents */}
+            <div className="bg-[#161616] border border-[#222222] rounded-lg p-4">
+              <h3 className="font-bold flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-5 h-5" style={{ color: GOLD }} />
+                Recorded Incidents Within 150 Miles
+              </h3>
+              {incidents.length === 0 ? (
+                <p className="text-sm text-neutral-500">
+                  No incidents on file within 150 miles of the last reported position. This covers accident reports
+                  filed in your account only — it is not a public crash or traffic feed.
+                </p>
+              ) : (
                 <div className="space-y-2">
-                  {contextIntel.brokerMessages.map((msg, i) => (
-                    <div key={i} className="p-3 bg-purple-50 rounded border-l-2 border-purple-400 text-sm">
-                      <p className="font-semibold text-purple-900">{msg.from}</p>
-                      <p className="text-xs text-gray-600 mt-1">{msg.subject}</p>
-                      <p className="text-xs text-gray-500 mt-1">{msg.time}</p>
+                  {incidents.map((a) => (
+                    <button
+                      key={a.id}
+                      onClick={() => setSelectedAlert(a)}
+                      className="w-full text-left p-3 bg-[#0a0a0a] rounded border-l-2 hover:border-[#C9A84C] transition"
+                      style={{ borderLeftColor: RED }}
+                    >
+                      <div className="flex justify-between gap-3">
+                        <span className="font-semibold text-sm">{a.type ?? 'Incident'}</span>
+                        <span className="text-xs font-mono" style={{ color: GOLD }}>{a.milesAway} mi</span>
+                      </div>
+                      <p className="text-xs text-neutral-400 mt-1">{a.description ?? a.location ?? '—'}</p>
+                      {a.occurredAt && (
+                        <p className="text-[11px] text-neutral-600 mt-1">{new Date(a.occurredAt).toLocaleString()}</p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {ctx?.note && <p className="text-[11px] text-neutral-600 mt-3">{ctx.note}</p>}
+            </div>
+
+            {/* Broker flags detail */}
+            <div className="bg-[#161616] border border-[#222222] rounded-lg p-4">
+              <h3 className="font-bold flex items-center gap-2 mb-3">
+                <Zap className="w-5 h-5" style={{ color: GOLD }} />
+                Broker Risk Flags
+              </h3>
+              {brokerFlags.length === 0 ? (
+                <p className="text-sm text-neutral-500">
+                  No broker on file has scored 40 or higher. Run a check on the Broker Verification page before you
+                  accept a load from someone new.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {brokerFlags.map((b) => (
+                    <div key={b.id} className="p-3 bg-[#0a0a0a] rounded border border-[#222222]">
+                      <div className="flex justify-between gap-3">
+                        <span className="font-semibold text-sm">{b.domain ?? b.email}</span>
+                        <span className="text-xs font-mono" style={{ color: b.riskScore >= 70 ? RED : GOLD_BRIGHT }}>
+                          {b.riskScore} · {b.verdict}
+                        </span>
+                      </div>
+                      {b.mcNumber && <p className="text-[11px] text-neutral-500 mt-1 font-mono">MC {b.mcNumber}</p>}
+                      {b.reasons && (
+                        <ul className="text-xs text-neutral-400 mt-2 list-disc ml-4 space-y-1">
+                          {(() => { try { return JSON.parse(b.reasons); } catch { return [b.reasons]; } })().map((r, i) => (
+                            <li key={i}>{r}</li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Recent Activity */}
-            {contextIntel.recentActivityNearby.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h3 className="font-bold flex items-center gap-2 mb-3">
-                  <TrendingUp className="w-5 h-5 text-teal-500" />
-                  Recent Fleet Activity Nearby
+            {/* Not collected — replaces the four dead PocketBase reads */}
+            {ctx?.unavailable && (
+              <div className="bg-[#161616] border border-[#222222] rounded-lg p-4" style={{ borderLeft: `3px solid ${GOLD}` }}>
+                <h3 className="font-bold flex items-center gap-2 mb-2" style={{ color: GOLD }}>
+                  <AlertCircle className="w-5 h-5" />
+                  Not Collected Yet
                 </h3>
+                <p className="text-xs text-neutral-500 mb-3">
+                  These panels used to render empty and read as "all clear". They were never being checked.
+                </p>
                 <div className="space-y-2">
-                  {contextIntel.recentActivityNearby.slice(0, 4).map((activity, i) => (
-                    <div key={i} className="p-2 text-xs text-gray-700 bg-gray-50 rounded">
-                      <p className="font-semibold">{activity.action_type}</p>
-                      <p>{activity.module}</p>
+                  {Object.entries(ctx.unavailable).map(([k, v]) => (
+                    <div key={k} className="p-3 bg-[#0a0a0a] rounded text-xs">
+                      <div className="font-semibold capitalize mb-1" style={{ color: GOLD_BRIGHT }}>
+                        {k.replace(/([A-Z])/g, ' $1')}
+                      </div>
+                      <div className="text-neutral-400 leading-relaxed">{v}</div>
                     </div>
                   ))}
                 </div>
@@ -343,40 +251,73 @@ const RoadContextPage = () => {
             )}
           </div>
 
-          {/* Right: Alerts Sidebar */}
+          {/* Sidebar */}
           <div>
-            <div className="bg-white border border-gray-200 rounded-lg p-4 sticky top-4">
+            <div className="bg-[#161616] border border-[#222222] rounded-lg p-4 sticky top-4">
               <h3 className="font-bold mb-3 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-red-500" />
+                <AlertCircle className="w-5 h-5" style={{ color: GOLD }} />
                 Active Alerts
               </h3>
-              <AlertsSidebar />
+              {incidents.length === 0 && brokerFlags.length === 0 ? (
+                <div className="text-center text-neutral-500 text-sm py-4">
+                  <CheckCircle className="w-8 h-8 mx-auto mb-2" style={{ color: '#22c55e' }} />
+                  <p>Nothing flagged from the data we do collect.</p>
+                  <p className="text-[11px] mt-2 text-neutral-600">See "Not Collected Yet" for what is not being checked.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {incidents.slice(0, 3).map((a) => (
+                    <div key={a.id} className="p-3 bg-[#0a0a0a] rounded border-l-2 text-sm" style={{ borderLeftColor: RED }}>
+                      <div className="font-semibold">{a.type ?? 'Incident'}</div>
+                      <div className="text-xs text-neutral-400">{a.milesAway} mi away</div>
+                    </div>
+                  ))}
+                  {brokerFlags.slice(0, 3).map((b) => (
+                    <div key={b.id} className="p-3 bg-[#0a0a0a] rounded border-l-2 text-sm" style={{ borderLeftColor: GOLD }}>
+                      <div className="font-semibold">{b.domain ?? b.email}</div>
+                      <div className="text-xs text-neutral-400">Risk {b.riskScore} · {b.verdict}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-              {/* Driver Support */}
-              <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
-                <button className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 rounded font-semibold text-sm hover:bg-blue-700 transition">
+              <div className="mt-4 pt-4 border-t border-[#222222] space-y-2">
+                <a
+                  href="tel:6367068338"
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded font-semibold text-sm"
+                  style={{ background: 'linear-gradient(135deg,#C9A84C 0%,#FFD700 40%,#C9A84C 70%,#8A6E2F 100%)', color: '#0a0a0a' }}
+                >
                   <Phone className="w-4 h-4" />
                   Call Support
-                </button>
-                <button className="w-full flex items-center justify-center gap-2 bg-gray-200 text-gray-700 py-2 rounded font-semibold text-sm hover:bg-gray-300 transition">
+                </a>
+                <a
+                  href="/community"
+                  className="w-full flex items-center justify-center gap-2 bg-[#222222] text-neutral-200 py-2 rounded font-semibold text-sm hover:bg-[#2a2a2a] transition"
+                >
                   <MessageSquare className="w-4 h-4" />
-                  Report Issue
-                </button>
+                  Report to Bulletin Board
+                </a>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Modal for selected alert */}
       {selectedAlert && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-lg font-bold mb-3">{selectedAlert.title || selectedAlert.type}</h2>
-            <p className="text-gray-700 mb-4">{selectedAlert.description || selectedAlert.details}</p>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => setSelectedAlert(null)}>
+          <div className="bg-[#161616] border border-[#222222] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold mb-3" style={{ color: GOLD_BRIGHT }}>
+              {selectedAlert.type ?? 'Incident'}
+            </h2>
+            <p className="text-neutral-300 mb-2 text-sm">{selectedAlert.description ?? '—'}</p>
+            <p className="text-xs text-neutral-500 mb-4 font-mono">
+              {selectedAlert.milesAway} mi straight-line
+              {selectedAlert.occurredAt && ` • ${new Date(selectedAlert.occurredAt).toLocaleString()}`}
+            </p>
             <button
               onClick={() => setSelectedAlert(null)}
-              className="w-full bg-gray-900 text-white py-2 rounded font-semibold hover:bg-gray-800 transition"
+              className="w-full py-2 rounded font-semibold"
+              style={{ background: 'linear-gradient(135deg,#C9A84C 0%,#FFD700 40%,#C9A84C 70%,#8A6E2F 100%)', color: '#0a0a0a' }}
             >
               Got it
             </button>

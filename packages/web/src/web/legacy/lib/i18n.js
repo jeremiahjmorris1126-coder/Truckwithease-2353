@@ -1,50 +1,59 @@
 /**
  * Internationalization Engine
- * Multi-language support for 50+ languages and regional variants
- * Respects cultural, religious, and regional sensitivities
+ *
+ * HONESTY NOTE (rewritten 2026-08-26):
+ * The original version of this file declared 46 locales under a header that
+ * claimed "50+ languages". Measured coverage was: greetings 20 locales,
+ * safety messages 10, responsible-use pledges 10, and exactly 5 translated
+ * app terms. Everything else silently fell back to English, so a Polish or
+ * Ukrainian driver would pick their language, get English text, and the app
+ * would never say so.
+ *
+ * SUPPORTED_LANGUAGES now lists only the locales that have real translated
+ * content for the greeting, the safety headings and all 7 responsible-use
+ * pledges. The remaining locales live in UNTRANSLATED_LOCALES and are
+ * offered as English-only, labelled as such. Number/currency/date formatting
+ * uses the platform Intl API and works for any locale.
+ *
+ * TruckWithEase has no app-wide i18n wiring. The only consumer of this file
+ * is pages/ResponsibleUseOnboardingPage.jsx.
  */
 
+// Locales with complete translated content (greeting + safety copy + all pledges).
 export const SUPPORTED_LANGUAGES = {
-  // English variants
   'en-US': 'English (United States)',
+  'ar-SA': 'العربية (السعودية)',
+  'es-ES': 'Español (España)',
+  'pt-BR': 'Português (Brasil)',
+  'fr-FR': 'Français (France)',
+  'de-DE': 'Deutsch (Deutschland)',
+  'zh-CN': '简体中文 (中国)',
+  'ja-JP': '日本語 (日本)',
+  'hi-IN': 'हिन्दी (भारत)',
+  'th-TH': 'ไทย (ประเทศไทย)',
+};
+
+// Locales the UI may offer, but which have NO translated app copy. They render
+// English text with correct locale number/date/currency formatting and correct
+// text direction. Do not present these as translated.
+export const UNTRANSLATED_LOCALES = {
   'en-GB': 'English (United Kingdom)',
   'en-AU': 'English (Australia)',
   'en-CA': 'English (Canada)',
   'en-IN': 'English (India)',
-  
-  // Arabic variants
-  'ar-SA': 'العربية (السعودية)',
   'ar-AE': 'العربية (الإمارات)',
   'ar-EG': 'العربية (مصر)',
   'ar-MA': 'العربية (المغرب)',
   'ar-JO': 'العربية (الأردن)',
-  
-  // Spanish variants
-  'es-ES': 'Español (España)',
   'es-MX': 'Español (México)',
   'es-AR': 'Español (Argentina)',
-  
-  // French variants
-  'fr-FR': 'Français (France)',
   'fr-CA': 'Français (Canada)',
   'fr-BE': 'Français (Belgique)',
-  
-  // German variants
-  'de-DE': 'Deutsch (Deutschland)',
   'de-AT': 'Deutsch (Österreich)',
   'de-CH': 'Deutsch (Schweiz)',
-  
-  // Asian languages
-  'zh-CN': '简体中文 (中国)',
   'zh-TW': '繁體中文 (台灣)',
-  'ja-JP': '日本語 (日本)',
   'ko-KR': '한국어 (한국)',
-  'hi-IN': 'हिन्दी (भारत)',
-  'th-TH': 'ไทย (ประเทศไทย)',
   'vi-VN': 'Tiếng Việt (Việt Nam)',
-  
-  // Other major languages
-  'pt-BR': 'Português (Brasil)',
   'pt-PT': 'Português (Portugal)',
   'ru-RU': 'Русский (Россия)',
   'pl-PL': 'Polski (Polska)',
@@ -65,6 +74,9 @@ export const SUPPORTED_LANGUAGES = {
   'sk-SK': 'Slovenčina (Slovensko)',
   'uk-UA': 'Українська (Україна)',
 };
+
+// Every locale the picker may show, translated or not.
+export const ALL_LOCALES = { ...SUPPORTED_LANGUAGES, ...UNTRANSLATED_LOCALES };
 
 // Religious/Cultural sensitivity mappings
 export const CULTURAL_CONTEXTS = {
@@ -358,7 +370,9 @@ export function getResponsibleUsePledges(language) {
 }
 
 /**
- * Translate a term based on language
+ * Translate a term. Returns the English term unchanged when no translation
+ * exists - use hasTranslation() when the caller needs to know which happened.
+ * Only these terms are translated: dispatch, load, driver, danger, safe.
  */
 export function translateTerm(term, language) {
   const termKey = term.toLowerCase().replace(/\s+/g, '-');
@@ -366,6 +380,49 @@ export function translateTerm(term, language) {
     return TRANSLATIONS[termKey][language];
   }
   return term;
+}
+
+/**
+ * True only when a real translation exists for this term in this locale.
+ */
+export function hasTranslation(term, language) {
+  const termKey = term.toLowerCase().replace(/\s+/g, '-');
+  return Boolean(TRANSLATIONS[termKey] && TRANSLATIONS[termKey][language]);
+}
+
+/**
+ * Honest coverage report for a locale. Nothing here is estimated - each field
+ * is counted from the actual content in this file.
+ */
+export function getTranslationCoverage(language) {
+  const termKeys = Object.keys(TRANSLATIONS);
+  const translatedTerms = termKeys.filter((k) => TRANSLATIONS[k][language]).length;
+  const hasGreeting = Boolean(GREETINGS[language]);
+  const hasSafety = Boolean(SAFETY_MESSAGES[language]);
+  const hasPledges = Boolean(RESPONSIBLE_USE_PLEDGES[language]);
+  const complete = hasGreeting && hasSafety && hasPledges && translatedTerms === termKeys.length;
+
+  return {
+    language,
+    label: ALL_LOCALES[language] || language,
+    status: complete ? 'TRANSLATED' : (hasGreeting || hasSafety || hasPledges ? 'PARTIAL' : 'ENGLISH_ONLY'),
+    greeting: hasGreeting,
+    safetyMessages: hasSafety,
+    pledges: hasPledges,
+    translatedTerms,
+    totalTerms: termKeys.length,
+    formatting: true, // Intl handles numbers, currency and dates for any locale
+    note: complete
+      ? 'Full translated copy available.'
+      : 'Untranslated screens render in English. Formatting and text direction are still localized.',
+  };
+}
+
+/**
+ * True when the locale has complete translated copy.
+ */
+export function isFullyTranslated(language) {
+  return Object.prototype.hasOwnProperty.call(SUPPORTED_LANGUAGES, language);
 }
 
 /**

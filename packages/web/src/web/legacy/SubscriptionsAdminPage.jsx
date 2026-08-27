@@ -1,191 +1,220 @@
-import { useState, useEffect } from "react";
-import PocketBase from "pocketbase";
+import { useEffect, useState } from "react";
 
-const pb = new PocketBase();
+/**
+ * SubscriptionsAdminPage — server-backed.
+ *
+ * The original read PocketBase collections `subscriptions` and `signups`, which
+ * existed on no server, so this page always rendered empty — and it hard-coded a
+ * banner claiming "You have 3 active members — Jeremiah Morris, Kyleigh Morris,
+ * and Bridget Taft — all on Pro." That was text, not data. It is gone.
+ * Original kept at docs/launch/SubscriptionsAdminPage.ORIGINAL.jsx.txt.
+ *
+ * Now reads /api/subscriptions/list and /api/signup/list (Turso) and can move a
+ * signup's status. Repainted gold-on-black.
+ */
 
-const PLAN_COLORS = {
-  solo: "#F59E0B",
-  pro: "#3B82F6",
-  fleet_rental: "#8B5CF6",
-  fleet_owned: "#10B981",
-};
+const GOLD = "#C9A84C";
+const GOLD_BRIGHT = "#FFD700";
+const BLACK = "#0a0a0a";
+const CARD = "#161616";
+const BORDER = "#222222";
+const MUTED = "#777";
 
-const PLAN_LABELS = {
-  solo: "Solo $29.99",
-  pro: "Pro $39.99",
-  fleet_rental: "Fleet Rental $49.99",
-  fleet_owned: "Fleet Owned $59.99/seat",
+const STATUS_COLOR = {
+  active: "#4ade80",
+  trialing: GOLD_BRIGHT,
+  past_due: "#fbbf24",
+  cancelled: "#a1a1aa",
+  new: GOLD_BRIGHT,
+  contacted: "#60a5fa",
+  activated: "#4ade80",
+  rejected: "#a1a1aa",
 };
 
 export default function SubscriptionsAdminPage() {
   const [subs, setSubs] = useState([]);
+  const [subMeta, setSubMeta] = useState(null);
   const [signups, setSignups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
   const [tab, setTab] = useState("subscriptions");
   const [search, setSearch] = useState("");
+  const [busy, setBusy] = useState("");
+
+  async function load() {
+    setLoading(true);
+    setErr("");
+    try {
+      const [a, b] = await Promise.all([
+        fetch("/api/subscriptions/list").then((r) => r.json()),
+        fetch("/api/signup/list").then((r) => r.json()),
+      ]);
+      setSubs(a.subscriptions || []);
+      setSubMeta(a);
+      setSignups(b.signups || []);
+    } catch {
+      setErr("Could not reach the server. This list is not showing live data.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const controller = new AbortController();
-    async function load() {
-      setLoading(true);
-      try {
-        // Load subscriptions
-        const subRes = await pb.collection("subscriptions").getList(1, 200, {
-          sort: "-created",
-          signal: controller.signal,
-        });
-        setSubs(subRes.items || []);
-
-        // Load signups
-        const sigRes = await pb.collection("signups").getList(1, 200, {
-          sort: "-created",
-          signal: controller.signal,
-        });
-        setSignups(sigRes.items || []);
-      } catch (e) {
-        if (!e?.isAbort) console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    }
     load();
-    return () => controller.abort();
   }, []);
 
-  const allRecords = tab === "subscriptions" ? subs : signups;
-  const filtered = allRecords.filter(r => {
-    const q = search.toLowerCase();
-    return !q || (r.user_email || r.email || "").toLowerCase().includes(q) ||
-      (r.user_name || r.name || "").toLowerCase().includes(q);
+  async function setSignupStatus(id, status) {
+    setBusy(id);
+    try {
+      await fetch(`/api/signup/${id}/status`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      await load();
+    } finally {
+      setBusy("");
+    }
+  }
+
+  const records = tab === "subscriptions" ? subs : signups;
+  const q = search.trim().toLowerCase();
+  const filtered = records.filter((r) => {
+    if (!q) return true;
+    return [r.contactEmail, r.email, r.accountName, r.name, r.company].some((v) => (v || "").toLowerCase().includes(q));
   });
 
-  const totalMRR = subs.filter(s => s.status === "active").reduce((acc, s) => acc + (Number(s.price) || 0), 0);
+  const fmt = (d) =>
+    d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
 
-  const fmt = (d) => d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
-
-  const colors = {
-    bg: "#0A0A0F",
-    card: "#12121A",
-    border: "#1E1E2E",
-    gold: "#F59E0B",
-    text: "#E2E8F0",
-    muted: "#64748B",
-  };
+  const activeCount = subs.filter((s) => s.status === "active").length;
+  const trialingCount = subs.filter((s) => s.status === "trialing").length;
 
   return (
-    <div style={{ minHeight: "100vh", background: colors.bg, color: colors.text, fontFamily: "'Inter', sans-serif", padding: "24px 16px" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>
+    <div style={{ minHeight: "100vh", background: BLACK, color: "#e5e5e5", fontFamily: "Inter, system-ui, sans-serif", padding: "24px 16px" }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 14 }}>
           <div>
-            <div style={{ fontSize: 11, color: colors.gold, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", marginBottom: 4 }}>TruckWithEase Admin</div>
-            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "#FFF" }}>Subscriber Inbox</h1>
-            <div style={{ color: colors.muted, fontSize: 13, marginTop: 4 }}>Every new subscription and signup lands here instantly</div>
+            <div style={{ fontSize: 10, color: GOLD, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>TruckWithEase Admin</div>
+            <h1 style={{ margin: 0, fontFamily: "'Bebas Neue',Oswald,sans-serif", fontSize: 34, letterSpacing: 1, color: "#fff" }}>SUBSCRIBER INBOX</h1>
+            <div style={{ color: MUTED, fontSize: 13, marginTop: 4 }}>Live from the database. Nothing on this page is placeholder text.</div>
           </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 12, padding: "12px 20px", textAlign: "center" }}>
-              <div style={{ color: colors.gold, fontSize: 22, fontWeight: 800 }}>${totalMRR.toFixed(2)}</div>
-              <div style={{ color: colors.muted, fontSize: 11, fontWeight: 600 }}>MONTHLY REVENUE</div>
-            </div>
-            <div style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: 12, padding: "12px 20px", textAlign: "center" }}>
-              <div style={{ color: "#3B82F6", fontSize: 22, fontWeight: 800 }}>{subs.filter(s => s.status === "active").length}</div>
-              <div style={{ color: colors.muted, fontSize: 11, fontWeight: 600 }}>ACTIVE SUBS</div>
-            </div>
-            <div style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 12, padding: "12px 20px", textAlign: "center" }}>
-              <div style={{ color: "#10B981", fontSize: 22, fontWeight: 800 }}>{signups.length}</div>
-              <div style={{ color: colors.muted, fontSize: 11, fontWeight: 600 }}>TOTAL SIGNUPS</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Notification banner */}
-        <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 12, padding: "14px 20px", marginBottom: 24, display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 20 }}>📬</span>
-          <div>
-            <div style={{ fontWeight: 700, color: colors.gold, fontSize: 14 }}>Where new subscribers go</div>
-            <div style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
-              Every checkout completion saves instantly to this page. You have <strong style={{ color: "#FFF" }}>3 active members</strong> — Jeremiah Morris, Kyleigh Morris, and Bridget Taft — all on Pro. No email relay needed; this inbox is your live subscriber dashboard.
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs + Search */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
-          <div style={{ display: "flex", gap: 4, background: colors.card, border: `1px solid ${colors.border}`, borderRadius: 10, padding: 4 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {[
-              { id: "subscriptions", label: `💳 Subscriptions (${subs.length})` },
-              { id: "signups", label: `👤 All Signups (${signups.length})` },
-            ].map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                background: tab === t.id ? colors.gold : "transparent",
-                color: tab === t.id ? "#000" : colors.muted,
-                border: "none", borderRadius: 8, padding: "8px 16px",
-                fontWeight: 700, fontSize: 13, cursor: "pointer", transition: "all 0.2s"
-              }}>{t.label}</button>
+              { v: subMeta ? `$${(subMeta.contractedMrr ?? 0).toFixed(2)}` : "—", l: "Contracted MRR" },
+              { v: activeCount, l: "Active" },
+              { v: trialingCount, l: "On trial" },
+              { v: signups.length, l: "Signups" },
+            ].map((s) => (
+              <div key={s.l} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "12px 18px", textAlign: "center", minWidth: 104 }}>
+                <div style={{ color: GOLD_BRIGHT, fontSize: 20, fontWeight: 800, fontFamily: "'JetBrains Mono',monospace" }}>{s.v}</div>
+                <div style={{ color: MUTED, fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginTop: 3 }}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Honesty banner — replaces the old fabricated "3 active members" copy. */}
+        {subMeta?.billing && !subMeta.billing.live && (
+          <div style={{ background: CARD, border: `1px solid ${GOLD}44`, borderRadius: 12, padding: "13px 18px", marginBottom: 18 }}>
+            <div style={{ fontWeight: 700, color: GOLD, fontSize: 13, marginBottom: 3 }}>No money has moved through this app</div>
+            <div style={{ color: MUTED, fontSize: 12, lineHeight: 1.6 }}>{subMeta.billing.note}</div>
+            {subMeta.mrrNote && <div style={{ color: MUTED, fontSize: 12, marginTop: 5 }}>{subMeta.mrrNote}</div>}
+          </div>
+        )}
+
+        {err && (
+          <div style={{ background: "#1a1212", border: "1px solid #5c2f2f", borderRadius: 10, padding: "11px 16px", color: "#fca5a5", fontSize: 13, marginBottom: 18 }}>{err}</div>
+        )}
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
+          <div style={{ display: "flex", gap: 4, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 4 }}>
+            {[
+              { id: "subscriptions", label: `Subscriptions (${subs.length})` },
+              { id: "signups", label: `Signups (${signups.length})` },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                style={{ background: tab === t.id ? GOLD : "transparent", color: tab === t.id ? BLACK : MUTED, border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: 12, cursor: "pointer", letterSpacing: 0.6, textTransform: "uppercase", fontFamily: "inherit" }}
+              >
+                {t.label}
+              </button>
             ))}
           </div>
           <input
-            placeholder="Search by name or email..."
+            placeholder="Search name, email, company…"
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: 8, padding: "8px 14px", color: colors.text, fontSize: 13, width: 240, outline: "none" }}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "9px 14px", color: "#e5e5e5", fontSize: 13, width: 250, outline: "none", fontFamily: "inherit" }}
           />
         </div>
 
-        {/* Records */}
         {loading ? (
-          <div style={{ textAlign: "center", padding: 60, color: colors.muted }}>Loading subscribers...</div>
+          <div style={{ textAlign: "center", padding: 60, color: MUTED }}>Loading…</div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 60, color: colors.muted }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: colors.text }}>No subscribers yet</div>
-            <div style={{ fontSize: 13, marginTop: 6 }}>They'll appear here the moment someone signs up</div>
+          <div style={{ textAlign: "center", padding: 60, color: MUTED, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "#ddd" }}>Nothing here yet</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>
+              {tab === "subscriptions"
+                ? "No subscription records exist. They appear the moment one is created."
+                : "No signups yet. The signup form at /signup-original writes straight into this list."}
+            </div>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {filtered.map((r, i) => {
-              const email = r.user_email || r.email || "—";
-              const name = r.user_name || r.name || "—";
-              const plan = r.plan || "pro";
-              const price = r.price ? `$${Number(r.price).toFixed(2)}/mo` : "";
-              const status = r.status || "active";
-              const planColor = PLAN_COLORS[plan] || colors.gold;
-
+          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+            {filtered.map((r) => {
+              const isSub = tab === "subscriptions";
+              const name = isSub ? r.accountName : r.name || "—";
+              const email = isSub ? r.contactEmail : r.email;
+              const status = r.status || "new";
+              const color = STATUS_COLOR[status] || GOLD;
               return (
-                <div key={r.id || i} style={{
-                  background: colors.card, border: `1px solid ${colors.border}`,
-                  borderRadius: 12, padding: "16px 20px",
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  flexWrap: "wrap", gap: 12,
-                  borderLeft: `3px solid ${planColor}`
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <div style={{ width: 42, height: 42, borderRadius: "50%", background: `${planColor}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: planColor }}>
-                      {name.charAt(0).toUpperCase()}
+                <div key={r.id} style={{ background: CARD, border: `1px solid ${BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 12, padding: "15px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 13, minWidth: 240 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1f1a10", color: GOLD_BRIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 800 }}>
+                      {(name || "?").charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 15, color: "#FFF" }}>{name}</div>
-                      <div style={{ color: colors.muted, fontSize: 13 }}>{email}</div>
-                      {r.user_phone || r.phone ? <div style={{ color: colors.muted, fontSize: 12 }}>{r.user_phone || r.phone}</div> : null}
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#fff" }}>{name}</div>
+                      <div style={{ color: MUTED, fontSize: 12 }}>{email}</div>
+                      {!isSub && r.company ? <div style={{ color: "#555", fontSize: 11 }}>{r.company}</div> : null}
+                      {!isSub && r.mcNumber ? <div style={{ color: "#555", fontSize: 11, fontFamily: "'JetBrains Mono',monospace" }}>MC {r.mcNumber}</div> : null}
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                    <div style={{ background: `${planColor}18`, border: `1px solid ${planColor}44`, borderRadius: 8, padding: "4px 12px" }}>
-                      <span style={{ color: planColor, fontWeight: 700, fontSize: 12 }}>{PLAN_LABELS[plan] || plan.toUpperCase()}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 13, flexWrap: "wrap" }}>
+                    {r.plan && (
+                      <div style={{ background: "#1f1a10", border: `1px solid ${GOLD}44`, borderRadius: 7, padding: "4px 11px", color: GOLD_BRIGHT, fontWeight: 700, fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", fontFamily: "'JetBrains Mono',monospace" }}>
+                        {r.plan}
+                      </div>
+                    )}
+                    {isSub && r.pricing && (
+                      <div style={{ color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "'JetBrains Mono',monospace" }}>
+                        ${r.pricing.monthlyTotal.toFixed(2)}/mo
+                        <span style={{ color: MUTED, fontWeight: 400, fontSize: 11 }}> · {r.pricing.units} {r.pricing.unit}</span>
+                      </div>
+                    )}
+                    <div style={{ border: `1px solid ${color}55`, borderRadius: 6, padding: "3px 10px", color, fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>
+                      ● {status.replace("_", " ")}
                     </div>
-                    {price && <div style={{ color: "#FFF", fontWeight: 700, fontSize: 15 }}>{price}</div>}
-                    <div style={{
-                      background: status === "active" ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)",
-                      border: `1px solid ${status === "active" ? "rgba(16,185,129,0.4)" : "rgba(239,68,68,0.4)"}`,
-                      borderRadius: 6, padding: "3px 10px"
-                    }}>
-                      <span style={{ color: status === "active" ? "#10B981" : "#EF4444", fontSize: 11, fontWeight: 700 }}>
-                        {status === "active" ? "● ACTIVE" : "● " + status.toUpperCase()}
-                      </span>
-                    </div>
-                    <div style={{ color: colors.muted, fontSize: 12 }}>{fmt(r.created)}</div>
+                    {isSub && r.trialEndsAt && r.status === "trialing" && (
+                      <div style={{ color: MUTED, fontSize: 11 }}>trial ends {fmt(r.trialEndsAt)}</div>
+                    )}
+                    <div style={{ color: "#555", fontSize: 11 }}>{fmt(r.createdAt)}</div>
+
+                    {!isSub && (
+                      <select
+                        value={status}
+                        disabled={busy === r.id}
+                        onChange={(e) => setSignupStatus(r.id, e.target.value)}
+                        style={{ background: "#0f0f0f", border: `1px solid ${BORDER}`, color: "#ddd", borderRadius: 7, padding: "6px 9px", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}
+                      >
+                        {["new", "contacted", "activated", "rejected"].map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
               );
@@ -193,14 +222,9 @@ export default function SubscriptionsAdminPage() {
           </div>
         )}
 
-        {/* Footer note */}
-        <div style={{ marginTop: 32, padding: "16px 20px", background: colors.card, border: `1px solid ${colors.border}`, borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 18 }}>🔔</span>
-          <div style={{ color: colors.muted, fontSize: 13 }}>
-            <strong style={{ color: colors.text }}>Want text alerts for new signups?</strong> Signal Sam can send you an SMS the moment anyone subscribes — go to <a href="/fleet-voice" style={{ color: colors.gold }}>Fleet Voice</a> and activate your notification number.
-          </div>
+        <div style={{ marginTop: 28, padding: "14px 18px", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, color: MUTED, fontSize: 12, lineHeight: 1.6 }}>
+          Billing disputes and refund requests live on <a href="/support-billing" style={{ color: GOLD }}>Support Billing</a>. Trial links are generated from the same API at <span style={{ fontFamily: "'JetBrains Mono',monospace" }}>/api/signup/trial-links</span>. SMS alerts for new signups are not wired — A2P registration has to clear first (<a href="/a2p" style={{ color: GOLD }}>A2P</a>).
         </div>
-
       </div>
     </div>
   );

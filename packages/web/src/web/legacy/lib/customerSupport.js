@@ -1,218 +1,243 @@
-/**
- * Customer Support System
- * Help center, contact forms, issue tracking, service categories
- */
+// Customer Support — thin client over /api/support
+//
+// The original (docs/launch/customerSupport.ORIGINAL.js.txt) had two problems:
+//
+//  1. `createSupportTicket()` built an object, gave it a ticket number, and
+//     returned it. Nothing was stored anywhere. Every driver who submitted a
+//     ticket on CustomerSupportPage was told it was received and it was not.
+//  2. SUPPORT_PHONE was '1-800-TRUCK-EASE' (1-800-878-2532). That number is not
+//     owned by this business. Publishing it sends drivers to a stranger. It is
+//     now the real published line, 636-706-8338.
+//
+// Category response times ("1-2 hours") are kept but relabelled as targets —
+// there is no staffed 24/7 desk to guarantee them.
 
-export const SUPPORT_EMAIL = 'truckeasecare@gmail.com';
-export const SUPPORT_PHONE = '1-800-TRUCK-EASE'; // 1-800-878-2532
+const API = "/api/support";
+
+export const SUPPORT_EMAIL = "truckeasecare@gmail.com";
+export const SUPPORT_PHONE = "636-706-8338";
+export const BILLING_EMAIL = "jeremiahjmorris1126@gmail.com";
+
 export const SUPPORT_HOURS = {
-  mon: '6am-10pm CT',
-  tue: '6am-10pm CT',
-  wed: '6am-10pm CT',
-  thu: '6am-10pm CT',
-  fri: '6am-10pm CT',
-  sat: '7am-9pm CT',
-  sun: '8am-8pm CT',
+  mon: "6am-10pm CT",
+  tue: "6am-10pm CT",
+  wed: "6am-10pm CT",
+  thu: "6am-10pm CT",
+  fri: "6am-10pm CT",
+  sat: "7am-9pm CT",
+  sun: "8am-8pm CT",
 };
 
+export const RESPONSE_TIME_NOTE =
+  "Response times are targets, not guarantees. There is no 24/7 staffed support desk yet. Anything safety-critical should be a phone call, not a ticket.";
+
+export const SAFETY_ESCALATION =
+  "If you are in immediate danger, call 911. For suicide or crisis support call or text 988. Do not wait on a support ticket.";
+
 export const SUPPORT_CATEGORIES = {
-  TECHNICAL: {
-    name: 'Technical Issues',
-    icon: '⚙️',
-    description: 'App crashes, features not working, login problems',
-    responseTime: '1-2 hours',
-    priority: 'high',
+  SAFETY: {
+    name: "Safety or Roadside Emergency",
+    icon: "🚨",
+    description: "Breakdown, accident, unsafe dispatch pressure, being told to run illegal hours",
+    responseTime: "immediate — call, do not wait on a ticket",
+    priority: "critical",
   },
-  ACCOUNT: {
-    name: 'Account & Login',
-    icon: '🔐',
-    description: 'Password reset, account recovery, profile issues',
-    responseTime: '2-4 hours',
-    priority: 'high',
+  COMPLIANCE: {
+    name: "HOS, ELD and DOT Compliance",
+    icon: "📋",
+    description: "Log corrections, ELD malfunction reports, DVIR questions, audit requests",
+    responseTime: "same business day (target)",
+    priority: "high",
+  },
+  TECHNICAL: {
+    name: "Technical Issues",
+    icon: "⚙️",
+    description: "App crashes, features not working, login problems, sync failures",
+    responseTime: "1-2 business hours (target)",
+    priority: "high",
   },
   BILLING: {
-    name: 'Billing & Subscription',
-    icon: '💳',
-    description: 'Payment issues, subscription changes, invoices',
-    responseTime: '4-8 hours',
-    priority: 'medium',
+    name: "Billing and Subscription",
+    icon: "💳",
+    description: "Charges, plan changes, invoices, hardware lease questions",
+    responseTime: "1 business day (target)",
+    priority: "normal",
   },
-  DATA: {
-    name: 'Data & Privacy',
-    icon: '🔒',
-    description: 'Data access, privacy concerns, GDPR/CCPA requests',
-    responseTime: '24-48 hours',
-    priority: 'high',
+  HARDWARE: {
+    name: "Hardware",
+    icon: "📦",
+    description: "Tablet, ELD unit, dash cam, install kit — damage, replacement, returns",
+    responseTime: "1 business day (target)",
+    priority: "normal",
   },
-  FEATURES: {
-    name: 'Feature Questions',
-    icon: '❓',
-    description: 'How to use features, tutorials, best practices',
-    responseTime: '4-12 hours',
-    priority: 'low',
+  ACCOUNT: {
+    name: "Account and Data",
+    icon: "🔐",
+    description: "Driver records, document access, export requests, deletion requests",
+    responseTime: "2 business days (target)",
+    priority: "normal",
   },
   FEEDBACK: {
-    name: 'Feedback & Suggestions',
-    icon: '💡',
-    description: 'Feature requests, app improvements, suggestions',
-    responseTime: '1-2 business days',
-    priority: 'low',
-  },
-  ACCESSIBILITY: {
-    name: 'Accessibility Support',
-    icon: '♿',
-    description: 'Screen reader issues, captions, deaf/blind features',
-    responseTime: '1-2 hours',
-    priority: 'critical',
+    name: "Feature Request or Feedback",
+    icon: "💡",
+    description: "Something missing, something broken by design, something you want built",
+    responseTime: "no committed response time",
+    priority: "low",
   },
 };
 
 export const FAQ_TOPICS = {
-  GETTING_STARTED: {
-    title: 'Getting Started',
-    questions: [
-      {
-        q: 'How do I sign up for TruckWithEase?',
-        a: 'Go to the signup page, choose your user type (Solo Driver, Dispatcher, Fleet Manager), enter your email and create a password. You\'ll get instant access to the platform.',
-      },
-      {
-        q: 'What\'s included with my subscription?',
-        a: 'All subscriptions include: Road Context, Fleet Memory, Dispatch, Load Board, HOS Logging, Reports, and more. Owner-ops get Rig Bucks. Seat upgrades available for DAT/Uber Freight logins.',
-      },
-      {
-        q: 'Can I download the app?',
-        a: 'The app works on any device in your browser. Android native app available on Google Play. iOS app coming soon. No download needed to start using web version.',
-      },
-    ],
-  },
-  TECHNICAL_HELP: {
-    title: 'Technical Help',
-    questions: [
-      {
-        q: 'The app keeps crashing. What do I do?',
-        a: 'Try: 1) Clear browser cache, 2) Use a different browser, 3) Restart your device, 4) Check internet connection. If it persists, email truckeasecare@gmail.com with your issue and device type.',
-      },
-      {
-        q: 'I can\'t log in. How do I reset my password?',
-        a: 'Click "Forgot Password" on the login page. Enter your email. You\'ll get a link to reset your password within 5 minutes. Check spam folder if you don\'t see it.',
-      },
-      {
-        q: 'GPS location isn\'t working. Why?',
-        a: 'Make sure: 1) Location permission is enabled in app, 2) GPS is on (not just WiFi), 3) You\'re outdoors with clear sky, 4) App has internet connection. Restart app if still not working.',
-      },
-      {
-        q: 'My phone keeps saying low battery when using Road Context. Why?',
-        a: 'Real-time GPS and audio use significant battery. Turn on Battery Saver mode. Dim screen. Close other apps. Use while plugged in if on long drives.',
-      },
-    ],
-  },
-  ACCOUNT: {
-    title: 'Account & Subscription',
-    questions: [
-      {
-        q: 'How do I upgrade my plan?',
-        a: 'Go to Account Settings > Subscription. See available plans. Choose seats/features needed. Payment processes instantly. New features available right away.',
-      },
-      {
-        q: 'Can I cancel anytime?',
-        a: 'Yes. Month-to-month plans cancel immediately with no penalty. You keep access through the end of your billing period. Annual plans have 30-day cancellation window.',
-      },
-      {
-        q: 'Is my data safe?',
-        a: 'Yes. We use bank-level encryption (AES-256), secure servers, automatic backups, and comply with GDPR/CCPA. Your data is never sold.',
-      },
-    ],
-  },
-  FEATURES: {
-    title: 'Feature Questions',
-    questions: [
-      {
-        q: 'How does Road Context work?',
-        a: 'Road Context shows your real-time location, current load, nearby danger reports, top-rated fuel stops, broker warnings, and weather alerts. All in one view.',
-      },
-      {
-        q: 'What are Rig Bucks?',
-        a: 'Owner-operator rewards. Earn fuel credits, maintenance rebates, cash back on partner services. Only available to solo owner-ops.',
-      },
-      {
-        q: 'Can my fleet use this?',
-        a: 'Yes. Create a Fleet account, add drivers, manage DAT/Uber Freight seats, view fleet-wide reports, and coordinate dispatch. See Subscription Seats for seat pricing.',
-      },
-    ],
-  },
+  COMPLIANCE: [
+    {
+      q: "My ELD stopped recording mid-shift. What do I do?",
+      a: "Note the time and reason, switch to paper logs immediately, and keep them for 8 days. Report the malfunction to the carrier within 24 hours — 49 CFR 395.34 requires the carrier to repair or replace within 8 days. File it under HOS/ELD Compliance so there is a record with a timestamp.",
+    },
+    {
+      q: "Can I edit an HOS log after it is certified?",
+      a: "You can request an edit, but driving time recorded automatically can never be shortened or deleted — not by you, not by a dispatcher. Annotations are added, the original stays. Anyone telling you otherwise is asking you to falsify a federal record.",
+    },
+    {
+      q: "Do I have to take a 30-minute break?",
+      a: "Yes — after 8 cumulative hours of driving time without a 30-minute interruption. The break can be off-duty, sleeper, or on-duty-not-driving.",
+    },
+  ],
+  BILLING: [
+    {
+      q: "How does per-driver billing work if a driver leaves mid-month?",
+      a: "Billing is per active driver. Deactivate the driver and the next invoice drops. There are no contracts and no cancellation fee.",
+    },
+    {
+      q: "What happens after the 14-day trial?",
+      a: "The trial does not auto-charge without a payment method on file. If you add one, the plan you selected starts at the end of the 14 days. Net 30 terms are available for Fleet accounts.",
+    },
+  ],
+  HARDWARE: [
+    {
+      q: "What is included in the $600 per truck?",
+      a: "Tablet plus ELD unit ($380), dash cam ($180), and install kit ($40). On the $49.99/truck/month Fleet plan the hardware is leased and included instead.",
+    },
+  ],
+  TECHNICAL: [
+    {
+      q: "The app is not syncing. Do I lose my logs?",
+      a: "No. Logs are recorded locally first and pushed when a connection returns. Do not reinstall while unsynced — that is the one action that can lose data.",
+    },
+  ],
 };
 
-/**
- * Create support ticket
- */
-export function createSupportTicket(ticket) {
-  return {
-    id: `ticket-${Date.now()}`,
-    ...ticket,
-    status: 'open',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    responses: [],
-  };
+async function req(path, opts) {
+  const res = await fetch(API + path, opts);
+  if (!res.ok) {
+    let detail = "";
+    try {
+      detail = (await res.json()).error || "";
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail || `${path} failed: ${res.status}`);
+  }
+  return res.json();
 }
 
 /**
- * Get support email
+ * Create a support ticket. Now actually persists server-side.
+ * Returns `{ stored: true, ticketNumber }` — check `stored` before telling the
+ * driver anything was received.
  */
+export async function createSupportTicket(ticket) {
+  const payload = {
+    category: (ticket?.category || "TECHNICAL").toUpperCase(),
+    subject: ticket?.subject || "",
+    body: ticket?.body || ticket?.message || ticket?.description || "",
+    driverId: ticket?.driverId || null,
+    contactEmail: ticket?.email || ticket?.contactEmail || null,
+    contactPhone: ticket?.phone || ticket?.contactPhone || null,
+  };
+  try {
+    return await req("/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    return {
+      stored: false,
+      error: e.message,
+      note: `Ticket was NOT saved. Email ${SUPPORT_EMAIL} or call ${SUPPORT_PHONE} instead.`,
+    };
+  }
+}
+
+/** List tickets, optionally for one driver. */
+export async function listSupportTickets(driverId) {
+  const qs = driverId ? `?driverId=${encodeURIComponent(driverId)}` : "";
+  const r = await req(`/tickets${qs}`);
+  return r.tickets || [];
+}
+
+/** Update a ticket's status. */
+export async function setTicketStatus(id, status, resolution) {
+  return req(`/tickets/${encodeURIComponent(id)}/status`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, resolution: resolution || null }),
+  });
+}
+
+/** Server-side support config, including whether the desk is open right now. */
+export async function getSupportConfig() {
+  try {
+    return await req("/");
+  } catch {
+    return {
+      email: SUPPORT_EMAIL,
+      phone: SUPPORT_PHONE,
+      hours: SUPPORT_HOURS,
+      openNow: null,
+      categories: SUPPORT_CATEGORIES,
+      responseTimeNote: RESPONSE_TIME_NOTE,
+      safetyEscalation: SAFETY_ESCALATION,
+      note: "Server unreachable — showing built-in contact details.",
+    };
+  }
+}
+
 export function getSupportEmail() {
   return SUPPORT_EMAIL;
 }
 
-/**
- * Get support hours formatted
- */
+/** Array of { day, hours } in week order — the shape the support page renders. */
 export function getSupportHours() {
-  const daysInOrder = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-  return daysInOrder.map(day => ({
+  return ["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => ({
     day: day.charAt(0).toUpperCase() + day.slice(1),
     hours: SUPPORT_HOURS[day],
   }));
 }
 
-/**
- * Check if support is currently available
- */
-export function isSupportAvailable() {
-  const now = new Date();
-  const dayName = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][now.getDay()];
-  
-  // In production, parse actual hours and check against current time
-  // For now, return true (24/7 email support)
-  return true;
+/** Local Central-time check. The server returns the authoritative value. */
+export function isSupportAvailable(now = new Date()) {
+  const ct = new Date(now.getTime() - 5 * 3600_000); // CDT
+  const day = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][ct.getUTCDay()];
+  const windows = { sun: [8, 20], mon: [6, 22], tue: [6, 22], wed: [6, 22], thu: [6, 22], fri: [6, 22], sat: [7, 21] };
+  const [open, close] = windows[day];
+  const h = ct.getUTCHours();
+  return { available: h >= open && h < close, day, hours: SUPPORT_HOURS[day] };
 }
 
-/**
- * Get FAQ by category
- */
 export function getFAQByCategory(category) {
-  return FAQ_TOPICS[category];
+  return FAQ_TOPICS[(category || "").toUpperCase()] || [];
 }
 
-/**
- * Search FAQ by keyword
- */
 export function searchFAQ(keyword) {
-  const results = [];
-  const lowerKeyword = keyword.toLowerCase();
-  
-  Object.entries(FAQ_TOPICS).forEach(([categoryKey, category]) => {
-    category.questions.forEach((question) => {
-      if (
-        question.q.toLowerCase().includes(lowerKeyword) ||
-        question.a.toLowerCase().includes(lowerKeyword)
-      ) {
-        results.push({
-          category: category.title,
-          ...question,
-        });
+  const k = (keyword || "").toLowerCase().trim();
+  if (!k) return [];
+  const out = [];
+  for (const [cat, items] of Object.entries(FAQ_TOPICS)) {
+    for (const item of items) {
+      if (item.q.toLowerCase().includes(k) || item.a.toLowerCase().includes(k)) {
+        out.push({ category: cat, ...item });
       }
-    });
-  });
-  
-  return results;
+    }
+  }
+  return out;
 }

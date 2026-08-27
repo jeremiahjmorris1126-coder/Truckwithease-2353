@@ -512,7 +512,7 @@ export default function TutorialsPage() {
               { q: "What happens to my data if I cancel?", a: "Your data stays archived for 6 months. You can export or re-activate anytime." },
               { q: "Do I have to buy hardware?", a: "Fleet plans include hardware rental ($49.99/mo) or you can buy outright ($59.99/mo subscription + one-time hardware cost)." },
               { q: "Can I upgrade/downgrade plans?", a: "Yes, anytime. Pro-rated billing means you only pay for what you use." },
-              { q: "What if I have technical issues?", a: "Email truckwithease@gmail.com or tap Help in-app. Response within 2 hours." }
+              { q: "What if I have technical issues?", a: "Email truckeasecare@gmail.com or tap Help in-app. Response within 2 hours." }
             ].map((faq, idx) => (
               <div key={idx} style={{ background: "rgba(255,255,255,0.05)", padding: "20px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <h3 style={{ fontSize: "15px", fontWeight: "bold", marginBottom: "10px", color: ORANGE }}>

@@ -79,11 +79,11 @@ export default function Reports() {
           return (
             <Card key={r.title} className="p-5 flex flex-col">
               <div className="flex items-start justify-between mb-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EEF2FA]"><Icon className="h-5 w-5 text-[#0B2A6B]" /></div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1C1C1C]"><Icon className="h-5 w-5 text-[#C9A84C]" /></div>
                 <Badge status={r.tone}>{r.count}</Badge>
               </div>
-              <div className="font-bold text-[#0E1524]">{r.title}</div>
-              <p className="text-xs text-[#5B6577] mt-1 flex-1">{r.desc}</p>
+              <div className="font-bold text-[#F5F5F5]">{r.title}</div>
+              <p className="text-xs text-[#8A8A8A] mt-1 flex-1">{r.desc}</p>
               <Button variant="ghost" className="w-full mt-4" onClick={r.onExport}><Download className="h-4 w-4" />Export CSV</Button>
             </Card>
           );

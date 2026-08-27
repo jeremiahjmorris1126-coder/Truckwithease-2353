@@ -32,35 +32,35 @@ export default function Chat() {
     <div>
       <PageHeader title="Dispatch Chat" subtitle="Direct line between dispatch and the road — live, per fleet." />
       <Card className="flex flex-col h-[calc(100vh-200px)] overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-3 border-b border-[#E2E7F0] bg-[#F4F6FB]">
-          <MessageSquare className="h-4 w-4 text-[#0B2A6B]" />
-          <span className="font-bold text-sm text-[#0E1524]">Fleet Channel</span>
-          <span className="ml-auto flex items-center gap-1.5 text-xs text-[#1FA971]"><span className="h-2 w-2 rounded-full bg-[#1FA971] animate-pulse" />Live</span>
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-[#222222] bg-[#0a0a0a]">
+          <MessageSquare className="h-4 w-4 text-[#C9A84C]" />
+          <span className="font-bold text-sm text-[#F5F5F5]">Fleet Channel</span>
+          <span className="ml-auto flex items-center gap-1.5 text-xs text-[#C9A84C]"><span className="h-2 w-2 rounded-full bg-[#C9A84C] animate-pulse" />Live</span>
         </div>
         <div className="flex-1 overflow-y-auto p-5 space-y-3">
           {msgs.isLoading ? <Spinner /> : rows.length === 0 ? (
-            <p className="text-sm text-[#5B6577] text-center py-10">No messages yet. Say hello to the fleet.</p>
+            <p className="text-sm text-[#8A8A8A] text-center py-10">No messages yet. Say hello to the fleet.</p>
           ) : rows.map((m) => {
             const mine = m.fromId === session.driverId && m.fromName === session.name;
             return (
               <div key={m.id} className={`flex ${mine ? "justify-end" : ""}`}>
                 <div className={`max-w-[75%] ${mine ? "items-end" : ""}`}>
-                  <div className={`text-[11px] mb-1 ${mine ? "text-right text-[#5B6577]" : "text-[#5B6577]"}`}>{m.fromName}</div>
-                  <div className={`rounded-2xl px-4 py-2.5 text-sm ${mine ? "bg-[#0B2A6B] text-white" : "bg-[#F4F6FB] text-[#0E1524]"}`}>{m.body}</div>
+                  <div className={`text-[11px] mb-1 ${mine ? "text-right text-[#8A8A8A]" : "text-[#8A8A8A]"}`}>{m.fromName}</div>
+                  <div className={`rounded-2xl px-4 py-2.5 text-sm ${mine ? "bg-[#C9A84C] text-[#0a0a0a]" : "bg-[#0a0a0a] text-[#F5F5F5]"}`}>{m.body}</div>
                 </div>
               </div>
             );
           })}
           <div ref={endRef} />
         </div>
-        <div className="border-t border-[#E2E7F0] p-3 space-y-2">
+        <div className="border-t border-[#222222] p-3 space-y-2">
           <div className="flex flex-wrap gap-1.5">
             {QUICK.map((q) => (
-              <button key={q} onClick={() => send.mutate(q)} disabled={send.isPending} className="flex items-center gap-1 rounded-full border border-[#E2E7F0] px-2.5 py-1 text-xs text-[#5B6577] hover:border-[#FFB400] hover:text-[#0E1524]"><Zap className="h-3 w-3 text-[#FFB400]" />{q}</button>
+              <button key={q} onClick={() => send.mutate(q)} disabled={send.isPending} className="flex items-center gap-1 rounded-full border border-[#222222] px-2.5 py-1 text-xs text-[#8A8A8A] hover:border-[#C9A84C] hover:text-[#F5F5F5]"><Zap className="h-3 w-3 text-[#C9A84C]" />{q}</button>
             ))}
           </div>
           <form onSubmit={(e) => { e.preventDefault(); if (text.trim()) send.mutate(text); }} className="flex gap-2">
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Message the fleet…" className="flex-1 rounded-lg border border-[#E2E7F0] px-3 py-2.5 text-sm focus:border-[#FFB400] focus:outline-none" />
+            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Message the fleet…" className="flex-1 rounded-lg border border-[#222222] px-3 py-2.5 text-sm focus:border-[#C9A84C] focus:outline-none" />
             <Button variant="amber" type="submit" disabled={send.isPending}><Send className="h-4 w-4" /></Button>
           </form>
         </div>

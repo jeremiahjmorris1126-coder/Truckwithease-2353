@@ -102,7 +102,7 @@ export default function OnboardingPage() {
     } catch (err) {
       console.error('Onboarding error:', err);
       setError(
-        err?.data?.message || 'Something went wrong — please try again or contact truckwithease@gmail.com.'
+        err?.data?.message || 'Something went wrong — please try again or contact truckeasecare@gmail.com.'
       );
     } finally {
       setLoading(false);

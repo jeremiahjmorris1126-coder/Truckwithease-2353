@@ -3,16 +3,16 @@ import { Mail, Phone, Clock, Search, MessageSquare, AlertCircle, CheckCircle, Se
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_CATEGORIES, FAQ_TOPICS, getSupportHours, searchFAQ, createSupportTicket } from '../lib/customerSupport';
 
 const C = {
-  black: '#060A10',
+  black: '#0a0a0a',
   white: '#f0ede8',
   white60: 'rgba(240, 237, 232, 0.6)',
   white30: 'rgba(240, 237, 232, 0.3)',
   white10: 'rgba(240, 237, 232, 0.1)',
-  card: '#0f1419',
+  card: '#161616',
   gold: '#c9a84c',
   green: '#22c55e',
   red: '#ef4444',
-  cyan: '#06b6d4',
+  cyan: '#FFD700',
 };
 
 export default function CustomerSupportPage() {
@@ -27,6 +27,8 @@ export default function CustomerSupportPage() {
     phone: '',
   });
   const [ticketSubmitted, setTicketSubmitted] = useState(false);
+  const [ticketResult, setTicketResult] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSearchFAQ = (query) => {
     setSearchQuery(query);
@@ -38,23 +40,30 @@ export default function CustomerSupportPage() {
     }
   };
 
-  const handleSubmitTicket = () => {
-    if (ticketForm.subject.trim() && ticketForm.description.trim() && ticketForm.email.trim()) {
-      const ticket = createSupportTicket(ticketForm);
+  const handleSubmitTicket = async () => {
+    if (!ticketForm.subject.trim() || !ticketForm.description.trim() || !ticketForm.email.trim()) return;
+    setSubmitting(true);
+    try {
+      const ticket = await createSupportTicket(ticketForm);
+      setTicketResult(ticket);
       setTicketSubmitted(true);
-      setTimeout(() => {
-        setTicketSubmitted(false);
+      if (ticket && ticket.stored) {
         setTicketForm({ category: 'TECHNICAL', subject: '', description: '', email: '', phone: '' });
-      }, 3000);
+      }
+    } catch (err) {
+      setTicketResult({ stored: false, note: 'Could not reach the support server. Email or call us instead.' });
+      setTicketSubmitted(true);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#060A10', color: C.white, padding: '24px 16px' }}>
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: C.white, padding: '24px 16px' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         {/* Header */}
         <div style={{ marginBottom: '40px' }}>
-          <h1 style={{ fontSize: 42, fontWeight: 700, marginBottom: '12px', background: `linear-gradient(135deg, ${C.gold}, ${C.cyan})`, backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', color: C.gold }}>
+          <h1 style={{ fontSize: 42, fontWeight: 700, marginBottom: '12px', background: `linear-gradient(135deg, #C9A84C 0%, #FFD700 40%, #C9A84C 70%, #8A6E2F 100%)`, backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', color: C.gold }}>
             💬 Customer Support
           </h1>
           <p style={{ fontSize: 16, color: C.white60, lineHeight: 1.7 }}>

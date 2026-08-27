@@ -1,5 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
 
+/**
+ * CoverPage — public landing page (routes /cover and /home-old).
+ *
+ * REWRITTEN Aug 25 2026. Original preserved at docs/launch/CoverPage.ORIGINAL.jsx.txt.
+ * What was removed and why:
+ *  - Stats "13M+ Drivers Served", "47 AI Variables Per Mile", "$400 vs $800+", "12 Proprietary
+ *    Features" — all invented. There are no customers yet.
+ *  - A scrolling "live" ticker and a pulsing "Ghost Nerve Active" badge fed by a hardcoded
+ *    array of eight scripted events. A scripted demo is never labeled live.
+ *  - A TruckWithEase / Samsara / Motive feature table headed "THE ONLY HONEST COMPARISON",
+ *    plus "$400 vs $800+ per 10-truck fleet" price cards quoting competitors' pricing.
+ *  - Feature copy for things with no code: 47-variable optimization, payroll from ELD miles,
+ *    72-hour violation prediction, one-tap 911 dispatch, hands-free cab calling, simultaneous
+ *    multi-party billing, and "8 live data sources" (only Google Maps is wired).
+ *  - Wrong prices ($29/$39/$49/$59) and feature bullets for HRease, Ghost Nerve, Azure and
+ *    Geotab. Pricing now matches PLANS in api/routes/signup.ts.
+ *  - Stale contact address truckwithease@gmail.com -> truckeasecare@gmail.com (support).
+ */
+
 // Brand tokens — matches the logo exactly
 const B = {
   black:     '#0a0a0a',
@@ -18,52 +37,28 @@ const B = {
 const goldGrad = `linear-gradient(135deg, ${B.gold} 0%, ${B.goldBright} 45%, ${B.gold} 75%, ${B.goldDim} 100%)`;
 
 const FEATURES = [
-  { icon: '⚡', title: 'Quantum Dispatch', sub: 'AI dispatches loads before your drivers clock in', tag: 'EXCLUSIVE', link: '/dispatch' },
-  { icon: '🧠', title: 'Ghost Nerve AI', sub: '47-variable optimization running silently behind every decision', tag: 'PROPRIETARY', link: '/ghost-nerve' },
-  { icon: '📋', title: 'HOS + ELD Logger', sub: 'Local, short-haul & long-haul — every exemption covered', tag: 'FMCSA READY', link: '/hos-logger' },
-  { icon: '👥', title: 'HRease — Hire to Pay', sub: 'Post jobs, screen applicants, onboard, run payroll from ELD miles', tag: 'ALL-IN-ONE', link: '/humanai' },
-  { icon: '🔍', title: 'Live Broker Check', sub: 'DOT + fraud scan on every shipper before your driver accepts', tag: 'REAL TIME', link: '/loads' },
-  { icon: '🛡️', title: 'Phantom Compliance', sub: 'Violations caught and eliminated 72 hours before they happen', tag: 'PROACTIVE', link: '/dot-compliance-vault' },
-  { icon: '🎮', title: 'Game Up Training', sub: 'Gamified FMCSA driver certification — earn Rig Bucks every lesson', tag: 'UNIQUE', link: '/game-up' },
-  { icon: '📱', title: 'Fleet Voice', sub: 'Hands-free calling through cab speakers — built into the app', tag: 'NO HARDWARE', link: '/fleet-voice' },
-  { icon: '🚨', title: 'Safety SOS', sub: 'One tap → 911 local dispatch, state patrol, and GPS broadcast', tag: 'LIFE SAFETY', link: '/safety-sos' },
-  { icon: '💰', title: 'Scan & Instant Bill', sub: 'One photo, bill fires to customer + broker + fleet + AP simultaneously', tag: 'ZERO CLICKS', link: '/scan-bill' },
-  { icon: '📡', title: 'Satellite Maps', sub: '8 live data sources: Google, HERE, NOAA, Waze, state DOT, GasBuddy', tag: 'LIVE', link: '/satellite-maps' },
-  { icon: '🏆', title: 'Big Rig Bucks', sub: 'Every safe mile, clean inspection, and delivery earns real rewards', tag: 'DRIVER LOYALTY', link: '/rig-bucks' },
+  { icon: '📋', title: 'HOS + ELD Logger', sub: 'Duty-status logging for local, short-haul and long-haul, with exemptions', tag: 'BUILT', link: '/hos-logger' },
+  { icon: '🔧', title: 'DVIR + Maintenance', sub: 'Pre/post-trip inspection reports, defects, work orders and PM intervals', tag: 'BUILT', link: '/dvir' },
+  { icon: '📊', title: 'Driver Safety Score', sub: 'Scored from your own speeding, HOS, DVIR and violation records — never guessed', tag: 'BUILT', link: '/driver-scorecard' },
+  { icon: '🗒️', title: 'Fleet Memory', sub: 'Your drivers\' notes and ratings on brokers, shippers and stops, shared fleet-wide', tag: 'BUILT', link: '/fleet-memory' },
+  { icon: '🚚', title: 'Load Board + Dispatch', sub: 'Post, assign and book loads with state-by-state dispatch compliance rules', tag: 'BUILT', link: '/loads' },
+  { icon: '🤖', title: 'AI Assistants', sub: '12 role-based assistants for dispatch, compliance, safety, health and money', tag: 'BUILT', link: '/ai-team' },
+  { icon: '📷', title: 'Document Scan', sub: 'Photograph a BOL, rate con, invoice or DVIR and get the text transcribed', tag: 'BUILT', link: '/scan-bill' },
+  { icon: '⛽', title: 'Fuel + Tolls', sub: 'Fuel card charges, spend tracking and toll records in one ledger', tag: 'BUILT', link: '/fuel' },
+  { icon: '👥', title: 'HR Records', sub: 'People files, occurrences, pay configuration and document storage', tag: 'BUILT', link: '/humanai' },
+  { icon: '🏆', title: 'Big Rig Bucks', sub: 'Points for clean days, safe miles and completed training', tag: 'BUILT', link: '/rig-bucks' },
+  { icon: '🩺', title: 'Driver Health', sub: 'Med card expirations and vitals tracking alongside HOS fatigue', tag: 'BUILT', link: '/driver-health' },
+  { icon: '🎮', title: 'Game Up Training', sub: 'Training modules drivers actually finish, tied to the rewards ledger', tag: 'BUILT', link: '/game-up' },
 ];
 
-const COMPARE = [
-  { feature: 'Quantum AI Dispatch',      us: true, s: false, m: false },
-  { feature: 'Driver Hiring & Onboarding',us: true, s: false, m: false },
-  { feature: 'Payroll from ELD Miles',   us: true, s: false, m: false },
-  { feature: 'Live Broker Fraud Check',  us: true, s: false, m: false },
-  { feature: 'HOS — All Driver Types',   us: true, s: false, m: false },
-  { feature: 'In-App Training (Game Up)',us: true, s: false, m: false },
-  { feature: 'Hands-Free Fleet Voice',   us: true, s: false, m: false },
-  { feature: 'Safety SOS — 911 Direct',  us: true, s: false, m: false },
-  { feature: 'Ghost Nerve Intelligence', us: true, s: false, m: false },
-  { feature: 'ELD / Telematics',         us: true, s: true,  m: true  },
-  { feature: 'Load Board',               us: true, s: false, m: false },
-  { feature: 'Document Scan & Bill',     us: true, s: false, m: false },
-];
 
 const TIERS = [
-  { name: 'Solo',         price: '$29',  period: '/mo',       features: ['1 Driver','HOS Logger','ELD Ready','Load Board','Big Rig Bucks','Safety SOS'] },
-  { name: 'Pro',          price: '$39',  period: '/mo',       features: ['Up to 5 Drivers','Quantum Dispatch','Scan & Bill','Game Up Training','Fleet Voice','Everything in Solo'], hot: true },
-  { name: 'Fleet Rental', price: '$49',  period: '/seat/mo',  features: ['Unlimited Drivers','HRease Full Suite','Ghost Nerve AI','Broker Checks','Priority Support','Everything in Pro'] },
-  { name: 'Fleet Owned',  price: '$59',  period: '/seat/mo',  features: ['White-Label Option','Custom Branding','Azure Integration','Geotab ELD','Dedicated Agent','Everything in Fleet'] },
+  { name: 'Solo',                  price: '$29.99', period: '/driver/mo', features: ['1 driver','HOS logger','DVIR','Load board','Big Rig Bucks','À-la-carte add-ons $2.99–$10.99'] },
+  { name: 'Pro',                   price: '$39.99', period: '/driver/mo', features: ['All-inclusive','Dispatch + compliance rules','Document scan','Safety score','Fleet memory','Everything in Solo'], hot: true },
+  { name: 'Fleet — hardware lease',price: '$49.99', period: '/truck/mo',  features: ['Hardware lease included','Unlimited drivers per truck','HR records','Fleet-wide reporting','Everything in Pro'] },
+  { name: 'Fleet — hardware owned',price: '$59.99', period: '/driver/mo', features: ['You own the hardware','$600 per truck one-time','Custom branding','Fleet-wide reporting','Everything in Pro'] },
 ];
 
-const FEED = [
-  '⚡ Ghost Nerve pre-staged 8 loads for next shift',
-  '✅ Broker "Midwest Freight LLC" — CLEAN — load accepted',
-  '🧠 Silent Dispatch: LD-9003 → Maria Santos — $892 net profit',
-  '🛡️ Phantom Compliance: 0 violations forecast next 72h',
-  '💰 Ray Davis earned 75 Rig Bucks — clean HOS certified',
-  '🔒 Sovereign ELD: HOS logs sealed — zero external access',
-  '📡 I-80 Chicago→Denver — CLEAR — dispatching now',
-  '🎮 John Miller completed Hazmat Module — 150 Rig Bucks',
-];
 
 const NAV_LINKS = [
   { label: 'Platform',  href: '/platform' },
@@ -75,7 +70,6 @@ const NAV_LINKS = [
 
 export default function CoverPage() {
   const [scrolled, setScrolled]   = useState(false);
-  const [feedIdx, setFeedIdx]     = useState(0);
   const [navOpen, setNavOpen]     = useState(false);
   const [activeTier, setActiveTier] = useState(1);
   const [visible, setVisible]     = useState(new Set());
@@ -85,11 +79,6 @@ export default function CoverPage() {
     const fn = () => setScrolled(window.scrollY > 30);
     window.addEventListener('scroll', fn);
     return () => window.removeEventListener('scroll', fn);
-  }, []);
-
-  useEffect(() => {
-    const t = setInterval(() => setFeedIdx(i => (i + 1) % FEED.length), 2800);
-    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -112,17 +101,6 @@ export default function CoverPage() {
 
   return (
     <div style={{ background: B.black, minHeight: '100vh', fontFamily: "'Inter', sans-serif", overflowX: 'hidden' }}>
-
-      {/* ── Ticker ── */}
-      <div style={{ background: B.goldDim, padding: '7px 0', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', animation: 'tickerScroll 32s linear infinite', whiteSpace: 'nowrap' }}>
-          {[...FEED, ...FEED].map((f, i) => (
-            <span key={i} style={{ color: B.black, fontFamily: "'Oswald', sans-serif", fontSize: 13, fontWeight: 600, letterSpacing: '0.06em', marginRight: 64 }}>
-              {f}
-            </span>
-          ))}
-        </div>
-      </div>
 
       {/* ── Nav ── */}
       <nav style={{
@@ -187,7 +165,7 @@ export default function CoverPage() {
           />
         </div>
 
-        {/* Ghost nerve live badge */}
+        {/* Status badge — factual, not a live feed */}
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 8,
           background: B.white10, border: `1px solid ${B.blackBorder}`,
@@ -196,7 +174,7 @@ export default function CoverPage() {
         }}>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: B.gold, display: 'inline-block', animation: 'goldPulse 2s infinite' }} />
           <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: 12, letterSpacing: '0.12em', color: B.gold, textTransform: 'uppercase' }}>
-            Ghost Nerve Active — {FEED[feedIdx]}
+            HOS · DVIR · Dispatch · 14-day free trial
           </span>
         </div>
 
@@ -275,20 +253,20 @@ export default function CoverPage() {
           </a>
         </div>
 
-        {/* Stats */}
+        {/* What this is — no invented numbers */}
         <div style={{
           display: 'flex', gap: 40, flexWrap: 'wrap', justifyContent: 'center',
           marginTop: 48, animation: 'fadeInUp 0.7s 0.4s ease both',
         }}>
           {[
-            { num: '13M+',    label: 'Drivers Served' },
-            { num: '47',      label: 'AI Variables Per Mile' },
-            { num: '$400',    label: 'vs $800+ Elsewhere' },
-            { num: '12',      label: 'Proprietary Features' },
-          ].map(s => (
-            <div key={s.num} style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, letterSpacing: '0.04em', background: goldGrad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.num}</div>
-              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: B.white30 }}>{s.label}</div>
+            { num: '14',   label: 'Day Free Trial' },
+            { num: '$29.99', label: 'Starting Per Driver / Mo' },
+            { num: '0',    label: 'Contracts. Cancel Anytime' },
+            { num: '12',   label: 'AI Assistants Built In' },
+          ].map(s2 => (
+            <div key={s2.label} style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, letterSpacing: '0.04em', background: goldGrad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s2.num}</div>
+              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: B.white30 }}>{s2.label}</div>
             </div>
           ))}
         </div>
@@ -336,48 +314,6 @@ export default function CoverPage() {
               <p style={{ fontSize: 13, color: B.white60, margin: 0, lineHeight: 1.5 }}>{f.sub}</p>
             </div>
           ))}
-        </div>
-      </section>
-
-      <hr style={{ border: 'none', height: 1, background: `linear-gradient(90deg, transparent, ${B.goldDim}, transparent)`, margin: 0 }} />
-
-      {/* ── Comparison ── */}
-      <section style={{ padding: '90px 24px', maxWidth: 960, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: B.gold, marginBottom: 12 }}>HEAD TO HEAD</p>
-          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,64px)', letterSpacing: '0.03em', color: B.white, margin: 0 }}>THE ONLY HONEST COMPARISON</h2>
-        </div>
-
-        <div style={{ background: B.blackCard, border: `1px solid ${B.blackBorder}`, borderRadius: 14, overflow: 'hidden' }}>
-          {/* Header */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 140px 140px', background: B.black, padding: '14px 24px', borderBottom: `1px solid ${B.blackBorder}` }}>
-            <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', color: B.white30 }}>Feature</div>
-            {['TruckWithEase', 'Samsara', 'Motive'].map(n => (
-              <div key={n} style={{ textAlign: 'center', fontFamily: "'Oswald', sans-serif", fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: n === 'TruckWithEase' ? B.gold : B.white30 }}>{n}</div>
-            ))}
-          </div>
-          {COMPARE.map((row, i) => (
-            <div key={row.feature} style={{ display: 'grid', gridTemplateColumns: '1fr 140px 140px 140px', padding: '13px 24px', borderBottom: i < COMPARE.length - 1 ? `1px solid ${B.blackBorder}` : 'none', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-              <div style={{ fontSize: 13, color: B.white90 }}>{row.feature}</div>
-              <div style={{ textAlign: 'center', fontSize: 16 }}>{row.us ? <span style={{ color: B.gold }}>✦</span> : <span style={{ color: B.white30 }}>✗</span>}</div>
-              <div style={{ textAlign: 'center', fontSize: 15 }}>{row.s ? '✓' : <span style={{ color: '#ef4444', fontSize: 14 }}>✗</span>}</div>
-              <div style={{ textAlign: 'center', fontSize: 15 }}>{row.m ? '✓' : <span style={{ color: '#ef4444', fontSize: 14 }}>✗</span>}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Price truth */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16, marginTop: 24 }}>
-          <div style={{ background: B.blackCard, border: `1px solid ${B.goldDim}`, borderRadius: 12, padding: '20px 24px', textAlign: 'center' }}>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, background: goldGrad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>$400</div>
-            <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 13, letterSpacing: '0.08em', color: B.gold, textTransform: 'uppercase', marginBottom: 4 }}>TruckWithEase</div>
-            <div style={{ fontSize: 12, color: B.white60 }}>10-truck fleet / month — everything included</div>
-          </div>
-          <div style={{ background: B.blackCard, border: `1px solid ${B.blackBorder}`, borderRadius: 12, padding: '20px 24px', textAlign: 'center' }}>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, color: '#ef4444' }}>$800+</div>
-            <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 13, letterSpacing: '0.08em', color: B.white60, textTransform: 'uppercase', marginBottom: 4 }}>Samsara</div>
-            <div style={{ fontSize: 12, color: B.white30 }}>10-truck fleet / month — ELD only</div>
-          </div>
         </div>
       </section>
 
@@ -442,8 +378,8 @@ export default function CoverPage() {
         <p style={{ fontSize: 17, color: B.white60, maxWidth: 480, margin: '0 auto 16px', lineHeight: 1.6 }}>
           Come trucking with us.
         </p>
-        <a href="mailto:truckwithease@gmail.com" style={{ display: 'block', fontSize: 15, color: B.gold, marginBottom: 28, letterSpacing: '0.05em', textDecoration: 'none', fontFamily: "'Oswald', sans-serif" }}>
-          truckwithease@gmail.com
+        <a href="mailto:truckeasecare@gmail.com" style={{ display: 'block', fontSize: 15, color: B.gold, marginBottom: 28, letterSpacing: '0.05em', textDecoration: 'none', fontFamily: "'Oswald', sans-serif" }}>
+          truckeasecare@gmail.com
         </a>
         <button onClick={() => nav('/signup')} style={{
           background: goldGrad, color: B.black,
@@ -467,21 +403,20 @@ export default function CoverPage() {
         href="tel:6367068338"
         style={{
           position: 'fixed', bottom: 28, right: 24, zIndex: 999,
-          background: '#16a34a', color: 'white',
+          background: goldGrad, color: B.black,
           borderRadius: 50, padding: '14px 22px',
           fontSize: 16, fontWeight: 900, textDecoration: 'none',
-          boxShadow: '0 8px 24px rgba(22,163,74,0.5)',
+          boxShadow: '0 8px 24px rgba(201,168,76,0.45)',
           display: 'flex', alignItems: 'center', gap: 8,
           transition: 'transform 0.15s, box-shadow 0.15s',
         }}
-        onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(22,163,74,0.65)'; }}
-        onMouseOut={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(22,163,74,0.5)'; }}
+        onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(201,168,76,0.6)'; }}
+        onMouseOut={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(201,168,76,0.45)'; }}
       >
         📞 <span>636-706-8338</span>
       </a>
 
       <style>{`
-        @keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         @keyframes fadeInUp { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
         @keyframes goldPulse { 0%,100%{box-shadow:0 0 6px rgba(201,168,76,0.4);} 50%{box-shadow:0 0 18px rgba(201,168,76,0.8);} }
         @keyframes logoFadeIn { from { opacity:0; transform:scale(0.92) translateY(16px); } to { opacity:1; transform:scale(1) translateY(0); } }

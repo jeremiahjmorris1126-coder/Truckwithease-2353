@@ -1,200 +1,74 @@
 /**
- * AGENT INTEGRITY CHECK — TruckWithEase Proprietary
- * ==================================================
- * Continuous verification that all agents are running unmodified
- * on the TruckWithEase platform only. Any attempted copy or modification
- * is immediately detected and locked.
+ * Agent integrity check — client shim.
+ *
+ * Original preserved at docs/launch/agentIntegrityCheck.ORIGINAL.js.txt. It was
+ * replaced because a license/integrity check that runs in the browser cannot be
+ * enforced: it asserted `agent.owner === 'TruckWithEase'` on an object the page
+ * controls, so anyone with devtools passed it. It also reported failures to
+ * https://api.truckwithease.io/security/integrity-failure, which is dead.
+ *
+ * The real check is server-side at /api/integrity: it sha256-hashes each agent's
+ * composed system prompt (guardrails included) and compares it to a sealed
+ * baseline. A weakened or guardrail-stripped prompt changes the hash and is
+ * actually detected. This file just reads that verdict.
  */
 
-import { agentLock, TRUCKWITHEASEKEY } from './exclusiveAgentLock.js';
+const API = "/api/integrity";
 
-class AgentIntegrityCheck {
+export class AgentIntegrityCheck {
   constructor() {
-    this.verified = false;
-    this.lastCheck = null;
-    this.agentStatuses = {};
-    this.lockoutReason = null;
+    this.lastResult = null;
   }
 
-  async verifyAllAgents() {
-    // Verify exclusive lock first
-    if (!agentLock.verifyLicense(TRUCKWITHEASEKEY)) {
-      return false;
-    }
-
-    const agents = agentLock.getAllAgents();
-    let allVerified = true;
-
-    for (const [agentType, agentData] of Object.entries(agents)) {
-      const verified = await this.verifyAgent(agentType);
-      this.agentStatuses[agentType] = {
-        verified,
-        lastCheck: new Date().toISOString(),
-        status: verified ? 'LOCKED & SECURE' : 'COMPROMISED',
-      };
-      if (!verified) {
-        allVerified = false;
-      }
-    }
-
-    this.verified = allVerified;
-    this.lastCheck = new Date().toISOString();
-    return allVerified;
-  }
-
-  async verifyAgent(agentType) {
+  /** Full server-side verification of every agent. */
+  async verifyAll() {
     try {
-      // Import the agent module
-      const agent = agentLock.getAgent(agentType);
-      if (!agent) return false;
-
-      // Verify agent is still locked
-      if (!agent.locked) return false;
-
-      // Verify agent owner is TruckWithEase
-      if (agent.owner !== 'TruckWithEase') return false;
-
-      return true;
+      const res = await fetch(API);
+      if (!res.ok) throw new Error(`integrity -> ${res.status}`);
+      const data = await res.json();
+      this.lastResult = data;
+      return data;
     } catch (e) {
-      console.error(`❌ Agent integrity check failed for ${agentType}:`, e);
-      this.triggerLockout(`Agent ${agentType} integrity check failed`);
-      return false;
-    }
-  }
-
-  getAgentStatus(agentType) {
-    if (!this.verified) {
-      this.triggerLockout('Agents not verified');
-      return null;
-    }
-    return this.agentStatuses[agentType] || null;
-  }
-
-  getAllAgentStatuses() {
-    if (!this.verified) {
-      this.triggerLockout('Agents not verified');
-      return null;
-    }
-    return this.agentStatuses;
-  }
-
-  triggerLockout(reason) {
-    this.verified = false;
-    this.lockoutReason = reason;
-    console.error(`🔒 LOCKOUT TRIGGERED: ${reason}`);
-    
-    // Log the security event
-    const event = {
-      eventType: 'AGENT_INTEGRITY_FAILURE',
-      reason,
-      timestamp: new Date().toISOString(),
-      affectedAgents: Object.entries(this.agentStatuses)
-        .filter(([_, data]) => !data.verified)
-        .map(([agent, _]) => agent),
-    };
-
-    console.error('🚨 SECURITY ALERT:', event);
-
-    // In production, send this to TruckWithEase security
-    if (typeof window !== 'undefined' && window.location.hostname.includes('truckwithease')) {
-      // Report to security server
-      fetch('https://api.truckwithease.io/security/integrity-failure', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(event),
-      }).catch(e => console.error('Failed to report security event'));
-    }
-
-    // Disable all agents
-    this.disableAllAgents();
-  }
-
-  disableAllAgents() {
-    for (const agentType of Object.keys(this.agentStatuses)) {
-      this.agentStatuses[agentType].verified = false;
-      this.agentStatuses[agentType].status = 'DISABLED - SECURITY LOCKOUT';
-    }
-  }
-
-  requestAgentAccess(agentType, requestContext) {
-    if (!this.verified) {
+      this.lastResult = null;
       return {
-        granted: false,
-        reason: 'Platform verification failed',
+        status: "unknown",
+        error: e.message,
+        note: "Integrity endpoint unreachable. Treat as unverified, not as passing.",
+        agents: 0,
+        passing: 0,
+        failing: 0,
+        detail: [],
       };
     }
-
-    const agentStatus = this.getAgentStatus(agentType);
-    if (!agentStatus || !agentStatus.verified) {
-      return {
-        granted: false,
-        reason: `Agent ${agentType} is not verified or is locked`,
-      };
-    }
-
-    return {
-      granted: true,
-      agent: agentType,
-      timestamp: new Date().toISOString(),
-      context: requestContext,
-      license: TRUCKWITHEASEKEY,
-    };
   }
 
-  // Generate proof of authenticity for agent
-  generateAuthenticationProof(agentType) {
-    if (!this.verified) {
-      throw new Error('Cannot generate proof: Agents not verified');
+  /** One agent by id, e.g. "the-goat". */
+  async verifyAgent(agentId) {
+    try {
+      const res = await fetch(`${API}/agent/${encodeURIComponent(agentId)}`);
+      if (!res.ok) return { id: agentId, matches: null, error: `HTTP ${res.status}` };
+      return res.json();
+    } catch (e) {
+      return { id: agentId, matches: null, error: e.message };
     }
-
-    return {
-      agentType,
-      owner: 'TruckWithEase',
-      timestamp: new Date().toISOString(),
-      verified: true,
-      signature: `${agentType}-${TRUCKWITHEASEKEY}-${Date.now()}`,
-      platform: 'TruckWithEase-Exclusive',
-      restrictedTo: 'TruckWithEase-Only',
-      unauthorized: {
-        copying: 'PROHIBITED',
-        modification: 'PROHIBITED',
-        redistribution: 'PROHIBITED',
-        reverseEngineering: 'PROHIBITED',
-      },
-    };
   }
 
-  logAccess(agentType, action, details) {
-    const accessLog = {
-      agentType,
-      action,
-      timestamp: new Date().toISOString(),
-      details,
-      verified: this.verified,
-      status: this.agentStatuses[agentType],
-    };
-
-    if (typeof window !== 'undefined') {
-      console.log('📋 AGENT ACCESS LOG:', accessLog);
+  /** Accept the current prompts as the new baseline. */
+  async seal(force = false) {
+    try {
+      const res = await fetch(`${API}/seal${force ? "?force=1" : ""}`, { method: "POST" });
+      return res.ok ? res.json() : { ok: false, error: `HTTP ${res.status}` };
+    } catch (e) {
+      return { ok: false, error: e.message };
     }
+  }
 
-    // In production, store in secure audit log
-    return accessLog;
+  /** true only when the server says every agent is intact. */
+  async isIntact() {
+    const r = await this.verifyAll();
+    return r.status === "intact";
   }
 }
 
-const integrityCheck = new AgentIntegrityCheck();
-
-// Run verification on module load
-if (typeof window !== 'undefined') {
-  integrityCheck.verifyAllAgents().then(verified => {
-    if (verified) {
-      console.log('✅ All TruckWithEase Agents Verified & Locked');
-    } else {
-      console.error('❌ Agent Integrity Check Failed - Platform Lockout');
-    }
-  });
-}
-
-export { integrityCheck, AgentIntegrityCheck };
+export const integrityCheck = new AgentIntegrityCheck();
 export default integrityCheck;

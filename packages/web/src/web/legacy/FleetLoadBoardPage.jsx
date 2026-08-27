@@ -4,30 +4,40 @@ import { checkEntityWarnings, logAction } from './lib/fleetMemory';
 import ContextualHelp from './components/ContextualHelp';
 import BadgeShowcase from './components/BadgeShowcase';
 
-const GOLD   = '#c9a84c';
+// Brand palette only — gold on black. The original assigned every load board,
+// status and alert its own hue (green, blue, orange,
+// purple #a855f7, red #ef4444 plus a dozen vendor brand colors). All replaced
+// with brand tokens: gold = good/active, copper = warn/stop, gray = neutral info.
+const GOLD   = '#C9A84C';
+const GOLDBR = '#FFD700';
 const BLACK  = '#0a0a0a';
 const DARK   = '#111111';
-const CARD   = '#181818';
+const CARD   = '#161616';
 const CARD2  = '#1e1e1e';
-const GREEN  = '#22c55e';
-const RED    = '#ef4444';
-const BLUE   = '#3b82f6';
-const ORANGE = '#f97316';
-const PURPLE = '#a855f7';
+const BORDER = '#222222';
+const MUTED  = '#8a8a8a';
+const DIM    = '#666666';
+const WARN   = '#c96a4c';
+// Back-compat aliases so the rest of the file needs no edits.
+const GREEN  = GOLD;
+const RED    = WARN;
+const BLUE   = MUTED;
+const ORANGE = WARN;
+const PURPLE = MUTED;
 
 const SOURCES = [
   { id: 'dat',        label: 'DAT',              color: BLUE },
   { id: 'truckstop',  label: 'Truckstop',        color: GREEN },
-  { id: 'convoy',     label: 'Convoy',            color: '#00a651' },
-  { id: 'uber',       label: 'Uber Freight',      color: '#555' },
+  { id: 'convoy',     label: 'Convoy',            color: MUTED },
+  { id: 'uber',       label: 'Uber Freight',      color: DIM },
   { id: 'loadsmart',  label: 'Loadsmart',         color: PURPLE },
   { id: 'coyote',     label: 'Coyote',            color: ORANGE },
-  { id: 'chrobinson', label: 'CH Robinson',       color: '#003087' },
-  { id: 'lb123',      label: '123Loadboard',      color: '#e65c00' },
-  { id: 'next',       label: 'Next Trucking',     color: '#0891b2' },
-  { id: 'amazon',     label: 'Amazon Relay',      color: '#00A8E1' },
+  { id: 'chrobinson', label: 'CH Robinson',       color: MUTED },
+  { id: 'lb123',      label: '123Loadboard',      color: WARN },
+  { id: 'next',       label: 'Next Trucking',     color: MUTED },
+  { id: 'amazon',     label: 'Amazon Relay',      color: MUTED },
   { id: 'direct',     label: 'Direct Shippers',   color: GOLD },
-  { id: 'sylectus',   label: 'Sylectus',          color: '#8b5cf6' },
+  { id: 'sylectus',   label: 'Sylectus',          color: MUTED },
 ];
 
 const EQUIPMENT = ['Dry Van', 'Reefer', 'Flatbed', 'Step Deck', 'Tanker', 'Box Truck', 'Lowboy'];
@@ -37,7 +47,7 @@ function statusColor(s) {
   if (s === 'available')   return GREEN;
   if (s === 'claimed')     return GOLD;
   if (s === 'in_transit')  return BLUE;
-  if (s === 'delivered')   return '#10b981';
+  if (s === 'delivered')   return GOLD;
   if (s === 'cancelled')   return RED;
   return '#666';
 }
@@ -214,11 +224,51 @@ export default function FleetLoadBoardPage() {
     setSaving(false);
   }
 
+  /**
+   * Records the driver's decision on a load into /api/algorithm/signal so the learning
+   * layer can build customer / load / route patterns from real choices.
+   * Guarded: the FL-0xx rows on this board are seeded sample loads, and feeding those into
+   * the algorithm would teach it fabricated preferences. Only real records are recorded.
+   */
+  async function recordLoadSignal(load, newStatus) {
+    if (!load?.id || load.id.startsWith('FL-0')) return;
+    const kind = newStatus === 'claimed' ? 'load_accepted'
+      : newStatus === 'cancelled' ? 'load_declined'
+      : null;
+    if (!kind) return;
+    const driverId = load.assigned_driver_id || activeFleet?.driver_id || null;
+    if (!driverId) return;
+    const rpm = Number(load.rate_per_mile) || (Number(load.rate) && Number(load.miles) ? Number(load.rate) / Number(load.miles) : null);
+    try {
+      await fetch('/api/algorithm/signal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          driverId,
+          dimension: 'load',
+          kind,
+          subject: load.shipper || load.source || null,
+          numericValue: rpm,
+          unit: rpm ? 'usd_per_mile' : null,
+          source: 'fleet-load-board',
+          meta: JSON.stringify({
+            loadId: load.id,
+            equipment: load.equipment || null,
+            lane: load.origin_city && load.dest_city ? `${load.origin_city}, ${load.origin_state} → ${load.dest_city}, ${load.dest_state}` : null,
+            miles: Number(load.miles) || null,
+            rate: Number(load.rate) || null,
+          }),
+        }),
+      });
+    } catch { /* a failed signal must never block the status change */ }
+  }
+
   async function updateLoadStatus(load, newStatus) {
     try {
       if (load.id && !load.id.startsWith('FL-0')) {
         await pb.collection('fleet_load_boards').update(load.id, { status: newStatus });
       }
+      recordLoadSignal(load, newStatus);
       setLoads(prev => prev.map(l => l.id === load.id ? { ...l, status: newStatus } : l));
       if (selectedLoad?.id === load.id) setSelectedLoad(prev => ({ ...prev, status: newStatus }));
     } catch { setLoads(prev => prev.map(l => l.id === load.id ? { ...l, status: newStatus } : l)); }
@@ -268,10 +318,10 @@ export default function FleetLoadBoardPage() {
             broker,
             type: 'CAPACITY AVAILABLE',
             urgency: 'high',
-            color: '#3b82f6',
+            color: MUTED,
             icon: '🚛',
             trend: `${available.length} loads unclaimed on your board from this broker`,
-            message: `Hi ${broker} team,\n\nThis is an automated capacity alert from ${activeFleet?.fleet_name || 'TruckWithEase Fleet'}.\n\nWe currently have ${available.length} of your loads sitting unclaimed on our board:\n${available.slice(0,3).map(l => `  • ${l.origin_city}, ${l.origin_state} → ${l.dest_city}, ${l.dest_state} — $${Number(l.rate).toLocaleString()} ($${Number(l.rate_per_mile).toFixed(2)}/mi)`).join('\n')}\n\nWe have qualified drivers and equipment ready to move these now. To get these loaded faster, we recommend:\n  1. Confirming rate with us directly at 636-706-8338\n  2. Sending carrier packet acceptance to truckwithease@gmail.com\n  3. Providing pickup contacts so our drivers can stage immediately\n\nOur MC# is ${activeFleet?.mc_number || '[MC]'} · DOT# ${activeFleet?.dot_number || '[DOT]'}\n\nReady to move. Let's connect.\n\n${activeFleet?.fleet_name || 'TruckWithEase'} Dispatch`,
+            message: `Hi ${broker} team,\n\nThis is an automated capacity alert from ${activeFleet?.fleet_name || 'TruckWithEase Fleet'}.\n\nWe currently have ${available.length} of your loads sitting unclaimed on our board:\n${available.slice(0,3).map(l => `  • ${l.origin_city}, ${l.origin_state} → ${l.dest_city}, ${l.dest_state} — $${Number(l.rate).toLocaleString()} ($${Number(l.rate_per_mile).toFixed(2)}/mi)`).join('\n')}\n\nWe have qualified drivers and equipment ready to move these now. To get these loaded faster, we recommend:\n  1. Confirming rate with us directly at 636-706-8338\n  2. Sending carrier packet acceptance to truckeasecare@gmail.com\n  3. Providing pickup contacts so our drivers can stage immediately\n\nOur MC# is ${activeFleet?.mc_number || '[MC]'} · DOT# ${activeFleet?.dot_number || '[DOT]'}\n\nReady to move. Let's connect.\n\n${activeFleet?.fleet_name || 'TruckWithEase'} Dispatch`,
           });
         }
 
@@ -282,10 +332,10 @@ export default function FleetLoadBoardPage() {
             broker,
             type: 'RATE ADJUSTMENT NEEDED',
             urgency: 'critical',
-            color: '#f87171',
+            color: WARN,
             icon: '💰',
             trend: `Average $${avgRPM.toFixed(2)}/mi is below market — loads sitting unclaimed`,
-            message: `Hi ${broker},\n\nRate advisory from ${activeFleet?.fleet_name || 'TruckWithEase Fleet'} — automated market analysis.\n\nYour loads in our system are averaging $${avgRPM.toFixed(2)}/mi. Current market rate for ${equipment.join('/')||'dry van'} in these lanes is running $6.00–$8.50/mi.\n\nBelow-market rates = longer pickup delays and risk of load falling through. Our drivers will prioritize higher-paying loads first.\n\nLanes affected:\n${lanes.slice(0,3).map(l => `  • ${l}`).join('\n')}\n\nTo get faster coverage, we'd need rates adjusted to at least $${(avgRPM * 1.2).toFixed(2)}/mi. Happy to negotiate lane-by-lane. Call 636-706-8338 or email truckwithease@gmail.com.\n\n${activeFleet?.fleet_name || 'TruckWithEase'} Load Intelligence`,
+            message: `Hi ${broker},\n\nRate advisory from ${activeFleet?.fleet_name || 'TruckWithEase Fleet'} — automated market analysis.\n\nYour loads in our system are averaging $${avgRPM.toFixed(2)}/mi. Current market rate for ${equipment.join('/')||'dry van'} in these lanes is running $6.00–$8.50/mi.\n\nBelow-market rates = longer pickup delays and risk of load falling through. Our drivers will prioritize higher-paying loads first.\n\nLanes affected:\n${lanes.slice(0,3).map(l => `  • ${l}`).join('\n')}\n\nTo get faster coverage, we'd need rates adjusted to at least $${(avgRPM * 1.2).toFixed(2)}/mi. Happy to negotiate lane-by-lane. Call 636-706-8338 or email truckeasecare@gmail.com.\n\n${activeFleet?.fleet_name || 'TruckWithEase'} Load Intelligence`,
           });
         }
 
@@ -299,7 +349,7 @@ export default function FleetLoadBoardPage() {
             color: '#c9a84c',
             icon: '⭐',
             trend: `Strong lane at $${avgRPM.toFixed(2)}/mi avg — we want to deepen this relationship`,
-            message: `Hi ${broker},\n\nPartnership update from ${activeFleet?.fleet_name || 'TruckWithEase Fleet'}.\n\nYour loads are performing well in our system — averaging $${avgRPM.toFixed(2)}/mi across ${brokerLoads.length} load${brokerLoads.length!==1?'s':''}. Our drivers prefer these lanes and we have consistent capacity.\n\nWe'd like to expand our volume with you. If you have recurring freight on these routes, we can offer:\n  • Priority pickup within 2 hours of booking\n  • Dedicated driver for your lanes\n  • Real-time updates at every stop\n\nLet's set up a preferred carrier agreement. Contact us at 636-706-8338 or truckwithease@gmail.com.\n\n${activeFleet?.fleet_name || 'TruckWithEase'} Dispatch`,
+            message: `Hi ${broker},\n\nPartnership update from ${activeFleet?.fleet_name || 'TruckWithEase Fleet'}.\n\nYour loads are performing well in our system — averaging $${avgRPM.toFixed(2)}/mi across ${brokerLoads.length} load${brokerLoads.length!==1?'s':''}. Our drivers prefer these lanes and we have consistent capacity.\n\nWe'd like to expand our volume with you. If you have recurring freight on these routes, we can offer:\n  • Priority pickup within 2 hours of booking\n  • Dedicated driver for your lanes\n  • Real-time updates at every stop\n\nLet's set up a preferred carrier agreement. Contact us at 636-706-8338 or truckeasecare@gmail.com.\n\n${activeFleet?.fleet_name || 'TruckWithEase'} Dispatch`,
           });
         }
 
@@ -310,7 +360,7 @@ export default function FleetLoadBoardPage() {
             broker,
             type: 'CANCELLATION PATTERN',
             urgency: 'high',
-            color: '#fb923c',
+            color: WARN,
             icon: '⚠️',
             trend: `${cancelled.length} cancelled load${cancelled.length!==1?'s':''} — possible communication breakdown`,
             message: `Hi ${broker},\n\nThis is a follow-up from ${activeFleet?.fleet_name || 'TruckWithEase Fleet'} regarding recent cancellations.\n\nWe've had ${cancelled.length} load${cancelled.length!==1?'s':''} cancelled on our board from your company. Cancellations hurt both sides — we lose driver time and you lose coverage.\n\nTo prevent future cancellations, we need:\n  1. Confirmed pickup times before loads go live\n  2. Accurate shipper contact info at each facility\n  3. Rate lock confirmation in writing\n\nWe want this relationship to work. Let's get on a quick call: 636-706-8338.\n\n${activeFleet?.fleet_name || 'TruckWithEase'} Operations`,
@@ -327,10 +377,10 @@ export default function FleetLoadBoardPage() {
           broker: 'ALL BROKERS',
           type: 'BOARD STALL — MASS FOLLOW-UP',
           urgency: 'critical',
-          color: '#f87171',
+          color: WARN,
           icon: '🚨',
           trend: `${totalAvailable} loads available, 0 active — full board stall detected`,
-          message: `URGENT — Fleet capacity alert.\n\nThis is ${activeFleet?.fleet_name || 'TruckWithEase Fleet'}. Our load board shows ${totalAvailable} available loads with zero active pickups. This is a board stall.\n\nIf you have a load assigned to us, please respond immediately:\n  📞 Call: 636-706-8338\n  ✉️ Email: truckwithease@gmail.com\n\nWe have drivers staged and ready. Every hour of delay costs money on both sides. First broker to confirm gets our available equipment.\n\n${activeFleet?.fleet_name || 'TruckWithEase'} — Active Fleet`,
+          message: `URGENT — Fleet capacity alert.\n\nThis is ${activeFleet?.fleet_name || 'TruckWithEase Fleet'}. Our load board shows ${totalAvailable} available loads with zero active pickups. This is a board stall.\n\nIf you have a load assigned to us, please respond immediately:\n  📞 Call: 636-706-8338\n  ✉️ Email: truckeasecare@gmail.com\n\nWe have drivers staged and ready. Every hour of delay costs money on both sides. First broker to confirm gets our available equipment.\n\n${activeFleet?.fleet_name || 'TruckWithEase'} — Active Fleet`,
         });
       }
 
@@ -383,7 +433,7 @@ export default function FleetLoadBoardPage() {
   }
 
   function buildOutreachScript(load) {
-    return `Hi, this is [YOUR NAME] with ${activeFleet?.fleet_name || 'our fleet'}.\n\nI'm following up on load #${load.load_id || load.id} — ${load.origin_city}, ${load.origin_state} to ${load.dest_city}, ${load.dest_state}, ${load.miles} miles, $${Number(load.rate).toLocaleString()} rate.\n\nWe have a ${load.equipment || 'dry van'} available and ready to move this load. Our MC# is ${activeFleet?.mc_number || '[MC NUMBER]'} and DOT# is ${activeFleet?.dot_number || '[DOT NUMBER]'}.\n\nPlease confirm if this load is still available. We can have a driver ready within [X hours]. Contact me at 636-706-8338 or truckwithease@gmail.com.\n\nThank you,\n[YOUR NAME]\n${activeFleet?.fleet_name || 'TruckWithEase Fleet'}`;
+    return `Hi, this is [YOUR NAME] with ${activeFleet?.fleet_name || 'our fleet'}.\n\nI'm following up on load #${load.load_id || load.id} — ${load.origin_city}, ${load.origin_state} to ${load.dest_city}, ${load.dest_state}, ${load.miles} miles, $${Number(load.rate).toLocaleString()} rate.\n\nWe have a ${load.equipment || 'dry van'} available and ready to move this load. Our MC# is ${activeFleet?.mc_number || '[MC NUMBER]'} and DOT# is ${activeFleet?.dot_number || '[DOT NUMBER]'}.\n\nPlease confirm if this load is still available. We can have a driver ready within [X hours]. Contact me at 636-706-8338 or truckeasecare@gmail.com.\n\nThank you,\n[YOUR NAME]\n${activeFleet?.fleet_name || 'TruckWithEase Fleet'}`;
   }
 
   function runGoatIndex() {
@@ -565,8 +615,8 @@ export default function FleetLoadBoardPage() {
                         {load.status !== 'cancelled' && load.status !== 'delivered' && <button onClick={e=>{e.stopPropagation();updateLoadStatus(load,'cancelled')}} style={{ background:'transparent', color: RED, border:`1px solid ${RED}`, padding:'7px 14px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>Cancel</button>}
                         {load.status === 'available' && (
                           escalatedIds[load.id]
-                            ? <div style={{ fontSize:11, color:'#4ade80', padding:'7px 12px', background:'rgba(74,222,128,0.08)', border:'1px solid rgba(74,222,128,0.25)', borderRadius:6 }}>✅ Follow-up sent — escalated</div>
-                            : <button onClick={e => handleEscalate(load, e)} style={{ background:'transparent', color:'#f97316', border:`1px solid #f97316`, padding:'7px 14px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>📣 No Response — Follow Up</button>
+                            ? <div style={{ fontSize:11, color:GOLD, padding:'7px 12px', background:'rgba(201,168,76,0.08)', border:'1px solid rgba(201,168,76,0.25)', borderRadius:6 }}>✅ Follow-up sent — escalated</div>
+                            : <button onClick={e => handleEscalate(load, e)} style={{ background:'transparent', color:WARN, border:`1px solid ${WARN}`, padding:'7px 14px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>📣 No Response — Follow Up</button>
                         )}
                       </div>
                     </div>
@@ -664,17 +714,17 @@ export default function FleetLoadBoardPage() {
         {tab === 'alerts' && (
           <div>
             {/* Header + Run Button */}
-            <div style={{ background:`linear-gradient(135deg, #0a0f1a, #0d1117)`, border:`1px solid #1e3a5f`, borderRadius:12, padding:20, marginBottom:20 }}>
+            <div style={{ background:`linear-gradient(135deg, #111111, #161616)`, border:`1px solid ${BORDER}`, borderRadius:12, padding:20, marginBottom:20 }}>
               <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
                 <div>
-                  <div style={{ color:'#60a5fa', fontFamily:'Bebas Neue, sans-serif', fontSize:22, letterSpacing:3, marginBottom:6 }}>🔔 BROKER ALERT AGENT</div>
+                  <div style={{ color:MUTED, fontFamily:'Bebas Neue, sans-serif', fontSize:22, letterSpacing:3, marginBottom:6 }}>🔔 BROKER ALERT AGENT</div>
                   <div style={{ color:'#888', fontSize:13, lineHeight:1.6, maxWidth:480 }}>
                     The agent scans every load on your board, identifies trends — stalled loads, low rates, cancellation patterns, preferred lanes — and generates smart messages to each broker so they respond faster and pay better.
                   </div>
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:8, alignItems:'flex-end' }}>
                   <button onClick={generateBrokerAlerts} disabled={alertsRunning}
-                    style={{ background: alertsRunning ? '#1a2a3a' : 'linear-gradient(135deg, #1e40af, #1d4ed8)', color:'#fff', border:'none', padding:'12px 22px', borderRadius:8, cursor: alertsRunning ? 'not-allowed' : 'pointer', fontSize:13, fontWeight:700, minWidth:160, display:'flex', alignItems:'center', gap:8 }}>
+                    style={{ background: alertsRunning ? BORDER : 'linear-gradient(135deg, #2a2a2a, #1a1a1a)', color:'#fff', border:'none', padding:'12px 22px', borderRadius:8, cursor: alertsRunning ? 'not-allowed' : 'pointer', fontSize:13, fontWeight:700, minWidth:160, display:'flex', alignItems:'center', gap:8 }}>
                     {alertsRunning ? (
                       <><span style={{ display:'inline-block', animation:'spin 1s linear infinite', fontSize:16 }}>⚙️</span> Analyzing…</>
                     ) : (
@@ -683,7 +733,7 @@ export default function FleetLoadBoardPage() {
                   </button>
                   {/* Daily Auto-Run Toggle */}
                   <button onClick={toggleScheduler}
-                    style={{ background: schedulerOn ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${schedulerOn ? 'rgba(74,222,128,0.4)' : '#333'}`, color: schedulerOn ? '#4ade80' : '#555', padding:'8px 16px', borderRadius:8, cursor:'pointer', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
+                    style={{ background: schedulerOn ? 'rgba(201,168,76,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${schedulerOn ? 'rgba(201,168,76,0.4)' : '#333'}`, color: schedulerOn ? GOLD : '#555', padding:'8px 16px', borderRadius:8, cursor:'pointer', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
                     <span style={{ fontSize:14 }}>{schedulerOn ? '🟢' : '⚫'}</span>
                     {schedulerOn ? `AUTO-RUN ON · next in ${nextRunIn || '24h 0m'}` : 'AUTO-RUN OFF'}
                   </button>
@@ -703,7 +753,7 @@ export default function FleetLoadBoardPage() {
                     <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start', flex:'1 1 180px' }}>
                       <span style={{ fontSize:18 }}>{f.icon}</span>
                       <div>
-                        <div style={{ color:'#93c5fd', fontSize:12, fontWeight:700 }}>{f.label}</div>
+                        <div style={{ color:MUTED, fontSize:12, fontWeight:700 }}>{f.label}</div>
                         <div style={{ color:'#555', fontSize:11, marginTop:2 }}>{f.desc}</div>
                       </div>
                     </div>
@@ -714,7 +764,7 @@ export default function FleetLoadBoardPage() {
 
             {/* Alert Cards */}
             {alertsGenerated && alerts.length === 0 && (
-              <div style={{ textAlign:'center', color:'#4ade80', padding:'40px 0', fontSize:14 }}>
+              <div style={{ textAlign:'center', color:GOLD, padding:'40px 0', fontSize:14 }}>
                 ✅ No alerts needed — your board looks healthy and brokers are responsive.
               </div>
             )}
@@ -733,13 +783,13 @@ export default function FleetLoadBoardPage() {
                     <div style={{ color:'#666', fontSize:12, marginTop:3 }}>📈 Trend: {alert.trend}</div>
                   </div>
                   {sentAlerts[alert.id]
-                    ? <div style={{ background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.3)', color:'#4ade80', padding:'6px 14px', borderRadius:8, fontSize:11, fontWeight:700, flexShrink:0 }}>✅ Sent at {sentAlerts[alert.id]}</div>
+                    ? <div style={{ background:'rgba(201,168,76,0.1)', border:'1px solid rgba(201,168,76,0.3)', color:GOLD, padding:'6px 14px', borderRadius:8, fontSize:11, fontWeight:700, flexShrink:0 }}>✅ Sent at {sentAlerts[alert.id]}</div>
                     : <div style={{ background:`${alert.color}15`, border:`1px solid ${alert.color}33`, color: alert.color, padding:'6px 12px', borderRadius:8, fontSize:11, fontWeight:700, flexShrink:0 }}>⏳ Pending</div>
                   }
                 </div>
 
                 {/* Message preview */}
-                <div style={{ background:'#0f0f0f', border:'1px solid #1e1e1e', borderRadius:8, padding:14, marginBottom:12 }}>
+                <div style={{ background:CARD, border:'1px solid #1e1e1e', borderRadius:8, padding:14, marginBottom:12 }}>
                   <div style={{ color:'#555', fontSize:10, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>Agent-Written Message</div>
                   <pre style={{ color:'rgba(255,255,255,0.65)', fontSize:11.5, lineHeight:1.75, whiteSpace:'pre-wrap', margin:0, fontFamily:'monospace' }}>{alert.message}</pre>
                 </div>
@@ -751,19 +801,19 @@ export default function FleetLoadBoardPage() {
                       setAlertCopyId(alert.id);
                       setTimeout(() => setAlertCopyId(null), 2500);
                     }).catch(() => {});
-                  }} style={{ background: alertCopyId===alert.id ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.05)', border:`1px solid ${alertCopyId===alert.id ? '#4ade80' : '#333'}`, color: alertCopyId===alert.id ? '#4ade80' : '#aaa', padding:'8px 16px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>
+                  }} style={{ background: alertCopyId===alert.id ? 'rgba(201,168,76,0.1)' : 'rgba(255,255,255,0.05)', border:`1px solid ${alertCopyId===alert.id ? GOLD : '#333'}`, color: alertCopyId===alert.id ? GOLD : '#aaa', padding:'8px 16px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>
                     {alertCopyId===alert.id ? '✅ Copied!' : '📋 Copy Message'}
                   </button>
                   <a href={`mailto:?subject=Load Alert — ${alert.broker}&body=${encodeURIComponent(alert.message)}`}
                     style={{ textDecoration:'none' }}>
-                    <button style={{ background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.3)', color:'#60a5fa', padding:'8px 16px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>✉️ Open in Email</button>
+                    <button style={{ background:'rgba(138,138,138,0.1)', border:'1px solid rgba(138,138,138,0.3)', color:MUTED, padding:'8px 16px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>✉️ Open in Email</button>
                   </a>
                   <a href="tel:6367068338" style={{ textDecoration:'none' }}>
                     <button style={{ background:'rgba(201,168,76,0.08)', border:`1px solid ${GOLD}44`, color: GOLD, padding:'8px 16px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>📞 Call Instead</button>
                   </a>
                   {!sentAlerts[alert.id] && (
                     <button onClick={() => markAlertSent(alert.id)}
-                      style={{ marginLeft:'auto', background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.3)', color:'#4ade80', padding:'8px 16px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>
+                      style={{ marginLeft:'auto', background:'rgba(201,168,76,0.1)', border:'1px solid rgba(201,168,76,0.3)', color:GOLD, padding:'8px 16px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>
                       ✅ Mark Sent
                     </button>
                   )}
@@ -773,14 +823,14 @@ export default function FleetLoadBoardPage() {
 
             {/* Summary bar when alerts exist */}
             {alertsGenerated && alerts.length > 0 && (
-              <div style={{ background:'#0f0f0f', border:'1px solid #1e1e1e', borderRadius:10, padding:16, marginTop:8, display:'flex', gap:16, flexWrap:'wrap', alignItems:'center' }}>
+              <div style={{ background:CARD, border:'1px solid #1e1e1e', borderRadius:10, padding:16, marginTop:8, display:'flex', gap:16, flexWrap:'wrap', alignItems:'center' }}>
                 <div style={{ color:'#555', fontSize:12 }}>Alert summary:</div>
-                <div style={{ color:'#f87171', fontSize:12, fontWeight:700 }}>{alerts.filter(a=>a.urgency==='critical').length} critical</div>
-                <div style={{ color:'#fbbf24', fontSize:12, fontWeight:700 }}>{alerts.filter(a=>a.urgency==='high').length} high priority</div>
-                <div style={{ color:'#4ade80', fontSize:12, fontWeight:700 }}>{Object.keys(sentAlerts).length} sent</div>
-                <div style={{ color:'#f97316', fontSize:12, fontWeight:700 }}>{alerts.length - Object.keys(sentAlerts).length} pending</div>
+                <div style={{ color:WARN, fontSize:12, fontWeight:700 }}>{alerts.filter(a=>a.urgency==='critical').length} critical</div>
+                <div style={{ color:GOLDBR, fontSize:12, fontWeight:700 }}>{alerts.filter(a=>a.urgency==='high').length} high priority</div>
+                <div style={{ color:GOLD, fontSize:12, fontWeight:700 }}>{Object.keys(sentAlerts).length} sent</div>
+                <div style={{ color:WARN, fontSize:12, fontWeight:700 }}>{alerts.length - Object.keys(sentAlerts).length} pending</div>
                 <button onClick={() => alerts.forEach(a => markAlertSent(a.id))}
-                  style={{ marginLeft:'auto', background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.3)', color:'#4ade80', padding:'7px 16px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>
+                  style={{ marginLeft:'auto', background:'rgba(201,168,76,0.1)', border:'1px solid rgba(201,168,76,0.3)', color:GOLD, padding:'7px 16px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>
                   ✅ Mark All Sent
                 </button>
               </div>
@@ -841,21 +891,21 @@ export default function FleetLoadBoardPage() {
                 <label style={{ color:'#888', fontSize:11, letterSpacing:1, textTransform:'uppercase', display:'block', marginBottom:4 }}>Shipper / Broker</label>
                 <input type="text" value={newLoad.shipper} onChange={e => handleShipperInput(e.target.value)}
                   placeholder="Walmart Distribution"
-                  style={{ width:'100%', background:'#111', border:`1px solid ${shipperWarning?.hasWarnings ? (shipperWarning.worstSeverity==='critical'?'#f87171':shipperWarning.worstSeverity==='high'?'#fbbf24':'#fb923c') : '#333'}`, color:'#fff', padding:'10px 12px', borderRadius:6, fontSize:13, boxSizing:'border-box' }} />
+                  style={{ width:'100%', background:'#111', border:`1px solid ${shipperWarning?.hasWarnings ? (shipperWarning.worstSeverity==='critical'?WARN:shipperWarning.worstSeverity==='high'?GOLDBR:WARN) : '#333'}`, color:'#fff', padding:'10px 12px', borderRadius:6, fontSize:13, boxSizing:'border-box' }} />
                 {shipperChecking && <div style={{ fontSize:11, color:'#555', marginTop:4 }}>⏳ Checking fleet intelligence…</div>}
                 {!shipperChecking && shipperWarning && (
                   shipperWarning.hasWarnings ? (
-                    <div style={{ marginTop:8, background: shipperWarning.worstSeverity==='critical'?'rgba(248,113,113,0.1)':shipperWarning.worstSeverity==='high'?'rgba(251,191,36,0.1)':'rgba(251,146,60,0.1)', border:`1px solid ${shipperWarning.worstSeverity==='critical'?'#f87171':shipperWarning.worstSeverity==='high'?'#fbbf24':'#fb923c'}`, borderRadius:8, padding:'10px 12px' }}>
-                      <div style={{ fontWeight:700, fontSize:11, color: shipperWarning.worstSeverity==='critical'?'#f87171':shipperWarning.worstSeverity==='high'?'#fbbf24':'#fb923c', marginBottom:5 }}>
+                    <div style={{ marginTop:8, background: shipperWarning.worstSeverity==='critical'?'rgba(201,106,76,0.1)':shipperWarning.worstSeverity==='high'?'rgba(255,215,0,0.1)':'rgba(201,106,76,0.1)', border:`1px solid ${shipperWarning.worstSeverity==='critical'?WARN:shipperWarning.worstSeverity==='high'?GOLDBR:WARN}`, borderRadius:8, padding:'10px 12px' }}>
+                      <div style={{ fontWeight:700, fontSize:11, color: shipperWarning.worstSeverity==='critical'?WARN:shipperWarning.worstSeverity==='high'?GOLDBR:WARN, marginBottom:5 }}>
                         ⚠️ {shipperWarning.worstSeverity?.toUpperCase()} ALERT — {shipperWarning.negRatings} negative rating{shipperWarning.negRatings!==1?'s':''}, {shipperWarning.notes?.length||0} complaint{shipperWarning.notes?.length!==1?'s':''}
                       </div>
                       {shipperWarning.notes?.slice(0,2).map((n,i) => (
-                        <div key={i} style={{ fontSize:11, color:'rgba(255,255,255,0.6)', paddingLeft:8, borderLeft:'2px solid rgba(248,113,113,0.3)', marginBottom:3 }}>"{n.note_text?.slice(0,90)}{n.note_text?.length>90?'…':''}"</div>
+                        <div key={i} style={{ fontSize:11, color:'rgba(255,255,255,0.6)', paddingLeft:8, borderLeft:'2px solid rgba(201,106,76,0.3)', marginBottom:3 }}>"{n.note_text?.slice(0,90)}{n.note_text?.length>90?'…':''}"</div>
                       ))}
                       <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginTop:5 }}>Verify payment terms and references before accepting.</div>
                     </div>
                   ) : (
-                    <div style={{ marginTop:6, background:'rgba(74,222,128,0.07)', border:'1px solid rgba(74,222,128,0.25)', borderRadius:6, padding:'7px 10px', fontSize:11, color:'#4ade80' }}>✅ No community flags — looks clear</div>
+                    <div style={{ marginTop:6, background:'rgba(201,168,76,0.07)', border:'1px solid rgba(201,168,76,0.25)', borderRadius:6, padding:'7px 10px', fontSize:11, color:GOLD }}>✅ No community flags — looks clear</div>
                   )
                 )}
               </div>
@@ -911,15 +961,15 @@ export default function FleetLoadBoardPage() {
       {/* ESCALATE / FOLLOW-UP MODAL */}
       {escalateLoad && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.9)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:2000, padding:16 }}>
-          <div style={{ background:'#0f0f0f', border:`2px solid #f97316`, borderRadius:14, padding:28, width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto' }}>
-            <div style={{ color:'#f97316', fontFamily:'Bebas Neue, sans-serif', fontSize:22, letterSpacing:3, marginBottom:6 }}>📣 NO RESPONSE — FOLLOW UP</div>
+          <div style={{ background:CARD, border:`2px solid ${WARN}`, borderRadius:14, padding:28, width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto' }}>
+            <div style={{ color:WARN, fontFamily:'Bebas Neue, sans-serif', fontSize:22, letterSpacing:3, marginBottom:6 }}>📣 NO RESPONSE — FOLLOW UP</div>
             <div style={{ color:'#888', fontSize:13, marginBottom:20 }}>
-              Load <span style={{ color:'#f97316', fontWeight:700 }}>{escalateLoad.load_id || escalateLoad.id}</span> — <span style={{ color:'#ccc' }}>{escalateLoad.shipper}</span> — {escalateLoad.origin_city}, {escalateLoad.origin_state} → {escalateLoad.dest_city}, {escalateLoad.dest_state}
+              Load <span style={{ color:WARN, fontWeight:700 }}>{escalateLoad.load_id || escalateLoad.id}</span> — <span style={{ color:'#ccc' }}>{escalateLoad.shipper}</span> — {escalateLoad.origin_city}, {escalateLoad.origin_state} → {escalateLoad.dest_city}, {escalateLoad.dest_state}
             </div>
 
             {/* Why no response — honest tips */}
-            <div style={{ background:'rgba(249,115,22,0.08)', border:'1px solid rgba(249,115,22,0.25)', borderRadius:10, padding:16, marginBottom:20 }}>
-              <div style={{ color:'#f97316', fontWeight:700, fontSize:12, letterSpacing:1, marginBottom:10 }}>⚡ GOAT INTEL — WHY THEY'RE NOT RESPONDING</div>
+            <div style={{ background:'rgba(201,106,76,0.08)', border:'1px solid rgba(201,106,76,0.25)', borderRadius:10, padding:16, marginBottom:20 }}>
+              <div style={{ color:WARN, fontWeight:700, fontSize:12, letterSpacing:1, marginBottom:10 }}>⚡ GOAT INTEL — WHY THEY'RE NOT RESPONDING</div>
               {[
                 { icon:'💰', tip:`Rate may be too low. At $${Number(escalateLoad.rate).toLocaleString()} ($${Number(escalateLoad.rate_per_mile).toFixed(2)}/mi), try offering a counter — ask if they'll move to $${Math.round(Number(escalateLoad.rate_per_mile)*1.15).toFixed(2)}/mi.` },
                 { icon:'📋', tip:'Make sure your MC# and insurance certs are up to date — brokers reject carriers instantly if carrier packet is incomplete or expired.' },
@@ -940,7 +990,7 @@ export default function FleetLoadBoardPage() {
                 <pre style={{ color:'#ccc', fontSize:12, lineHeight:1.7, whiteSpace:'pre-wrap', margin:0, fontFamily:'monospace' }}>{buildOutreachScript(escalateLoad)}</pre>
               </div>
               <button onClick={() => { navigator.clipboard.writeText(buildOutreachScript(escalateLoad)).then(() => { setCopyDone(true); setTimeout(() => setCopyDone(false), 2500); }).catch(() => {}); }}
-                style={{ marginTop:10, width:'100%', background: copyDone ? 'rgba(74,222,128,0.15)' : 'rgba(201,168,76,0.1)', border: `1px solid ${copyDone ? '#4ade80' : GOLD}`, color: copyDone ? '#4ade80' : GOLD, padding:'9px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>
+                style={{ marginTop:10, width:'100%', background: copyDone ? 'rgba(201,168,76,0.15)' : 'rgba(201,168,76,0.1)', border: `1px solid ${copyDone ? GOLD : GOLD}`, color: copyDone ? GOLD : GOLD, padding:'9px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700 }}>
                 {copyDone ? '✅ Copied to clipboard!' : '📋 Copy Script'}
               </button>
             </div>
@@ -948,13 +998,13 @@ export default function FleetLoadBoardPage() {
             {/* Quick escalation actions */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:16 }}>
               <a href={`tel:6367068338`} style={{ textDecoration:'none' }}>
-                <div style={{ background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.3)', borderRadius:8, padding:'12px', textAlign:'center', cursor:'pointer' }}>
+                <div style={{ background:'rgba(138,138,138,0.1)', border:'1px solid rgba(138,138,138,0.3)', borderRadius:8, padding:'12px', textAlign:'center', cursor:'pointer' }}>
                   <div style={{ fontSize:20, marginBottom:4 }}>📞</div>
                   <div style={{ color: BLUE, fontWeight:700, fontSize:12 }}>Call Support</div>
                   <div style={{ color:'#555', fontSize:10, marginTop:2 }}>636-706-8338</div>
                 </div>
               </a>
-              <a href={`mailto:truckwithease@gmail.com?subject=Load Follow-Up — ${escalateLoad.load_id || escalateLoad.id}&body=${encodeURIComponent(buildOutreachScript(escalateLoad))}`} style={{ textDecoration:'none' }}>
+              <a href={`mailto:truckeasecare@gmail.com?subject=Load Follow-Up — ${escalateLoad.load_id || escalateLoad.id}&body=${encodeURIComponent(buildOutreachScript(escalateLoad))}`} style={{ textDecoration:'none' }}>
                 <div style={{ background:'rgba(201,168,76,0.08)', border:`1px solid ${GOLD}44`, borderRadius:8, padding:'12px', textAlign:'center', cursor:'pointer' }}>
                   <div style={{ fontSize:20, marginBottom:4 }}>✉️</div>
                   <div style={{ color: GOLD, fontWeight:700, fontSize:12 }}>Email via App</div>
@@ -965,7 +1015,7 @@ export default function FleetLoadBoardPage() {
 
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={() => setEscalateLoad(null)} style={{ flex:1, background:'transparent', border:'1px solid #333', color:'#888', padding:'10px', borderRadius:6, cursor:'pointer', fontSize:13 }}>Close</button>
-              <button onClick={() => confirmEscalate(escalateLoad)} style={{ flex:2, background:'#f97316', color:'#000', border:'none', padding:'10px', borderRadius:6, cursor:'pointer', fontSize:13, fontWeight:700 }}>✅ Mark as Followed Up</button>
+              <button onClick={() => confirmEscalate(escalateLoad)} style={{ flex:2, background:WARN, color:'#000', border:'none', padding:'10px', borderRadius:6, cursor:'pointer', fontSize:13, fontWeight:700 }}>✅ Mark as Followed Up</button>
             </div>
           </div>
         </div>

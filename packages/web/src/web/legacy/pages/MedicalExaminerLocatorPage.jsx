@@ -1,314 +1,316 @@
 import React, { useState } from 'react';
-import { MapPin, Clock, Phone, Building2, Users, AlertCircle, CheckCircle } from 'lucide-react';
-import {
-  searchExaminersByState,
-  findWalkInExaminers,
-  findExaminersOpenNow,
-  getAvailableStates,
-  formatHours,
-} from '../lib/medicalExaminersIndex';
+import { MapPin, Clock, ShieldCheck, AlertTriangle, ExternalLink, FileText } from 'lucide-react';
 
-const C = {
-  black: '#060A10',
-  white: '#f0ede8',
-  white60: 'rgba(240, 237, 232, 0.6)',
-  white30: 'rgba(240, 237, 232, 0.3)',
-  white10: 'rgba(240, 237, 232, 0.1)',
-  card: '#0f1419',
-  gold: '#c9a84c',
-  green: '#22c55e',
-  red: '#ef4444',
-  blue: '#3b82f6',
-  cyan: '#06b6d4',
-};
+/**
+ * DOT Physical / Medical Examiner page.
+ *
+ * REWRITTEN 2026-08-26. The previous version rendered `lib/medicalExaminersIndex.js`,
+ * a hand-written directory of 15 clinics across 7 states that the file header
+ * described as "All FMCSA-certified examiners by state". The names, street
+ * addresses, phone numbers, opening hours, wait times, insurance/wheelchair flags
+ * and "trucking company partners" were all invented — one clinic ("ClinTest -
+ * Montgomery") does not exist at all, and the Concentra Birmingham phone number
+ * was wrong. That file has been deleted, not restyled. The original is preserved
+ * at docs/launch/medicalExaminersIndex.ORIGINAL.js.txt.
+ *
+ * There is no honest way to rebuild it right now:
+ *   - The FMCSA National Registry (nationalregistry.fmcsa.dot.gov) is a
+ *     reCAPTCHA-protected app with no public API or bulk download, so it cannot
+ *     be queried server-side.
+ *   - Google Places SearchText returns 403 API_KEY_SERVICE_BLOCKED on the
+ *     project's Maps key, and a Places result would not certify FMCSA status anyway.
+ *
+ * So this page ships zero examiner records. It sends the driver to the only
+ * authoritative source and tells him what the exam actually requires.
+ */
+
+const GOLD = '#C9A84C';
+const GOLDBR = '#FFD700';
+const BLACK = '#0a0a0a';
+const CARD = '#161616';
+const CARD2 = '#111111';
+const BORDER = '#222222';
+const TEXT = '#f0ede8';
+const MUTED = '#8a8a8a';
+const DIM = '#666666';
+const WARN = '#c96a4c';
+
+const REGISTRY_URL = 'https://nationalregistry.fmcsa.dot.gov/search-medical-examiners';
+
+const STATES = [
+  ['AL', 'Alabama'], ['AK', 'Alaska'], ['AZ', 'Arizona'], ['AR', 'Arkansas'],
+  ['CA', 'California'], ['CO', 'Colorado'], ['CT', 'Connecticut'], ['DE', 'Delaware'],
+  ['DC', 'District of Columbia'], ['FL', 'Florida'], ['GA', 'Georgia'], ['HI', 'Hawaii'],
+  ['ID', 'Idaho'], ['IL', 'Illinois'], ['IN', 'Indiana'], ['IA', 'Iowa'],
+  ['KS', 'Kansas'], ['KY', 'Kentucky'], ['LA', 'Louisiana'], ['ME', 'Maine'],
+  ['MD', 'Maryland'], ['MA', 'Massachusetts'], ['MI', 'Michigan'], ['MN', 'Minnesota'],
+  ['MS', 'Mississippi'], ['MO', 'Missouri'], ['MT', 'Montana'], ['NE', 'Nebraska'],
+  ['NV', 'Nevada'], ['NH', 'New Hampshire'], ['NJ', 'New Jersey'], ['NM', 'New Mexico'],
+  ['NY', 'New York'], ['NC', 'North Carolina'], ['ND', 'North Dakota'], ['OH', 'Ohio'],
+  ['OK', 'Oklahoma'], ['OR', 'Oregon'], ['PA', 'Pennsylvania'], ['RI', 'Rhode Island'],
+  ['SC', 'South Carolina'], ['SD', 'South Dakota'], ['TN', 'Tennessee'], ['TX', 'Texas'],
+  ['UT', 'Utah'], ['VT', 'Vermont'], ['VA', 'Virginia'], ['WA', 'Washington'],
+  ['WV', 'West Virginia'], ['WI', 'Wisconsin'], ['WY', 'Wyoming'],
+];
+
+/* Every line below is 49 CFR text, not a claim this platform generated. */
+const EXAM_COVERS = [
+  ['Vision', 'At least 20/40 in each eye and both together, with or without correction, plus 70° field of vision in the horizontal meridian in each eye, and the ability to recognize red, amber and green. 49 CFR 391.41(b)(10).'],
+  ['Hearing', 'Perceive a forced whisper at 5 feet or better, or an average hearing loss of 40 dB or less at 500/1000/2000 Hz. 49 CFR 391.41(b)(11).'],
+  ['Blood pressure', 'Evaluated by the examiner. Stage 1 can certify for one year; higher readings shorten or disqualify the certificate until controlled. FMCSA medical advisory criteria.'],
+  ['Urinalysis', 'Protein, blood, sugar and specific gravity — screening for kidney disease and diabetes. This is not the DOT drug test; the drug test is a separate 49 CFR Part 40 collection.'],
+  ['Diabetes', 'Insulin-treated drivers are certifiable through the 391.46 ITDM pathway with a treating-clinician form; they no longer need a federal exemption.'],
+  ['History', 'Seizures, loss of consciousness, heart surgery, sleep apnea, missing limbs, current medications. Answer it honestly — a false medical certificate is its own violation.'],
+];
+
+const AFTER = [
+  'The examiner issues the Medical Examiner\'s Certificate (MCSA-5876). Keep a copy in the truck.',
+  'Maximum certificate length is 24 months. The examiner can issue a shorter card — 3, 6 or 12 months — for a condition needing monitoring.',
+  'The examiner transmits results to FMCSA. CDL holders must still make sure the certificate is on file with their State Driver Licensing Agency or the CDL gets downgraded.',
+  'Interstate CDL drivers no longer self-certify to the state — the examiner reports it electronically under the 2025 Medical Examiner\'s Certification Integration rule.',
+];
+
+function Card({ children, style }) {
+  return (
+    <div
+      style={{
+        background: CARD,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 10,
+        padding: 20,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Label({ children }) {
+  return (
+    <div
+      style={{
+        fontFamily: 'Oswald, sans-serif',
+        fontSize: 12,
+        letterSpacing: '0.14em',
+        textTransform: 'uppercase',
+        color: GOLD,
+        marginBottom: 14,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function MedicalExaminerLocatorPage() {
-  const [selectedState, setSelectedState] = useState(null);
-  const [searchMode, setSearchMode] = useState('all'); // all, walkin, open-now
-  const [examiners, setExaminers] = useState([]);
-  const states = getAvailableStates();
-
-  const handleSelectState = (stateCode) => {
-    setSelectedState(stateCode);
-    const stateData = searchExaminersByState(stateCode);
-    if (stateData) {
-      setExaminers(stateData.examiners);
-    }
-  };
-
-  const getFilteredExaminers = () => {
-    if (!selectedState) return [];
-
-    if (searchMode === 'walkin') {
-      return findWalkInExaminers(selectedState);
-    }
-    if (searchMode === 'open-now') {
-      return findExaminersOpenNow(selectedState);
-    }
-    return examiners;
-  };
-
-  const filteredExaminers = getFilteredExaminers();
+  const [state, setState] = useState('MO');
+  const stateName = (STATES.find((s) => s[0] === state) || [, ''])[1];
 
   return (
-    <div style={{ minHeight: '100vh', background: C.black, color: C.white, padding: '24px 16px' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        {/* Header */}
-        <div style={{ marginBottom: '40px' }}>
-          <h1 style={{ fontSize: 42, fontWeight: 700, marginBottom: '12px', background: `linear-gradient(135deg, ${C.gold}, ${C.cyan})`, backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', color: C.gold }}>
-            🏥 Medical Examiner Locator
-          </h1>
-          <p style={{ fontSize: 16, color: C.white60, lineHeight: 1.7 }}>
-            Find FMCSA-certified medical examiners in your state. Walk-in friendly. Company partnerships. Hours, location, direct contact.
-          </p>
-        </div>
+    <div style={{ minHeight: '100vh', background: BLACK, color: TEXT, padding: '28px 16px 64px' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+        <h1
+          style={{
+            fontFamily: 'Bebas Neue, sans-serif',
+            fontSize: 46,
+            letterSpacing: '0.02em',
+            color: GOLDBR,
+            margin: 0,
+            lineHeight: 1.05,
+          }}
+        >
+          DOT Physical &amp; Medical Certificate
+        </h1>
+        <p style={{ color: MUTED, marginTop: 8, maxWidth: 760, lineHeight: 1.6 }}>
+          Find a certified medical examiner on the federal registry, and know what the exam
+          checks before you walk in.
+        </p>
 
-        {/* State Selection */}
-        <div style={{ marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px' }}>Select Your State</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px' }}>
-            {states.map(state => (
-              <button
-                key={state.code}
-                onClick={() => handleSelectState(state.code)}
-                style={{
-                  padding: '12px',
-                  background: selectedState === state.code ? C.gold : C.card,
-                  color: selectedState === state.code ? C.black : C.white,
-                  border: `2px solid ${selectedState === state.code ? C.gold : C.white10}`,
-                  borderRadius: '6px',
-                  fontWeight: selectedState === state.code ? '700' : '600',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  transition: 'all 0.2s',
-                }}
-              >
-                <div>{state.code}</div>
-                <div style={{ fontSize: '10px', opacity: 0.8, marginTop: '4px' }}>
-                  {state.examinerCount} offices
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Search Filters */}
-        {selectedState && (
-          <div style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px' }}>Search Filters</h2>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              {[
-                { id: 'all', label: 'All Examiners', icon: '📋' },
-                { id: 'walkin', label: 'Walk-In Friendly', icon: '👥' },
-                { id: 'open-now', label: 'Open Now', icon: '🕐' },
-              ].map(filter => (
-                <button
-                  key={filter.id}
-                  onClick={() => setSearchMode(filter.id)}
-                  style={{
-                    padding: '10px 16px',
-                    background: searchMode === filter.id ? C.cyan : C.card,
-                    color: searchMode === filter.id ? C.black : C.white,
-                    border: `1px solid ${searchMode === filter.id ? C.cyan : C.white10}`,
-                    borderRadius: '6px',
-                    fontWeight: searchMode === filter.id ? '700' : '600',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                  }}
-                >
-                  {filter.icon} {filter.label}
-                </button>
-              ))}
+        {/* The honest disclosure. This is the whole point of the rewrite. */}
+        <Card
+          style={{
+            marginTop: 22,
+            borderColor: WARN,
+            background: CARD2,
+            display: 'flex',
+            gap: 14,
+            alignItems: 'flex-start',
+          }}
+        >
+          <AlertTriangle size={20} color={WARN} style={{ flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: 14, lineHeight: 1.65 }}>
+            <strong style={{ color: TEXT }}>
+              TruckWithEase does not keep its own list of medical examiners.
+            </strong>
+            <div style={{ color: MUTED, marginTop: 6 }}>
+              An examiner&apos;s certification can lapse or be revoked at any time, and only FMCSA
+              knows the current status. We will not print clinic names, phone numbers or hours we
+              cannot verify today — you would drive to them. Search the federal registry below;
+              it is the only list that is authoritative.
             </div>
           </div>
-        )}
+        </Card>
 
-        {/* Results */}
-        {selectedState && (
-          <div>
-            <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px' }}>
-              {filteredExaminers.length} Medical Examiner{filteredExaminers.length !== 1 ? 's' : ''} Found
-            </h2>
+        {/* Registry lookup */}
+        <Card style={{ marginTop: 18 }}>
+          <Label>Search the FMCSA National Registry</Label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+            <select
+              value={state}
+              onChange={(e) => setState(e.target.value)}
+              style={{
+                background: BLACK,
+                color: TEXT,
+                border: `1px solid ${BORDER}`,
+                borderRadius: 8,
+                padding: '10px 12px',
+                fontSize: 14,
+                minWidth: 220,
+              }}
+            >
+              {STATES.map(([code, name]) => (
+                <option key={code} value={code}>
+                  {name}
+                </option>
+              ))}
+            </select>
 
-            {filteredExaminers.length === 0 ? (
-              <div style={{
-                background: C.card,
-                border: `1px solid ${C.white10}`,
-                borderRadius: '8px',
-                padding: '32px',
-                textAlign: 'center',
-              }}>
-                <AlertCircle size={32} color={C.gold} style={{ margin: '0 auto 12px', display: 'block' }} />
-                <p style={{ fontSize: '14px', color: C.white60, margin: 0 }}>
-                  No examiners match your search. Try a different filter or state.
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '16px' }}>
-                {filteredExaminers.map((examiner, idx) => (
-                  <div key={idx} style={{
-                    background: C.card,
-                    border: `1px solid ${C.white10}`,
-                    borderRadius: '8px',
-                    padding: '20px',
-                    transition: 'all 0.2s',
-                  }}>
-                    {/* Name & Walk-In Badge */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                      <h3 style={{ fontSize: '16px', fontWeight: '700', color: C.cyan, margin: 0 }}>
-                        {examiner.name}
-                      </h3>
-                      {examiner.walkInFriendly && (
-                        <span style={{
-                          background: 'rgba(34, 197, 94, 0.2)',
-                          color: C.green,
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: '700',
-                        }}>
-                          Walk-In OK
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Address */}
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                      <MapPin size={16} color={C.gold} style={{ flexShrink: 0, marginTop: '2px' }} />
-                      <div>
-                        <p style={{ fontSize: '12px', color: C.white60, margin: 0, lineHeight: 1.4 }}>
-                          {examiner.address}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Phone */}
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                      <Phone size={16} color={C.gold} style={{ flexShrink: 0 }} />
-                      <a href={`tel:${examiner.phone}`} style={{ fontSize: '12px', color: C.cyan, textDecoration: 'none', fontWeight: '600' }}>
-                        {examiner.phone}
-                      </a>
-                    </div>
-
-                    {/* Hours */}
-                    <div style={{ marginBottom: '12px', background: C.black, borderRadius: '4px', padding: '12px' }}>
-                      <p style={{ fontSize: '11px', fontWeight: '700', color: C.gold, margin: '0 0 8px 0' }}>
-                        Hours:
-                      </p>
-                      <div style={{ fontSize: '10px', color: C.white60, lineHeight: 1.6 }}>
-                        {formatHours(examiner.hours).length > 0 ? (
-                          formatHours(examiner.hours).map((hour, hIdx) => (
-                            <div key={hIdx}>{hour}</div>
-                          ))
-                        ) : (
-                          <div>Call for hours</div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Services */}
-                    <div style={{ marginBottom: '12px' }}>
-                      <p style={{ fontSize: '11px', fontWeight: '700', color: C.gold, margin: '0 0 6px 0' }}>
-                        Services:
-                      </p>
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        {examiner.services.map((service, sIdx) => (
-                          <span
-                            key={sIdx}
-                            style={{
-                              fontSize: '10px',
-                              background: 'rgba(106, 17, 203, 0.15)',
-                              color: '#a855f7',
-                              padding: '3px 6px',
-                              borderRadius: '3px',
-                            }}
-                          >
-                            {service}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Company Partners */}
-                    {examiner.trucksCompanyPartners.length > 0 && (
-                      <div style={{ marginBottom: '12px', background: 'rgba(106, 17, 203, 0.1)', borderRadius: '4px', padding: '12px' }}>
-                        <p style={{ fontSize: '11px', fontWeight: '700', color: '#a855f7', margin: '0 0 6px 0' }}>
-                          Partner Companies:
-                        </p>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                          {examiner.trucksCompanyPartners.map((company, cIdx) => (
-                            <span
-                              key={cIdx}
-                              style={{
-                                fontSize: '10px',
-                                background: C.black,
-                                border: `1px solid #a855f7`,
-                                color: '#a855f7',
-                                padding: '4px 6px',
-                                borderRadius: '3px',
-                              }}
-                            >
-                              ✓ {company}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Details Row */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '10px', color: C.white60, padding: '12px 0', borderTop: `1px solid ${C.white10}`, marginTop: '12px' }}>
-                      <div>
-                        <p style={{ margin: '0 0 2px 0' }}>Wait Time:</p>
-                        <p style={{ margin: 0, color: C.cyan, fontWeight: '600' }}>{examiner.avgWaitTime}</p>
-                      </div>
-                      <div>
-                        <p style={{ margin: '0 0 2px 0' }}>Insurance:</p>
-                        <p style={{ margin: 0, color: examiner.acceptsInsurance ? C.green : C.red, fontWeight: '600' }}>
-                          {examiner.acceptsInsurance ? '✓ Accepted' : '× Not Accepted'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Call Button */}
-                    <a
-                      href={`tel:${examiner.phone}`}
-                      style={{
-                        display: 'block',
-                        marginTop: '12px',
-                        padding: '10px',
-                        background: C.gold,
-                        color: C.black,
-                        textAlign: 'center',
-                        borderRadius: '6px',
-                        fontWeight: '700',
-                        fontSize: '13px',
-                        textDecoration: 'none',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      📞 Call Now
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
+            <a
+              href={REGISTRY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                background: GOLD,
+                color: BLACK,
+                fontWeight: 700,
+                fontSize: 14,
+                padding: '11px 18px',
+                borderRadius: 8,
+                textDecoration: 'none',
+              }}
+            >
+              Open registry <ExternalLink size={15} />
+            </a>
           </div>
-        )}
 
-        {!selectedState && (
-          <div style={{
-            background: C.card,
-            border: `1px solid ${C.white10}`,
-            borderRadius: '8px',
-            padding: '40px',
-            textAlign: 'center',
-          }}>
-            <MapPin size={40} color={C.cyan} style={{ margin: '0 auto 12px', display: 'block' }} />
-            <p style={{ fontSize: '16px', color: C.white60, margin: 0 }}>
-              Select a state above to find medical examiners
-            </p>
+          <div style={{ color: DIM, fontSize: 13, marginTop: 14, lineHeight: 1.6 }}>
+            The registry opens in a new tab. Search by state, city or ZIP —{' '}
+            <span style={{ color: MUTED }}>{stateName}</span> is what you have selected here. The
+            federal site is behind a CAPTCHA and publishes no API, so we cannot pull its results
+            into this page or pre-fill your search. Confirm the examiner&apos;s National Registry
+            number is listed and active before you book.
           </div>
-        )}
+
+          <div
+            style={{
+              marginTop: 16,
+              paddingTop: 14,
+              borderTop: `1px solid ${BORDER}`,
+              display: 'flex',
+              gap: 10,
+              alignItems: 'flex-start',
+              color: MUTED,
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
+          >
+            <MapPin size={16} color={GOLD} style={{ flexShrink: 0, marginTop: 2 }} />
+            <span>
+              Truck-stop and occupational-health chains often do DOT physicals, but a chain
+              location is not automatically certified — the individual examiner has to be on the
+              registry. Ask for the number and check it.
+            </span>
+          </div>
+        </Card>
+
+        {/* What the exam covers */}
+        <Card style={{ marginTop: 18 }}>
+          <Label>What the exam actually checks</Label>
+          <div style={{ display: 'grid', gap: 1, background: BORDER, borderRadius: 8, overflow: 'hidden' }}>
+            {EXAM_COVERS.map(([title, body]) => (
+              <div key={title} style={{ background: CARD2, padding: '14px 16px' }}>
+                <div
+                  style={{
+                    fontFamily: 'Oswald, sans-serif',
+                    fontSize: 14,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    color: TEXT,
+                    marginBottom: 5,
+                  }}
+                >
+                  {title}
+                </div>
+                <div style={{ color: MUTED, fontSize: 13.5, lineHeight: 1.6 }}>{body}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ color: DIM, fontSize: 12, marginTop: 12, lineHeight: 1.6 }}>
+            Source: 49 CFR 391.41 physical qualifications and FMCSA medical advisory criteria.
+            This is reference material, not a medical opinion, and it is not a pre-screen — only
+            the examiner decides whether you are certified.
+          </div>
+        </Card>
+
+        {/* After the exam */}
+        <Card style={{ marginTop: 18 }}>
+          <Label>After you pass</Label>
+          <div style={{ display: 'grid', gap: 12 }}>
+            {AFTER.map((line, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <ShieldCheck size={16} color={GOLD} style={{ flexShrink: 0, marginTop: 3 }} />
+                <span style={{ color: MUTED, fontSize: 13.5, lineHeight: 1.6 }}>{line}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* What this page does not do */}
+        <Card style={{ marginTop: 18, background: CARD2 }}>
+          <Label>Not built yet — and why</Label>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <Clock size={16} color={DIM} style={{ flexShrink: 0, marginTop: 3 }} />
+              <span style={{ color: MUTED, fontSize: 13.5, lineHeight: 1.6 }}>
+                <strong style={{ color: TEXT }}>Medical card expiry reminders.</strong> Needs a
+                field on the driver record for the certificate date plus a scheduled job. Not
+                wired, so this page does not claim to track your card.
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <FileText size={16} color={DIM} style={{ flexShrink: 0, marginTop: 3 }} />
+              <span style={{ color: MUTED, fontSize: 13.5, lineHeight: 1.6 }}>
+                <strong style={{ color: TEXT }}>Storing a scan of your MCSA-5876.</strong> The
+                storage API round-trips, but no upload screen is connected to it yet.
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <MapPin size={16} color={DIM} style={{ flexShrink: 0, marginTop: 3 }} />
+              <span style={{ color: MUTED, fontSize: 13.5, lineHeight: 1.6 }}>
+                <strong style={{ color: TEXT }}>Nearest-examiner search inside the app.</strong>{' '}
+                Blocked upstream: no FMCSA API, and Places is disabled on the project&apos;s Maps
+                key. It would need a licensed clinic dataset before it could be trusted.
+              </span>
+            </div>
+          </div>
+        </Card>
+
+        <div
+          style={{
+            marginTop: 22,
+            color: DIM,
+            fontSize: 11,
+            fontFamily: 'JetBrains Mono, monospace',
+            letterSpacing: '0.06em',
+          }}
+        >
+          NO EXAMINER RECORDS ARE STORED OR GENERATED BY THIS PLATFORM &middot; REGULATORY TEXT
+          FROM 49 CFR 391 &middot; VERIFY EVERY EXAMINER ON NATIONALREGISTRY.FMCSA.DOT.GOV
+        </div>
       </div>
     </div>
   );

@@ -1,263 +1,257 @@
-import React, { useState, useEffect } from 'react';
-import { Activity, Zap } from 'lucide-react';
+import React, { useState } from 'react';
 
-const CoreBreakthroughsPage = () => {
-  const [activeBreakthrough, setActiveBreakthrough] = useState('captions');
-  const [metrics, setMetrics] = useState({
-    activeUsers: 0,
-    captionsProcessed: 0,
-    signLanguageGenerated: 0,
-    hapticMessages: 0,
-    hosAnalyzed: 0,
-    languagesServed: 0
-  });
-  const [entitledIndexLog, setEntitledIndexLog] = useState([]);
+const GOLD = '#C9A84C';
+const GOLD_BRIGHT = '#FFD700';
+const BLACK = '#0a0a0a';
+const CARD = '#161616';
+const BORDER = '#222222';
+const MUTED = '#8a8a8a';
+const DIM = '#666666';
+const WARN = '#c96a4c';
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMetrics(prev => ({
-        activeUsers: prev.activeUsers + Math.floor(Math.random() * 3),
-        captionsProcessed: prev.captionsProcessed + Math.floor(Math.random() * 15),
-        signLanguageGenerated: prev.signLanguageGenerated + Math.floor(Math.random() * 8),
-        hapticMessages: prev.hapticMessages + Math.floor(Math.random() * 12),
-        hosAnalyzed: prev.hosAnalyzed + Math.floor(Math.random() * 25),
-        languagesServed: prev.languagesServed + Math.floor(Math.random() * 5)
-      }));
+const STATUS = {
+  built: { label: 'BUILT', color: GOLD_BRIGHT },
+  partial: { label: 'PARTIAL', color: GOLD },
+  notBuilt: { label: 'NOT BUILT', color: WARN },
+};
 
-      setEntitledIndexLog(prev => {
-        const events = [
-          { type: 'CAPTIONS', desc: 'Real-time caption processed - 99.8% accuracy', module: 'Accessibility' },
-          { type: 'SIGN_LANGUAGE', desc: 'ASL video generated for dispatch alert', module: 'Deaf Communication' },
-          { type: 'HAPTIC', desc: 'Vibration pattern sent - load assignment confirmed', module: 'HUH Alerts' },
-          { type: 'HOS_ANALYSIS', desc: 'Fatigue risk prediction: moderate risk 18 hours ahead', module: 'Quantum HOS' },
-          { type: 'VOICE_TRANSLATE', desc: 'Spanish → English voice translation (2.1s latency)', module: 'Multilingual' }
-        ];
-        
-        const newEvent = events[Math.floor(Math.random() * events.length)];
-        return [
-          { 
-            timestamp: new Date().toLocaleTimeString(),
-            ...newEvent,
-            status: 'LIVE'
-          },
-          ...prev
-        ].slice(0, 8);
-      });
-    }, 2000);
+const CAPABILITIES = [
+  {
+    key: 'captions',
+    title: 'Real-Time Captions',
+    status: 'notBuilt',
+    oneLine: 'Captioning dispatcher voice, broker calls and system alerts as they happen.',
+    whatExists: [
+      'Server-side speech-to-text is wired for file transcription only, through /api/gemini.',
+      'There is no live streaming caption pipeline and no /api/captions route.',
+    ],
+    whatIsMissing: [
+      'A streaming transcription socket (live audio in, partial text out).',
+      'A measured accuracy figure on trucking vocabulary from a real test set.',
+      'A measured latency figure under road-network conditions.',
+    ],
+    noNumbers:
+      'No accuracy percentage and no latency number is shown here because neither has been measured on this platform. Any figure would be borrowed from a vendor datasheet, not from TruckWithEase.',
+  },
+  {
+    key: 'signLanguage',
+    title: 'AI Sign Language Video',
+    status: 'notBuilt',
+    oneLine: 'Generating signed video from text or voice for deaf and hard-of-hearing drivers.',
+    whatExists: [
+      'A Sign Language Engine page exists with static reference tables of signs.',
+      'It makes no network calls and generates no video.',
+    ],
+    whatIsMissing: [
+      'Any video generation or avatar rendering at all.',
+      'A /api/sign-language route.',
+      'A licensed signing model or a signing-avatar vendor.',
+    ],
+    noNumbers:
+      'The platform does not generate ASL, BSL, LSF, DGS, ISL, AUSLAN or NZSL video. Earlier copy on this page claimed seven sign languages in real time. That was not true and has been removed.',
+  },
+  {
+    key: 'haptic',
+    title: 'Haptic Communication',
+    status: 'partial',
+    oneLine: 'Vibration patterns that carry meaning for drivers who cannot hear an alert.',
+    whatExists: [
+      'Pattern definitions and a multi-device haptics page are built.',
+      'Phone vibration works through the browser and Expo vibration APIs.',
+    ],
+    whatIsMissing: [
+      'Steering-wheel, seat and smartwatch delivery — no hardware is paired.',
+      'A measured broadcast latency across devices.',
+      'Offline delivery has not been tested.',
+    ],
+    noNumbers:
+      'Multi-device sync is designed but only the phone is a real delivery target today. Device counts and latency tiles were removed rather than estimated.',
+  },
+  {
+    key: 'hos',
+    title: 'HOS Fatigue Analysis',
+    status: 'partial',
+    oneLine: 'Using driving data to flag fatigue risk before it becomes a violation or a crash.',
+    whatExists: [
+      'A real safety engine at /api/safety scores drivers 0-100 from actual rows: speeding, HOS, violations, DVIR and fatigue.',
+      'It refuses to score a driver with fewer than two data components, and it returns MISSING instead of a made-up number.',
+    ],
+    whatIsMissing: [
+      'Accident-risk prediction. There is no accidentRisk field and that is deliberate.',
+      'A 24-hour or 7-day forward fatigue forecast.',
+      'Sleep quality, caffeine and meal timing — none of it is collected.',
+    ],
+    noNumbers:
+      'The 128-dimension "quantum" fatigue vector this page used to advertise was deleted from the codebase. Seventy-seven of its 128 dimensions were random numbers. The safety score that replaced it is derived only from rows in the database.',
+  },
+  {
+    key: 'voice',
+    title: 'Multilingual Voice',
+    status: 'partial',
+    oneLine: 'Dispatcher speaks one language, driver hears another.',
+    whatExists: [
+      'Server-side text-to-speech is live through /api/gemini/tts.',
+      'The interface ships in 10 locales.',
+    ],
+    whatIsMissing: [
+      'Live speech-to-speech translation with a dispatcher on the other end.',
+      'The 47-language claim. There are 10 real locales, not 47.',
+      'A measured end-to-end latency figure.',
+    ],
+    noNumbers:
+      'The "2.3 second latency, 47 languages" line that used to sit here was not measured and not accurate. TTS works; conversational translation does not exist yet.',
+  },
+];
 
-    return () => clearInterval(interval);
-  }, []);
+export default function CoreBreakthroughsPage() {
+  const [active, setActive] = useState('captions');
+  const current = CAPABILITIES.find((c) => c.key === active) || CAPABILITIES[0];
+  const s = STATUS[current.status];
 
-  const breakthroughs = {
-    captions: {
-      title: 'Real-Time Captions',
-      subtitle: '99.8% Accuracy | Every Message',
-      description: 'Every dispatcher voice message, every broker call, every system alert—captioned instantly as it happens.',
-      specs: [
-        'Google Cloud Speech-to-Text API',
-        '99.8% accuracy on trucking terminology',
-        '<500ms latency',
-        'Works in 47 languages',
-        'Handles background noise, accents, radio static'
-      ],
-      live: {
-        label: 'Captions Processed Tonight',
-        value: metrics.captionsProcessed,
-        unit: 'messages'
-      }
-    },
-    signLanguage: {
-      title: 'AI Sign Language Video',
-      subtitle: 'Fluent ASL in Real-Time | 7 Languages',
-      description: 'System analyzes text or voice, generates professional ASL video simultaneously. No waiting for interpreters.',
-      specs: [
-        'Quantum motion-capture (128D pose vectors)',
-        'Fluent signing at human speed',
-        '7 sign languages: ASL, BSL, LSF, DGS, ISL, AUSLAN, NZSL',
-        'Context-aware (understands trucking domain)',
-        'Emotion/tone embedded in facial expression'
-      ],
-      live: {
-        label: 'Sign Language Videos Generated',
-        value: metrics.signLanguageGenerated,
-        unit: 'videos'
-      }
-    },
-    haptic: {
-      title: 'Haptic Communication',
-      subtitle: 'Feel the Message | Vibration = Language',
-      description: 'Vibration patterns carry meaning. Deaf drivers feel alerts through steering wheel, phone, seat, smartwatch.',
-      specs: [
-        '24 distinct vibration patterns (alphabet)',
-        'Emotion overlay (urgent = rapid pulses)',
-        'Multi-device sync (phone + wheel + seat + watch)',
-        'Works offline',
-        'Steering wheel directional (left turn = left vibration)'
-      ],
-      live: {
-        label: 'Haptic Messages Delivered',
-        value: metrics.hapticMessages,
-        unit: 'alerts'
-      }
-    },
-    hos: {
-      title: 'Quantum HOS Fatigue Prediction',
-      subtitle: '128D Analysis | 24-Hour Risk Window',
-      description: 'AI learns every driver\'s sleep patterns, caffeine habits, speed variance, reaction time. Predicts accident risk 24 hours ahead.',
-      specs: [
-        '128-dimensional neural vector per driver',
-        'Analyzes lane variance, speed consistency, acceleration patterns',
-        'Learns from historical data (sleep quality, meal timing)',
-        'Predicts fatigue 24 hours + 7 days ahead',
-        'Triggers auto-suggestions: breaks, load pauses, route changes'
-      ],
-      live: {
-        label: 'HOS Profiles Analyzed',
-        value: metrics.hosAnalyzed,
-        unit: 'drivers'
-      }
-    },
-    voice: {
-      title: 'Multilingual Voice Translation',
-      subtitle: '47 Languages | 2.3 Second Latency',
-      description: 'Dispatcher speaks English. Driver hears native language in real-time with correct accent and tone.',
-      specs: [
-        'Speech-to-text (Google Cloud)',
-        'Neural machine translation (Google Translate)',
-        'Text-to-speech with accent synthesis',
-        '47 languages end-to-end',
-        '2.3s average latency (speech start to audio output)'
-      ],
-      live: {
-        label: 'Language Translations Served',
-        value: metrics.languagesServed,
-        unit: 'this hour'
-      }
-    }
-  };
-
-  const current = breakthroughs[activeBreakthrough];
+  const counts = CAPABILITIES.reduce(
+    (acc, c) => ({ ...acc, [c.status]: (acc[c.status] || 0) + 1 }),
+    {}
+  );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white overflow-hidden">
-      {/* Header */}
-      <div className="border-b border-slate-700 bg-slate-900/50 backdrop-blur sticky top-0 py-6 px-4 z-50">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-2">Core Breakthroughs Live</h1>
-          <p className="text-gray-400">Five technologies. Zero competitors. Real-time proof.</p>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Navigation */}
-          <div className="space-y-2">
-            {Object.entries(breakthroughs).map(([key, breakthrough]) => (
-              <button
-                key={key}
-                onClick={() => setActiveBreakthrough(key)}
-                className={`w-full text-left px-4 py-3 border transition-all ${
-                  activeBreakthrough === key
-                    ? 'bg-slate-800 border-orange-500 text-white'
-                    : 'bg-slate-800/50 border-slate-700 text-gray-400 hover:border-slate-600'
-                }`}
+    <div style={{ minHeight: '100vh', background: BLACK, color: '#e8e8e8', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div style={{ borderBottom: `1px solid ${BORDER}`, background: '#111111', padding: '28px 20px' }}>
+        <div style={{ maxWidth: 1120, margin: '0 auto' }}>
+          <h1 style={{ fontFamily: 'Bebas Neue, Oswald, sans-serif', fontSize: 40, letterSpacing: 1, margin: 0, color: GOLD_BRIGHT }}>
+            CORE CAPABILITIES — HONEST STATUS
+          </h1>
+          <p style={{ color: MUTED, marginTop: 8, fontSize: 14, maxWidth: 780 }}>
+            Five accessibility and safety capabilities, and exactly how far each one actually is. Nothing on this page
+            is a live counter, a projection or a vendor spec sheet. Where a number has not been measured on this
+            platform, no number is printed.
+          </p>
+          <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
+            {Object.entries(STATUS).map(([k, v]) => (
+              <span
+                key={k}
+                style={{
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: v.color,
+                  border: `1px solid ${v.color}55`,
+                  background: `${v.color}12`,
+                  padding: '4px 10px',
+                }}
               >
-                <p className="font-bold">{breakthrough.title}</p>
-                <p className="text-xs text-gray-500 mt-1">{breakthrough.subtitle}</p>
-              </button>
+                {v.label}: {counts[k] || 0}
+              </span>
             ))}
-          </div>
-
-          {/* Main Content */}
-          <div className="lg:col-span-2">
-            <div className="bg-slate-800 border border-slate-700 p-8">
-              <h2 className="text-3xl font-bold mb-2">{current.title}</h2>
-              <p className="text-orange-400 font-semibold mb-6">{current.subtitle}</p>
-              
-              <p className="text-gray-300 mb-8 leading-relaxed">{current.description}</p>
-
-              <div className="bg-slate-900 border border-slate-700 p-6 mb-8">
-                <h3 className="font-bold mb-4">Technical Specs</h3>
-                <ul className="space-y-2">
-                  {current.specs.map((spec, idx) => (
-                    <li key={idx} className="text-sm text-gray-400 flex items-start">
-                      <span className="text-orange-500 mr-3">▪</span>
-                      {spec}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="bg-gradient-to-r from-orange-500/10 to-orange-600/10 border border-orange-500/30 p-6">
-                <div className="flex items-baseline gap-3">
-                  <p className="text-4xl font-bold text-orange-400">{current.live.value.toLocaleString()}</p>
-                  <div>
-                    <p className="text-sm text-gray-400">{current.live.label}</p>
-                    <p className="text-xs text-gray-500">{current.live.unit}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Entitled Index Log */}
-      <div className="border-t border-slate-700 bg-slate-900/50 py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-            <Activity className="w-6 h-6 text-orange-500" />
-            Entitled Index — Live System Events
-          </h2>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {entitledIndexLog.map((event, idx) => (
-              <div key={idx} className="bg-slate-800 border border-slate-700 p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <p className="font-bold text-sm text-orange-400">{event.type}</p>
-                    <p className="text-xs text-gray-500">{event.module}</p>
+      <div style={{ maxWidth: 1120, margin: '0 auto', padding: '32px 20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 320px) 1fr', gap: 28, alignItems: 'start' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {CAPABILITIES.map((c) => {
+              const cs = STATUS[c.status];
+              const on = c.key === active;
+              return (
+                <button
+                  key={c.key}
+                  onClick={() => setActive(c.key)}
+                  style={{
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    background: on ? CARD : '#131313',
+                    border: `1px solid ${on ? GOLD : BORDER}`,
+                    padding: '12px 14px',
+                    color: on ? '#f2f2f2' : MUTED,
+                  }}
+                >
+                  <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 15, fontWeight: 600, letterSpacing: 0.3 }}>
+                    {c.title}
                   </div>
-                  <span className="px-2 py-1 bg-green-500/20 border border-green-500/50 text-green-400 text-xs font-bold rounded">
-                    {event.status}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-300 mb-2">{event.desc}</p>
-                <p className="text-xs text-gray-600">{event.timestamp}</p>
-              </div>
-            ))}
+                  <div
+                    style={{
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: cs.color,
+                      marginTop: 6,
+                    }}
+                  >
+                    {cs.label}
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="mt-8 bg-slate-800 border border-slate-700 p-6">
-            <h3 className="font-bold mb-4">What This Proves</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
-              <div>
-                <p className="text-orange-400 font-bold mb-2">Real-Time Performance</p>
-                <p>Every function is live and measurable right now. Not a demo. Not a mockup. Actual drivers, actual messages, actual safety.</p>
-              </div>
-              <div>
-                <p className="text-orange-400 font-bold mb-2">Cross-System Integration</p>
-                <p>Captions trigger sign language. Voice triggers haptic. HOS triggers alerts. One unified platform. One nervous system.</p>
-              </div>
-              <div>
-                <p className="text-orange-400 font-bold mb-2">Entitled Index Verification</p>
-                <p>Every event is logged and timestamped. Full audit trail. Full compliance. Every function verified and tracked.</p>
-              </div>
-              <div>
-                <p className="text-orange-400 font-bold mb-2">Scalability Proven</p>
-                <p>47 languages, 128D analysis, haptic sync across 6 device types, 99.8% accuracy. All running simultaneously. All at scale.</p>
-              </div>
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, padding: 26 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+              <h2 style={{ fontFamily: 'Bebas Neue, Oswald, sans-serif', fontSize: 32, margin: 0, color: '#f2f2f2', letterSpacing: 0.5 }}>
+                {current.title}
+              </h2>
+              <span
+                style={{
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: s.color,
+                  border: `1px solid ${s.color}55`,
+                  background: `${s.color}12`,
+                  padding: '3px 9px',
+                }}
+              >
+                {s.label}
+              </span>
+            </div>
+            <p style={{ color: MUTED, fontSize: 14, marginTop: 10, lineHeight: 1.6 }}>{current.oneLine}</p>
+
+            <div style={{ marginTop: 22 }}>
+              <h3 style={{ fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1.2, color: GOLD, margin: '0 0 10px' }}>
+                WHAT ACTUALLY EXISTS
+              </h3>
+              <ul style={{ margin: 0, paddingLeft: 18, color: '#cfcfcf', fontSize: 13.5, lineHeight: 1.75 }}>
+                {current.whatExists.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div style={{ marginTop: 22 }}>
+              <h3 style={{ fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1.2, color: WARN, margin: '0 0 10px' }}>
+                WHAT IS MISSING
+              </h3>
+              <ul style={{ margin: 0, paddingLeft: 18, color: '#cfcfcf', fontSize: 13.5, lineHeight: 1.75 }}>
+                {current.whatIsMissing.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div style={{ marginTop: 24, borderTop: `1px solid ${BORDER}`, paddingTop: 18 }}>
+              <h3 style={{ fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1.2, color: DIM, margin: '0 0 8px' }}>
+                WHY THERE IS NO METRIC HERE
+              </h3>
+              <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.7, margin: 0 }}>{current.noNumbers}</p>
             </div>
           </div>
         </div>
+
+        <div style={{ marginTop: 32, background: '#131313', border: `1px solid ${BORDER}`, padding: 22 }}>
+          <h3 style={{ fontFamily: 'Oswald, sans-serif', fontSize: 14, letterSpacing: 1.2, color: GOLD, margin: '0 0 10px' }}>
+            WHAT THIS PAGE USED TO SHOW
+          </h3>
+          <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.75, margin: 0 }}>
+            Six counters that started at zero on every page load and climbed every two seconds from a random number
+            generator, plus an event feed of invented system events each stamped LIVE. None of it came from the
+            database or from any provider. It has been removed. This page now reports build status only, and it will
+            show a real number the first time there is a real number to show.
+          </p>
+        </div>
       </div>
 
-      {/* Footer */}
-      <div className="border-t border-slate-700 py-8 px-4 text-center text-sm text-gray-500 bg-slate-900/50">
-        <p>Five breakthroughs. Zero competitors. August 31, 2026.</p>
+      <div style={{ borderTop: `1px solid ${BORDER}`, padding: '22px 20px', textAlign: 'center', color: DIM, fontSize: 12 }}>
+        Status reflects the codebase, not a roadmap. TruckWithEase is not a registered ELD provider.
       </div>
     </div>
   );
-};
-
-export default CoreBreakthroughsPage;
+}
