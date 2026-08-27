@@ -957,3 +957,55 @@ export const driverSignals = sqliteTable("driver_signals", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });
 
+
+/**
+ * TRAXES — scanned document store and the financial/tax record built from it.
+ *
+ * One row per document a driver actually captured. `docKey` is the object-storage
+ * key written by /api/storage/presign-upload; the file itself never passes through
+ * this server and no presigned URL is persisted (they expire).
+ *
+ * Every money field is nullable on purpose. If the OCR pass could not read a
+ * number off the page, the column stays null and the UI renders MISSING with the
+ * reason from `ocrNote` — TRAXES never invents an amount. `ocrConfidence` stays
+ * null unless the provider actually returns a confidence value; Gemini does not,
+ * so it is null today.
+ *
+ * TRAXES is a record-keeper and a calculator. It does not file anything with any
+ * tax authority and it makes no claim of IRS acceptance.
+ */
+export const traxesRecords = sqliteTable("traxes_records", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id").notNull(),
+  // kind: bol | rate_confirmation | invoice | fuel_receipt | lumper_receipt |
+  //       scale_ticket | toll_receipt | repair_invoice | permit | other
+  kind: text("kind").notNull().default("other"),
+  // category drives the tax rollup: revenue | fuel | tolls | lumper | scale |
+  //       repair | permit | insurance | meals | supplies | other
+  category: text("category").notNull().default("other"),
+  docKey: text("doc_key"),               // storage key, null if filed without a file
+  fileName: text("file_name"),
+  mimeType: text("mime_type"),
+  sizeBytes: integer("size_bytes"),
+  broker: text("broker"),
+  loadId: text("load_id"),
+  reference: text("reference"),           // BOL #, PO #, invoice #, pro #
+  vendor: text("vendor"),                 // truck stop, repair shop, lumper service
+  amount: real("amount"),                 // null when unreadable — never guessed
+  currency: text("currency").default("USD"),
+  taxYear: integer("tax_year"),
+  occurredAt: integer("occurred_at", { mode: "timestamp" }),
+  deductible: integer("deductible", { mode: "boolean" }).notNull().default(true),
+  ocrRaw: text("ocr_raw"),                // the model's raw JSON reply, kept for audit
+  ocrNote: text("ocr_note"),              // plain-English reason a field came back null
+  ocrModel: text("ocr_model"),
+  ocrConfidence: real("ocr_confidence"),  // null — provider returns none
+  // status: captured | extracted | filed | needs_review
+  status: text("status").notNull().default("captured"),
+  // destination: dispatch | link | none
+  destination: text("destination").notNull().default("none"),
+  destinationNote: text("destination_note"),
+  sentAt: integer("sent_at", { mode: "timestamp" }),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});

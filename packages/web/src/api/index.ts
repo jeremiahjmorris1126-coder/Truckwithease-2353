@@ -42,6 +42,7 @@ import { weekReview } from "./routes/week-review";
 import { azuga } from "./routes/azuga";
 import { vatRates } from "./routes/vat-rates";
 import { algorithm } from "./routes/algorithm";
+import { traxes } from "./routes/traxes";
 
 const app = new Hono()
   .basePath('api')
@@ -88,7 +89,8 @@ const app = new Hono()
   .route("/week-review", weekReview)
   .route("/azuga", azuga)
   .route("/vat-rates", vatRates)
-  .route("/algorithm", algorithm);
+  .route("/algorithm", algorithm)
+  .route("/traxes", traxes);
 
 export type AppType = typeof app;
 export default app;

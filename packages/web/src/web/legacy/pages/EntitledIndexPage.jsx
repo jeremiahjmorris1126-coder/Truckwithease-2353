@@ -43,7 +43,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   LayoutGrid, AlertTriangle, Loader2, RefreshCw, Package, Users, Stethoscope,
-  Radio, ExternalLink, Route as RouteIcon, Clock, MapPin,
+  Radio, ExternalLink, Route as RouteIcon, Clock, MapPin, Receipt,
 } from "lucide-react";
 
 const GOLD = "#C9A84C";
@@ -199,6 +199,13 @@ export default function EntitledIndexPage() {
   const [plan, setPlan] = useState({}); // loadId -> {status, data, error}
   const [signalled, setSignalled] = useState({}); // loadId -> 'accepted'|'declined'
 
+  // panel 5 — TRAXES. Fetched separately from the main load so a TRAXES outage
+  // cannot blank the rest of the hub.
+  const [traxStatus, setTraxStatus] = useState(null);
+  const [traxSum, setTraxSum] = useState(null);
+  const [traxErr, setTraxErr] = useState("");
+  const TAX_YEAR = new Date().getFullYear();
+
   const loadAll = useCallback(async () => {
     setState("loading");
     setErr("");
@@ -227,6 +234,22 @@ export default function EntitledIndexPage() {
   }, []);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  const loadTraxes = useCallback(async () => {
+    setTraxErr("");
+    try {
+      const [st, sum] = await Promise.all([
+        getJSON(`${API}/api/traxes/status`),
+        getJSON(`${API}/api/traxes/summary?taxYear=${new Date().getFullYear()}`),
+      ]);
+      setTraxStatus(st);
+      setTraxSum(sum);
+    } catch (e) {
+      setTraxErr(String(e.message || e));
+    }
+  }, []);
+
+  useEffect(() => { loadTraxes(); }, [loadTraxes]);
 
   useEffect(() => {
     if (!driverId) return;
@@ -678,6 +701,55 @@ export default function EntitledIndexPage() {
                     <Row key={i} k={v.level} v={v.msg} tone={WARN} />
                   ))}
                 </div>
+              )}
+            </Panel>
+
+            {/* 5 — TRAXES */}
+            <Panel
+              title="5 · TRAXES — scan & file"
+              icon={Receipt}
+              note="GET /api/traxes/status + GET /api/traxes/summary"
+              right={<a href="/traxes" style={{ ...btn(true), textDecoration: "none" }}>Open TRAXES</a>}
+            >
+              {traxErr ? (
+                <Missing label="TRAXES did not answer" reason={traxErr} />
+              ) : !traxStatus || !traxSum ? (
+                <div style={{ color: MUTED, fontSize: 13 }}>Loading TRAXES…</div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", gap: 28, flexWrap: "wrap", marginBottom: 18 }}>
+                    <Stat value={traxSum.records ?? 0} label={`Records filed ${TAX_YEAR}`} />
+                    <Stat value={money(traxSum.revenue)} label="Revenue recorded" />
+                    <Stat value={money(traxSum.deductions)} label="Deductions recorded" />
+                    <Stat value={money(traxSum.net)} label="Net (revenue − deductions)" />
+                  </div>
+
+                  <Row k="Document OCR" v={traxStatus?.ocr?.configured ? `live · ${traxStatus?.ocr?.model}` : "not configured"} mono tone={traxStatus?.ocr?.configured ? GOLD : WARN} />
+                  <Row k="Scan storage" v={traxStatus?.storage?.configured ? "live · presigned upload straight to the bucket" : "not configured"} mono tone={traxStatus?.storage?.configured ? GOLD : WARN} />
+                  <Row k="Records missing an amount" v={traxSum.recordsMissingAnAmount ?? 0} mono />
+                  <Row
+                    k="Amount completeness"
+                    v={traxSum?.completeness?.value === null || traxSum?.completeness?.value === undefined ? "MISSING" : `${traxSum.completeness.value}%`}
+                    mono
+                    tone={traxSum?.completeness?.value === null || traxSum?.completeness?.value === undefined ? WARN : GOLD}
+                  />
+
+                  {traxStatus?.brokerDelivery?.emailConfigured === false && (
+                    <div style={{ marginTop: 14 }}>
+                      <Missing
+                        label="Emailing a scan to a broker"
+                        reason="No email provider is connected to the platform, so TRAXES cannot send a document to a broker. It mints a signed download link you send yourself, or files the document to the dispatch queue inside the platform."
+                      />
+                    </div>
+                  )}
+
+                  <div style={{ color: DIM, fontSize: 11.5, lineHeight: 1.7, marginTop: 14 }}>
+                    TRAXES reads what is printed on a document and stores it for a tax preparer.
+                    It does not verify the document, does not file with the IRS or any state,
+                    does not compute tax owed, and is not tax advice. Records with no readable
+                    amount are excluded from these totals rather than counted as zero.
+                  </div>
+                </>
               )}
             </Panel>
 
