@@ -44,6 +44,7 @@ import { vatRates } from "./routes/vat-rates";
 import { algorithm } from "./routes/algorithm";
 import { traxes } from "./routes/traxes";
 import { integrations } from "./routes/integrations";
+import { email } from "./routes/email";
 
 const app = new Hono()
   .basePath('api')
@@ -92,7 +93,8 @@ const app = new Hono()
   .route("/vat-rates", vatRates)
   .route("/algorithm", algorithm)
   .route("/traxes", traxes)
-  .route("/integrations", integrations);
+  .route("/integrations", integrations)
+  .route("/email", email);
 
 export type AppType = typeof app;
 export default app;

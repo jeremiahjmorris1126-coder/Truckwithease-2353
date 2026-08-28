@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { storageConfigured, s3, S3_BUCKET, S3_ENDPOINT, S3_REGION } from "../lib/s3";
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { emailInfo, verifyEmailToken } from "../services/email";
 
 /**
  * Integration status — server-side, read-only, honest.
@@ -58,6 +59,7 @@ type Provider = {
 const has = (k: string) => Boolean(process.env[k] && String(process.env[k]).replace(/"/g, "").trim());
 
 function base(): Provider[] {
+  const mail = emailInfo();
   const geminiKey = has("GEMINI_API_KEY");
   const twilio = has("TWILIO_ACCOUNT_SID") && has("TWILIO_AUTH_TOKEN");
   const maps = has("VITE_GOOGLE_MAPS_KEY");
@@ -222,13 +224,17 @@ function base(): Provider[] {
     }),
     p({
       id: "email",
-      name: "Transactional email",
+      name: "Postmark (transactional email)",
       category: "Messaging",
-      purpose: "Would email a rate confirmation, invoice, or scanned BOL to a broker, and send driver notifications.",
-      envKeys: [],
-      usedBy: [],
-      state: "not_connected",
-      reason: "NO PROVIDER IS WIRED. This is the single biggest gap in TRAXES: a driver can scan a document and file it, but the app cannot email it to a broker, so it never claims it did. Needs a decision — Resend, Postmark, or Mailgun. Not SES, because the platform uses no AWS.",
+      purpose: "Emails a rate confirmation, invoice, or scanned BOL to a broker, and sends driver notifications.",
+      envKeys: ["POSTMARK_SERVER_TOKEN", "EMAIL_FROM"],
+      usedBy: ["api/services/email.ts", "api/routes/email.ts", "api/routes/traxes.ts"],
+      state: mail.configured ? "unknown" : "not_connected",
+      probeable: Boolean(mail.tokenPresent),
+      reason: mail.configured
+        ? `Provider chosen and code wired. Sending from ${mail.from}. Probe verifies the token against Postmark; a valid token still does not prove the From address is a verified Sender Signature.`
+        : `Postmark was chosen on 2026-08-28 and the send path is built, but it cannot send yet: ${mail.blockers.join(" ")} Postmark also refuses senders on public domains, so a gmail address can never be the From — it has to be a mailbox on morrishive.com with Postmark's DKIM and Return-Path records in DNS.`,
+      docsUrl: "https://postmarkapp.com/developer/api/email-api",
     }),
     p({
       id: "samsara",
@@ -346,6 +352,10 @@ async function probe(id: string): Promise<{ ok: boolean; detail: string; status?
       if (!key) return { ok: false, detail: "No key." };
       const r = await fetch("https://api.apifreaks.com/v1.0/vat/rates/country?country=DE", { headers: { "X-apiKey": key }, signal: ctl.signal });
       return { ok: r.ok, status: r.status, detail: r.ok ? "DE VAT rate returned." : `HTTP ${r.status}` };
+    }
+    if (id === "email") {
+      const r = await verifyEmailToken();
+      return { ok: r.ok, status: r.status ?? undefined, detail: r.detail };
     }
     return { ok: false, detail: "This provider has no live probe. Nothing is connected to probe." };
   } catch (e: any) {

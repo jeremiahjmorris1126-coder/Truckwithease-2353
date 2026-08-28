@@ -6,6 +6,7 @@ import { db } from "../database";
 import { traxesRecords } from "../database/schema";
 import { S3_BUCKET, s3, storageConfigured } from "../lib/s3";
 import { GEMINI_MODELS, callGemini, firstText, geminiKey } from "./gemini";
+import { emailConfigured, emailInfo, sendEmail } from "../services/email";
 
 /**
  * TRAXES — scan a document, file it, keep the money record.
@@ -20,10 +21,16 @@ import { GEMINI_MODELS, callGemini, firstText, geminiKey } from "./gemini";
  *   6. POST /api/traxes/send/:id files it to the dispatch queue and/or mints a
  *      short-lived signed link the driver can hand to a broker
  *
+ * 2026-08-28: Postmark was chosen as the email provider, so /send now has a
+ * third destination, "email". It emails a signed link to a broker through
+ * api/services/email.ts and sets emailed:true ONLY when Postmark returned a
+ * MessageID. If Postmark is not fully set up (token missing, or EMAIL_FROM not
+ * on a domain Postmark will verify), /send refuses with the real blocker rather
+ * than claiming a send.
+ *
  * What this file deliberately does NOT do:
- *   - It does not email a broker. No email provider is connected to this project
- *     (no Resend/Postmark/Mailgun credential exists), so /send never claims a
- *     document was emailed. It returns a real signed link instead and says so.
+ *   - It never says a document was emailed unless Postmark returned a MessageID.
+ *     "dispatch" and "link" still make no email claim at all.
  *   - It does not invent a number. If the model cannot read an amount, `amount`
  *     comes back null with a plain-English reason in `ocrNote`. There is no
  *     fallback guess, no average, no Math.random().
@@ -352,22 +359,31 @@ export const traxes = new Hono()
   })
 
   /**
-   * Send the document on. Two honest destinations:
+   * Send the document on. Three honest destinations:
    *   "dispatch" — writes destination=dispatch, which is what /dispatch-queue reads.
    *   "link"     — mints a presigned GET URL (max 24h) the driver forwards to the broker.
-   * There is no "email" destination because no email provider is connected.
+   *   "email"    — signs the same URL and emails it via Postmark. Requires { to }.
+   *                emailed:true is set only on a real Postmark MessageID.
    */
   .post("/send/:id", async (c) => {
     const [row] = await db.select().from(traxesRecords).where(eq(traxesRecords.id, c.req.param("id")));
     if (!row) return c.json(bad("No TRAXES record with that id."), 404);
     const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
     const destination = String(b.destination || "dispatch");
-    if (destination !== "dispatch" && destination !== "link") {
-      return c.json(bad('destination must be "dispatch" or "link". Emailing a broker is not available — no email provider is connected to this project.'), 400);
+    if (destination !== "dispatch" && destination !== "link" && destination !== "email") {
+      return c.json(bad('destination must be "dispatch", "link" or "email".'), 400);
+    }
+
+    const to = String(b.to ?? "").trim();
+    if (destination === "email") {
+      if (!emailConfigured()) {
+        return c.json({ ...bad("Email is not sendable yet, so TRAXES will not claim it sent anything."), blockers: emailInfo().blockers }, 503);
+      }
+      if (!to) return c.json(bad("An email destination needs { to: \"broker@example.com\" }."), 400);
     }
 
     let link: { url: string; expiresIn: number } | null = null;
-    if (destination === "link") {
+    if (destination === "link" || destination === "email") {
       if (!row.docKey) return c.json(bad("That record has no stored file, so there is nothing to link to."), 400);
       if (!storageConfigured) return c.json(bad("Object storage is not configured, so a link cannot be signed."), 503);
       const expiresIn = Math.min(Math.max(Number(b.expiresIn) || 86400, 300), 86400);
@@ -380,10 +396,41 @@ export const traxes = new Hono()
       }
     }
 
+    let emailResult: { messageId: string; to: string; submittedAt: string } | null = null;
+    if (destination === "email") {
+      const label = TRAXES_KINDS.find((k) => k.kind === row.kind)?.label ?? "Document";
+      try {
+        const sent = await sendEmail({
+          to,
+          subject: `${label} — TruckWithEase`,
+          text: [
+            `${label} from ${row.vendor ?? "a TruckWithEase driver"}.`,
+            row.docNumber ? `Document number: ${row.docNumber}` : null,
+            row.amount !== null && row.amount !== undefined ? `Amount: $${row.amount}` : null,
+            "",
+            "Secure download link (expires):",
+            link!.url,
+            "",
+            "Sent from TruckWithEase.",
+          ]
+            .filter((l) => l !== null)
+            .join("\n"),
+          tag: "traxes-document",
+        });
+        emailResult = { messageId: sent.messageId, to: sent.to, submittedAt: sent.submittedAt };
+      } catch (e) {
+        // Nothing is written to the record on a failed send. The document is not
+        // marked filed or sent, because it wasn't.
+        return c.json(bad(`Postmark did not accept the message, so nothing was sent: ${(e as Error).message}`), 502);
+      }
+    }
+
     const note =
       destination === "dispatch"
         ? "Filed to the dispatch queue in this platform. Nothing was emailed."
-        : `Signed link created, valid for ${link!.expiresIn} seconds. TRAXES did not send it anywhere — copy it to the broker yourself.`;
+        : destination === "email"
+          ? `Emailed to ${emailResult!.to} through Postmark, message ${emailResult!.messageId}. Accepted for delivery — check the Postmark activity feed to confirm it landed.`
+          : `Signed link created, valid for ${link!.expiresIn} seconds. TRAXES did not send it anywhere — copy it to the broker yourself.`;
 
     const [updated] = await db
       .update(traxesRecords)
@@ -391,7 +438,7 @@ export const traxes = new Hono()
       .where(eq(traxesRecords.id, row.id))
       .returning();
 
-    return c.json({ record: updated, destination, link, sent: destination === "dispatch", emailed: false, note });
+    return c.json({ record: updated, destination, link, sent: destination !== "link", emailed: Boolean(emailResult), email: emailResult, note });
   })
 
   /** What the dispatch side reads: everything a driver filed to dispatch. */
