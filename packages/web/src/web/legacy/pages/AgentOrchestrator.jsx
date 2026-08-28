@@ -23,7 +23,6 @@ const AGENTS = [
 const INTEGRATIONS = [
   { name: 'OpenAI', icon: '🧠', status: 'active', powers: 'Dream Team agents, Game Up, HRease' },
   { name: 'Google Gemini', icon: '✨', status: 'active', powers: 'Ghost Nerve, document scanning, lane prediction' },
-  { name: 'IBM Watson', icon: '🔵', status: 'active', powers: 'Voice capture, document OCR, cab commands' },
   { name: 'AWS', icon: '🟠', status: 'pending', powers: 'Maps, Rekognition, S3 storage, push alerts' },
   { name: 'Twilio Voice', icon: '📱', status: 'active', powers: 'Fleet Voice, hands-free calls' },
   { name: 'Twilio REST', icon: '💬', status: 'active', powers: 'Driver SMS, dispatch alerts' },

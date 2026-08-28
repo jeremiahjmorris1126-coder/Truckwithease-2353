@@ -12,7 +12,6 @@ const C = {
 const ALL_APIS = [
   { id: "openai",      emoji: "🧠", name: "OpenAI",              color: "#10a37f", purpose: "Dream Team AI brain — all 12 agents, dispatch intelligence, HRease, Game Up",       keyField: "openai_api_key",       getLink: "https://platform.openai.com/api-keys",         renewNote: "Never expires — rotate only if compromised" },
   { id: "gemini",      emoji: "✨", name: "Google Gemini",        color: "#4285f4", purpose: "Ghost Nerve, lane prediction, document analysis, Phantom Compliance",               keyField: "gemini_api_key",       getLink: "https://aistudio.google.com/app/apikey",       renewNote: "Never expires — rotate only if compromised" },
-  { id: "ibm",         emoji: "🔵", name: "IBM Watson",           color: "#0f62fe", purpose: "Accident voice capture, DOT document scanning, driver speech commands (cost-capped)",keyField: "ibm_api_key",          getLink: "https://cloud.ibm.com/resources",              renewNote: "Never expires — monitor monthly spend" },
   { id: "twilio",      emoji: "📱", name: "Fleet Voice (Twilio)", color: "#f5a623", purpose: "Hands-free calling, cab speaker routing, Signal Sam monitoring",                    keyField: "twilio_token",         getLink: "https://console.twilio.com",                   renewNote: "Never expires — rotate only if compromised" },
   { id: "twilio_rest", emoji: "💬", name: "Twilio REST Messaging",color: "#f22f46", purpose: "Auto-SMS on load dispatch, driver alerts, SOS, payroll confirmation",              keyField: "twilio_rest_token",    getLink: "https://console.twilio.com",                   renewNote: "Never expires — rotate only if compromised" },
   { id: "serp",        emoji: "🔍", name: "SerpAPI",              color: "#4a9eff", purpose: "Live broker reputation checks, road closure alerts, freight market intel",          keyField: "serpapi_key",          getLink: "https://serpapi.com/manage-api-key",           renewNote: "Never expires — monitor monthly search quota" },
@@ -55,7 +54,6 @@ const ALL_APIS = [
 const AGENT_LOGS = [
   { time: "just now",    msg: "Full API health scan complete — 18 services verified", type: "success" },
   { time: "2 min ago",   msg: "OpenAI responding — all 12 Dream Team agents online", type: "success" },
-  { time: "4 min ago",   msg: "IBM Watson cost monitor active — $0.00 of $25.00 used this month", type: "info" },
   { time: "6 min ago",   msg: "SerpAPI quota check — 847 of 100,000 monthly searches used", type: "info" },
   { time: "8 min ago",   msg: "Facebook token check — 23 days remaining before refresh needed", type: "warn" },
   { time: "10 min ago",  msg: "Twilio Fleet Voice — 3 active lines confirmed healthy", type: "success" },

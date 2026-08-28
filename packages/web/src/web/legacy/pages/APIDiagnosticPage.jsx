@@ -23,13 +23,6 @@ const SERVICES = [
     unique: "Specialized for pattern recognition and predictive intelligence",
   },
   {
-    id: "ibm", emoji: "🔵", name: "IBM Watson", category: "AI Brain",
-    powers: ["Accident report voice capture", "DOT document photo scanning", "Driver speech commands in cab"],
-    overlap: ["aws"], overlapNote: "IBM Watson and AWS Transcribe both do voice-to-text. IBM is more accurate in noisy cab environments. AWS Transcribe is backup/overflow. Keep both — use IBM first, AWS as fallback.",
-    status: "active", cost: "Per call — capped at your monthly limit",
-    unique: "Best-in-class accuracy for noisy cab environments",
-  },
-  {
     id: "twilio", emoji: "📱", name: "Fleet Voice (Twilio)", category: "Communications",
     powers: ["Hands-free calling through cab speakers", "Fleet phone numbers", "Group broadcast calls", "Signal Sam monitoring"],
     overlap: null, status: "active", cost: "$1/month per number + $0.013/min",
@@ -112,7 +105,7 @@ const SERVICES = [
   {
     id: "aws", emoji: "🟠", name: "Amazon Web Services", category: "Platform Infrastructure",
     powers: ["Truck-specific route calculation (bridge heights, weight limits)", "VIN/CDL/BOL photo scanning (Rekognition)", "Accident voice transcription (Transcribe)", "Secure document storage (S3)", "Push notifications (SNS)"],
-    overlap: ["azure", "ibm", "twilio_rest"], overlapNote: "AWS covers infrastructure. Azure covers enterprise Microsoft clients. IBM handles specialized cab voice. Twilio handles SMS. All different — no true overlap.",
+    overlap: ["azure", "twilio_rest"], overlapNote: "AWS covers infrastructure. Azure covers enterprise Microsoft clients. Twilio handles SMS. All different — no true overlap.",
     status: "pending", cost: "Per service — usage based",
     unique: "5 platform services in one account — maps, scanning, voice, storage, push",
   },
@@ -317,13 +310,12 @@ export default function APIDiagnosticPage() {
             <div style={{ background: "#0d1f0d", border: `1px solid ${C.green}`, borderRadius: 12, padding: 20, marginBottom: 24 }}>
               <div style={{ fontSize: 18, fontWeight: 900, color: C.green, marginBottom: 8 }}>✅ Result: No Services Should Be Removed</div>
               <div style={{ fontSize: 13, color: C.text, lineHeight: 1.8 }}>
-                Six pairs of services appear similar on the surface. Every single one was investigated and confirmed to serve a unique, non-redundant function. The table below explains each pair.
+                Five pairs of services appear similar on the surface. Every single one was investigated and confirmed to serve a unique, non-redundant function. The table below explains each pair.
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {[
                 { pair: "OpenAI + Gemini", verdict: "Keep Both ✓", reason: "OpenAI powers your 12 Dream Team agents and HRease. Gemini powers Ghost Nerve intelligence and predictive compliance. Different functions, different strengths — running them together is what makes your AI layer unmatched." },
-                { pair: "IBM Watson + AWS Transcribe", verdict: "Keep Both ✓", reason: "IBM Watson is primary for voice in noisy cab environments — highest accuracy. AWS Transcribe is backup/overflow and handles document scanning alongside Rekognition. IBM first, AWS as fallback." },
                 { pair: "Samsara + Geotab + Azuga", verdict: "Keep All Three ✓", reason: "Each serves fleets with different ELD hardware. A Samsara fleet uses the Samsara connection. A Geotab fleet uses Geotab. They all appear on your one dispatch map. This is your competitive advantage — one platform for all hardware." },
                 { pair: "Twilio REST + AWS SNS", verdict: "Keep Both ✓", reason: "Twilio REST sends SMS to any phone number — no app needed to receive. AWS SNS sends push notifications inside the app. Different delivery channels, maximum driver reach." },
                 { pair: "World News + Twitter/X", verdict: "Keep Both ✓", reason: "World News delivers structured articles — confirmed, edited news. Twitter/X delivers real-time social signals from drivers on the road. Together they give Ghost Nerve the most complete freight intelligence picture available." },

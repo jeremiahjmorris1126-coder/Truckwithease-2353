@@ -27,7 +27,7 @@ const FUSION_MODULES = [
   {
     id: "coach", icon: "📡", title: "Live In-Cab Safety Coach",
     tag: "EXCLUSIVE", tagColor: "#60a5fa",
-    desc: "IBM Watson voice AI listens to the cab environment (opt-in) and delivers real-time safety coaching through the speakers — speed alerts, fatigue warnings, weather hazard notifications — all hands-free, all personalized to that driver's history.",
+    desc: "NOT BUILT. There is no in-cab audio capture in the platform today — no microphone input, no speaker output, and no provider connected to do either. Nothing on this card is running.",
     powers: ["Real-time voice coaching", "Fatigue pattern detection", "Hands-free speed alerts", "Weather hazard warnings", "Personalized to driver history"],
     competitor: "Dashcams record what happened. TruckWithEase speaks to the driver while it's happening."
   },

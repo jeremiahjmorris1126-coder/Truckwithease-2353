@@ -136,7 +136,7 @@ const SYSTEMS = [
     status: "ACTIVE",
     iq: 98,
     prediction: "BOL scan queued — billing all 4 parties in 8 seconds of delivery",
-    actions: ["IBM Watson OCR active", "AP agent synced", "Invoice accuracy 99.9%"],
+    actions: ["Not built"],
     connectedTo: ["finance", "payroll", "dispatch"],
   },
   {
