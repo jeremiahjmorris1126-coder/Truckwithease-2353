@@ -641,7 +641,7 @@ export default function App() {
   if (path === "/quantum-integration") return <QuantumIntegrationHub />;
   if (path === "/microsoft-integration" || path === "/azure") return <MicrosoftIntegration />;
   if (path === "/satellite-maps" || path === "/maps") return <SatelliteMapsIntegration />;
-  if (path === "/sign-in") return <TraxesPage />;
+  if (path === "/sign-in") return <AccessibleSignupPage />;
   if (path === "/commands") return <CommandOptimizer />;
   if (path === "/health-monitor") return <FeatureHealthMonitor />;
   if (path === "/fleet-dashboard-customizer") return <FleetDashboardCustomizer />;

@@ -43,6 +43,7 @@ import { azuga } from "./routes/azuga";
 import { vatRates } from "./routes/vat-rates";
 import { algorithm } from "./routes/algorithm";
 import { traxes } from "./routes/traxes";
+import { integrations } from "./routes/integrations";
 
 const app = new Hono()
   .basePath('api')
@@ -90,7 +91,8 @@ const app = new Hono()
   .route("/azuga", azuga)
   .route("/vat-rates", vatRates)
   .route("/algorithm", algorithm)
-  .route("/traxes", traxes);
+  .route("/traxes", traxes)
+  .route("/integrations", integrations);
 
 export type AppType = typeof app;
 export default app;

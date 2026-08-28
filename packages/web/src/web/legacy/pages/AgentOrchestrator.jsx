@@ -1,213 +1,288 @@
-import { useState, useEffect } from 'react';
-import { pb } from '../lib/pb';
+/**
+ * Agent roster — what is built, what is not, what feeds it.
+ *
+ * Rewritten 2026-08-28. Original preserved at
+ * docs/launch/AgentOrchestrator.ORIGINAL.jsx.txt. WHAT WAS DELETED AND WHY:
+ *
+ * 1. THE INTEGRATIONS ARRAY. Sixteen vendors hardcoded with status:'active' —
+ *    including several with no key in the environment and no code that calls
+ *    them. Vendor state now comes from GET /api/integrations/status, which
+ *    reports environment-variable presence and what has really been verified.
+ * 2. THE PERFECT SCORES. "All 150 pages verified — auto-repair on standby",
+ *    "Health score 100% — next scan in 4m 32s", "Security score 100/100 — zero
+ *    threats detected". Nothing scans pages, nothing scores health, nothing
+ *    scans for threats. A missing metric now renders as MISSING / NOT TRACKED
+ *    with the reason, never as 100.
+ * 3. The IBM Watson row (removed 2026-08-27 — IBM was scrapped).
+ * 4. Off-brand cyan/blue/red palette. Now gold on black.
+ *
+ * The built/not-built split is NOT written here. It is read from AGENTS in
+ * legacy/services/AgentOrchestrator.js, which is the authority: 10 agents have
+ * a real server persona behind /api/agent, and 4 (BILLIE, SIGNAL, TRAINING,
+ * HARDWARE) have built:false and are never routed to.
+ */
+
+import { useState, useEffect, useCallback } from "react";
+import { Bot, RefreshCw, AlertTriangle, CheckCircle2, XCircle, HelpCircle, Cpu } from "lucide-react";
+import { AGENTS } from "../services/AgentOrchestrator";
 
 const C = {
-  black: '#04060D', gold: '#F5A623', green: '#00FF88', blue: '#0094FF',
-  purple: '#BF5FFF', cyan: '#00E5FF', red: '#FF2D55', card: '#080F1E',
-  border: '#0F1F40', text: '#E8EEF8', muted: '#5A6A8A',
+  gold: "#C9A84C",
+  goldBright: "#FFD700",
+  black: "#0a0a0a",
+  card: "#161616",
+  nav: "#111111",
+  border: "#222222",
+  warn: "#c96a4c",
+  muted: "#8a8a8a",
+  dim: "#666666",
+  white: "#ffffff",
 };
 
-const AGENTS = [
-  { id: 'god', name: 'THE GOAT', icon: '👑', color: C.gold, role: 'Master Overseer', owns: ['All 150+ routes', 'All 22 APIs', 'All agents', 'Zero-error enforcement'], status: 'SUPREME', action: 'Monitoring all systems — zero errors detected' },
-  { id: 'ghost', name: 'Ghost Nerve', icon: '👁️', color: C.purple, role: 'Intelligence Core', owns: ['Ghost Index', 'Silent Dispatch', 'Phantom Compliance', 'Revenue Nerve', 'Memory Pulse', 'Sovereign ELD'], status: 'ACTIVE', action: 'Pre-staging 847 loads for 06:00 shift' },
-  { id: 'dispatch', name: 'Dispatch Core', icon: '📡', color: C.cyan, role: 'Load Assignment', owns: ['Quantum Dispatch', 'Load Board', 'Route Optimization', 'Broker Reputation'], status: 'ACTIVE', action: 'Auto-assigning LD-9003 → Ray Davis 94% match' },
-  { id: 'billie', name: 'Billie Scan', icon: '📄', color: C.green, role: 'Scan & Billing', owns: ['Scan & Bill', 'BOL Processing', 'AP Agent', 'Customer Billing'], status: 'ACTIVE', action: 'Billing LD-8991 to 4 parties simultaneously' },
-  { id: 'signal', name: 'Signal Sam', icon: '📱', color: C.blue, role: 'Telecom & Subscriptions', owns: ['Fleet Voice', 'SMS Alerts', 'API Renewals', 'Subscription Management'], status: 'ACTIVE', action: '3 fleet lines active — 0 dropped calls today' },
-  { id: 'hrease', name: 'HRease', icon: '🧑‍💼', color: '#34d399', role: 'HR & Compliance', owns: ['Driver Hiring', 'Background Checks', 'Onboarding', 'Driver Retention', 'Safety Meetings'], status: 'ACTIVE', action: 'Scanning 23 driver records for expiring CDLs' },
-  { id: 'nexus', name: 'NEXUS', icon: '🔌', color: C.gold, role: 'API Manager', owns: ['All 22 APIs', 'Key Renewals', 'Status Monitoring', 'Fallback Engine'], status: 'ACTIVE', action: 'All 22 APIs verified healthy — 0 failures' },
-  { id: 'guardian', name: 'Page Guardian', icon: '👁️', color: C.cyan, role: 'Platform Integrity', owns: ['150+ pages', 'Route validation', 'Auto-repair', 'Zero-downtime'], status: 'ACTIVE', action: 'All 150 pages verified — auto-repair on standby' },
-  { id: 'maintenance', name: 'App Maintenance', icon: '🔧', color: C.blue, role: 'System Health', owns: ['20 data areas', 'Diagnostics', 'Auto-fix', 'Performance'], status: 'ACTIVE', action: 'Health score 100% — next scan in 4m 32s' },
-  { id: 'devsec', name: 'DevSecOps', icon: '🛡️', color: C.red, role: 'Security & ALM', owns: ['Vulnerability scanning', 'FMCSA compliance', 'Code Vault', 'Threat detection'], status: 'ACTIVE', action: 'Security score 100/100 — zero threats detected' },
-];
+/** Plain-English job per agent key. No capability is claimed that the server persona does not answer for. */
+const JOBS = {
+  GOD: "Master control — routes a question to the right specialist and answers general platform questions.",
+  GHOST: "Freight and road intelligence. Answers from what it is given; it has no live news or market feed wired.",
+  HREASE: "Hiring and people questions, backed by the real HR tables — people, documents, occurrences, payroll runs.",
+  DISPATCH: "Route and trip questions. Real routing math comes from /api/routing/plan on Google Directions.",
+  COMPLIANCE: "HOS and DOT rule questions, against the real HOS clocks in /api/hos.",
+  SAFETY: "Safety coaching against the computed driver safety score in /api/safety/:driverId.",
+  PAYROLL: "Pay and settlement questions against the HR payroll tables.",
+  MAINTENANCE: "Platform and page questions. It answers; it does not repair anything.",
+  MECHANIC: "Symptom-to-cause diagnosis conversation for a truck fault.",
+  QUANTUM: "Trend and pattern questions, including the per-driver learned profile from /api/algorithm.",
+  BILLIE: "Invoice and billing document handling.",
+  SIGNAL: "Telecom and SMS monitoring.",
+  TRAINING: "Driver training and CDL coaching modules.",
+  HARDWARE: "Hardware and device provisioning.",
+};
 
-const INTEGRATIONS = [
-  { name: 'OpenAI', icon: '🧠', status: 'active', powers: 'Dream Team agents, Game Up, HRease' },
-  { name: 'Google Gemini', icon: '✨', status: 'active', powers: 'Ghost Nerve, document scanning, lane prediction' },
-  { name: 'AWS', icon: '🟠', status: 'pending', powers: 'Maps, Rekognition, S3 storage, push alerts' },
-  { name: 'Twilio Voice', icon: '📱', status: 'active', powers: 'Fleet Voice, hands-free calls' },
-  { name: 'Twilio REST', icon: '💬', status: 'active', powers: 'Driver SMS, dispatch alerts' },
-  { name: 'SerpAPI', icon: '🔍', status: 'active', powers: 'Broker reputation, road closure alerts' },
-  { name: 'YouTube', icon: '▶️', status: 'active', powers: 'Game Up training videos' },
-  { name: 'World News', icon: '🌍', status: 'active', powers: 'Dispatch feed, Ghost Nerve, Driver Gala' },
-  { name: 'Azuga ELD', icon: '📡', status: 'pending', powers: 'Live GPS, HOS, engine diagnostics, payroll' },
-  { name: 'iDrive E2', icon: '📷', status: 'active', powers: 'AI dashcam, driver coaching, safety score' },
-  { name: 'DAT', icon: '📦', status: 'pending', powers: 'Live load board, rate data' },
-  { name: 'Azure', icon: '☁️', status: 'active', powers: 'Power BI, Teams alerts, analytics' },
-  { name: 'FMCSA', icon: '🏛️', status: 'active', powers: 'Carrier scores, violations, inspection history' },
-  { name: 'Samsara', icon: '🚛', status: 'pending', powers: 'GPS, HOS, safety events (partner approval pending)' },
-  { name: 'Twitter/X', icon: '🐦', status: 'active', powers: 'Ghost Nerve freight intelligence feed' },
-  { name: 'DevSecOps ALM', icon: '🛡️', status: 'active', powers: 'Security scanning, compliance pipeline' },
-  { name: 'Kubernetes', icon: '⚙️', status: 'documented', powers: 'Enterprise scaling at 500+ fleets (ready when needed)' },
-];
+async function getJSON(url) {
+  const r = await fetch(url);
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+  return j;
+}
+
+function Panel({ title, note, icon, children }) {
+  const Icon = icon;
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 4, marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", borderBottom: `1px solid ${C.border}` }}>
+        {Icon ? <Icon size={16} color={C.gold} /> : null}
+        <div style={{ fontFamily: "'Oswald', sans-serif", textTransform: "uppercase", letterSpacing: "0.22em", fontSize: 13, color: C.goldBright }}>{title}</div>
+      </div>
+      {note ? (
+        <div style={{ padding: "10px 18px", borderBottom: `1px solid ${C.border}`, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: C.dim }}>{note}</div>
+      ) : null}
+      <div style={{ padding: 18 }}>{children}</div>
+    </div>
+  );
+}
+
+function Missing({ label, reason }) {
+  return (
+    <div style={{ border: "1px dashed #333", borderRadius: 4, padding: 14, display: "flex", gap: 12, alignItems: "flex-start" }}>
+      <AlertTriangle size={16} color={C.warn} style={{ flexShrink: 0, marginTop: 2 }} />
+      <div>
+        <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 12, letterSpacing: "0.18em", color: C.warn }}>MISSING / NOT TRACKED</div>
+        <div style={{ fontSize: 14, color: C.white, marginTop: 4 }}>{label}</div>
+        <div style={{ fontSize: 13, color: C.muted, marginTop: 4, lineHeight: 1.6 }}>{reason}</div>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ value, label }) {
+  return (
+    <div style={{ border: `1px solid ${C.border}`, background: C.nav, borderRadius: 4, padding: "10px 16px", minWidth: 115 }}>
+      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, lineHeight: 1, color: C.goldBright }}>{value}</div>
+      <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 10, letterSpacing: "0.2em", color: C.muted, marginTop: 4 }}>{label}</div>
+    </div>
+  );
+}
+
+function Row({ k, v, mono, tone }) {
+  return (
+    <div style={{ display: "flex", gap: 12, padding: "7px 0", borderBottom: `1px solid #1b1b1b` }}>
+      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: C.dim, minWidth: 150 }}>{k}</div>
+      <div style={{ fontFamily: mono ? "'JetBrains Mono', monospace" : "'Inter', sans-serif", fontSize: mono ? 11 : 13, color: tone === "warn" ? C.warn : C.white, lineHeight: 1.6 }}>{v}</div>
+    </div>
+  );
+}
+
+const STATE_META = {
+  connected: { label: "CONNECTED", color: C.gold, Icon: CheckCircle2 },
+  unknown: { label: "KEY PRESENT, UNVERIFIED", color: C.muted, Icon: HelpCircle },
+  rejected: { label: "KEY REJECTED", color: C.warn, Icon: XCircle },
+  not_connected: { label: "NOT CONNECTED", color: C.dim, Icon: XCircle },
+};
 
 export default function AgentOrchestrator() {
-  const [tab, setTab] = useState('council');
-  const [activeAgent, setActiveAgent] = useState(null);
-  const [scanRunning, setScanRunning] = useState(false);
-  const [scanLog, setScanLog] = useState([]);
-  const [scanComplete, setScanComplete] = useState(false);
+  const [providers, setProviders] = useState(null);
+  const [state, setState] = useState("loading");
+  const [err, setErr] = useState("");
 
-  const runFullOrchestration = async () => {
-    setScanRunning(true);
-    setScanComplete(false);
-    setScanLog([]);
-    const steps = [
-      '👑 THE GOAT: Supreme authority confirmed — watching all systems',
-      '👁️ Ghost Nerve: 8 intelligence layers active — IQ 99.7%',
-      '📡 Dispatch Core: Load board synced — 847 loads staged',
-      '📄 Billie Scan: Billing queue clear — 4 parties wired',
-      '📱 Signal Sam: All fleet lines tested — 0 failures',
-      '🧑‍💼 HRease: Driver records scanned — 0 expired credentials',
-      '🔌 NEXUS: All 22 APIs verified — 0 connection failures',
-      '👁️ Page Guardian: All 150 pages confirmed live',
-      '🔧 App Maintenance: Health score 100% — zero issues',
-      '🛡️ DevSecOps: Security scan complete — zero threats',
-      '⚡ Agent handshakes verified — all agents communicating',
-      '✅ ORCHESTRATION COMPLETE — PLATFORM AT 100%',
-    ];
-    for (let i = 0; i < steps.length; i++) {
-      await new Promise(r => setTimeout(r, 500));
-      setScanLog(prev => [...prev, { msg: steps[i], time: new Date().toLocaleTimeString() }]);
+  const load = useCallback(async () => {
+    setState("loading");
+    setErr("");
+    try {
+      const j = await getJSON("/api/integrations/status");
+      setProviders(j.providers || []);
+      setState("ok");
+    } catch (e) {
+      setErr(String(e.message || e));
+      setState("error");
     }
-    setScanRunning(false);
-    setScanComplete(true);
-  };
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const keys = Object.keys(AGENTS);
+  const built = keys.filter((k) => AGENTS[k].built);
+  const notBuilt = keys.filter((k) => !AGENTS[k].built);
+  const endpoints = new Set(built.map((k) => AGENTS[k].endpoint));
 
   return (
-    <div style={{ minHeight: '100vh', background: C.black, color: C.text, fontFamily: "'Oswald', sans-serif" }}>
-      {/* Header */}
-      <div style={{ background: 'linear-gradient(180deg, #080F1E 0%, #04060D 100%)', borderBottom: `1px solid ${C.border}`, padding: '24px 32px' }}>
-        <div style={{ fontSize: 11, color: C.gold, letterSpacing: '0.3em', fontWeight: 700, marginBottom: 4 }}>TRUCKWITHEASE — PROPRIETARY</div>
-        <div style={{ fontSize: 30, fontWeight: 700 }}>AGENT ORCHESTRATOR</div>
-        <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>10 agents · 22 APIs · 150+ functions · Zero failures permitted</div>
-      </div>
+    <div style={{ minHeight: "100vh", background: C.black, color: C.white, fontFamily: "'Inter', sans-serif" }}>
+      <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 2, padding: '0 32px', background: '#06091A', borderBottom: `1px solid ${C.border}` }}>
-        {[
-          { id: 'council', label: '👑 Agent Council' },
-          { id: 'orchestrate', label: '⚡ Run Orchestration' },
-          { id: 'integrations', label: '🔌 All Integrations' },
-          { id: 'nofail', label: '🛡️ No-Fail Protocol' },
-        ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: '14px 20px', background: tab === t.id ? C.card : 'transparent', border: 'none', borderBottom: tab === t.id ? `2px solid ${C.gold}` : '2px solid transparent', color: tab === t.id ? C.gold : C.muted, cursor: 'pointer', fontSize: 13, fontFamily: "'Oswald', sans-serif", fontWeight: 600, letterSpacing: '0.05em' }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ padding: '32px', maxWidth: 1200, margin: '0 auto' }}>
-
-        {tab === 'council' && (
-          <div>
-            <div style={{ fontSize: 13, color: C.muted, marginBottom: 24 }}>Every agent owns specific functions and communicates with every other agent in real time. No gaps. No overlap. No failure.</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
-              {AGENTS.map((a, i) => (
-                <div key={i} onClick={() => setActiveAgent(activeAgent?.id === a.id ? null : a)} style={{ background: activeAgent?.id === a.id ? '#0D1A35' : C.card, border: `1px solid ${activeAgent?.id === a.id ? a.color : C.border}`, borderRadius: 12, padding: 20, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeAgent?.id === a.id ? `0 0 20px ${a.color}22` : 'none' }}>
-                  <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                    <div style={{ fontSize: 32 }}>{a.icon}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: a.color }}>{a.name}</div>
-                        <span style={{ padding: '2px 8px', background: `${C.green}18`, border: `1px solid ${C.green}44`, borderRadius: 20, fontSize: 9, color: C.green, fontWeight: 700 }}>{a.status}</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: C.muted, letterSpacing: '0.1em', marginBottom: 8 }}>{a.role.toUpperCase()}</div>
-                      <div style={{ fontSize: 12, color: C.text }}>{a.action}</div>
-                    </div>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.green, boxShadow: `0 0 8px ${C.green}`, flexShrink: 0 }} />
-                  </div>
-                  {activeAgent?.id === a.id && (
-                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
-                      <div style={{ fontSize: 11, color: C.muted, letterSpacing: '0.15em', marginBottom: 8 }}>OWNS & MANAGES</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {a.owns.map((o, j) => (
-                          <span key={j} style={{ padding: '3px 10px', background: `${a.color}18`, border: `1px solid ${a.color}44`, borderRadius: 20, fontSize: 11, color: a.color }}>{o}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+      <div style={{ borderBottom: `1px solid ${C.border}`, background: `linear-gradient(180deg, ${C.nav} 0%, ${C.black} 100%)`, padding: "26px 24px" }}>
+        <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px solid ${C.border}`, borderRadius: 3, padding: "5px 11px" }}>
+            <Bot size={13} color={C.gold} />
+            <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: 10, letterSpacing: "0.24em", color: C.gold }}>AGENT ROSTER</span>
           </div>
-        )}
-
-        {tab === 'orchestrate' && (
-          <div style={{ maxWidth: 700, margin: '0 auto' }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: C.gold, marginBottom: 8 }}>⚡ Full Platform Orchestration</div>
-            <div style={{ fontSize: 13, color: C.muted, marginBottom: 24 }}>Runs every agent handshake, API check, and function validation simultaneously. Shows real-time results.</div>
-            <button onClick={runFullOrchestration} disabled={scanRunning} style={{ width: '100%', padding: 18, background: scanRunning ? C.border : `linear-gradient(135deg, ${C.gold}, #B07A1A)`, border: 'none', borderRadius: 10, color: scanRunning ? C.muted : '#000', fontSize: 16, fontWeight: 700, cursor: scanRunning ? 'not-allowed' : 'pointer', fontFamily: "'Oswald', sans-serif", letterSpacing: '0.1em', marginBottom: 24 }}>
-              {scanRunning ? '⚡ ORCHESTRATING...' : '⚡ RUN FULL ORCHESTRATION'}
+          <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 52, lineHeight: 1.02, margin: "14px 0 0", letterSpacing: "0.02em" }}>
+            WHICH AGENTS ACTUALLY <span style={{ color: C.goldBright }}>ANSWER</span>
+          </h1>
+          <p style={{ color: C.muted, fontSize: 15, lineHeight: 1.65, maxWidth: 880, marginTop: 10 }}>
+            Fourteen agents are defined. {built.length} of them have a real persona on the server behind /api/agent and will
+            answer a question. {notBuilt.length} do not exist yet, and the router refuses to fake them — ask one and it tells you
+            it is not built instead of generating something that sounds right.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18, alignItems: "center" }}>
+            <Stat value={keys.length} label="DEFINED" />
+            <Stat value={built.length} label="BUILT" />
+            <Stat value={notBuilt.length} label="NOT BUILT" />
+            <Stat value={endpoints.size} label="SERVER PERSONAS" />
+            <button
+              onClick={load}
+              style={{
+                background: "transparent", border: `1px solid ${C.gold}`, color: C.goldBright,
+                fontFamily: "'Oswald', sans-serif", fontSize: 11, letterSpacing: "0.2em",
+                padding: "10px 16px", borderRadius: 3, cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+              }}
+            >
+              <RefreshCw size={13} className={state === "loading" ? "spin" : undefined} /> REFRESH
             </button>
-            {scanLog.length > 0 && (
-              <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
-                {scanLog.map((l, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: i < scanLog.length - 1 ? `1px solid ${C.border}` : 'none', animation: 'fadeIn 0.3s ease' }}>
-                    <div style={{ fontSize: 10, color: C.muted, whiteSpace: 'nowrap', paddingTop: 2 }}>{l.time}</div>
-                    <div style={{ fontSize: 13, color: i === scanLog.length - 1 ? C.green : C.text }}>{l.msg}</div>
-                  </div>
-                ))}
-                {scanComplete && (
-                  <div style={{ marginTop: 16, padding: 16, background: `${C.green}10`, border: `1px solid ${C.green}44`, borderRadius: 8, textAlign: 'center' }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: C.green }}>✓ ALL AGENTS ORCHESTRATED — 100%</div>
-                    <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>10 agents · 22 APIs · 150 pages · Zero failures</div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
-        )}
+        </div>
+      </div>
 
-        {tab === 'integrations' && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-              {INTEGRATIONS.map((api, i) => (
-                <div key={i} style={{ background: C.card, border: `1px solid ${api.status === 'active' ? C.border : '#1A1A2A'}`, borderRadius: 10, padding: 16, opacity: api.status === 'documented' ? 0.6 : 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <div style={{ fontSize: 20 }}>{api.icon}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{api.name}</div>
+      <div style={{ maxWidth: 1180, margin: "0 auto", padding: 24 }}>
+        <Panel title={`Built — ${built.length} agents`} icon={CheckCircle2} note="AGENTS in legacy/services/AgentOrchestrator.js · POST /api/agent/:endpoint">
+          <div style={{ display: "grid", gap: 12 }}>
+            {built.map((k) => {
+              const a = AGENTS[k];
+              return (
+                <div key={k} style={{ border: `1px solid ${C.border}`, background: C.nav, borderRadius: 4, padding: 15 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                    <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 16, color: C.white, letterSpacing: "0.06em" }}>
+                      {a.name} <span style={{ color: C.dim, fontSize: 12 }}>· {k}</span>
                     </div>
-                    <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 9, fontWeight: 700, background: api.status === 'active' ? `${C.green}18` : api.status === 'pending' ? `${C.gold}18` : `${C.muted}18`, color: api.status === 'active' ? C.green : api.status === 'pending' ? C.gold : C.muted, border: `1px solid ${api.status === 'active' ? C.green : api.status === 'pending' ? C.gold : C.muted}44` }}>
-                      {api.status.toUpperCase()}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, border: `1px solid ${C.border}`, borderRadius: 3, padding: "4px 9px" }}>
+                      <CheckCircle2 size={12} color={C.gold} />
+                      <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: 9, letterSpacing: "0.16em", color: C.gold }}>BUILT</span>
                     </span>
                   </div>
-                  <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6 }}>{api.powers}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ marginTop: 16, padding: 16, background: `${C.gold}10`, border: `1px solid ${C.gold}44`, borderRadius: 10, textAlign: 'center', fontSize: 13, color: C.muted }}>
-              Paste pending API keys at <a href="/key-agent" style={{ color: C.gold }}>morrishive.com/apis</a> to activate remaining services
-            </div>
-          </div>
-        )}
-
-        {tab === 'nofail' && (
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: C.gold, marginBottom: 20 }}>🛡️ No-Fail Protocol — How TruckWithEase Stays at 100%</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {[
-                { layer: 'Layer 1 — THE GOAT', desc: 'Supreme master agent watches every route, every API, every agent output. Catches any error before it reaches a user. Has full rewrite authority over any function.', color: C.gold },
-                { layer: 'Layer 2 — Page Guardian', desc: 'Scans all 150+ pages every 5 minutes. Auto-repairs broken routes, missing imports, and failed renders before anyone notices.', color: C.cyan },
-                { layer: 'Layer 3 — App Maintenance Agent', desc: 'Scans all 20 data areas every 5 minutes. Verifies every piece of stored data is in the right place. Health score displayed live on Command Center.', color: C.blue },
-                { layer: 'Layer 4 — NEXUS API Monitor', desc: 'Checks all 22 API connections continuously. If any service goes down, Fallback Engine activates in under 100ms. Signal Sam is notified instantly.', color: C.purple },
-                { layer: 'Layer 5 — DevSecOps ALM', desc: 'Continuous security scanning across all APIs and data paths. Vulnerability detection, FMCSA compliance pipeline, and Code Vault protection.', color: C.red },
-                { layer: 'Layer 6 — Twilio Fallback', desc: 'Primary + backup Twilio credentials + Business Token. If primary fails, backup activates automatically. Fleet Voice never goes dark.', color: C.green },
-                { layer: 'Layer 7 — Ghost Nerve Sovereignty', desc: 'HOS logs cryptographically sealed. Sovereign ELD data cannot be altered, read, or corrupted by any outside platform or failure.', color: C.gold },
-              ].map((p, i) => (
-                <div key={i} style={{ background: C.card, border: `1px solid ${p.color}33`, borderRadius: 12, padding: 20, display: 'flex', gap: 16 }}>
-                  <div style={{ width: 6, borderRadius: 3, background: p.color, flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: p.color, marginBottom: 6 }}>{p.layer}</div>
-                    <div style={{ fontSize: 13, color: C.text, lineHeight: 1.7 }}>{p.desc}</div>
+                  <div style={{ fontSize: 13, color: C.muted, marginTop: 10, lineHeight: 1.6 }}>{JOBS[k]}</div>
+                  <div style={{ marginTop: 8 }}>
+                    <Row k="endpoint" v={`/api/agent/${a.endpoint}`} mono />
+                    <Row k="specialty" v={a.specialty} mono />
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
+        </Panel>
+
+        <Panel title={`Not built — ${notBuilt.length} agents`} icon={XCircle} note="built:false in AGENTS — the router returns a refusal, not an answer">
+          <div style={{ display: "grid", gap: 12 }}>
+            {notBuilt.map((k) => (
+              <div key={k}>
+                <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 15, color: C.white, letterSpacing: "0.06em", marginBottom: 8 }}>
+                  {AGENTS[k].name} <span style={{ color: C.dim, fontSize: 12 }}>· {k}</span>
+                </div>
+                <Missing
+                  label={JOBS[k]}
+                  reason={`No server persona exists for "${AGENTS[k].specialty}". routeToAgent() returns a plain refusal naming the agent, so nothing is generated for the request. Building it means adding the persona to src/api/agent and giving it real data to read.`}
+                />
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel title="What the agents can read" icon={Cpu} note="GET /api/integrations/status">
+          {state === "error" ? (
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: C.warn }}>{err}</div>
+          ) : null}
+          {state === "loading" && !providers ? <div style={{ color: C.muted, fontSize: 14 }}>Loading provider state…</div> : null}
+          {providers ? (
+            <div style={{ display: "grid", gap: 8 }}>
+              {providers.map((p) => {
+                const meta = STATE_META[p.state] ?? STATE_META.not_connected;
+                const Icon = meta.Icon;
+                return (
+                  <div key={p.id} style={{ display: "flex", gap: 12, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #1b1b1b", flexWrap: "wrap" }}>
+                    <Icon size={13} color={meta.color} style={{ flexShrink: 0 }} />
+                    <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 13, color: C.white, minWidth: 220 }}>{p.name}</div>
+                    <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 9, letterSpacing: "0.16em", color: meta.color, minWidth: 190 }}>{meta.label}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: C.dim }}>
+                      {p.usedBy.length ? p.usedBy.join("  ") : "nothing reads it"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+        </Panel>
+
+        <Panel title="Not measured" icon={AlertTriangle}>
+          <div style={{ display: "grid", gap: 10 }}>
+            <Missing
+              label="No platform health score"
+              reason="Nothing crawls the pages and nothing computes a health number. The old version of this page printed 'all 150 pages verified' and 'health score 100% — next scan in 4m 32s' with no scanner behind either line."
+            />
+            <Missing
+              label="No security score and no threat detection"
+              reason="There is no scanner, no dependency audit pipeline, and no intrusion monitoring in this platform. '100/100 — zero threats detected' was invented."
+            />
+            <Missing
+              label="No agent activity history"
+              reason="logAgentActivity() is deliberately a no-op that returns { logged: false } — the table it used to write to never existed. Agent calls are not recorded, so there is no history, no per-agent call count, and no latency chart."
+            />
+            <Missing
+              label="No auto-repair"
+              reason="Page Guardian answers questions about the platform. It cannot edit, deploy, or repair anything, and 'auto-repair on standby' implied it could."
+            />
+          </div>
+        </Panel>
+
+        <Panel title="What would make this smarter" icon={CheckCircle2}>
+          <ol style={{ margin: 0, paddingLeft: 20, color: C.muted, fontSize: 14, lineHeight: 1.85 }}>
+            <li>Pass driverId through callAgent — one line. The 10 built agents would immediately get the per-driver learned profile from /api/algorithm instead of answering blind.</li>
+            <li>Log agent calls to a real table so this page can show call counts, failures, and latency that were actually measured.</li>
+            <li>Build BILLIE on top of the TRAXES document store — it is the closest of the four to real, because the scan and record plumbing already exists.</li>
+            <li>SIGNAL cannot be built usefully until the A2P campaign is filed; there is nothing for it to monitor.</li>
+          </ol>
+        </Panel>
+
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 16, color: C.dim, fontSize: 12, lineHeight: 1.7 }}>
+          Agent definitions are read from the client-side roster in legacy/services/AgentOrchestrator.js; provider state is
+          read from the server. This page does not run agents, does not grade them, and does not display any provider key.
+        </div>
       </div>
-      <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }`}</style>
     </div>
   );
 }
