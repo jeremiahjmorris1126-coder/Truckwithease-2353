@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { storageConfigured, s3, S3_BUCKET, S3_ENDPOINT, S3_REGION } from "../lib/s3";
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { emailInfo, verifyEmailToken } from "../services/email";
+import { fleetioInfo, verifyFleetio } from "./fleetio";
 
 /**
  * Integration status — server-side, read-only, honest.
@@ -69,6 +70,8 @@ function base(): Provider[] {
   const gateway = has("AI_GATEWAY_API_KEY");
   const autumn = has("AUTUMN_SECRET_KEY");
   const db = has("DATABASE_URL") && has("DATABASE_AUTH_TOKEN");
+  const fio = fleetioInfo();
+  const runware = has("RUNWARE_API_KEY");
 
   const p = (o: Partial<Provider> & Pick<Provider, "id" | "name" | "category" | "purpose">): Provider => ({
     envKeys: [],
@@ -237,6 +240,34 @@ function base(): Provider[] {
       docsUrl: "https://postmarkapp.com/developer/api/email-api",
     }),
     p({
+      id: "fleetio",
+      name: "Fleetio",
+      category: "Maintenance",
+      purpose: "Fleet maintenance system of record — vehicles, issues, service reminders, work orders. Feeds the maintenance and mechanic pages with real equipment instead of seeded rows.",
+      envKeys: ["FLEETIO_API_KEY", "FLEETIO_ACCOUNT_TOKEN"],
+      usedBy: ["/api/fleetio"],
+      state: fio.configured ? "unknown" : fio.apiKeyPresent ? "unknown" : "not_connected",
+      reason: fio.configured
+        ? "Tested live on 2026-08-28: HTTP 200 on /accounts, /vehicles, /issues, /service_reminders, /work_orders. Account 721469 \"Truckwithease\". Fleetio needs TWO headers — Authorization: Token and Account-Token — and both are set. IMPORTANT: most vehicles in that account are Fleetio\’s own demo equipment (is_sample true, a forklift and a reefer), so /api/fleetio counts sample and real vehicles separately. Fleetio vehicles are not linked to our drivers or maintenance tables yet."
+        : fio.blockers.join(" "),
+      docsUrl: "https://developer.fleetio.com",
+      probeable: fio.apiKeyPresent,
+    }),
+    p({
+      id: "runware",
+      name: "Runware",
+      category: "AI",
+      purpose: "Generative image, video, and audio inference. NOTHING IN THE PLATFORM USES IT.",
+      envKeys: ["RUNWARE_API_KEY"],
+      usedBy: [],
+      state: runware ? "unknown" : "not_connected",
+      reason: runware
+        ? "Key present and verified live on 2026-08-28: HTTP 200 on a modelSearch task, and a deliberately wrong key returns 401 invalidApiKey, so the 200 is real. But no feature reads this key. TruckWithEase is driver compliance and fleet ops; there is no screen that needs generated images. It stays unused until there is a stated purpose \— an unused key is not a feature."
+        : "No key.",
+      docsUrl: "https://runware.ai/docs/platform/authentication",
+      probeable: runware,
+    }),
+    p({
       id: "samsara",
       name: "Samsara",
       category: "Telematics",
@@ -352,6 +383,23 @@ async function probe(id: string): Promise<{ ok: boolean; detail: string; status?
       if (!key) return { ok: false, detail: "No key." };
       const r = await fetch("https://api.apifreaks.com/v1.0/vat/rates/country?country=DE", { headers: { "X-apiKey": key }, signal: ctl.signal });
       return { ok: r.ok, status: r.status, detail: r.ok ? "DE VAT rate returned." : `HTTP ${r.status}` };
+    }
+    if (id === "fleetio") {
+      const r = await verifyFleetio();
+      return { ok: r.ok, status: r.status ?? undefined, detail: r.detail };
+    }
+    if (id === "runware") {
+      const key = clean("RUNWARE_API_KEY");
+      if (!key) return { ok: false, detail: "No key." };
+      const r = await fetch("https://api.runware.ai/v1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify([{ taskType: "modelSearch", taskUUID: crypto.randomUUID(), limit: 1 }]),
+        signal: ctl.signal,
+      });
+      const j: any = await r.json().catch(() => null);
+      if (!r.ok) return { ok: false, status: r.status, detail: j?.errors?.[0]?.message ?? `HTTP ${r.status}` };
+      return { ok: true, status: r.status, detail: "Key accepted on a modelSearch task. No platform feature consumes this key." };
     }
     if (id === "email") {
       const r = await verifyEmailToken();

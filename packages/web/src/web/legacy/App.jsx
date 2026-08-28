@@ -165,6 +165,7 @@ const LiveComplianceMonitorPage = lazy(() => import("./pages/LiveComplianceMonit
 const FleetCommunicationHubPage = lazy(() => import("./pages/FleetCommunicationHubPage"));
 const OutreachAgentPage = lazy(() => import("./pages/OutreachAgentPage"));
 const SafetyHRFusionPage = lazy(() => import("./pages/SafetyHRFusionPage"));
+const FleetioMaintenancePage = lazy(() => import("./pages/FleetioMaintenancePage"));
 const PhoneAssistantPage = lazy(() => import("./pages/PhoneAssistantPage"));
 const PersonalIndexPage = lazy(() => import("./pages/PersonalIndexPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
@@ -540,6 +541,7 @@ export default function App() {
   if (path === "/humanai-classic") return <HReaseAgentPage />;
   if (path === "/hr") return <HRPlatformPage />;
   if (path === "/hiring") return <HRPlatformPage />;
+  if (path === "/fleetio" || path === "/maintenance-live" || path === "/fleet-maintenance") return <FleetioMaintenancePage />;
   if (path === "/maintenance") return <VehicleMaintenanceAgentPage />;
   if (path === "/load-profit") return <LoadProfitPage />;
   if (path === "/fuel-finder" || path === "/fuel") return <FuelFinderPage />;
