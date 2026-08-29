@@ -1,518 +1,831 @@
-import { useState, useEffect, useRef } from "react";
-import { pb } from "./lib/pb";
+/**
+ * BypassPage — weigh-station readiness for TruckWithEase.
+ *
+ * READS (live, server-side data only):
+ *   GET /api/hos              — real HOS clocks for the fleet (minutes)
+ *   GET /api/safety/:driverId — real 30-day safety score components
+ *
+ * COMPUTES LOCALLY (federal law, no invented numbers):
+ *   Gross / single-axle / tandem-axle limits and the Federal Bridge Formula
+ *   W = 500 x [ LN/(N-1) + 12N + 36 ], from 23 U.S.C. 127 and 23 CFR 658.17.
+ *   Source: FHWA Bridge Formula Weights
+ *   https://ops.fhwa.dot.gov/Freight/publications/brdg_frm_wghts/index.htm
+ *
+ * REMOVED IN THIS REWRITE (all fabricated — none of it came from a provider):
+ *   · BYPASS_HISTORY — 6 hardcoded trips ("Aug 14 Sikeston, MO — BYPASS",
+ *     "Aug 12 Joplin, MO — BYPASS", ...) with invented gross weights and
+ *     invented Rig Bucks point awards. No bypass has ever been recorded.
+ *   · Header stats derived from that array: "5 Bypasses This Month",
+ *     "250 Rig Bucks Earned", "110 Minutes Saved" (literally
+ *     totalBypasses * 22 — the 22 minutes was made up).
+ *   · STATIONS — 8 hardcoded weigh stations with invented distances
+ *     ("22 mi", "340 mi"), invented wait times ("waitMin: 7"), and a
+ *     "network: Drivewyze / PrePass" label on each. We have no station
+ *     dataset and no account with either network.
+ *   · simulateBypass() — a 2.4 s setTimeout that returned
+ *     `Math.random() < 0.82 ? "BYPASS" : "PULL_IN"` and rendered it as a
+ *     bypass decision.
+ *   · REQUIREMENTS — 5 rows hardcoded `valid: true` (IRP, IFTA, annual
+ *     inspection, safety score, OOS orders). None of those are tracked.
+ *   · A `bypassActive` toggle that switched nothing.
+ *   · The per-state weight table (STATE_LIMITS / axle limits like
+ *     FL 44,000 and NC 38,000) — state-specific, grandfathered and
+ *     permit-route limits were not verified against any state statute, so
+ *     the calculator now runs federal Interstate limits only and says so.
+ *   · Advice to "keep your Drivewyze or PrePass transponder active".
+ *   · Off-brand green/navy palette (#16A34A, #0B2A6B, #2563EB, #060f0a).
+ *
+ * WHAT THIS PAGE DOES NOT CLAIM:
+ *   · TruckWithEase is not a bypass provider. It cannot grant a bypass and
+ *     is not connected to Drivewyze, PrePass or any state enforcement system.
+ *   · A GREEN result means your entered weights are within federal Interstate
+ *     limits. It is not permission to pass a scale and it is not a scale ticket.
+ *   · Federal limits only. Your state, your route, or your permit may be lower.
+ */
 
-// ─── Brand tokens ────────────────────────────────────────────────────────────
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Scale, AlertTriangle, CheckCircle2, XCircle, RefreshCw, Info, Clock, Shield,
+} from 'lucide-react';
+
+const GOLD = '#C9A84C';
+const GOLDB = '#FFD700';
+const WARN = '#c96a4c';
 const C = {
-  bg:      "#060f0a",
-  surface: "#0c1f14",
-  card:    "#09160d",
-  border:  "#1a3d24",
-  borderHi:"#22502e",
-  green:   "#16A34A",
-  greenDim:"rgba(22,163,74,0.13)",
-  greenGlow:"rgba(22,163,74,0.08)",
-  gold:    "#c9a84c",
-  goldDim: "rgba(201,168,76,0.12)",
-  amber:   "#D97706",
-  amberDim:"rgba(217,119,6,0.12)",
-  red:     "#DC2626",
-  redDim:  "rgba(220,38,38,0.12)",
-  blue:    "#2563EB",
-  white:   "#F0EDE8",
-  white70: "rgba(240,237,232,0.7)",
-  white40: "rgba(240,237,232,0.4)",
-  white10: "rgba(240,237,232,0.07)",
-  navy:    "#0B2A6B",
+  black: '#0a0a0a',
+  card: '#161616',
+  border: '#222222',
+  white: '#f0ede8',
+  muted: '#8a8a8a',
+  dim: '#666666',
 };
 
-const FD = "'Bebas Neue', 'Oswald', sans-serif";
-const FB = "'Inter', system-ui, sans-serif";
-const FM = "'DM Mono', 'Courier New', monospace";
+const FD = "'Bebas Neue', sans-serif";
+const FH = "'Oswald', sans-serif";
+const FB = "'Inter', sans-serif";
+const FM = "'JetBrains Mono', monospace";
 
-function nav(path) {
-  window.history.pushState({}, "", path);
-  window.dispatchEvent(new PopStateEvent("popstate"));
+/* ── Federal Interstate limits — 23 U.S.C. 127 / 23 CFR 658.17 ───────────── */
+const FED = {
+  gross: 80000,
+  single: 20000,
+  tandem: 34000,
+};
+
+/** Federal Bridge Formula: W = 500 [ LN/(N-1) + 12N + 36 ], capped at 80,000. */
+function bridgeFormula(lengthFt, axles) {
+  if (!(lengthFt > 0) || !(axles > 1)) return null;
+  const w = 500 * ((lengthFt * axles) / (axles - 1) + 12 * axles + 36);
+  return Math.min(Math.floor(w), FED.gross);
 }
 
-// ─── State weight limits (full table) ────────────────────────────────────────
-const STATE_LIMITS = {
-  "AL":80000,"AK":80000,"AZ":80000,"AR":80000,"CA":80000,"CO":85000,
-  "CT":80000,"DE":80000,"FL":80000,"GA":80000,"HI":80000,"ID":105500,
-  "IL":80000,"IN":80000,"IA":80000,"KS":85500,"KY":80000,"LA":80000,
-  "ME":80000,"MD":80000,"MA":80000,"MI":164000,"MN":80000,"MS":80000,
-  "MO":80000,"MT":105500,"NE":95000,"NV":80000,"NH":80000,"NJ":80000,
-  "NM":86400,"NY":80000,"NC":80000,"ND":80000,"OH":80000,"OK":90000,
-  "OR":105500,"PA":80000,"RI":80000,"SC":80000,"SD":80000,"TN":80000,
-  "TX":80000,"UT":80000,"VT":80000,"VA":80000,"WA":105500,"WV":80000,
-  "WI":80000,"WY":117000,
-};
-const STATE_NAMES = {
-  "AL":"Alabama","AK":"Alaska","AZ":"Arizona","AR":"Arkansas","CA":"California","CO":"Colorado",
-  "CT":"Connecticut","DE":"Delaware","FL":"Florida","GA":"Georgia","HI":"Hawaii","ID":"Idaho",
-  "IL":"Illinois","IN":"Indiana","IA":"Iowa","KS":"Kansas","KY":"Kentucky","LA":"Louisiana",
-  "ME":"Maine","MD":"Maryland","MA":"Massachusetts","MI":"Michigan","MN":"Minnesota","MS":"Mississippi",
-  "MO":"Missouri","MT":"Montana","NE":"Nebraska","NV":"Nevada","NH":"New Hampshire","NJ":"New Jersey",
-  "NM":"New Mexico","NY":"New York","NC":"North Carolina","ND":"North Dakota","OH":"Ohio","OK":"Oklahoma",
-  "OR":"Oregon","PA":"Pennsylvania","RI":"Rhode Island","SC":"South Carolina","SD":"South Dakota",
-  "TN":"Tennessee","TX":"Texas","UT":"Utah","VT":"Vermont","VA":"Virginia","WA":"Washington",
-  "WV":"West Virginia","WI":"Wisconsin","WY":"Wyoming",
-};
-
-// ─── Allocation engine (same logic as CatScalesPage) ─────────────────────────
-function calcAllocation(steer, drive, trailer, stateCode) {
+function evaluate({ steer, drive, trailer, lengthFt, axles }) {
   const gross = steer + drive + trailer;
-  const limit = STATE_LIMITS[stateCode] || 80000;
-  const steerLimit = stateCode === "MI" ? 24000 : stateCode === "CO" ? 22000 : 20000;
-  const driveLimit = stateCode === "MI" ? 18000 : stateCode === "FL" ? 44000 : stateCode === "NC" ? 38000 : 34000;
-  const trailerLimit = stateCode === "MI" ? 18000 : stateCode === "FL" ? 44000 : stateCode === "NC" ? 38000 : 34000;
+  const bridge = bridgeFormula(lengthFt, axles);
+  const checks = [
+    {
+      label: 'Gross vehicle weight',
+      value: gross,
+      limit: FED.gross,
+      cite: '23 U.S.C. 127',
+    },
+    {
+      label: 'Steer axle (single)',
+      value: steer,
+      limit: FED.single,
+      cite: '23 CFR 658.17(c)',
+    },
+    {
+      label: 'Drive axles (tandem)',
+      value: drive,
+      limit: FED.tandem,
+      cite: '23 CFR 658.17(b)',
+    },
+    {
+      label: 'Trailer axles (tandem)',
+      value: trailer,
+      limit: FED.tandem,
+      cite: '23 CFR 658.17(b)',
+    },
+  ];
+  if (bridge !== null) {
+    checks.push({
+      label: `Bridge Formula (${axles} axles over ${lengthFt} ft)`,
+      value: gross,
+      limit: bridge,
+      cite: '23 U.S.C. 127 Bridge Formula',
+    });
+  }
+  const over = checks.filter((c) => c.value > c.limit);
+  const tightest = checks.reduce(
+    (acc, c) => Math.min(acc, c.limit - c.value),
+    Number.POSITIVE_INFINITY,
+  );
 
-  const grossOk = gross <= limit;
-  const steerOk = steer <= steerLimit;
-  const driveOk = drive <= driveLimit;
-  const trailerOk = trailer <= trailerLimit;
-  const allOk = grossOk && steerOk && driveOk && trailerOk;
-  const margin = limit - gross;
+  let code;
+  let headline;
+  if (over.length) code = 'OVER';
+  else if (tightest < 1500) code = 'CLOSE';
+  else code = 'LEGAL';
 
-  let code, bypassRec, reason, actions = [];
-
-  if (!grossOk) {
-    code = "RED";
-    bypassRec = "PULL IN — DO NOT ATTEMPT BYPASS";
-    reason = `Gross overweight by ${(gross - limit).toLocaleString()} lbs for ${STATE_NAMES[stateCode]}`;
-    actions = [
-      "Do NOT approach the weigh station — exit the highway at the nearest ramp",
-      "Contact your broker or shipper immediately for partial offload authorization",
-      "Find a certified truck yard or transfer point — search CAT Scales for safe staging",
-      "Document all weights with photos for shipper liability claims",
-      "Request an oversize/overweight permit if your commodity qualifies",
-    ];
-  } else if (!steerOk || !driveOk || !trailerOk) {
-    code = "AMBER";
-    bypassRec = "SCALE RECOMMENDED — Adjust before approaching";
-    const over = !steerOk ? `Steer axle over by ${(steer - steerLimit).toLocaleString()} lbs` :
-                 !driveOk ? `Drive axle over by ${(drive - driveLimit).toLocaleString()} lbs` :
-                            `Trailer axle over by ${(trailer - trailerLimit).toLocaleString()} lbs`;
-    reason = over;
-    if (!steerOk) {
-      actions = [
-        "Slide the fifth wheel BACK 1-2 inches per 200 lbs needed to shift weight to drives",
-        "Re-check steer weight at a Cat Scale before the weigh station",
-        "Steer axle violations are a DOT primary offense — fix this before proceeding",
-      ];
-    } else if (!driveOk) {
-      actions = [
-        "Slide the tandem axles REARWARD to move weight off drives to trailer axles",
-        "Every inch back transfers approximately 200 lbs from drives to trailer",
-        "Re-weigh after sliding to confirm both axles are now legal",
-      ];
-    } else {
-      actions = [
-        "Slide the trailer tandems FORWARD to shift weight back to the drive axles",
-        "Every 2 inches forward moves approximately 200 lbs to drives",
-        "Re-weigh to confirm before proceeding to weigh station",
-      ];
-    }
-  } else if (margin < 1500) {
-    code = "AMBER";
-    bypassRec = "CLOSE — Scale visit recommended";
-    reason = `Only ${margin.toLocaleString()} lbs of margin remaining in ${STATE_NAMES[stateCode]}`;
-    actions = [
-      "You are legal but very close — consider getting a Cat Scale ticket for documentation",
-      "Do not add fuel above current level until through the weigh station",
-      "Bypass eligibility is still possible — system will check your safety score",
-    ];
+  if (code === 'OVER') {
+    headline = `Over federal limit on ${over.length} check${over.length > 1 ? 's' : ''}`;
+  } else if (code === 'CLOSE') {
+    headline = `Within federal limits — ${tightest.toLocaleString()} lb of margin`;
   } else {
-    code = "GREEN";
-    bypassRec = "BYPASS ELIGIBLE — All weights legal";
-    reason = `${margin.toLocaleString()} lbs under the ${STATE_NAMES[stateCode]} limit — all axles clear`;
-    actions = [
-      "All axle weights are within legal limits for this state",
-      "Bypass system will check your safety score and registration in real time",
-      "If bypass-eligible, you will receive a green signal as you approach",
-      "Keep your Drivewyze or PrePass transponder active and mounted correctly",
-    ];
+    headline = `Within federal limits — ${tightest.toLocaleString()} lb of margin`;
   }
 
-  return { code, bypassRec, reason, actions, gross, limit, margin, steerOk, driveOk, trailerOk, grossOk };
+  /* Axle-shift guidance. Physical, not regulatory: sliding the tandems moves
+     weight between drives and trailer. Stated as approximate on purpose. */
+  const actions = [];
+  if (steer > FED.single) {
+    actions.push('Steer axle is over 20,000 lb. Slide the fifth wheel back to move weight onto the drives, then re-weigh.');
+  }
+  if (drive > FED.tandem) {
+    actions.push('Drive tandems are over 34,000 lb. Slide the trailer tandems REARWARD to pull weight off the drives, then re-weigh.');
+  }
+  if (trailer > FED.tandem) {
+    actions.push('Trailer tandems are over 34,000 lb. Slide them FORWARD to shift weight onto the drives, then re-weigh.');
+  }
+  if (bridge !== null && gross > bridge) {
+    actions.push(`Bridge Formula limit for this axle group is ${bridge.toLocaleString()} lb. Weight cannot be shifted out of this — you need more axle spread, more axles, or less freight.`);
+  }
+  if (gross > FED.gross) {
+    actions.push(`Gross is ${(gross - FED.gross).toLocaleString()} lb over 80,000. Sliding axles will not fix gross — this needs an offload or an overweight permit.`);
+  }
+  if (!actions.length) {
+    actions.push('No axle correction indicated by the numbers you entered.');
+    actions.push('These are federal Interstate limits only. Confirm your state and your route before you rely on this.');
+    actions.push('A Cat Scale ticket is the only weight record an officer accepts. This page is not one.');
+  }
+
+  return { code, headline, checks, gross, bridge, actions, over };
 }
 
-// ─── Sample bypass history ────────────────────────────────────────────────────
-const BYPASS_HISTORY = [
-  { date:"Aug 14", location:"Sikeston, MO",    route:"I-55 NB",  result:"BYPASS",  gross:77200, state:"MO", points:50 },
-  { date:"Aug 12", location:"Joplin, MO",      route:"I-44 EB",  result:"BYPASS",  gross:76450, state:"MO", points:50 },
-  { date:"Aug 10", location:"Texarkana, TX",   route:"I-30 WB",  result:"PULL IN", gross:79800, state:"TX", points:0, reason:"Random compliance check" },
-  { date:"Aug 8",  location:"Amarillo, TX",    route:"I-40 EB",  result:"BYPASS",  gross:74100, state:"TX", points:50 },
-  { date:"Aug 6",  location:"OKC, OK",         route:"I-35 NB",  result:"BYPASS",  gross:75900, state:"OK", points:50 },
-  { date:"Aug 4",  location:"North Platte, NE",route:"I-80 WB",  result:"BYPASS",  gross:73600, state:"NE", points:50 },
-];
+/* ── Fetch helper ─────────────────────────────────────────────────────────── */
+async function getJSON(url) {
+  const r = await fetch(url);
+  let body = null;
+  try {
+    body = await r.json();
+  } catch {
+    throw new Error(`${r.status} ${r.statusText} — response was not JSON`);
+  }
+  if (!r.ok) throw new Error(body?.error || `${r.status} ${r.statusText}`);
+  return body;
+}
 
-const STATIONS = [
-  { id:1, name:"Sikeston Port of Entry",          highway:"I-55 NB",   state:"MO", stateCode:"MO", network:"Drivewyze", miles:22,  waitMin:0 },
-  { id:2, name:"Joplin Scale House",              highway:"I-44 EB/WB",state:"MO", stateCode:"MO", network:"PrePass",   miles:45,  waitMin:4 },
-  { id:3, name:"Amarillo Weigh Station",          highway:"I-40 EB/WB",state:"TX", stateCode:"TX", network:"Drivewyze", miles:112, waitMin:0 },
-  { id:4, name:"OKC Commercial Enforcement",      highway:"I-35 NB",   state:"OK", stateCode:"OK", network:"PrePass",   miles:188, waitMin:7 },
-  { id:5, name:"Texarkana Port of Entry",         highway:"I-30 WB",   state:"TX", stateCode:"TX", network:"Drivewyze", miles:67,  waitMin:0 },
-  { id:6, name:"Wentzville Scale",                highway:"I-70 EB",   state:"MO", stateCode:"MO", network:"PrePass",   miles:290, waitMin:2 },
-  { id:7, name:"North Platte Port of Entry",      highway:"I-80 WB",   state:"NE", stateCode:"NE", network:"Drivewyze", miles:190, waitMin:0 },
-  { id:8, name:"Cheyenne Weigh Station",          highway:"I-80 EB/WB",state:"WY", stateCode:"WY", network:"PrePass",   miles:340, waitMin:0 },
-];
+/* ── UI primitives (house pattern) ────────────────────────────────────────── */
+function Panel({ title, note, right, icon: Icon, children }) {
+  return (
+    <section
+      style={{
+        background: C.card,
+        border: `1px solid ${C.border}`,
+        borderRadius: 4,
+        marginBottom: 18,
+      }}
+    >
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '14px 18px',
+          borderBottom: `1px solid ${C.border}`,
+        }}
+      >
+        {Icon ? <Icon size={15} color={GOLD} /> : null}
+        <h2
+          style={{
+            font: `500 13px ${FH}`,
+            letterSpacing: '0.22em',
+            textTransform: 'uppercase',
+            color: C.white,
+            margin: 0,
+            flex: 1,
+          }}
+        >
+          {title}
+        </h2>
+        {right}
+      </header>
+      <div style={{ padding: 18 }}>
+        {note ? (
+          <p
+            style={{
+              font: `400 12px/1.6 ${FB}`,
+              color: C.muted,
+              margin: '0 0 14px',
+            }}
+          >
+            {note}
+          </p>
+        ) : null}
+        {children}
+      </div>
+    </section>
+  );
+}
 
-const REQUIREMENTS = [
-  { label:"IRP Registration",         valid:true },
-  { label:"IFTA Fuel Tax Current",    valid:true },
-  { label:"Annual Inspection Current",valid:true },
-  { label:"Safety Score ≥ 70",        valid:true },
-  { label:"No Active OOS Orders",     valid:true },
-];
+function Missing({ label, reason }) {
+  return (
+    <div
+      style={{
+        border: `1px dashed #333333`,
+        borderRadius: 4,
+        padding: 16,
+        background: 'rgba(201,168,76,0.03)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <AlertTriangle size={14} color={WARN} />
+        <span
+          style={{
+            font: `500 11px ${FH}`,
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            color: WARN,
+          }}
+        >
+          Missing / Not tracked
+        </span>
+      </div>
+      <div style={{ font: `500 14px ${FH}`, color: C.white, marginBottom: 6 }}>{label}</div>
+      <div style={{ font: `400 12px/1.7 ${FB}`, color: C.muted }}>{reason}</div>
+    </div>
+  );
+}
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+function Stat({ value, label, tone }) {
+  return (
+    <div
+      style={{
+        border: `1px solid ${C.border}`,
+        borderRadius: 4,
+        padding: '14px 16px',
+        background: C.black,
+      }}
+    >
+      <div style={{ font: `400 34px ${FD}`, color: tone || GOLDB, lineHeight: 1 }}>{value}</div>
+      <div
+        style={{
+          font: `400 10px ${FH}`,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          color: C.dim,
+          marginTop: 6,
+        }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function Row({ k, v, mono, tone }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: '9px 0',
+        borderBottom: `1px solid ${C.border}`,
+      }}
+    >
+      <span style={{ font: `400 12px ${FB}`, color: C.muted }}>{k}</span>
+      <span
+        style={{
+          font: mono ? `400 12px ${FM}` : `500 12px ${FB}`,
+          color: tone || C.white,
+          textAlign: 'right',
+        }}
+      >
+        {v}
+      </span>
+    </div>
+  );
+}
+
+function Err({ msg }) {
+  return (
+    <div
+      style={{
+        border: `1px solid ${WARN}`,
+        borderRadius: 4,
+        padding: 12,
+        font: `400 12px ${FM}`,
+        color: WARN,
+        wordBreak: 'break-word',
+      }}
+    >
+      {msg}
+    </div>
+  );
+}
+
+const inputStyle = {
+  background: C.black,
+  border: `1px solid ${C.border}`,
+  borderRadius: 4,
+  padding: '10px 12px',
+  color: C.white,
+  font: `400 14px ${FM}`,
+  width: '100%',
+  boxSizing: 'border-box',
+  outline: 'none',
+};
+
+const labelStyle = {
+  font: `400 10px ${FH}`,
+  letterSpacing: '0.18em',
+  textTransform: 'uppercase',
+  color: C.dim,
+  display: 'block',
+  marginBottom: 6,
+};
+
+/* ── Page ─────────────────────────────────────────────────────────────────── */
 export default function BypassPage() {
-  const [tab, setTab]               = useState("status");  // status | weights | history
-  const [bypassActive, setBypassActive] = useState(true);
-  const [simulating, setSimulating] = useState({});
-  const [demoResults, setDemoResults] = useState({});
+  const [steer, setSteer] = useState('12000');
+  const [drive, setDrive] = useState('33500');
+  const [trailer, setTrailer] = useState('32000');
+  const [lengthFt, setLengthFt] = useState('51');
+  const [axles, setAxles] = useState('5');
+  const [result, setResult] = useState(null);
 
-  // Allocation inputs
-  const [stateCode, setStateCode]   = useState("TX");
-  const [steerW, setSteerW]         = useState("");
-  const [driveW, setDriveW]         = useState("");
-  const [trailerW, setTrailerW]     = useState("");
-  const [allocResult, setAllocResult] = useState(null);
+  const [hos, setHos] = useState({ state: 'loading', data: null, error: null });
+  const [safety, setSafety] = useState({ state: 'loading', data: null, error: null });
+  const [driverId, setDriverId] = useState('drv-1');
+  const alive = useRef(true);
 
-  const totalBypasses = BYPASS_HISTORY.filter(h => h.result === "BYPASS").length;
-  const totalPoints   = BYPASS_HISTORY.reduce((a, b) => a + b.points, 0);
-  const totalTimeSaved = totalBypasses * 22; // avg 22 min saved per bypass
+  const loadHos = useCallback(async () => {
+    setHos({ state: 'loading', data: null, error: null });
+    try {
+      const d = await getJSON('/api/hos');
+      if (!alive.current) return;
+      setHos({ state: 'ok', data: d, error: null });
+    } catch (e) {
+      if (!alive.current) return;
+      setHos({ state: 'error', data: null, error: String(e.message || e) });
+    }
+  }, []);
 
-  function runAllocation() {
-    if (!steerW || !driveW || !trailerW) return;
-    const result = calcAllocation(
-      parseInt(steerW), parseInt(driveW), parseInt(trailerW), stateCode
-    );
-    setAllocResult(result);
+  const loadSafety = useCallback(async (id) => {
+    setSafety({ state: 'loading', data: null, error: null });
+    try {
+      const d = await getJSON(`/api/safety/${encodeURIComponent(id)}`);
+      if (!alive.current) return;
+      setSafety({ state: 'ok', data: d, error: null });
+    } catch (e) {
+      if (!alive.current) return;
+      setSafety({ state: 'error', data: null, error: String(e.message || e) });
+    }
+  }, []);
+
+  useEffect(() => {
+    // Must set true on every mount: React StrictMode mounts twice in dev, and
+    // the first cleanup would otherwise leave this false forever.
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    loadHos();
+  }, [loadHos]);
+
+  useEffect(() => {
+    loadSafety(driverId);
+  }, [loadSafety, driverId]);
+
+  function run() {
+    const nums = {
+      steer: parseInt(steer, 10) || 0,
+      drive: parseInt(drive, 10) || 0,
+      trailer: parseInt(trailer, 10) || 0,
+      lengthFt: parseFloat(lengthFt) || 0,
+      axles: parseInt(axles, 10) || 0,
+    };
+    setResult(evaluate(nums));
   }
 
-  function simulateBypass(stationId) {
-    setSimulating(p => ({ ...p, [stationId]: true }));
-    setDemoResults(p => ({ ...p, [stationId]: null }));
-    setTimeout(() => {
-      setSimulating(p => ({ ...p, [stationId]: false }));
-      const result = Math.random() < 0.82 ? "BYPASS" : "PULL_IN";
-      setDemoResults(p => ({ ...p, [stationId]: result }));
-    }, 2400);
-  }
+  const codeTone =
+    result?.code === 'OVER' ? WARN : result?.code === 'CLOSE' ? GOLD : GOLDB;
 
-  const codeColor = allocResult
-    ? (allocResult.code === "GREEN" ? C.green : allocResult.code === "AMBER" ? C.amber : C.red)
-    : C.gold;
-
-  const TABS = [
-    { id: "status",  label: "Bypass Status", icon: "⚡" },
-    { id: "weights", label: "Allocation Code", icon: "⚖️" },
-    { id: "history", label: "Trip History",  icon: "📋" },
-  ];
+  const drivers = hos.state === 'ok' ? hos.data?.fleet || [] : [];
+  const selected = drivers.find((d) => d.driverId === driverId) || null;
 
   return (
-    <div style={{ fontFamily: FB, background: C.bg, minHeight: "100vh", color: C.white }}>
-      <style>{`
-        @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
-        @keyframes glow  { 0%,100%{box-shadow:0 0 24px rgba(22,163,74,0.4);} 50%{box-shadow:0 0 48px rgba(22,163,74,0.7);} }
-        @keyframes spin  { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
-        @keyframes fadeUp { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:none;} }
-        .bp-tab { cursor:pointer; transition:all 0.2s; border:none; background:none; white-space:nowrap; }
-        .bp-tab:hover { color: #F0EDE8; }
-        .bp-card { background:#0c1f14; border:1px solid #1a3d24; border-radius:12px; padding:20px; transition:border-color 0.18s; }
-        .bp-card:hover { border-color:#22502e; }
-        .bp-btn { cursor:pointer; transition:all 0.18s; border:none; font-family:'Inter',sans-serif; }
-        .bp-btn:hover { opacity:0.88; transform:translateY(-1px); }
-        .bp-input { background:#040d07; border:1px solid #1a3d24; border-radius:7px; padding:10px 14px; color:#F0EDE8; font-family:'Inter',sans-serif; font-size:14px; width:100%; box-sizing:border-box; outline:none; }
-        .bp-input:focus { border-color:rgba(22,163,74,0.5); }
-        select.bp-input { appearance:none; }
-        @media(max-width:640px){ .grid-2{grid-template-columns:1fr!important;} .grid-3{grid-template-columns:1fr!important;} }
-      `}</style>
+    <div style={{ background: C.black, minHeight: '100vh', color: C.white, fontFamily: FB }}>
+      <style>{`.spin{animation:bpspin 1s linear infinite}@keyframes bpspin{to{transform:rotate(360deg)}}`}</style>
 
-      {/* ── Header ── */}
-      <div style={{ background:"linear-gradient(180deg,#081E0D,#060f0a)", borderBottom:`1px solid ${C.border}`, padding:"0 20px", position:"sticky", top:0, zIndex:50 }}>
-        <div style={{ maxWidth:1040, margin:"0 auto" }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 0 0", flexWrap:"wrap", gap:10 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <button className="bp-btn" onClick={() => nav("/command")}
-                style={{ background:"none", color:C.white40, fontSize:13, cursor:"pointer", padding:0 }}>← Back</button>
-              <div style={{ width:1, height:16, background:C.border }} />
-              <div>
-                <div style={{ fontFamily:FD, fontSize:26, letterSpacing:"0.12em", color:C.green, lineHeight:1 }}>
-                  WEIGH STATION BYPASS
-                </div>
-                <div style={{ fontSize:11, color:C.white40, letterSpacing:"0.08em", textTransform:"uppercase", marginTop:2 }}>
-                  Drivewyze · PrePass · Allocation Code · Live ELD Weight Check
-                </div>
-              </div>
-            </div>
-            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-              <div style={{ background:C.greenDim, border:`1px solid ${C.green}44`, borderRadius:6, padding:"6px 14px", fontSize:12, color:C.green, fontWeight:700, letterSpacing:"0.06em", display:"flex", alignItems:"center", gap:6 }}>
-                <span style={{ width:6, height:6, borderRadius:"50%", background:C.green, display:"inline-block", animation:"pulse 2s infinite" }} />
-                {bypassActive ? "BYPASS ACTIVE" : "BYPASS OFF"}
-              </div>
-              <button className="bp-btn" onClick={() => nav("/catscales")}
-                style={{ background:C.goldDim, border:`1px solid ${C.gold}44`, borderRadius:6, padding:"6px 14px", fontSize:12, color:C.gold, fontWeight:700, letterSpacing:"0.06em", cursor:"pointer" }}>
-                ⚖️ Cat Scales
-              </button>
-            </div>
+      {/* Header band */}
+      <div
+        style={{
+          borderBottom: `1px solid ${C.border}`,
+          background: `linear-gradient(180deg,#111111,${C.black})`,
+          padding: '34px 22px 30px',
+        }}
+      >
+        <div style={{ maxWidth: 1080, margin: '0 auto' }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              border: `1px solid ${C.border}`,
+              borderRadius: 999,
+              padding: '5px 12px',
+              marginBottom: 14,
+            }}
+          >
+            <Scale size={13} color={GOLD} />
+            <span
+              style={{
+                font: `400 10px ${FH}`,
+                letterSpacing: '0.24em',
+                textTransform: 'uppercase',
+                color: GOLD,
+              }}
+            >
+              Weigh station readiness
+            </span>
           </div>
-          {/* Tabs */}
-          <div style={{ display:"flex", gap:0, marginTop:14, overflowX:"auto" }}>
-            {TABS.map(t => (
-              <button key={t.id} className="bp-tab"
-                onClick={() => setTab(t.id)}
-                style={{ padding:"10px 18px", fontSize:13, fontWeight:600, cursor:"pointer",
-                  color: tab === t.id ? C.green : C.white40,
-                  borderBottom: tab === t.id ? `2px solid ${C.green}` : "2px solid transparent" }}>
-                {t.icon} {t.label}
-              </button>
-            ))}
-          </div>
+          <h1
+            style={{
+              font: `400 52px ${FD}`,
+              letterSpacing: '0.02em',
+              margin: 0,
+              lineHeight: 1,
+            }}
+          >
+            SCALE <span style={{ color: GOLDB }}>READY</span>
+          </h1>
+          <p
+            style={{
+              font: `400 13px/1.7 ${FB}`,
+              color: C.muted,
+              maxWidth: 720,
+              margin: '12px 0 0',
+            }}
+          >
+            Federal axle-weight and Bridge Formula math, plus your real HOS clock and
+            safety score. TruckWithEase is not a bypass provider — it cannot grant a
+            bypass and is not connected to Drivewyze, PrePass, or any state
+            enforcement system.
+          </p>
         </div>
       </div>
 
-      <div style={{ maxWidth:1040, margin:"0 auto", padding:"24px 20px 60px" }}>
+      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '24px 22px 60px' }}>
+        {/* Bypass eligibility — honestly missing */}
+        <Panel
+          title="Bypass eligibility"
+          icon={Shield}
+          note="No provider is connected. Nothing on this page contacts a bypass network."
+        >
+          <Missing
+            label="Weigh-station bypass decisions"
+            reason={
+              'A bypass signal comes from Drivewyze or PrePass, who read your carrier safety record ' +
+              'from FMCSA and answer at the station. TruckWithEase has no account with either network ' +
+              'and no station-approach feed, so there is no eligibility to show, no bypass history, and ' +
+              'no minutes saved. The previous version of this page displayed six bypasses, 250 Rig Bucks ' +
+              'and 110 minutes saved — all of it invented, and all of it deleted. What we can help with ' +
+              'is the paperwork side: getting your PrePass or Drivewyze account set up under your own ' +
+              'DOT number.'
+            }
+          />
+        </Panel>
 
-        {/* ══ STATUS TAB ══ */}
-        {tab === "status" && (
-          <div style={{ animation:"fadeUp 0.3s ease both" }}>
-            <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
-              {/* Big bypass toggle */}
-              <div style={{
-                background: bypassActive ? "linear-gradient(135deg,#0c2a17,#143d22)" : "linear-gradient(135deg,#1a0a0a,#2d1414)",
-                border:`2px solid ${bypassActive ? C.green : C.red}`,
-                borderRadius:16, padding:28, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-                animation: bypassActive ? "glow 3s infinite" : "none", textAlign:"center",
-              }}>
-                <div style={{ fontFamily:FD, fontSize:52, color:bypassActive ? C.green : C.red, letterSpacing:2, lineHeight:1, marginBottom:8 }}>
-                  {bypassActive ? "BYPASS" : "OFFLINE"}
-                </div>
-                <div style={{ fontSize:13, color:C.white40, marginBottom:20, lineHeight:1.6 }}>
-                  {bypassActive ? "Active on Drivewyze & PrePass network" : "Bypass transponder is disabled"}
-                </div>
-                <div onClick={() => setBypassActive(!bypassActive)}
-                  style={{ width:72, height:38, background:bypassActive ? C.green : "#4a1818", borderRadius:19, cursor:"pointer", position:"relative", transition:"background 0.3s" }}>
-                  <div style={{ position:"absolute", top:4, left:bypassActive ? 36 : 4, width:30, height:30, background:"#fff", borderRadius:"50%", transition:"left 0.3s" }} />
-                </div>
-                <div style={{ fontSize:11, color:C.white40, marginTop:8 }}>Tap to {bypassActive ? "disable" : "enable"}</div>
-              </div>
-
-              {/* Stats */}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                {[
-                  { label:"Bypasses This Month", value:totalBypasses, color:C.green },
-                  { label:"Rig Bucks Earned",    value:totalPoints,   color:C.gold },
-                  { label:"Minutes Saved",        value:totalTimeSaved, color:C.blue },
-                  { label:"This Week",            value:"4 / 4",       color:C.green },
-                ].map((s,i) => (
-                  <div key={i} className="bp-card" style={{ textAlign:"center" }}>
-                    <div style={{ fontFamily:FM, fontSize:26, fontWeight:700, color:s.color }}>{s.value}</div>
-                    <div style={{ fontSize:11, color:C.white40, marginTop:4 }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
+        {/* Weight check */}
+        <Panel
+          title="Federal weight check"
+          icon={Scale}
+          note="Computed in this browser from 23 U.S.C. 127 and 23 CFR 658.17: 80,000 lb gross, 20,000 lb single axle, 34,000 lb tandem, and the Federal Bridge Formula W = 500 × [ LN/(N−1) + 12N + 36 ]. Federal Interstate limits only — no state table."
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))',
+              gap: 12,
+              marginBottom: 14,
+            }}
+          >
+            <div>
+              <label style={labelStyle}>Steer axle (lb)</label>
+              <input style={inputStyle} value={steer} onChange={(e) => setSteer(e.target.value)} inputMode="numeric" />
             </div>
-
-            {/* Requirements */}
-            <div className="bp-card" style={{ marginBottom:16 }}>
-              <div style={{ fontFamily:FD, fontSize:15, letterSpacing:"0.08em", color:C.white, marginBottom:14 }}>BYPASS ELIGIBILITY</div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:8 }}>
-                {REQUIREMENTS.map((r,i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:r.valid ? C.green : C.red }}>
-                    <span>{r.valid ? "✅" : "❌"}</span><span>{r.label}</span>
-                  </div>
-                ))}
-              </div>
+            <div>
+              <label style={labelStyle}>Drive tandems (lb)</label>
+              <input style={inputStyle} value={drive} onChange={(e) => setDrive(e.target.value)} inputMode="numeric" />
             </div>
+            <div>
+              <label style={labelStyle}>Trailer tandems (lb)</label>
+              <input style={inputStyle} value={trailer} onChange={(e) => setTrailer(e.target.value)} inputMode="numeric" />
+            </div>
+            <div>
+              <label style={labelStyle}>Outer axle spread (ft)</label>
+              <input style={inputStyle} value={lengthFt} onChange={(e) => setLengthFt(e.target.value)} inputMode="numeric" />
+            </div>
+            <div>
+              <label style={labelStyle}>Axle count</label>
+              <input style={inputStyle} value={axles} onChange={(e) => setAxles(e.target.value)} inputMode="numeric" />
+            </div>
+          </div>
 
-            {/* Stations ahead */}
-            <div className="bp-card">
-              <div style={{ fontFamily:FD, fontSize:15, letterSpacing:"0.08em", color:C.white, marginBottom:14 }}>STATIONS ON YOUR ROUTE</div>
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                {STATIONS.map(s => {
-                  const res = demoResults[s.id];
+          <button
+            onClick={run}
+            style={{
+              background: GOLD,
+              color: C.black,
+              border: 'none',
+              borderRadius: 4,
+              padding: '11px 22px',
+              font: `500 12px ${FH}`,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+            }}
+          >
+            Run check
+          </button>
+
+          {result ? (
+            <div style={{ marginTop: 20 }}>
+              <div
+                style={{
+                  border: `1px solid ${codeTone}`,
+                  borderRadius: 4,
+                  padding: 16,
+                  marginBottom: 16,
+                  background: 'rgba(201,168,76,0.04)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                  {result.code === 'OVER' ? (
+                    <XCircle size={17} color={WARN} />
+                  ) : (
+                    <CheckCircle2 size={17} color={codeTone} />
+                  )}
+                  <span style={{ font: `400 28px ${FD}`, color: codeTone, lineHeight: 1 }}>
+                    {result.code === 'OVER'
+                      ? 'OVER FEDERAL LIMIT'
+                      : result.code === 'CLOSE'
+                        ? 'LEGAL — TIGHT MARGIN'
+                        : 'WITHIN FEDERAL LIMITS'}
+                  </span>
+                </div>
+                <div style={{ font: `400 12px/1.6 ${FB}`, color: C.muted, marginTop: 8 }}>
+                  {result.headline}. This is a calculation from the numbers you typed — it is
+                  not a scale ticket and it is not permission to pass a scale.
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
+                  gap: 12,
+                  marginBottom: 16,
+                }}
+              >
+                <Stat value={result.gross.toLocaleString()} label="Gross entered (lb)" />
+                <Stat
+                  value={result.bridge === null ? '—' : result.bridge.toLocaleString()}
+                  label="Bridge Formula cap (lb)"
+                />
+                <Stat
+                  value={result.over.length}
+                  label="Checks over limit"
+                  tone={result.over.length ? WARN : GOLDB}
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                {result.checks.map((c) => {
+                  const ok = c.value <= c.limit;
                   return (
-                    <div key={s.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
-                      <div>
-                        <div style={{ fontWeight:700, fontSize:13, color:C.white }}>{s.name}</div>
-                        <div style={{ fontSize:11, color:C.white40 }}>{s.highway} · {s.state} · {s.miles} mi ahead</div>
-                        <div style={{ fontSize:10, color:C.gold, marginTop:3, fontWeight:600 }}>{s.network} · {s.waitMin > 0 ? `Wait ~${s.waitMin} min` : "No current wait"}</div>
-                      </div>
-                      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                        {res && (
-                          <div style={{
-                            background: res === "BYPASS" ? C.greenDim : C.redDim,
-                            border:`1px solid ${res === "BYPASS" ? C.green : C.red}44`,
-                            borderRadius:6, padding:"4px 10px", fontSize:11, fontWeight:700,
-                            color: res === "BYPASS" ? C.green : C.red,
-                          }}>{res === "BYPASS" ? "BYPASS ✓" : "PULL IN"}</div>
-                        )}
-                        <button className="bp-btn"
-                          onClick={() => simulateBypass(s.id)}
-                          disabled={!!simulating[s.id]}
-                          style={{ background:C.surface, border:`1px solid ${C.borderHi}`, borderRadius:7, padding:"7px 14px", fontSize:12, color:C.white, cursor:"pointer", fontWeight:600 }}>
-                          {simulating[s.id]
-                            ? <span style={{ display:"inline-block", animation:"spin 0.8s linear infinite" }}>⟳</span>
-                            : "Simulate"}
-                        </button>
-                      </div>
-                    </div>
+                    <Row
+                      key={c.label}
+                      k={`${c.label} — ${c.cite}`}
+                      v={`${c.value.toLocaleString()} / ${c.limit.toLocaleString()} lb ${ok ? 'OK' : 'OVER'}`}
+                      mono
+                      tone={ok ? C.white : WARN}
+                    />
                   );
                 })}
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* ══ ALLOCATION CODE TAB ══ */}
-        {tab === "weights" && (
-          <div style={{ animation:"fadeUp 0.3s ease both" }}>
-            <div style={{ background:C.greenDim, border:`1px solid ${C.green}33`, borderRadius:10, padding:"12px 16px", marginBottom:20, fontSize:13, color:C.green, lineHeight:1.6 }}>
-              ⚡ <strong>Allocation Code is wired directly into Bypass.</strong> Enter your axle weights and state — the system tells you if you should bypass, pull in, or slide tandems before you approach.
-            </div>
-
-            <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:20 }}>
-              {/* Input panel */}
-              <div className="bp-card">
-                <div style={{ fontFamily:FD, fontSize:16, letterSpacing:"0.08em", color:C.white, marginBottom:4 }}>AXLE WEIGHT INPUT</div>
-                <div style={{ fontSize:12, color:C.white40, marginBottom:18 }}>From your Cat Scale ticket or ELD sensor</div>
-
-                <div style={{ marginBottom:14 }}>
-                  <label style={{ fontSize:12, color:C.white40, display:"block", marginBottom:6 }}>State you're running through</label>
-                  <select className="bp-input" value={stateCode} onChange={e => { setStateCode(e.target.value); setAllocResult(null); }}>
-                    {Object.entries(STATE_NAMES).sort((a,b) => a[1].localeCompare(b[1])).map(([code, name]) => (
-                      <option key={code} value={code}>{name} ({STATE_LIMITS[code]?.toLocaleString()} lbs limit)</option>
-                    ))}
-                  </select>
-                </div>
-                {[
-                  { label:"Steer Axle Weight (lbs)", val:steerW, set:setSteerW, placeholder:"e.g. 11800" },
-                  { label:"Drive Tandem Weight (lbs)", val:driveW, set:setDriveW, placeholder:"e.g. 33400" },
-                  { label:"Trailer Tandem Weight (lbs)", val:trailerW, set:setTrailerW, placeholder:"e.g. 33800" },
-                ].map((f,i) => (
-                  <div key={i} style={{ marginBottom:14 }}>
-                    <label style={{ fontSize:12, color:C.white40, display:"block", marginBottom:6 }}>{f.label}</label>
-                    <input type="number" className="bp-input" placeholder={f.placeholder} value={f.val}
-                      onChange={e => { f.set(e.target.value); setAllocResult(null); }} />
-                  </div>
+              <div
+                style={{
+                  font: `400 10px ${FH}`,
+                  letterSpacing: '0.2em',
+                  textTransform: 'uppercase',
+                  color: C.dim,
+                  marginBottom: 8,
+                }}
+              >
+                What to do
+              </div>
+              <ol style={{ margin: 0, paddingLeft: 20, font: `400 12px/1.8 ${FB}`, color: C.muted }}>
+                {result.actions.map((a, i) => (
+                  <li key={i}>{a}</li>
                 ))}
+              </ol>
+            </div>
+          ) : null}
+        </Panel>
 
-                <button className="bp-btn" onClick={runAllocation}
-                  style={{ width:"100%", background:`linear-gradient(135deg,${C.green},#15803d)`, borderRadius:8, padding:"13px 0", fontSize:15, fontWeight:800, color:"#fff", cursor:"pointer", letterSpacing:"0.06em" }}>
-                  ⚖️ GET BYPASS RECOMMENDATION
-                </button>
-
-                <button className="bp-btn" onClick={() => { setSteerW(""); setDriveW(""); setTrailerW(""); setAllocResult(null); }}
-                  style={{ width:"100%", background:"none", border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 0", fontSize:12, color:C.white40, cursor:"pointer", marginTop:8 }}>
-                  Clear
-                </button>
+        {/* Driver context — real data */}
+        <Panel
+          title="Your clock at the scale"
+          icon={Clock}
+          note="Live from GET /api/hos. Minutes, computed from 49 CFR 395 rules coded in api/routes/hos.ts."
+          right={
+            <button
+              onClick={loadHos}
+              style={{
+                background: 'none',
+                border: `1px solid ${C.border}`,
+                borderRadius: 4,
+                padding: '5px 10px',
+                color: GOLD,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                font: `400 10px ${FH}`,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+              }}
+            >
+              <RefreshCw size={11} className={hos.state === 'loading' ? 'spin' : undefined} />
+              Refresh
+            </button>
+          }
+        >
+          {hos.state === 'loading' ? (
+            <div style={{ font: `400 12px ${FM}`, color: C.dim }}>Loading /api/hos …</div>
+          ) : hos.state === 'error' ? (
+            <Err msg={hos.error} />
+          ) : (
+            <>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                {drivers.map((d) => (
+                  <button
+                    key={d.driverId}
+                    onClick={() => setDriverId(d.driverId)}
+                    style={{
+                      background: d.driverId === driverId ? GOLD : 'none',
+                      color: d.driverId === driverId ? C.black : C.muted,
+                      border: `1px solid ${d.driverId === driverId ? GOLD : C.border}`,
+                      borderRadius: 4,
+                      padding: '6px 12px',
+                      font: `500 11px ${FH}`,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {d.name} · {d.truckNumber}
+                  </button>
+                ))}
               </div>
 
-              {/* Result panel */}
-              <div style={{
-                background:allocResult ? (
-                  allocResult.code === "GREEN" ? "linear-gradient(135deg,#0c2a17,#0c1f14)" :
-                  allocResult.code === "AMBER" ? "linear-gradient(135deg,#1a1200,#0c1f14)" :
-                  "linear-gradient(135deg,#1a0a0a,#0c1f14)"
-                ) : C.surface,
-                border:`1px solid ${allocResult ? codeColor + "55" : C.border}`,
-                borderRadius:12, padding:22,
-              }}>
-                {!allocResult ? (
-                  <div style={{ height:"100%", minHeight:300, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", color:C.white40 }}>
-                    <div style={{ fontSize:48, marginBottom:14 }}>⚖️</div>
-                    <div style={{ fontFamily:FD, fontSize:16, letterSpacing:"0.08em", color:C.white40 }}>BYPASS RECOMMENDATION WILL APPEAR HERE</div>
-                    <div style={{ fontSize:12, marginTop:8 }}>Enter your axle weights and tap the button above</div>
+              {selected ? (
+                <>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
+                      gap: 12,
+                      marginBottom: 14,
+                    }}
+                  >
+                    <Stat
+                      value={selected.clocks.drivingRemaining}
+                      label="Driving min remaining"
+                      tone={selected.clocks.drivingRemaining > 0 ? GOLDB : WARN}
+                    />
+                    <Stat
+                      value={selected.clocks.onDutyWindowRemaining}
+                      label="On-duty window min left"
+                    />
+                    <Stat value={selected.status} label="Duty status" tone={GOLD} />
                   </div>
-                ) : (
-                  <div>
-                    {/* Code badge */}
-                    <div style={{
-                      background: allocResult.code === "GREEN" ? C.greenDim : allocResult.code === "AMBER" ? C.amberDim : C.redDim,
-                      border:`1px solid ${codeColor}44`, borderRadius:12, padding:"18px 20px", marginBottom:18, textAlign:"center",
-                    }}>
-                      <div style={{ fontFamily:FD, fontSize:36, color:codeColor, letterSpacing:"0.12em", marginBottom:6 }}>
-                        {allocResult.code === "GREEN" ? "✅ BYPASS ELIGIBLE" : allocResult.code === "AMBER" ? "⚠️ SCALE FIRST" : "🚨 PULL IN RISK"}
-                      </div>
-                      <div style={{ fontSize:13, color:codeColor, fontWeight:600, marginBottom:4 }}>{allocResult.bypassRec}</div>
-                      <div style={{ fontSize:12, color:C.white40 }}>{allocResult.reason}</div>
-                    </div>
+                  <Row k="Driving used (min)" v={selected.clocks.drivingUsed} mono />
+                  <Row k="Driving limit (min)" v={selected.clocks.limits.driving} mono />
+                  <Row k="On-duty window limit (min)" v={selected.clocks.limits.onDutyWindow} mono />
+                  <Row k="Break required after (min)" v={selected.clocks.limits.breakAfter} mono />
+                  {selected.violations?.length ? (
+                    selected.violations.map((v, i) => (
+                      <Row key={i} k={`Violation — ${v.level}`} v={v.msg} tone={WARN} />
+                    ))
+                  ) : (
+                    <Row k="Violations" v="none returned by /api/hos" tone={C.muted} />
+                  )}
+                  {selected.clocks.drivingRemaining === 0 ? (
+                    <p style={{ font: `400 12px/1.7 ${FB}`, color: WARN, marginTop: 12 }}>
+                      This driver has 0 driving minutes remaining, so a legal weight does not
+                      make the trip legal. The clock is the harder constraint here.
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <Missing
+                  label={`Driver ${driverId} not in the /api/hos fleet response`}
+                  reason="Pick a driver above. The list is exactly what the server returned."
+                />
+              )}
+            </>
+          )}
+        </Panel>
 
-                    {/* Weight grid */}
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:16 }}>
-                      {[
-                        { label:"GROSS GVW", val:allocResult.gross, ok:allocResult.grossOk, limit:allocResult.limit },
-                        { label:"STEER",     val:parseInt(steerW),   ok:allocResult.steerOk, limit:20000 },
-                        { label:"DRIVES",    val:parseInt(driveW),   ok:allocResult.driveOk, limit:34000 },
-                        { label:"TRAILER",   val:parseInt(trailerW), ok:allocResult.trailerOk, limit:34000 },
-                      ].map((w,i) => (
-                        <div key={i} style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:7, padding:"10px 14px" }}>
-                          <div style={{ fontSize:9, color:C.white40, fontWeight:700, letterSpacing:"0.08em", marginBottom:4 }}>{w.label}</div>
-                          <div style={{ fontFamily:FM, fontSize:15, fontWeight:700, color:w.ok ? C.green : C.red }}>
-                            {(w.val||0).toLocaleString()} lbs
-                          </div>
-                          <div style={{ fontSize:10, color:C.white40 }}>Limit: {w.limit.toLocaleString()}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Actions */}
-                    {allocResult.actions.length > 0 && (
-                      <div style={{ background:C.bg, borderRadius:8, padding:14 }}>
-                        <div style={{ fontSize:11, fontWeight:700, color:C.white40, letterSpacing:"0.07em", marginBottom:10 }}>WHAT TO DO:</div>
-                        {allocResult.actions.map((a,i) => (
-                          <div key={i} style={{ display:"flex", gap:10, marginBottom:8, fontSize:12, color:C.white70, lineHeight:1.6 }}>
-                            <span style={{ color:codeColor, flexShrink:0, fontWeight:700 }}>{i+1}.</span>
-                            <span>{a}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Quick link to Cat Scales */}
-                    {(allocResult.code === "AMBER" || allocResult.code === "RED") && (
-                      <button className="bp-btn" onClick={() => nav("/catscales")}
-                        style={{ width:"100%", marginTop:12, background:C.goldDim, border:`1px solid ${C.gold}44`, borderRadius:8, padding:"10px 0", fontSize:13, color:C.gold, cursor:"pointer", fontWeight:700 }}>
-                        ⚖️ Find Nearest Cat Scale →
-                      </button>
-                    )}
-                  </div>
-                )}
+        {/* Safety score — real data, matters because bypass networks read it */}
+        <Panel
+          title="Safety record"
+          icon={Shield}
+          note={`Live from GET /api/safety/${driverId}. Bypass networks decide from your FMCSA carrier record, not from this score — this is our own 30-day internal score.`}
+        >
+          {safety.state === 'loading' ? (
+            <div style={{ font: `400 12px ${FM}`, color: C.dim }}>Loading /api/safety/{driverId} …</div>
+          ) : safety.state === 'error' ? (
+            <Err msg={safety.error} />
+          ) : (
+            <>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
+                  gap: 12,
+                  marginBottom: 14,
+                }}
+              >
+                <Stat value={safety.data.score ?? '—'} label={`Score / ${safety.data.windowDays}-day window`} />
+                <Stat value={(safety.data.gradeLabel || safety.data.grade || '—').toString()} label="Grade" tone={GOLD} />
+                <Stat value={(safety.data.milesObserved ?? 0).toLocaleString()} label="Miles observed" />
               </div>
-            </div>
-          </div>
-        )}
+              <Row k="Insufficient data" v={String(safety.data.insufficientData)} mono />
+              <Row
+                k="Components scored"
+                v={(safety.data.componentsScored || []).join(', ') || '—'}
+              />
+              <Row
+                k="Components missing"
+                v={(safety.data.componentsMissing || []).join(', ') || 'none'}
+                tone={(safety.data.componentsMissing || []).length ? WARN : C.white}
+              />
+            </>
+          )}
+        </Panel>
 
-        {/* ══ HISTORY TAB ══ */}
-        {tab === "history" && (
-          <div style={{ animation:"fadeUp 0.3s ease both" }}>
-            <div style={{ fontFamily:FD, fontSize:18, letterSpacing:"0.08em", color:C.white, marginBottom:4 }}>TRIP BYPASS HISTORY</div>
-            <div style={{ fontSize:12, color:C.white40, marginBottom:16 }}>Every weigh station encounter logged — bypasses, pull-ins, and weights</div>
-            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {BYPASS_HISTORY.map((h,i) => (
-                <div key={i} className="bp-card" style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10 }}>
-                  <div>
-                    <div style={{ fontWeight:700, fontSize:13, color:C.white, marginBottom:3 }}>{h.location} — {h.route}</div>
-                    <div style={{ fontSize:11, color:C.white40 }}>{h.date} · Gross: <span style={{ fontFamily:FM, color:C.white }}>{h.gross.toLocaleString()} lbs</span></div>
-                    {h.reason && <div style={{ fontSize:11, color:C.amber, marginTop:2 }}>Reason: {h.reason}</div>}
-                  </div>
-                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    {h.points > 0 && <span style={{ fontFamily:FM, fontSize:13, color:C.gold, fontWeight:700 }}>+{h.points} pts</span>}
-                    <div style={{
-                      background: h.result === "BYPASS" ? C.greenDim : C.redDim,
-                      border:`1px solid ${h.result === "BYPASS" ? C.green : C.red}44`,
-                      borderRadius:6, padding:"4px 12px", fontSize:12, fontWeight:700,
-                      color: h.result === "BYPASS" ? C.green : C.red,
-                    }}>{h.result}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* What this does not cover */}
+        <Panel title="What this does not cover" icon={Info}>
+          <ol style={{ margin: 0, paddingLeft: 20, font: `400 12px/1.9 ${FB}`, color: C.muted }}>
+            <li>
+              Bypass itself. No Drivewyze or PrePass account is connected, so no bypass can be
+              granted, recorded, or predicted here.
+            </li>
+            <li>
+              State limits. The calculator runs federal Interstate limits only. Grandfathered
+              routes, state-specific axle rules, seasonal frost laws, and permit limits are not
+              coded, and the old per-state table was deleted because it was never verified
+              against a state statute.
+            </li>
+            <li>
+              Weigh station locations, hours, and wait times. We have no station dataset. The
+              eight stations previously listed here, with distances and wait times, were invented.
+            </li>
+            <li>
+              Your actual weight. Nothing here reads a scale. The numbers are whatever you type,
+              and only a certified scale ticket counts at a roadside inspection.
+            </li>
+            <li>
+              IRP, IFTA, annual inspection, and out-of-service status. The old page showed all
+              five as green checkmarks — they were hardcoded and are not tracked anywhere in the
+              platform.
+            </li>
+          </ol>
+        </Panel>
 
+        <p
+          style={{
+            font: `400 11px/1.7 ${FB}`,
+            color: C.dim,
+            borderTop: `1px solid ${C.border}`,
+            paddingTop: 16,
+          }}
+        >
+          Weight limits and the Bridge Formula are quoted from 23 U.S.C. 127 and 23 CFR 658.17 via
+          FHWA, Bridge Formula Weights. TruckWithEase is not a bypass provider, is not a registered
+          ELD, and files nothing with any agency. Confirm every weight on a certified scale and
+          every limit with the state you are running in.
+        </p>
       </div>
     </div>
   );
