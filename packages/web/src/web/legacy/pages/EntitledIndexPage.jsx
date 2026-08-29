@@ -1,49 +1,44 @@
 /**
- * EntitledIndexPage — FULL REWRITE 2026-08-27
+ * EntitledIndexPage — REBUILT AS A DATA INDEX 2026-08-28
  * Routes: /entitled-index, /index, /master-hub, /entitled  (App.jsx)
  * Original preserved at docs/launch/EntitledIndexPage.ORIGINAL.jsx.txt
  *
- * WHAT THIS PAGE IS NOW
- * One operating hub that ties four things together on a single screen, sharing one driver
- * selection: load planning against the driver's real HOS clock and his learned profile,
- * the HR tools that already exist, DOT medical-card expiry tracking plus the official
- * examiner registry, and the live platform telemetry feeding all three.
+ * JEREMIAH'S INSTRUCTION
+ * "The entitled index equals ALL DATA not documents. Anything ever reported filed equals a
+ * function we can add to be better than Samsara or any trucking app."
  *
- * WHAT WAS REMOVED FROM THE ORIGINAL AND WHY
- * - The ~40-tile hardcoded MODULES array. Its `desc` strings were invented capability claims:
- *   "47-variable profit engine", "47-point truck health AI", "DAT, Uber Freight, CH Robinson",
- *   "Live bypass decision engine", "9 brands, DTC decode, DVIR memory", "Live ELD data +
- *   FMCSA sync". None of those integrations exist. Fabricated claims get deleted, not restyled.
- * - The `tier: 'enterprise'` concept. There is no enterprise plan — Solo, Pro, Fleet only.
- * - The off-brand palette (#4ade80, #fbbf24, #f87171, #60a5fa, #a78bfa, #22d3ee).
- * - The PocketBase import (`../lib/pb`) — a localStorage shim, not a server.
- * - Emoji tile icons — they render as empty boxes in several fonts. lucide-react instead.
+ * So this page no longer shows documents, tiles, or capability blurbs. It shows three counts
+ * of real things and one diff:
  *
- * THE MEDICAL QUESTION, ANSWERED HONESTLY
- * There is no nationwide list of certified medical examiner buildings we can legally or
- * technically pull. The FMCSA National Registry is reCAPTCHA-protected with no public API and
- * no bulk download. Google Places is not enabled on our key, and a Places result would not
- * certify FMCSA status anyway. So this page ships ZERO invented clinic addresses. What it does
- * instead is the part that actually keeps a med card current: track the expiry date of every
- * card on file and deep-link the driver into the official registry for his state.
+ *   ALL DATA      Every table in the live Turso database — real names, real row counts, real
+ *                 column counts, read fresh on every request via PRAGMA and COUNT(*).
+ *   EVERY FILING  Every record a US motor carrier reports, files, or must produce in an audit.
+ *   THE DIFF      Each filing matched to a real table. Where no table backs it, the row turns
+ *                 into a named function to build. That gap list is the roadmap.
+ *
+ * WHAT WAS REMOVED FROM THE PREVIOUS VERSION
+ * - The four-panel operating hub (loads/HR/medical/telemetry). It was accurate but it was a
+ *   dashboard, not an index. Those tools still live on their own pages.
+ * - Everything that described a capability instead of counting one.
+ *
+ * WHAT THIS PAGE REFUSES TO DO
+ * - It does not claim TruckWithEase files anything with any government agency. It does not.
+ * - It does not claim ELD registration. TruckWithEase is not a registered ELD.
+ * - It never names, scores, or prices a competitor. The gap list stands on its own.
+ * - Retention periods and CFR cites are only the ones verified 2026-08-28 against eCFR, the
+ *   FMCSA CSA Safety Planner, FMCSA registration pages and IFTA Inc. Unverified fields render
+ *   as an em dash, never a guess.
  *
  * DATA SOURCES (all real, all server-side)
- * - GET  /api/fleet/drivers        driver picker + live position/speed/lastSeen
- * - GET  /api/hos                  real duty clocks in seconds + violations
- * - GET  /api/loads                real load rows with server-computed rpm
- * - GET  /api/algorithm/:driverId  the learned four-dimension profile
- * - POST /api/algorithm/signal     records every book/pass so the profile compounds
- * - POST /api/routing/plan         real Google Directions leg
- * - GET  /api/hr/summary           headcount, occurrences, payroll, profit
- * - GET  /api/hr/documents         med cards + expiry dates
- * - GET  /api/hr/people            names for those documents
- * - GET  /api/safety/:driverId     computed safety score
+ * - GET /api/data-index/summary   counts across tables and filings
+ * - GET /api/data-index/tables    live SQLite introspection of all tables
+ * - GET /api/data-index/filed     the filing catalog with computed coverage
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  LayoutGrid, AlertTriangle, Loader2, RefreshCw, Package, Users, Stethoscope,
-  Radio, ExternalLink, Route as RouteIcon, Clock, MapPin, Receipt,
+  Database, AlertTriangle, Loader2, RefreshCw, FileWarning, Layers,
+  CheckCircle2, CircleDashed, Search, Hammer, BookOpen,
 } from "lucide-react";
 
 const GOLD = "#C9A84C";
@@ -54,735 +49,467 @@ const MUTED = "#8a8a8a";
 const DIM = "#666666";
 const WARN = "#c96a4c";
 
-const API = "";
-const REGISTRY = "https://nationalregistry.fmcsa.dot.gov/search-medical-examiners";
-
-const STATES = [
-  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
-  "Delaware", "District of Columbia", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois",
-  "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts",
-  "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
-  "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota",
-  "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
-  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
-  "West Virginia", "Wisconsin", "Wyoming",
-];
-
-/* ------------------------------------------------------------------ helpers */
-
-const hhmm = (sec) => {
-  if (sec === null || sec === undefined || Number.isNaN(sec)) return "—";
-  const s = Math.max(0, Math.round(sec));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  return `${h}h ${String(m).padStart(2, "0")}m`;
-};
-
-const money = (n) =>
-  n === null || n === undefined || Number.isNaN(n)
-    ? "—"
-    : `$${Math.round(n).toLocaleString("en-US")}`;
-
-const AVG_MPH = 55; // plain average used only where no routed time exists — labelled as such
-
-function daysUntil(dateStr) {
-  if (!dateStr) return null;
-  const t = Date.parse(`${dateStr}T00:00:00Z`);
-  if (Number.isNaN(t)) return null;
-  return Math.round((t - Date.now()) / 86400000);
+async function getJSON(url) {
+  const r = await fetch(url);
+  let j = null;
+  try { j = await r.json(); } catch { /* non-JSON body */ }
+  if (!r.ok) throw new Error(j?.error || `${r.status} ${r.statusText}`);
+  return j;
 }
-
-/* ----------------------------------------------------------------- house kit */
 
 function Panel({ title, note, right, icon: Icon, children }) {
   return (
-    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10, marginBottom: 18 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderBottom: `1px solid ${BORDER}` }}>
-        {Icon && <Icon size={16} color={GOLD} />}
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.22em", fontSize: 13, color: GOLD }}>{title}</div>
-          {note && <div style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: DIM, marginTop: 4 }}>{note}</div>}
-        </div>
-        {right}
-      </div>
+    <section style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 4, marginBottom: 20 }}>
+      <header style={{
+        display: "flex", alignItems: "center", gap: 10, padding: "14px 18px",
+        borderBottom: `1px solid ${BORDER}`, flexWrap: "wrap",
+      }}>
+        {Icon ? <Icon size={16} color={GOLD} /> : null}
+        <h2 style={{
+          margin: 0, font: "600 13px/1 Oswald, sans-serif", letterSpacing: "0.22em",
+          textTransform: "uppercase", color: "#e8e8e8",
+        }}>{title}</h2>
+        <div style={{ marginLeft: "auto" }}>{right}</div>
+      </header>
+      {note ? (
+        <p style={{
+          margin: 0, padding: "10px 18px", borderBottom: `1px solid ${BORDER}`,
+          font: "400 12px/1.6 Inter, sans-serif", color: DIM,
+        }}>{note}</p>
+      ) : null}
       <div style={{ padding: 18 }}>{children}</div>
-    </div>
+    </section>
   );
 }
 
 function Missing({ label, reason }) {
   return (
-    <div style={{ border: "1px dashed #333", borderRadius: 8, padding: 14, background: "#121212" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <AlertTriangle size={15} color={WARN} />
-        <span style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.16em", fontSize: 11, color: WARN }}>
-          Missing / Not tracked
-        </span>
+    <div style={{ border: `1px dashed #333`, borderRadius: 4, padding: 14, margin: "10px 0" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <AlertTriangle size={14} color={WARN} />
+        <span style={{
+          font: "600 11px/1 Oswald, sans-serif", letterSpacing: "0.2em",
+          textTransform: "uppercase", color: WARN,
+        }}>Missing / Not tracked</span>
       </div>
-      <div style={{ color: "#ddd", fontSize: 14, marginTop: 8 }}>{label}</div>
-      <div style={{ color: MUTED, fontSize: 12.5, marginTop: 5, lineHeight: 1.5 }}>{reason}</div>
+      <div style={{ font: "600 13px/1.4 Inter, sans-serif", color: "#ddd", marginBottom: 4 }}>{label}</div>
+      <div style={{ font: "400 12px/1.6 Inter, sans-serif", color: MUTED }}>{reason}</div>
     </div>
   );
 }
 
-function Stat({ value, label }) {
+function Stat({ value, label, tone }) {
   return (
-    <div style={{ background: "#121212", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "14px 16px", minWidth: 118 }}>
-      <div style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: 34, lineHeight: 1, color: GOLDBR }}>{value}</div>
-      <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.16em", fontSize: 10.5, color: MUTED, marginTop: 6 }}>{label}</div>
+    <div style={{ minWidth: 108 }}>
+      <div style={{
+        font: "400 34px/1 'Bebas Neue', sans-serif", letterSpacing: "0.04em",
+        color: tone === "warn" ? WARN : tone === "gold" ? GOLDBR : "#f0f0f0",
+      }}>{value}</div>
+      <div style={{
+        font: "500 10px/1.3 Oswald, sans-serif", letterSpacing: "0.2em",
+        textTransform: "uppercase", color: DIM, marginTop: 4,
+      }}>{label}</div>
     </div>
   );
 }
 
-function Row({ k, v, mono, tone }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "7px 0", borderBottom: "1px solid #1c1c1c" }}>
-      <span style={{ color: MUTED, fontSize: 12.5 }}>{k}</span>
-      <span style={{ color: tone || "#e8e8e8", fontSize: 12.5, fontFamily: mono ? "JetBrains Mono, monospace" : undefined, textAlign: "right" }}>{v}</span>
-    </div>
-  );
-}
-
-const inputCls = {
-  background: "#0f0f0f",
-  border: `1px solid ${BORDER}`,
-  borderRadius: 6,
-  color: "#eaeaea",
-  fontFamily: "JetBrains Mono, monospace",
-  fontSize: 13,
-  padding: "9px 11px",
-  outline: "none",
-  width: "100%",
+const STATUS_STYLE = {
+  live: { label: "LIVE DATA", color: "#C9A84C", icon: CheckCircle2 },
+  "table-empty": { label: "TABLE EMPTY", color: MUTED, icon: CircleDashed },
+  gap: { label: "NO TABLE — GAP", color: WARN, icon: FileWarning },
 };
 
-const btn = (primary) => ({
-  background: primary ? GOLD : "#141414",
-  color: primary ? "#0a0a0a" : GOLD,
-  border: `1px solid ${primary ? GOLD : BORDER}`,
-  borderRadius: 6,
-  fontFamily: "Oswald, sans-serif",
-  textTransform: "uppercase",
-  letterSpacing: "0.14em",
-  fontSize: 11.5,
-  padding: "8px 14px",
-  cursor: "pointer",
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 7,
-});
-
-async function getJSON(url) {
-  const r = await fetch(url);
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || `${r.status} ${r.statusText}`);
-  return j;
+function StatusBadge({ status }) {
+  const s = STATUS_STYLE[status] || STATUS_STYLE.gap;
+  const Icon = s.icon;
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 8px",
+      border: `1px solid ${s.color}55`, borderRadius: 3, color: s.color,
+      font: "600 9px/1 Oswald, sans-serif", letterSpacing: "0.16em", whiteSpace: "nowrap",
+    }}>
+      <Icon size={10} /> {s.label}
+    </span>
+  );
 }
 
-/* -------------------------------------------------------------------- page */
-
 export default function EntitledIndexPage() {
-  const [drivers, setDrivers] = useState([]);
-  const [driverId, setDriverId] = useState("");
-  const [hos, setHos] = useState([]);
-  const [loads, setLoads] = useState([]);
-  const [algo, setAlgo] = useState(null);
-  const [hr, setHr] = useState(null);
-  const [docs, setDocs] = useState([]);
-  const [people, setPeople] = useState([]);
-  const [safety, setSafety] = useState(null);
-
-  const [state, setState] = useState("loading"); // loading | ok | error
+  const [state, setState] = useState("loading");
   const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const [tables, setTables] = useState([]);
+  const [tableCounts, setTableCounts] = useState(null);
+  const [filed, setFiled] = useState([]);
+  const [filedCounts, setFiledCounts] = useState(null);
+  const [sources, setSources] = useState([]);
+  const [q, setQ] = useState("");
+  const [only, setOnly] = useState("all");
+  const [tab, setTab] = useState("filings");
 
-  const [medState, setMedState] = useState("Missouri");
-  const [plan, setPlan] = useState({}); // loadId -> {status, data, error}
-  const [signalled, setSignalled] = useState({}); // loadId -> 'accepted'|'declined'
-
-  // panel 5 — TRAXES. Fetched separately from the main load so a TRAXES outage
-  // cannot blank the rest of the hub.
-  const [traxStatus, setTraxStatus] = useState(null);
-  const [traxSum, setTraxSum] = useState(null);
-  const [traxErr, setTraxErr] = useState("");
-  const TAX_YEAR = new Date().getFullYear();
-
-  const loadAll = useCallback(async () => {
-    setState("loading");
-    setErr("");
+  const load = useCallback(async () => {
+    setState("loading"); setErr("");
     try {
-      const [d, h, l, s, dc, pp] = await Promise.all([
-        getJSON(`${API}/api/fleet/drivers`),
-        getJSON(`${API}/api/hos`),
-        getJSON(`${API}/api/loads`),
-        getJSON(`${API}/api/hr/summary`),
-        getJSON(`${API}/api/hr/documents`),
-        getJSON(`${API}/api/hr/people`),
+      const [s, t, f] = await Promise.all([
+        getJSON("/api/data-index/summary"),
+        getJSON("/api/data-index/tables"),
+        getJSON("/api/data-index/filed"),
       ]);
-      const list = d.drivers || [];
-      setDrivers(list);
-      setHos(h.fleet || []);
-      setLoads(l.loads || []);
-      setHr(s || null);
-      setDocs(dc.documents || []);
-      setPeople(pp.people || []);
-      setDriverId((cur) => cur || list[0]?.id || "");
+      setSummary(s);
+      setTables(t.tables || []); setTableCounts(t.counts || null);
+      setFiled(f.records || []); setFiledCounts(f.counts || null); setSources(f.sources || []);
       setState("ok");
     } catch (e) {
-      setErr(String(e.message || e));
-      setState("error");
+      setErr(e.message || String(e)); setState("error");
     }
   }, []);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => { load(); }, [load]);
 
-  const loadTraxes = useCallback(async () => {
-    setTraxErr("");
-    try {
-      const [st, sum] = await Promise.all([
-        getJSON(`${API}/api/traxes/status`),
-        getJSON(`${API}/api/traxes/summary?taxYear=${new Date().getFullYear()}`),
-      ]);
-      setTraxStatus(st);
-      setTraxSum(sum);
-    } catch (e) {
-      setTraxErr(String(e.message || e));
+  const filedView = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return filed.filter((r) => {
+      if (only !== "all" && r.status !== only) return false;
+      if (!needle) return true;
+      return (
+        r.name.toLowerCase().includes(needle) ||
+        r.what.toLowerCase().includes(needle) ||
+        (r.table || "").toLowerCase().includes(needle) ||
+        (r.gapFunction || "").toLowerCase().includes(needle)
+      );
+    });
+  }, [filed, q, only]);
+
+  const tablesView = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const rows = needle
+      ? tables.filter((t) => t.table.toLowerCase().includes(needle) || t.domain.toLowerCase().includes(needle))
+      : tables;
+    return [...rows].sort((a, b) => b.rows - a.rows || a.table.localeCompare(b.table));
+  }, [tables, q]);
+
+  const byDomain = useMemo(() => {
+    const m = new Map();
+    for (const t of tables) {
+      const d = m.get(t.domain) || { domain: t.domain, tables: 0, rows: 0, columns: 0 };
+      d.tables += 1; d.rows += t.rows; d.columns += t.columns;
+      m.set(t.domain, d);
     }
-  }, []);
+    return [...m.values()].sort((a, b) => b.rows - a.rows);
+  }, [tables]);
 
-  useEffect(() => { loadTraxes(); }, [loadTraxes]);
+  const gaps = useMemo(() => filed.filter((r) => r.status === "gap" && r.gapFunction), [filed]);
 
-  useEffect(() => {
-    if (!driverId) return;
-    let dead = false;
-    setAlgo(null);
-    setSafety(null);
-    getJSON(`${API}/api/algorithm/${driverId}`).then((j) => { if (!dead) setAlgo(j); }).catch(() => {});
-    getJSON(`${API}/api/safety/${driverId}`).then((j) => { if (!dead) setSafety(j); }).catch(() => {});
-    return () => { dead = true; };
-  }, [driverId]);
-
-  const driver = useMemo(() => drivers.find((d) => d.id === driverId) || null, [drivers, driverId]);
-  const clock = useMemo(() => hos.find((f) => f.driverId === driverId) || null, [hos, driverId]);
-  const remaining = clock?.clocks?.drivingRemaining ?? null;
-
-  const refreshAll = async () => {
-    setBusy(true);
-    await loadAll();
-    if (driverId) {
-      await Promise.all([
-        getJSON(`${API}/api/algorithm/${driverId}`).then(setAlgo).catch(() => {}),
-        getJSON(`${API}/api/safety/${driverId}`).then(setSafety).catch(() => {}),
-      ]);
-    }
-    setBusy(false);
-  };
-
-  /* ---- load planning ---- */
-
-  const planRoute = async (load) => {
-    setPlan((p) => ({ ...p, [load.id]: { status: "loading" } }));
-    try {
-      const j = await getJSON2(`${API}/api/routing/plan`, {
-        origin: load.origin,
-        destination: load.destination,
-      });
-      setPlan((p) => ({ ...p, [load.id]: { status: "ok", data: j } }));
-    } catch (e) {
-      setPlan((p) => ({ ...p, [load.id]: { status: "error", error: String(e.message || e) } }));
-    }
-  };
-
-  const signal = async (load, accepted) => {
-    setSignalled((s) => ({ ...s, [load.id]: accepted ? "accepted" : "declined" }));
-    try {
-      await getJSON2(`${API}/api/algorithm/signal`, {
-        driverId,
-        dimension: "load",
-        kind: accepted ? "load_accepted" : "load_declined",
-        subject: `${load.origin} → ${load.destination}`,
-        numericValue: load.rpm,
-        unit: "usd_per_mile",
-        source: "entitled-index",
-        meta: { loadId: load.id, broker: load.broker, equipment: load.equipment, miles: load.miles },
-      });
-      if (driverId) getJSON(`${API}/api/algorithm/${driverId}`).then(setAlgo).catch(() => {});
-    } catch {
-      /* a failed signal must never block the driver — the decision still stands */
-    }
-  };
-
-  /* ---- medical ---- */
-
-  const personName = useCallback(
-    (pid) => people.find((p) => p.id === pid)?.name || pid,
-    [people],
+  const tabBtn = (id, label) => (
+    <button
+      onClick={() => setTab(id)}
+      style={{
+        padding: "8px 16px", background: tab === id ? "#1d1d1d" : "transparent",
+        border: `1px solid ${tab === id ? GOLD : BORDER}`, borderRadius: 3, cursor: "pointer",
+        color: tab === id ? GOLDBR : MUTED,
+        font: "600 11px/1 Oswald, sans-serif", letterSpacing: "0.18em", textTransform: "uppercase",
+      }}
+    >{label}</button>
   );
-
-  const medCards = useMemo(
-    () =>
-      docs
-        .filter((d) => d.category === "medical_card")
-        .map((d) => ({ ...d, days: daysUntil(d.expiresOn), who: personName(d.personId) }))
-        .sort((a, b) => (a.days ?? 99999) - (b.days ?? 99999)),
-    [docs, personName],
-  );
-
-  /* ---- render ---- */
-
-  const learned = algo?.patternsLearned ?? null;
-  const loadPatterns = algo?.dimensions?.load || [];
-  const routePatterns = algo?.dimensions?.route || [];
-  const custPatterns = algo?.dimensions?.customer || [];
-  const knownLoadPrefs = [...loadPatterns, ...routePatterns, ...custPatterns].filter((p) => !p.insufficient);
 
   return (
-    <div style={{ background: "#0a0a0a", minHeight: "100vh", color: "#e8e8e8" }}>
-      <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#e8e8e8" }}>
+      <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+        .di-row:hover{background:#1a1a1a}
+        table.di{width:100%;border-collapse:collapse}
+        table.di th{font:600 10px/1 Oswald,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#666;text-align:left;padding:9px 10px;border-bottom:1px solid #222}
+        table.di td{font:400 12px/1.5 Inter,sans-serif;color:#ccc;padding:9px 10px;border-bottom:1px solid #1a1a1a;vertical-align:top}
+        .mono{font-family:'JetBrains Mono',monospace;font-size:11px}`}</style>
 
-      {/* header */}
-      <div style={{ borderBottom: `1px solid ${BORDER}`, background: "linear-gradient(180deg,#111 0%,#0a0a0a 100%)", padding: "34px 26px 26px" }}>
-        <div style={{ maxWidth: 1240, margin: "0 auto" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px solid ${BORDER}`, borderRadius: 999, padding: "5px 13px", marginBottom: 14 }}>
-            <LayoutGrid size={13} color={GOLD} />
-            <span style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.2em", fontSize: 10.5, color: GOLD }}>
-              Entitled Index
-            </span>
-          </div>
+      {/* HEADER BAND */}
+      <div style={{ borderBottom: `1px solid ${BORDER}`, background: "linear-gradient(180deg,#111,#0a0a0a)" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "30px 22px 24px" }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 11px",
+            border: `1px solid ${BORDER}`, borderRadius: 3, color: GOLD,
+            font: "600 10px/1 Oswald, sans-serif", letterSpacing: "0.24em", textTransform: "uppercase",
+          }}>
+            <Database size={12} /> Entitled Index
+          </span>
 
-          <h1 style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: 52, lineHeight: 1, margin: 0, letterSpacing: "0.01em" }}>
-            PLANNING, PEOPLE, <span style={{ color: GOLDBR }}>PHYSICALS</span>, POSITION
+          <h1 style={{
+            margin: "16px 0 10px", font: "400 52px/0.95 'Bebas Neue', sans-serif",
+            letterSpacing: "0.02em", color: "#f2f2f2",
+          }}>
+            ALL <span style={{ color: GOLDBR }}>DATA</span>. EVERY FILING. THE GAP BETWEEN THEM.
           </h1>
 
-          <p style={{ color: MUTED, fontSize: 14.5, lineHeight: 1.65, maxWidth: 900, marginTop: 12 }}>
-            Four jobs on one screen, all pointed at the same driver. Pick him once at the top and
-            everything below follows: which loads actually fit the hours he has left, what HR
-            still owes him, when his medical card dies, and where his truck is right now. Every
-            number is read from a live endpoint — the endpoint is printed under each panel so you
-            can check it yourself.
+          <p style={{ margin: "0 0 20px", maxWidth: 900, font: "400 14px/1.7 Inter, sans-serif", color: MUTED }}>
+            Not a document list and not a feature grid. This counts every table in the live database,
+            lists every record a motor carrier ever reports or files, and matches one to the other.
+            Every row marked <strong style={{ color: WARN }}>NO TABLE — GAP</strong> is a function that
+            does not exist yet, named exactly, with the filing that justifies building it. That is the
+            build list.
           </p>
 
-          {/* driver bar */}
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 14, marginTop: 20 }}>
-            <div style={{ minWidth: 260 }}>
-              <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.16em", fontSize: 10.5, color: MUTED, marginBottom: 6 }}>
-                Driver
-              </div>
-              <select value={driverId} onChange={(e) => setDriverId(e.target.value)} style={inputCls}>
-                {drivers.length === 0 && <option value="">No drivers loaded</option>}
-                {drivers.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name} — {d.truckNumber}</option>
-                ))}
-              </select>
+          {state === "ok" && summary ? (
+            <div style={{ display: "flex", gap: 30, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <Stat value={summary.data.tables} label="Tables" />
+              <Stat value={summary.data.rows.toLocaleString()} label="Rows live" tone="gold" />
+              <Stat value={summary.data.columns} label="Columns" />
+              <Stat value={summary.filings.total} label="Filing types" />
+              <Stat value={summary.filings.live} label="Backed by data" tone="gold" />
+              <Stat value={summary.filings.gap} label="No table yet" tone="warn" />
+              <button
+                onClick={load}
+                style={{
+                  marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 7,
+                  padding: "9px 15px", background: "transparent", border: `1px solid ${GOLD}`,
+                  borderRadius: 3, color: GOLDBR, cursor: "pointer",
+                  font: "600 11px/1 Oswald, sans-serif", letterSpacing: "0.18em", textTransform: "uppercase",
+                }}
+              ><RefreshCw size={13} /> Refresh</button>
             </div>
-
-            <button onClick={refreshAll} disabled={busy} style={btn(true)}>
-              <RefreshCw size={13} className={busy ? "spin" : undefined} />
-              {busy ? "Refreshing" : "Refresh all"}
-            </button>
-
-            {clock && (
-              <div style={{ display: "flex", gap: 10 }}>
-                <Stat value={hhmm(remaining)} label="Drive left" />
-                <Stat value={hhmm(clock.clocks?.onDutyWindowRemaining)} label="Window left" />
-                <Stat value={safety ? safety.score : "—"} label="Safety score" />
-                <Stat value={learned === null ? "—" : `${learned}/${algo?.patternsPossible ?? "?"}`} label="Patterns learned" />
-              </div>
-            )}
-          </div>
+          ) : null}
         </div>
       </div>
 
-      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "24px 26px 60px" }}>
-        {state === "loading" && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, color: MUTED, padding: 30 }}>
-            <Loader2 size={16} className="spin" color={GOLD} /> Loading live data…
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "24px 22px 60px" }}>
+
+        {state === "loading" ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 40, color: MUTED }}>
+            <Loader2 size={16} className="spin" /> Introspecting the live database…
           </div>
-        )}
+        ) : null}
 
-        {state === "error" && (
-          <Panel title="Hub failed to load" note="one of the six startup endpoints returned an error" icon={AlertTriangle}>
-            <Missing label="The hub could not read its data." reason={err} />
+        {state === "error" ? (
+          <Panel title="Index unavailable" icon={AlertTriangle}>
+            <div style={{ color: WARN, font: "400 13px/1.6 Inter, sans-serif" }}>
+              The server returned: <span className="mono">{err}</span>
+            </div>
           </Panel>
-        )}
+        ) : null}
 
-        {state === "ok" && (
+        {state === "ok" ? (
           <>
-            {/* 1. LOAD PLANNING */}
-            <Panel
-              title="1 · Load planning"
-              icon={Package}
-              note="GET /api/loads · GET /api/hos · GET /api/algorithm/:driverId · POST /api/routing/plan"
-            >
-              <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.6, marginTop: 0 }}>
-                Every load below is checked against the drive time {driver?.name || "this driver"} has
-                left on his 11-hour clock right now. The fit check is a straight{" "}
-                {AVG_MPH} mph average — it is an estimate, not a routed time. Hit{" "}
-                <strong style={{ color: GOLD }}>Plan route</strong> on any load for the real Google
-                Directions leg. Booking or passing records a signal so his profile learns what he
-                actually takes.
-              </p>
-
-              {remaining === 0 && (
-                <div style={{ marginTop: 12 }}>
-                  <Missing
-                    label="This driver has 0:00 of drive time left."
-                    reason="Every load below is marked as not fitting because the 11-hour limit is already reached. That is his real clock from /api/hos, not a placeholder."
-                  />
-                </div>
-              )}
-
-              <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
-                {loads.length === 0 && (
-                  <Missing label="No loads on the board." reason="/api/loads returned zero rows." />
-                )}
-
-                {loads.map((l) => {
-                  const estSec = (l.miles / AVG_MPH) * 3600;
-                  const fits = remaining !== null && estSec <= remaining;
-                  const short = remaining !== null ? estSec - remaining : null;
-                  const p = plan[l.id];
-                  const sig = signalled[l.id];
-                  return (
-                    <div key={l.id} style={{ border: `1px solid ${BORDER}`, borderRadius: 8, background: "#121212", padding: 14 }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "baseline" }}>
-                        <div style={{ flex: 1, minWidth: 260 }}>
-                          <div style={{ fontFamily: "Oswald, sans-serif", fontSize: 16, letterSpacing: "0.04em", color: "#f0f0f0" }}>
-                            {l.origin} → {l.destination}
-                          </div>
-                          <div style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11.5, color: DIM, marginTop: 4 }}>
-                            {l.broker} · {l.equipment} · {l.miles} mi · {money(l.rate)} · ${l.rpm}/mi · pickup {l.pickupDate}
-                          </div>
-                        </div>
-                        <div style={{
-                          fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.14em",
-                          fontSize: 11, padding: "5px 10px", borderRadius: 5,
-                          border: `1px solid ${fits ? GOLD : WARN}`, color: fits ? GOLD : WARN,
-                        }}>
-                          {remaining === null ? "No clock" : fits ? "Fits the clock" : `Short ${hhmm(short)}`}
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 18, marginTop: 10, fontSize: 12, color: MUTED }}>
-                        <span><Clock size={11} style={{ verticalAlign: -1 }} /> est {hhmm(estSec)} at {AVG_MPH} mph</span>
-                        <span><MapPin size={11} style={{ verticalAlign: -1 }} /> drive left {hhmm(remaining)}</span>
-                        <span>status {l.status}</span>
-                      </div>
-
-                      {p?.status === "ok" && p.data?.route && (
-                        <div style={{ marginTop: 10, borderTop: "1px solid #1c1c1c", paddingTop: 10 }}>
-                          <Row k="Routed distance" v={`${p.data.route.miles} mi`} mono />
-                          <Row k="Routed drive time" v={hhmm(p.data.route.seconds)} mono />
-                          <Row k="Summary" v={p.data.route.summary || "—"} mono />
-                          <Row
-                            k="Against his clock"
-                            v={remaining !== null && p.data.route.seconds <= remaining ? "Fits" : `Short ${hhmm((p.data.route.seconds || 0) - (remaining || 0))}`}
-                            mono
-                            tone={remaining !== null && p.data.route.seconds <= remaining ? GOLD : WARN}
-                          />
-                        </div>
-                      )}
-                      {p?.status === "error" && (
-                        <div style={{ marginTop: 10, color: WARN, fontSize: 12, fontFamily: "JetBrains Mono, monospace" }}>
-                          Routing failed: {p.error}
-                        </div>
-                      )}
-
-                      <div style={{ display: "flex", gap: 9, marginTop: 12, flexWrap: "wrap" }}>
-                        <button onClick={() => planRoute(l)} style={btn(false)} disabled={p?.status === "loading"}>
-                          {p?.status === "loading" ? <Loader2 size={12} className="spin" /> : <RouteIcon size={12} />}
-                          Plan route
-                        </button>
-                        <button onClick={() => signal(l, true)} style={btn(sig === "accepted")} disabled={!!sig}>
-                          {sig === "accepted" ? "Booked — signal recorded" : "Book it"}
-                        </button>
-                        <button onClick={() => signal(l, false)} style={btn(false)} disabled={!!sig}>
-                          {sig === "declined" ? "Passed — signal recorded" : "Pass"}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* CONTROLS */}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 20 }}>
+              {tabBtn("filings", `Filings (${filed.length})`)}
+              {tabBtn("data", `Data tables (${tables.length})`)}
+              {tabBtn("build", `Build list (${gaps.length})`)}
+              <div style={{
+                marginLeft: "auto", display: "flex", alignItems: "center", gap: 8,
+                border: `1px solid ${BORDER}`, borderRadius: 3, padding: "7px 11px", background: CARD,
+              }}>
+                <Search size={13} color={DIM} />
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search filings, tables, functions…"
+                  style={{
+                    background: "transparent", border: "none", outline: "none", color: "#ddd",
+                    font: "400 12px/1 Inter, sans-serif", width: 240,
+                  }}
+                />
               </div>
+            </div>
 
-              <div style={{ marginTop: 18 }}>
-                <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.18em", fontSize: 11, color: MUTED, marginBottom: 8 }}>
-                  What his profile already knows about loads, lanes and brokers
-                </div>
-                {knownLoadPrefs.length === 0 ? (
-                  <Missing
-                    label="Nothing learned yet about his load, lane or broker preferences."
-                    reason={`The engine needs ${algo?.minSamples ?? 5} observations in a dimension before it will state a pattern. He has booked ${algo?.signalsRecorded ?? 0} loads through the app so far. Book or pass a few above and this fills in on its own.`}
-                  />
-                ) : (
-                  <div>
-                    {knownLoadPrefs.map((p, i) => (
-                      <Row key={i} k={p.label} v={`${p.value} · ${p.sampleCount} obs · ${p.confidence}`} mono />
+            {/* ------------------------------------------------ FILINGS */}
+            {tab === "filings" ? (
+              <>
+                <Panel
+                  title="Everything a carrier reports or files"
+                  icon={BookOpen}
+                  note="GET /api/data-index/filed — status is computed from live COUNT(*) on the backing table, never asserted. LIVE DATA means rows exist right now. TABLE EMPTY means the schema is there and nothing has been written. NO TABLE means we do not store this at all."
+                  right={
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {["all", "live", "table-empty", "gap"].map((k) => (
+                        <button key={k} onClick={() => setOnly(k)}
+                          style={{
+                            padding: "5px 10px", background: only === k ? "#1d1d1d" : "transparent",
+                            border: `1px solid ${only === k ? GOLD : BORDER}`, borderRadius: 3,
+                            color: only === k ? GOLDBR : DIM, cursor: "pointer",
+                            font: "600 9px/1 Oswald, sans-serif", letterSpacing: "0.14em", textTransform: "uppercase",
+                          }}>{k === "all" ? "All" : STATUS_STYLE[k].label}</button>
+                      ))}
+                    </div>
+                  }
+                >
+                  {filedCounts ? (
+                    <div style={{ display: "flex", gap: 28, flexWrap: "wrap", marginBottom: 18 }}>
+                      <Stat value={filedCounts.total} label="Filing types" />
+                      <Stat value={filedCounts.live} label="Live data" tone="gold" />
+                      <Stat value={filedCounts.tableEmpty} label="Schema, no rows" />
+                      <Stat value={filedCounts.gap} label="Not stored at all" tone="warn" />
+                    </div>
+                  ) : null}
+
+                  <div style={{ overflowX: "auto" }}>
+                    <table className="di">
+                      <thead>
+                        <tr>
+                          <th style={{ width: "22%" }}>Record</th>
+                          <th style={{ width: "26%" }}>What it is</th>
+                          <th>Cadence</th>
+                          <th>Retention</th>
+                          <th>Cite</th>
+                          <th>Backing table</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filedView.map((r) => (
+                          <tr key={r.id} className="di-row">
+                            <td style={{ color: "#eee", fontWeight: 600 }}>{r.name}
+                              <div style={{ color: DIM, fontWeight: 400, fontSize: 11, marginTop: 3 }}>{r.filedWith}</div>
+                            </td>
+                            <td style={{ color: MUTED }}>{r.what}</td>
+                            <td>{r.cadence || <span style={{ color: DIM }}>—</span>}</td>
+                            <td>{r.retention || <span style={{ color: DIM }}>—</span>}</td>
+                            <td className="mono" style={{ color: r.cite ? MUTED : DIM }}>{r.cite || "—"}</td>
+                            <td className="mono" style={{ color: r.table ? GOLD : DIM }}>
+                              {r.table || "—"}
+                              {r.rows !== null && r.rows !== undefined
+                                ? <span style={{ color: DIM }}> · {r.rows} rows</span> : null}
+                            </td>
+                            <td><StatusBadge status={r.status} /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {filedView.length === 0 ? (
+                      <div style={{ padding: 20, color: DIM, font: "400 12px Inter, sans-serif" }}>No filings match that filter.</div>
+                    ) : null}
+                  </div>
+                </Panel>
+
+                <Panel title="Where the retention periods and citations came from" icon={BookOpen}
+                  note="Only verified fields are populated. Anything unverified renders as an em dash rather than a guess.">
+                  <ul style={{ margin: 0, paddingLeft: 18, font: "400 12px/1.9 Inter, sans-serif", color: MUTED }}>
+                    {sources.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul>
+                </Panel>
+              </>
+            ) : null}
+
+            {/* ------------------------------------------------ DATA TABLES */}
+            {tab === "data" ? (
+              <>
+                <Panel title="Data by domain" icon={Layers}
+                  note="GET /api/data-index/tables — PRAGMA table_info and COUNT(*) executed against Turso on every request. Nothing cached, nothing hardcoded.">
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(190px,1fr))", gap: 12 }}>
+                    {byDomain.map((d) => (
+                      <div key={d.domain} style={{ border: `1px solid ${BORDER}`, borderRadius: 4, padding: 13 }}>
+                        <div style={{
+                          font: "600 10px/1 Oswald, sans-serif", letterSpacing: "0.18em",
+                          textTransform: "uppercase", color: GOLD, marginBottom: 8,
+                        }}>{d.domain}</div>
+                        <div style={{ font: "400 28px/1 'Bebas Neue', sans-serif", color: "#f0f0f0" }}>
+                          {d.rows.toLocaleString()}
+                        </div>
+                        <div style={{ font: "400 11px/1.5 Inter, sans-serif", color: DIM, marginTop: 3 }}>
+                          rows · {d.tables} tables · {d.columns} columns
+                        </div>
+                      </div>
                     ))}
                   </div>
-                )}
-              </div>
-            </Panel>
+                </Panel>
 
-            {/* 2. HR TOOLS */}
-            <Panel title="2 · Human resource tools" icon={Users} note="GET /api/hr/summary — the same records the HR module writes">
-              {!hr ? (
-                <Missing label="HR summary unavailable." reason="/api/hr/summary did not return." />
-              ) : (
-                <>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                    <Stat value={hr.headcount} label="Headcount" />
-                    <Stat value={hr.activeDrivers} label="Active drivers" />
-                    <Stat value={hr.prospects} label="Prospects" />
-                    <Stat value={hr.openOccurrences} label="Open occurrences" />
-                    <Stat value={hr.criticalOccurrences} label="Critical" />
-                    <Stat value={hr.expiringDocs} label="Expiring docs" />
+                <Panel title="Every table in the database" icon={Database}
+                  note={tableCounts
+                    ? `${tableCounts.tables} tables · ${tableCounts.rows.toLocaleString()} rows · ${tableCounts.columns} columns · ${tableCounts.empty} tables hold zero rows.`
+                    : undefined}>
+                  <div style={{ overflowX: "auto" }}>
+                    <table className="di">
+                      <thead>
+                        <tr>
+                          <th>Table</th><th>Domain</th><th>Rows</th><th>Cols</th><th>What reads it</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tablesView.map((t) => (
+                          <tr key={t.table} className="di-row">
+                            <td className="mono" style={{ color: GOLD }}>{t.table}</td>
+                            <td>{t.domain}</td>
+                            <td style={{ color: t.rows > 0 ? "#eee" : DIM, fontWeight: t.rows > 0 ? 600 : 400 }}>
+                              {t.rows}
+                            </td>
+                            <td style={{ color: MUTED }}>{t.columns}</td>
+                            <td className="mono" style={{ color: t.powers ? MUTED : WARN }}>
+                              {t.powers || "nothing reads it"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
+                </Panel>
+              </>
+            ) : null}
 
-                  <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 18 }}>
-                    <div>
-                      <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.18em", fontSize: 11, color: MUTED, marginBottom: 6 }}>Last payroll run</div>
-                      {hr.lastPayroll ? (
-                        <>
-                          <Row k="Period" v={`${hr.lastPayroll.periodStart} → ${hr.lastPayroll.periodEnd}`} mono />
-                          <Row k="Status" v={hr.lastPayroll.status} mono />
-                          <Row k="Gross" v={money(hr.lastPayroll.totalGross)} mono />
-                          <Row k="Net" v={money(hr.lastPayroll.totalNet)} mono />
-                          <Row k="People paid" v={hr.lastPayroll.headcount} mono />
-                        </>
-                      ) : (
-                        <Missing label="No payroll run on file." reason="No rows in the payroll table yet." />
-                      )}
-                    </div>
-                    <div>
-                      <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.18em", fontSize: 11, color: MUTED, marginBottom: 6 }}>Profitability</div>
-                      {hr.profit ? (
-                        <>
-                          <Row k="Revenue" v={money(hr.profit.revenue)} mono />
-                          <Row k="Cost" v={money(hr.profit.cost)} mono />
-                          <Row k="Net" v={money(hr.profit.net)} mono tone={GOLD} />
-                        </>
-                      ) : (
-                        <Missing label="No profitability rows." reason="Nothing recorded against runs yet." />
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: 9, marginTop: 16, flexWrap: "wrap" }}>
-                    <a href="/hr" style={{ ...btn(false), textDecoration: "none" }}>Open HR module</a>
-                    <a href="/driver-algorithm" style={{ ...btn(false), textDecoration: "none" }}>Driver algorithm</a>
-                    <a href="/fleet-load-board" style={{ ...btn(false), textDecoration: "none" }}>Load board</a>
-                  </div>
-                </>
-              )}
-            </Panel>
-
-            {/* 3. MEDICAL */}
-            <Panel
-              title="3 · DOT physicals & medical cards"
-              icon={Stethoscope}
-              note="GET /api/hr/documents (category=medical_card) · FMCSA National Registry deep link"
-            >
-              <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.6, marginTop: 0 }}>
-                There is no clinic list here on purpose. The FMCSA National Registry — the only
-                list that certifies who may legally perform a DOT physical — is reCAPTCHA-protected
-                with no public API and no bulk download, so no honest app can mirror it. Anything
-                else would be a directory of buildings that may not be certified. What we can do,
-                and what actually keeps a card current, is track the expiry and hand the driver
-                the official search for whatever state he is sitting in.
-              </p>
-
-              <div style={{ marginTop: 16 }}>
-                <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.18em", fontSize: 11, color: MUTED, marginBottom: 8 }}>
-                  Medical cards on file
-                </div>
-                {medCards.length === 0 ? (
-                  <Missing
-                    label="No medical cards on file."
-                    reason="No hr_documents rows with category=medical_card. Upload cards in the HR module and the countdown starts here automatically."
-                  />
-                ) : (
-                  medCards.map((c) => {
-                    const bad = c.days !== null && c.days <= 60;
-                    return (
-                      <Row
-                        key={c.id}
-                        k={c.who}
-                        v={
-                          c.days === null
-                            ? "No expiry recorded"
-                            : c.days < 0
-                              ? `EXPIRED ${Math.abs(c.days)} days ago (${c.expiresOn})`
-                              : `${c.days} days left — expires ${c.expiresOn}`
-                        }
-                        mono
-                        tone={bad ? WARN : "#e8e8e8"}
-                      />
-                    );
-                  })
-                )}
-                <div style={{ fontSize: 11.5, color: DIM, marginTop: 8, fontFamily: "JetBrains Mono, monospace" }}>
-                  Anything inside 60 days is flagged. A card cannot be renewed retroactively — the
-                  driver is out of service the day it lapses.
-                </div>
-              </div>
-
-              <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
-                <div style={{ minWidth: 240 }}>
-                  <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.16em", fontSize: 10.5, color: MUTED, marginBottom: 6 }}>
-                    Find a certified examiner in
-                  </div>
-                  <select value={medState} onChange={(e) => setMedState(e.target.value)} style={inputCls}>
-                    {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <a
-                  href={REGISTRY}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  style={{ ...btn(true), textDecoration: "none" }}
-                >
-                  <ExternalLink size={13} />
-                  Open FMCSA registry — {medState}
-                </a>
-                <a href="/medical-examiners" style={{ ...btn(false), textDecoration: "none" }}>
-                  Full examiner page
-                </a>
-              </div>
-              <div style={{ fontSize: 11.5, color: DIM, marginTop: 10, lineHeight: 1.6 }}>
-                The registry search opens on the official FMCSA site; pick the state there. We
-                cannot pre-fill it — the page is behind a captcha and rejects automated queries.
-              </div>
-            </Panel>
-
-            {/* 4. TELEMETRY */}
-            <Panel
-              title="4 · Live telemetry feed"
-              icon={Radio}
-              note="GET /api/fleet/drivers · GET /api/hos · GET /api/safety/:driverId"
-            >
-              <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.6, marginTop: 0 }}>
-                This is platform telemetry — positions, speeds and duty clocks our own server
-                holds. It is <strong style={{ color: GOLD }}>not</strong> a carrier telematics
-                integration: no third-party provider is connected. The Azuga key we were given is
-                rejected by their API (401), so nothing is flowing from an ELD vendor. Everything
-                below is real data from our database, and it is what feeds panels 1 through 3.
-              </p>
-
-              <div style={{ marginTop: 14 }}>
-                {drivers.map((d) => {
-                  const c = hos.find((f) => f.driverId === d.id);
-                  const viol = c?.violations?.length || 0;
-                  return (
-                    <div key={d.id} style={{ borderBottom: "1px solid #1c1c1c", padding: "10px 0", display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center" }}>
-                      <div style={{ minWidth: 190 }}>
-                        <span style={{ color: d.id === driverId ? GOLDBR : "#e8e8e8", fontFamily: "Oswald, sans-serif", fontSize: 14 }}>{d.name}</span>
-                        <span style={{ color: DIM, fontSize: 12 }}> · {d.truckNumber}</span>
+            {/* ------------------------------------------------ BUILD LIST */}
+            {tab === "build" ? (
+              <>
+                <Panel title="The build list — filings with nothing behind them" icon={Hammer}
+                  note="Every item below is a filing a carrier is already responsible for, that this platform does not store. Each one is written as the concrete function to build, not as a feature idea.">
+                  {gaps.map((r, i) => (
+                    <div key={r.id} style={{
+                      border: `1px solid ${BORDER}`, borderRadius: 4, padding: 15,
+                      marginBottom: 12, background: "#131313",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                        <span style={{ font: "400 22px/1 'Bebas Neue', sans-serif", color: DIM, minWidth: 26 }}>
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <span style={{ font: "600 14px/1.3 Inter, sans-serif", color: GOLDBR }}>{r.name}</span>
+                        <StatusBadge status={r.status} />
+                        {r.cite ? <span className="mono" style={{ color: DIM }}>{r.cite}</span> : null}
                       </div>
-                      <div style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11.5, color: MUTED, flex: 1, minWidth: 300 }}>
-                        {d.lat !== null && d.lat !== undefined ? `${Number(d.lat).toFixed(4)}, ${Number(d.lng).toFixed(4)}` : "no position"}
-                        {" · "}{d.speed !== null && d.speed !== undefined ? `${d.speed} mph` : "no speed"}
-                        {" · "}hdg {d.heading ?? "—"}
-                        {" · "}seen {d.lastSeen ? new Date(d.lastSeen).toLocaleString() : "never"}
+                      <div style={{ font: "400 12px/1.7 Inter, sans-serif", color: MUTED, marginBottom: 8 }}>
+                        {r.what}
                       </div>
-                      <div style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11.5, color: viol ? WARN : GOLD, minWidth: 150, textAlign: "right" }}>
-                        drive left {hhmm(c?.clocks?.drivingRemaining)} · {viol} violation{viol === 1 ? "" : "s"}
+                      <div style={{
+                        borderLeft: `2px solid ${GOLD}`, paddingLeft: 12,
+                        font: "400 13px/1.7 Inter, sans-serif", color: "#ddd",
+                      }}>
+                        {r.gapFunction}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-
-              {clock?.violations?.length > 0 && (
-                <div style={{ marginTop: 16 }}>
-                  <div style={{ fontFamily: "Oswald, sans-serif", textTransform: "uppercase", letterSpacing: "0.18em", fontSize: 11, color: MUTED, marginBottom: 8 }}>
-                    Open on {driver?.name}
-                  </div>
-                  {clock.violations.map((v, i) => (
-                    <Row key={i} k={v.level} v={v.msg} tone={WARN} />
                   ))}
-                </div>
-              )}
-            </Panel>
+                </Panel>
 
-            {/* 5 — TRAXES */}
-            <Panel
-              title="5 · TRAXES — scan & file"
-              icon={Receipt}
-              note="GET /api/traxes/status + GET /api/traxes/summary"
-              right={<a href="/traxes" style={{ ...btn(true), textDecoration: "none" }}>Open TRAXES</a>}
-            >
-              {traxErr ? (
-                <Missing label="TRAXES did not answer" reason={traxErr} />
-              ) : !traxStatus || !traxSum ? (
-                <div style={{ color: MUTED, fontSize: 13 }}>Loading TRAXES…</div>
-              ) : (
-                <>
-                  <div style={{ display: "flex", gap: 28, flexWrap: "wrap", marginBottom: 18 }}>
-                    <Stat value={traxSum.records ?? 0} label={`Records filed ${TAX_YEAR}`} />
-                    <Stat value={money(traxSum.revenue)} label="Revenue recorded" />
-                    <Stat value={money(traxSum.deductions)} label="Deductions recorded" />
-                    <Stat value={money(traxSum.net)} label="Net (revenue − deductions)" />
-                  </div>
-
-                  <Row k="Document OCR" v={traxStatus?.ocr?.configured ? `live · ${traxStatus?.ocr?.model}` : "not configured"} mono tone={traxStatus?.ocr?.configured ? GOLD : WARN} />
-                  <Row k="Scan storage" v={traxStatus?.storage?.configured ? "live · presigned upload straight to the bucket" : "not configured"} mono tone={traxStatus?.storage?.configured ? GOLD : WARN} />
-                  <Row k="Records missing an amount" v={traxSum.recordsMissingAnAmount ?? 0} mono />
-                  <Row
-                    k="Amount completeness"
-                    v={traxSum?.completeness?.value === null || traxSum?.completeness?.value === undefined ? "MISSING" : `${traxSum.completeness.value}%`}
-                    mono
-                    tone={traxSum?.completeness?.value === null || traxSum?.completeness?.value === undefined ? WARN : GOLD}
-                  />
-
-                  {traxStatus?.brokerDelivery?.emailConfigured === false && (
-                    <div style={{ marginTop: 14 }}>
-                      <Missing
-                        label="Emailing a scan to a broker"
-                        reason="No email provider is connected to the platform, so TRAXES cannot send a document to a broker. It mints a signed download link you send yourself, or files the document to the dispatch queue inside the platform."
-                      />
+                <Panel title="Also incomplete — schema exists, nothing writes to it" icon={FileWarning}>
+                  {filed.filter((r) => r.status === "table-empty").map((r) => (
+                    <Missing key={r.id} label={`${r.name} → ${r.table} (0 rows)`}
+                      reason={r.gapFunction || "The table is defined but no page or route has ever written a row to it."} />
+                  ))}
+                  {filed.filter((r) => r.status === "live" && r.gapFunction).map((r) => (
+                    <div key={r.id} style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 12, marginTop: 12 }}>
+                      <div style={{ font: "600 12px/1.4 Inter, sans-serif", color: "#ddd", marginBottom: 4 }}>
+                        {r.name} — has data, still incomplete
+                      </div>
+                      <div style={{ font: "400 12px/1.6 Inter, sans-serif", color: MUTED }}>{r.gapFunction}</div>
                     </div>
-                  )}
+                  ))}
+                </Panel>
+              </>
+            ) : null}
 
-                  <div style={{ color: DIM, fontSize: 11.5, lineHeight: 1.7, marginTop: 14 }}>
-                    TRAXES reads what is printed on a document and stores it for a tax preparer.
-                    It does not verify the document, does not file with the IRS or any state,
-                    does not compute tax owed, and is not tax advice. Records with no readable
-                    amount are excluded from these totals rather than counted as zero.
-                  </div>
-                </>
-              )}
-            </Panel>
-
-            {/* what would make this real */}
-            <Panel title="What would make this hub smarter" note="honest list of what is still missing">
-              <ol style={{ color: MUTED, fontSize: 13.5, lineHeight: 1.85, paddingLeft: 20, margin: 0 }}>
-                <li>A real telematics feed. The Azuga key is rejected at their end — a working key, or a different provider, turns panel 4 from our own database into live vehicle data.</li>
-                <li>Google Geocoding and Places enabled on the Maps project. Both are off today, which is why load fit uses a {AVG_MPH} mph average until you click Plan route.</li>
-                <li>Medical cards uploaded for every driver. The storage API is built and tested; no page uses it yet, so the countdown only covers the cards already in the HR table.</li>
-                <li>More booked loads. The profile needs {algo?.minSamples ?? 5} observations per dimension before it will state a preference, and it has {algo?.signalsRecorded ?? 0} recorded for this driver.</li>
-              </ol>
-            </Panel>
-
-            <div style={{ color: DIM, fontSize: 11.5, lineHeight: 1.7, marginTop: 8 }}>
-              This hub does not book freight with any broker, does not file anything with FMCSA,
-              does not certify a medical examiner, and is not a registered ELD. It reads the
-              platform's own records and shows them next to each other.
+            {/* FOOTER DISCLAIMER */}
+            <div style={{
+              border: `1px solid ${BORDER}`, borderRadius: 4, padding: 16, background: CARD, marginTop: 8,
+            }}>
+              <div style={{
+                font: "600 10px/1 Oswald, sans-serif", letterSpacing: "0.2em",
+                textTransform: "uppercase", color: DIM, marginBottom: 8,
+              }}>What this page is not</div>
+              <p style={{ margin: 0, font: "400 12px/1.8 Inter, sans-serif", color: MUTED }}>
+                TruckWithEase does not file anything with FMCSA, the IRS, IFTA, or any state agency, and
+                nothing on this page submits a form. Storing a record here does not satisfy a legal
+                retention requirement on its own. TruckWithEase is not a registered ELD. Retention
+                periods and CFR citations are reproduced from public federal sources for orientation
+                only and are not legal advice — verify against eCFR and your base jurisdiction before
+                relying on them. Counts are read live from the database at the moment you loaded this
+                page; a table showing zero rows means exactly that.
+              </p>
             </div>
           </>
-        )}
+        ) : null}
       </div>
     </div>
   );
-}
-
-/* POST helper kept below the component for readability */
-async function getJSON2(url, body) {
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || `${r.status} ${r.statusText}`);
-  return j;
 }

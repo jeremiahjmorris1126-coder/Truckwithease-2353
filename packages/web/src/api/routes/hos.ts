@@ -16,7 +16,7 @@ const LIMITS = {
   breakAfter: 8 * 60,    // 30-min break required after 8 hr driving
 };
 
-function computeClocks(logs: (typeof schema.hosLogs.$inferSelect)[]) {
+export function computeClocks(logs: (typeof schema.hosLogs.$inferSelect)[]) {
   const now = Date.now();
   let drivingMin = 0, onDutyMin = 0;
   // Find the start of the current on-duty window (first on_duty/driving after last 10-hr+ off/sleeper)
@@ -44,7 +44,7 @@ function computeClocks(logs: (typeof schema.hosLogs.$inferSelect)[]) {
   };
 }
 
-function violations(clocks: ReturnType<typeof computeClocks>) {
+export function hosViolations(clocks: ReturnType<typeof computeClocks>) {
   const v: { level: string; msg: string }[] = [];
   if (clocks.drivingRemaining <= 0) v.push({ level: "danger", msg: "11-hour driving limit reached — you must stop." });
   else if (clocks.drivingRemaining <= 30) v.push({ level: "warning", msg: `Only ${clocks.drivingRemaining} min driving time left.` });
@@ -61,7 +61,7 @@ export const hos = new Hono()
     const logs = await db.select().from(schema.hosLogs)
       .where(eq(schema.hosLogs.driverId, driverId)).orderBy(desc(schema.hosLogs.startedAt));
     const clocks = computeClocks(logs);
-    return c.json({ logs, clocks, violations: violations(clocks) }, 200);
+    return c.json({ logs, clocks, violations: hosViolations(clocks) }, 200);
   })
   // Switch duty status — closes open log, opens new one
   .post("/:driverId/status", zValidator("json", z.object({ status: z.string(), location: z.string().optional(), note: z.string().optional() })), async (c) => {
@@ -87,7 +87,7 @@ export const hos = new Hono()
     for (const d of drivers) {
       const logs = await db.select().from(schema.hosLogs).where(eq(schema.hosLogs.driverId, d.id));
       const clocks = computeClocks(logs);
-      out.push({ driverId: d.id, name: d.name, truckNumber: d.truckNumber, status: d.status, clocks, violations: violations(clocks) });
+      out.push({ driverId: d.id, name: d.name, truckNumber: d.truckNumber, status: d.status, clocks, violations: hosViolations(clocks) });
     }
     return c.json({ fleet: out }, 200);
   });

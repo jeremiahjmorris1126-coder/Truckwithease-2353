@@ -123,6 +123,9 @@ routing.post("/plan", async (c) => {
     summary: route?.summary ?? null,
     warnings: route?.warnings ?? [],
     steps: legs[0]?.steps?.length ?? 0,
+    // Google's encoded overview polyline. /api/bridges/scan-route decodes this
+    // to flag low-clearance bridges along the path.
+    overviewPolyline: route?.overview_polyline?.points ?? null,
     // Stated plainly so the UI can repeat it. This is a car route.
     truckProfile: false,
     notApplied: [

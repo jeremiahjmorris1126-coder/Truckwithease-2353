@@ -1009,3 +1009,76 @@ export const traxesRecords = sqliteTable("traxes_records", {
   notes: text("notes"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });
+
+/**
+ * low_bridges — clearance advisory data, imported from the FHWA National Bridge
+ * Inventory (NBI). Nothing here is invented: every row comes from the federal
+ * 2025 delimited all-states file (2025HwyBridgesDelimitedAllStates.txt).
+ *
+ * The field that matters for truck strikes is NBI ITEM 54B, "Minimum Vertical
+ * Underclearance" — the clearance UNDER the structure for the road or railway
+ * passing beneath it. ITEM 53 (vertical clearance OVER the bridge roadway) is a
+ * different number and is NOT used here.
+ *
+ * Honesty limits, surfaced in the UI:
+ *  - NBI is annual and self-reported by the states. Local/municipal bridges and
+ *    many railroad overpasses are missing or carry blank clearance fields.
+ *  - This is a clearance ADVISORY layer, not truck-legal routing.
+ *  - 99.99 m in the source means "no restriction recorded", not "measured".
+ */
+export const lowBridges = sqliteTable("low_bridges", {
+  id: text("id").primaryKey(),
+  structureNumber: text("structure_number").notNull(), // NBI item 8
+  stateCode: text("state_code").notNull(),             // NBI item 1 (FIPS)
+  stateAbbr: text("state_abbr").notNull(),
+  countyCode: text("county_code"),                     // NBI item 3
+  lat: real("lat").notNull(),                          // decimal degrees, from item 16
+  lng: real("lng").notNull(),                          // decimal degrees, from item 17
+  clearanceIn: integer("clearance_in").notNull(),      // item 54B converted to inches
+  clearanceM: real("clearance_m").notNull(),           // item 54B as published (meters)
+  underRef: text("under_ref").notNull(),               // item 54A: H = highway, R = railroad
+  featureUnder: text("feature_under"),                 // item 6A
+  facilityCarried: text("facility_carried"),           // item 7
+  location: text("location"),                          // item 9
+  openPosted: text("open_posted"),                     // item 41
+  suspect: integer("suspect", { mode: "boolean" }).notNull().default(false),
+  nbiYear: integer("nbi_year").notNull(),
+  source: text("source").notNull().default("FHWA NBI"),
+  importedAt: integer("imported_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+/**
+ * dispatch_decisions — DISPATCH ZERO: a signed, tamper-evident record of WHY a
+ * load was assigned to a driver, written at the moment of assignment.
+ *
+ * Every row stores the exact inputs the dispatcher had (HOS clocks, route,
+ * low-bridge clearance scan, safety score, economics), which of those inputs
+ * were LIVE vs MISSING, the verdict, and a SHA-256 hash chain:
+ *
+ *   payloadHash = sha256(canonicalJson(decision))
+ *   chainHash   = sha256(seq + "|" + prevHash + "|" + payloadHash)
+ *
+ * What the chain proves: the record has not been altered or back-dated after
+ * the fact. What it does NOT prove: that the inputs were correct. Route data
+ * comes from Google Directions, which has no truck profile; the clearance layer
+ * is an advisory built on the annual, self-reported federal NBI.
+ *
+ * Nothing here is ever recomputed or rewritten. Rows are append-only.
+ */
+export const dispatchDecisions = sqliteTable("dispatch_decisions", {
+  id: text("id").primaryKey(),
+  seq: integer("seq").notNull(),                        // monotonic, 1-based
+  loadId: text("load_id"),
+  driverId: text("driver_id"),
+  verdict: text("verdict").notNull(),                   // go | blocked | advisory
+  scoreJson: text("score_json").notNull(),              // ranked candidate snapshot
+  inputsJson: text("inputs_json").notNull(),            // which of the 7 inputs were live
+  blockersJson: text("blockers_json").notNull(),        // hard stops at decision time
+  unverifiedJson: text("unverified_json").notNull(),    // inputs we did NOT have
+  revenuePerClockHour: real("revenue_per_clock_hour"),  // null when clock is 0
+  payloadHash: text("payload_hash").notNull(),
+  prevHash: text("prev_hash").notNull(),
+  chainHash: text("chain_hash").notNull(),
+  decidedBy: text("decided_by").notNull().default("dispatch"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});

@@ -209,6 +209,8 @@ const RevenueForecastPage = lazy(() => import("./pages/RevenueForecastPage"));
 const CatScalesPage = lazy(() => import("./pages/CatScalesPage"));
 const StaffAppointedPage = lazy(() => import("./pages/StaffAppointedPage"));
 const EntitledIndexPage = lazy(() => import("./pages/EntitledIndexPage"));
+const LowBridgePage = lazy(() => import("./pages/LowBridgePage"));
+const DispatchZeroPage = lazy(() => import("./pages/DispatchZeroPage"));
 const PreLaunchAssurancePage = lazy(() => import("./pages/PreLaunchAssurancePage"));
 const LaunchScenarioCenterPage = lazy(() => import("./pages/LaunchScenarioCenterPage"));
 const FleetPaymentsPage = lazy(() => import("./pages/FleetPaymentsPage"));
@@ -614,6 +616,8 @@ export default function App() {
   if (path === "/daily-maintenance") return <DailyMaintenanceAgent />;
   if (path === "/staff" || path === "/staff-appointed" || path === "/appointed") return <StaffAppointedPage />;
   if (path === "/entitled-index" || path === "/index" || path === "/master-hub" || path === "/entitled") return <EntitledIndexPage />;
+  if (path === "/low-bridges" || path === "/bridges" || path === "/clearance" || path === "/bridge-alerts") return <LowBridgePage />;
+  if (path === "/dispatch-zero" || path === "/dispatch-ledger" || path === "/decision-ledger") return <DispatchZeroPage />;
   if (path === "/pre-launch" || path === "/assurance" || path === "/launch-assurance" || path === "/error-scenarios") return <PreLaunchAssurancePage />;
   if (path === "/scenarios" || path === "/launch-scenarios" || path === "/scenario-center" || path === "/coverage") return <LaunchScenarioCenterPage />;
   if (path === "/fleet-payments" || path === "/payments" || path === "/fuel-finance" || path === "/factoring-hub") return <FleetPaymentsPage />;

@@ -46,6 +46,9 @@ import { traxes } from "./routes/traxes";
 import { integrations } from "./routes/integrations";
 import { email } from "./routes/email";
 import { fleetio } from "./routes/fleetio";
+import { dataIndex } from "./routes/dataindex";
+import { bridges } from "./routes/bridges";
+import { dispatchZero } from "./routes/dispatchzero";
 
 const app = new Hono()
   .basePath('api')
@@ -96,7 +99,10 @@ const app = new Hono()
   .route("/traxes", traxes)
   .route("/integrations", integrations)
   .route("/email", email)
-  .route("/fleetio", fleetio);
+  .route("/fleetio", fleetio)
+  .route("/data-index", dataIndex)
+  .route("/bridges", bridges)
+  .route("/dispatch-zero", dispatchZero);
 
 export type AppType = typeof app;
 export default app;
