@@ -1,503 +1,773 @@
-import React, { useState } from 'react';
-import { Vibrate, Send, Zap, MessageCircle, Phone, AlertTriangle, CheckCircle, Radio } from 'lucide-react';
-import { textToHaptic, triggerHaptic, stopHaptic, createHapticDialogue, decodeHaptic, speechToHaptic, hapticToTone, TRUCKING_PATTERNS } from '../lib/hapticLanguage';
+/**
+ * HapticLanguagePage — vibration alerts for deaf and hard-of-hearing drivers,
+ * with the encoding bug fixed and every invented statistic deleted.
+ *
+ * READS (every round trip is timed and printed on the page)
+ *   GET  /api/haptic          — the canonical pattern registry as ALTERNATING on/off
+ *                               millisecond arrays, a sha256 version hash of that exact
+ *                               encoding, the platform truth (iOS Safari has no
+ *                               Vibration API), and the claims the server refuses to make.
+ *   POST /api/haptic/play     — writes one append-only row to haptic_playbacks per
+ *                               playback attempt, carrying whether THIS browser actually
+ *                               reported vibration support.
+ *   GET  /api/haptic/list     — the last 200 recorded playbacks.
+ *
+ * COMPUTES / MEASURES LOCALLY
+ *   - ('vibrate' in navigator) on the visitor's own browser, printed as a measured fact.
+ *     If it is false, every Play button is disabled and says why instead of pretending.
+ *   - On-time and total elapsed time per pattern, kept separate, because a 500ms buzz
+ *     followed by a 200ms pause is 500ms of vibration and 700ms of wall clock.
+ *   - Round-trip latency per fetch with performance.now(), flagged at 3000 ms.
+ *
+ * REMOVED IN THIS REWRITE
+ *   - THE ENCODING WAS WRONG. legacy/lib/hapticLanguage.js documented its patterns as
+ *     [duration_ms, pause_ms, repeat_count] and then passed those arrays straight to
+ *     navigator.vibrate(), which reads them as alternating on/off milliseconds. So
+ *     'DANGER': [500, 200, 3] did not pulse three times — it vibrated 500ms, paused
+ *     200ms, then vibrated for 3 MILLISECONDS. Every labelled pattern in that file was
+ *     wrong the same way, and the duration shown to the driver was
+ *     pattern.reduce((a,b)=>a+b,0), which summed buzz time, silence and the bogus
+ *     repeat count into one meaningless number. That file is deleted.
+ *   - The "bidirectional" headline: deaf drivers "send haptic responses that hearing
+ *     drivers receive as tone and intent." Nothing was sent anywhere. hapticToTone()
+ *     returned a decorative string to the same browser that called it. There was no
+ *     endpoint, no table, no second device. Deleted.
+ *   - The entire SCIENCE tab and its invented human-factors numbers: "Most users achieve
+ *     fluency in 2-4 weeks with daily practice", "Pre-built trucking patterns accelerate
+ *     adoption by 60%", "~600 touch receptors per square inch", "detect vibration
+ *     frequencies from 10-300 Hz with perfect discrimination", "~20-30 words per minute
+ *     vs 150 wpm". None were sourced. All deleted.
+ *   - "Maximum vibration pattern is 5 seconds to prevent fatigue" and "Emergency signals
+ *     override all other vibrations" — nothing enforced or implemented either one. The
+ *     5-second ceiling is now checked server-side against the registry on every request
+ *     and reported as limits.allWithinLimit. The override claim is gone: the browser
+ *     gives no priority mechanism.
+ *   - Off-palette colours: #060A10 background, #0f1419 cards, #22c55e green, #ef4444
+ *     red, #f59e0b amber, #3b82f6 blue, #06b6d4 cyan, #a855f7 purple. Now gold on black.
+ *   - Emoji in the H1 (📳) and in all six tab labels (📋 💬 🚛 🤝 📚 🧠) and every card
+ *     heading — replaced with lucide-react icons. The six-tab layout is gone; it was
+ *     mostly prose about a language that does not exist.
+ *
+ * WHAT THIS PAGE DOES NOT CLAIM
+ *   - This is not a language and does not teach one. It is a fixed set of alert
+ *     vibrations with agreed meanings, like a turn-signal click.
+ *   - It is not two-way. Nothing you play here reaches another person or device.
+ *   - It does not work on iPhone. Safari on iOS does not implement the Vibration API,
+ *     and every browser on iOS uses Apple's engine, so no iPhone browser can vibrate
+ *     from a web page. That needs a native app using Core Haptics. Said plainly, on
+ *     screen, because the audience for this page is exactly the people it would fail.
+ *   - No accessibility certification, WCAG conformance level or deaf-driver outcome is
+ *     claimed anywhere.
+ *   - A vibration is a nudge, not a safety system. It is not an alternative to mirrors,
+ *     a visual alert, or looking.
+ */
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  Ban,
+  Clock,
+  Hash,
+  Loader2,
+  Play,
+  RefreshCw,
+  Smartphone,
+  Vibrate,
+} from "lucide-react";
 
+const GOLD = "#C9A84C";
+const GOLDB = "#FFD700";
+const WARN = "#c96a4c";
 const C = {
-  black: '#060A10',
-  white: '#f0ede8',
-  white80: 'rgba(240, 237, 232, 0.8)',
-  white60: 'rgba(240, 237, 232, 0.6)',
-  white30: 'rgba(240, 237, 232, 0.3)',
-  white10: 'rgba(240, 237, 232, 0.1)',
-  card: '#0f1419',
-  gold: '#c9a84c',
-  green: '#22c55e',
-  greenDim: 'rgba(34, 197, 94, 0.15)',
-  red: '#ef4444',
-  redDim: 'rgba(239, 68, 68, 0.15)',
-  orange: '#f59e0b',
-  blue: '#3b82f6',
-  cyan: '#06b6d4',
-  purple: '#a855f7',
+  black: "#0a0a0a",
+  card: "#161616",
+  nav: "#111111",
+  border: "#222222",
+  white: "#f2f2f2",
+  muted: "#8a8a8a",
+  dim: "#666666",
+};
+const FD = "'Bebas Neue', sans-serif";
+const FH = "'Oswald', sans-serif";
+const FB = "'Inter', sans-serif";
+const FM = "'JetBrains Mono', monospace";
+const SLOW_MS = 3000;
+
+const CATEGORY_LABEL = {
+  hazard: "Hazard",
+  hours: "Hours of service",
+  navigation: "Navigation",
+  message: "Messages",
+  emergency: "Emergency",
 };
 
+async function timedGet(url) {
+  const t0 = performance.now();
+  const res = await fetch(url, { credentials: "include" });
+  const ms = Math.round(performance.now() - t0);
+  let body = null;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+  if (!res.ok) throw new Error((body && body.error) || `${url} returned ${res.status}`);
+  return { body, ms, status: res.status };
+}
+
+async function timedPost(url, payload) {
+  const t0 = performance.now();
+  const res = await fetch(url, {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const ms = Math.round(performance.now() - t0);
+  let body = null;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+  return { body, ms, status: res.status, ok: res.ok };
+}
+
+function Spin() {
+  return (
+    <>
+      <style>{"@keyframes twe-spin{to{transform:rotate(360deg)}}"}</style>
+      <Loader2 size={16} color={GOLD} style={{ animation: "twe-spin 1s linear infinite" }} />
+    </>
+  );
+}
+
+function Panel({ title, note, right, icon, children }) {
+  return (
+    <section style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 4, marginBottom: 20 }}>
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "12px 16px",
+          borderBottom: `1px solid ${C.border}`,
+          flexWrap: "wrap",
+        }}
+      >
+        {icon}
+        <h2
+          style={{
+            font: `500 13px/1.2 ${FH}`,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            color: GOLDB,
+            margin: 0,
+          }}
+        >
+          {title}
+        </h2>
+        <div style={{ marginLeft: "auto" }}>{right}</div>
+      </header>
+      {note ? (
+        <p style={{ font: `400 11px/1.6 ${FM}`, color: C.dim, margin: 0, padding: "8px 16px 0" }}>{note}</p>
+      ) : null}
+      <div style={{ padding: 16 }}>{children}</div>
+    </section>
+  );
+}
+
+function Missing({ label, reason }) {
+  return (
+    <div style={{ border: "1px dashed #333", borderRadius: 4, padding: 14, display: "flex", gap: 10, alignItems: "flex-start" }}>
+      <AlertTriangle size={16} color={WARN} style={{ flexShrink: 0, marginTop: 2 }} />
+      <div>
+        <div style={{ font: `500 11px/1.3 ${FH}`, letterSpacing: "0.16em", color: WARN, textTransform: "uppercase" }}>
+          MISSING / NOT TRACKED
+        </div>
+        <div style={{ font: `600 13px/1.5 ${FB}`, color: C.white, marginTop: 4 }}>{label}</div>
+        <div style={{ font: `400 12px/1.6 ${FB}`, color: C.muted, marginTop: 4 }}>{reason}</div>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ value, label, tone }) {
+  return (
+    <div style={{ border: `1px solid ${C.border}`, borderRadius: 4, padding: "12px 14px", background: C.black }}>
+      <div style={{ font: `400 34px/1 ${FD}`, color: tone || GOLDB, letterSpacing: "0.02em" }}>{value}</div>
+      <div
+        style={{
+          font: `400 10px/1.4 ${FH}`,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          color: C.muted,
+          marginTop: 6,
+        }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function Tag({ text, tone }) {
+  return (
+    <span
+      style={{
+        font: `500 10px/1 ${FH}`,
+        letterSpacing: "0.16em",
+        textTransform: "uppercase",
+        color: tone || GOLD,
+        border: `1px solid ${tone || GOLD}`,
+        borderRadius: 2,
+        padding: "4px 7px",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
+function Err({ msg }) {
+  return (
+    <div
+      style={{
+        border: `1px solid ${WARN}`,
+        borderRadius: 4,
+        padding: 12,
+        font: `400 12px/1.6 ${FM}`,
+        color: WARN,
+        wordBreak: "break-word",
+      }}
+    >
+      {msg}
+    </div>
+  );
+}
+
+/**
+ * A literal picture of the on/off array. Gold blocks are vibration, gaps are
+ * silence, width is proportional to milliseconds. This is what the old page could
+ * never show, because its arrays did not mean what its labels said.
+ */
+function Waveform({ pattern }) {
+  const total = pattern.reduce((a, b) => a + b, 0) || 1;
+  return (
+    <div style={{ display: "flex", height: 26, width: "100%", background: C.black, border: `1px solid ${C.border}`, borderRadius: 2, overflow: "hidden" }}>
+      {pattern.map((ms, i) => (
+        <div
+          key={i}
+          title={`${i % 2 === 0 ? "vibrate" : "pause"} ${ms} ms`}
+          style={{
+            width: `${(ms / total) * 100}%`,
+            background: i % 2 === 0 ? GOLD : "transparent",
+            borderRight: i < pattern.length - 1 ? `1px solid ${C.black}` : "none",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function HapticLanguagePage() {
-  const [tab, setTab] = useState('overview');
-  const [inputText, setInputText] = useState('');
-  const [inputUrgency, setInputUrgency] = useState('normal');
-  const [inputEmotion, setInputEmotion] = useState('calm');
-  const [hapticHistory, setHapticHistory] = useState([]);
-  const [isVibrating, setIsVibrating] = useState(false);
-  const [selectedTrucking, setSelectedTrucking] = useState('LOAD_READY');
-  const [dialogueMessage, setDialogueMessage] = useState('New load assigned: Chicago to Detroit');
+  const alive = useRef(false);
+  const [state, setState] = useState("loading"); // loading | ok | error
+  const [err, setErr] = useState("");
+  const [data, setData] = useState(null);
+  const [reads, setReads] = useState([]);
+  const [supported, setSupported] = useState(null); // null until measured on the client
+  const [playing, setPlaying] = useState("");
+  const [lastPlay, setLastPlay] = useState(null);
+  const [playErr, setPlayErr] = useState("");
+  const [history, setHistory] = useState(null);
 
-  const handleTestHaptic = () => {
-    const haptic = textToHaptic(inputText || 'Test message', inputUrgency, inputEmotion);
-    setHapticHistory([haptic, ...hapticHistory.slice(0, 9)]);
-    setIsVibrating(true);
-    triggerHaptic(haptic.pattern);
-    setTimeout(() => setIsVibrating(false), haptic.duration + 500);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setSupported(typeof navigator !== "undefined" && typeof navigator.vibrate === "function");
+  }, []);
+
+  const load = useCallback(async () => {
+    setState("loading");
+    setErr("");
+    setReads([]);
+    try {
+      const r = await timedGet("/api/haptic");
+      if (!alive.current) return;
+      setData(r.body);
+      setReads([{ url: "/api/haptic", ms: r.ms, status: r.status, bytes: JSON.stringify(r.body).length }]);
+      setState("ok");
+    } catch (e) {
+      if (!alive.current) return;
+      setErr(String(e && e.message ? e.message : e));
+      setState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const loadHistory = async () => {
+    try {
+      const r = await timedGet("/api/haptic/list");
+      if (!alive.current) return;
+      setHistory(r.body);
+      setReads((prev) => [
+        ...prev,
+        { url: "/api/haptic/list", ms: r.ms, status: r.status, bytes: JSON.stringify(r.body).length },
+      ]);
+    } catch (e) {
+      if (!alive.current) return;
+      setPlayErr(String(e && e.message ? e.message : e));
+    }
   };
 
-  const handleTruckingPattern = () => {
-    const pattern = TRUCKING_PATTERNS[selectedTrucking];
-    const decoded = decodeHaptic(pattern);
-    setHapticHistory([
-      { pattern, duration: pattern.reduce((a, b) => a + b, 0), description: decoded, text: selectedTrucking },
-      ...hapticHistory.slice(0, 9),
+  const play = async (p) => {
+    setPlaying(p.key);
+    setPlayErr("");
+    setLastPlay(null);
+
+    // Fire the vibration first, with the server's own array, unmodified.
+    let fired = false;
+    if (supported) {
+      try {
+        fired = navigator.vibrate(p.pattern) === true;
+      } catch {
+        fired = false;
+      }
+    }
+
+    const r = await timedPost("/api/haptic/play", { patternKey: p.key, deviceSupported: Boolean(supported) });
+    if (!alive.current) return;
+    setReads((prev) => [
+      ...prev,
+      { url: "POST /api/haptic/play", ms: r.ms, status: r.status, bytes: JSON.stringify(r.body || {}).length },
     ]);
-    setIsVibrating(true);
-    triggerHaptic(pattern);
-    setTimeout(() => setIsVibrating(false), pattern.reduce((a, b) => a + b, 0) + 500);
+    if (!r.ok) setPlayErr((r.body && r.body.error) || `Server returned ${r.status}`);
+    else setLastPlay({ ...r.body, fired });
+    setPlaying("");
   };
 
-  const handleDialogue = () => {
-    const dialogue = createHapticDialogue(dialogueMessage, inputUrgency);
-    setHapticHistory([
-      { pattern: dialogue.both.pattern, duration: dialogue.both.duration, description: 'Full Exchange', text: dialogueMessage },
-      ...hapticHistory.slice(0, 9),
-    ]);
-    setIsVibrating(true);
-    triggerHaptic(dialogue.both.pattern);
-    setTimeout(() => setIsVibrating(false), dialogue.both.duration + 500);
-  };
+  const patterns = (data && data.patterns) || [];
+  const platform = (data && data.platform) || null;
+  const claims = (data && data.claims) || null;
+  const limits = (data && data.limits) || null;
+  const totals = (data && data.totals) || null;
+
+  const groups = Object.keys(CATEGORY_LABEL).filter((k) => patterns.some((p) => p.category === k));
 
   return (
-    <div style={{ minHeight: '100vh', background: C.black, color: C.white, padding: '24px 16px' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-        {/* Header */}
-        <div style={{ marginBottom: '40px' }}>
-          <h1 style={{ fontSize: 42, fontWeight: 700, marginBottom: '12px', background: `linear-gradient(135deg, ${C.gold}, ${C.cyan})`, backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', color: C.gold }}>
-            📳 Haptic Language Engine
+    <div style={{ minHeight: "100vh", background: C.black, color: C.white, fontFamily: FB }}>
+      {/* HEADER BAND */}
+      <div
+        style={{
+          borderBottom: `1px solid ${C.border}`,
+          background: `linear-gradient(180deg, ${C.nav} 0%, ${C.black} 100%)`,
+          padding: "34px 20px 30px",
+        }}
+      >
+        <div style={{ maxWidth: 1020, margin: "0 auto" }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              border: `1px solid ${C.border}`,
+              borderRadius: 2,
+              padding: "5px 10px",
+              font: `500 10px/1 ${FH}`,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              color: GOLD,
+            }}
+          >
+            <Vibrate size={13} color={GOLD} />
+            VIBRATION ALERTS
+          </span>
+          <h1
+            style={{
+              font: `400 clamp(34px,7vw,52px)/1 ${FD}`,
+              letterSpacing: "0.02em",
+              margin: "16px 0 12px",
+              color: C.white,
+            }}
+          >
+            FIFTEEN ALERTS YOU CAN <span style={{ color: GOLDB }}>FEEL</span>
           </h1>
-          <p style={{ fontSize: 16, color: C.white60, lineHeight: 1.7, maxWidth: 800 }}>
-            Communication through touch. Deaf drivers feel vibration patterns that encode meaning — urgency, direction, emotions, messages. Bidirectional: they send haptic responses that hearing drivers receive as tone and intent. No sound needed. Pure tactile language.
+          <p style={{ font: `400 14px/1.75 ${FB}`, color: C.muted, maxWidth: 780, margin: 0 }}>
+            This is a small, fixed set of vibration alerts with agreed meanings — not a language, and nothing to become
+            fluent in. Every pattern below is served by the API as an alternating on/off millisecond array and played
+            exactly as sent. It is one-way: nothing you play here reaches another driver.{" "}
+            <strong style={{ color: C.white }}>
+              It also does not work on an iPhone — Safari on iOS has no Vibration API, and every iOS browser uses
+              Apple&apos;s engine.
+            </strong>{" "}
+            Your own browser&apos;s answer is measured below rather than assumed.
           </p>
         </div>
+      </div>
 
-        {/* Tab Navigation */}
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '32px', borderBottom: `1px solid ${C.white30}`, flexWrap: 'wrap' }}>
-          {[
-            { id: 'overview', label: '📋 How It Works', icon: '⚙️' },
-            { id: 'message-to-haptic', label: '💬 Message → Vibration', icon: '📤' },
-            { id: 'trucking', label: '🚛 Trucking Patterns', icon: '🚛' },
-            { id: 'dialogue', label: '🤝 Real Dialogue', icon: '💬' },
-            { id: 'patterns', label: '📚 Pattern Library', icon: '📖' },
-            { id: 'science', label: '🧠 The Science', icon: '🔬' },
-          ].map(t => (
+      <div style={{ maxWidth: 1020, margin: "0 auto", padding: "24px 20px 60px" }}>
+        {state === "loading" ? (
+          <div style={{ display: "flex", gap: 10, alignItems: "center", font: `400 13px/1 ${FM}`, color: C.muted }}>
+            <Spin /> reading /api/haptic
+          </div>
+        ) : null}
+
+        {state === "error" ? (
+          <Panel title="Read failed" note="GET /api/haptic" icon={<AlertTriangle size={15} color={WARN} />}>
+            <Err msg={err} />
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              onClick={load}
               style={{
-                padding: '12px 16px',
-                background: 'none',
-                border: 'none',
-                color: tab === t.id ? C.gold : C.white60,
-                borderBottom: tab === t.id ? `3px solid ${C.gold}` : 'none',
-                cursor: 'pointer',
-                fontWeight: tab === t.id ? 700 : 500,
-                fontSize: '14px',
-                transition: 'all 0.2s',
+                marginTop: 12,
+                background: "transparent",
+                border: `1px solid ${GOLD}`,
+                color: GOLD,
+                borderRadius: 2,
+                padding: "8px 14px",
+                font: `500 11px/1 ${FH}`,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                cursor: "pointer",
               }}
             >
-              {t.icon} {t.label}
+              Re-read
             </button>
-          ))}
-        </div>
+          </Panel>
+        ) : null}
 
-        {/* OVERVIEW TAB */}
-        {tab === 'overview' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '40px' }}>
-            <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: C.cyan }}>🎯 What is Haptic Language?</h3>
-              <p style={{ fontSize: '14px', color: C.white60, lineHeight: 1.6 }}>
-                A system where vibration patterns encode meaning. Different rhythms, durations, and pulse patterns represent different messages, urgencies, emotions, and directions. Deaf drivers "read" messages through touch instead of sound.
-              </p>
-            </div>
-
-            <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: C.green }}>✓ Bidirectional</h3>
-              <p style={{ fontSize: '14px', color: C.white60, lineHeight: 1.6 }}>
-                Hearing dispatcher sends haptic message → deaf driver receives and understands. Deaf driver sends haptic response → hearing driver receives it as tone and intent. Full two-way communication through touch.
-              </p>
-            </div>
-
-            <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: C.purple }}>🧬 Pattern Components</h3>
-              <p style={{ fontSize: '14px', color: C.white60, lineHeight: 1.6, marginBottom: '12px' }}>Each pattern has:</p>
-              <ul style={{ fontSize: '13px', color: C.white60, margin: 0, paddingLeft: '20px', lineHeight: 1.8 }}>
-                <li><strong>Duration:</strong> How long each vibration lasts (ms)</li>
-                <li><strong>Pause:</strong> Gap between pulses (ms)</li>
-                <li><strong>Repetition:</strong> How many times pattern repeats</li>
-              </ul>
-            </div>
-
-            <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: C.orange }}>⚡ Urgency Encoding</h3>
-              <ul style={{ fontSize: '13px', color: C.white60, margin: 0, paddingLeft: '20px', lineHeight: 1.8 }}>
-                <li><strong>CRITICAL:</strong> Long, intense pulse (warning)</li>
-                <li><strong>HIGH:</strong> Two medium pulses (important)</li>
-                <li><strong>NORMAL:</strong> Single pulse (information)</li>
-                <li><strong>LOW:</strong> Very brief (background)</li>
-              </ul>
-            </div>
-
-            <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: C.blue }}>📍 Direction/Navigation</h3>
-              <ul style={{ fontSize: '13px', color: C.white60, margin: 0, paddingLeft: '20px', lineHeight: 1.8 }}>
-                <li><strong>LEFT:</strong> Medium pulse</li>
-                <li><strong>RIGHT:</strong> Short pulse</li>
-                <li><strong>STRAIGHT:</strong> Balanced pulse</li>
-                <li><strong>REVERSE:</strong> Double-short pattern</li>
-              </ul>
-            </div>
-
-            <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: C.red }}>🚨 Emergency Signals</h3>
-              <ul style={{ fontSize: '13px', color: C.white60, margin: 0, paddingLeft: '20px', lineHeight: 1.8 }}>
-                <li><strong>DANGER:</strong> Three long pulses (SOS-like)</li>
-                <li><strong>ACCIDENT:</strong> Five rapid pulses</li>
-                <li><strong>EMERGENCY:</strong> One long sustained</li>
-                <li><strong>STOP:</strong> Four quick pulses</li>
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {/* MESSAGE TO HAPTIC TAB */}
-        {tab === 'message-to-haptic' && (
-          <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '32px', marginBottom: '40px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '24px' }}>Convert Any Message to Vibration</h2>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', color: C.white60, marginBottom: '8px', fontWeight: '600' }}>Message</label>
-                <textarea
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder="Type any message..."
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    background: C.black,
-                    border: `1px solid ${C.white10}`,
-                    borderRadius: '6px',
-                    color: C.white,
-                    minHeight: '100px',
-                    fontFamily: 'monospace',
-                    fontSize: '13px',
-                    resize: 'vertical',
-                  }}
+        {state === "ok" && data ? (
+          <>
+            {/* THIS DEVICE */}
+            <Panel
+              title="This device"
+              note="Measured on your browser right now with ('vibrate' in navigator) — not read from a user-agent string and not assumed."
+              icon={<Smartphone size={15} color={GOLD} />}
+            >
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
+                <Stat
+                  value={supported === null ? "…" : supported ? "YES" : "NO"}
+                  label="Vibration API present"
+                  tone={supported ? GOLDB : WARN}
+                />
+                <Stat value={patterns.length} label="Patterns served by API" />
+                <Stat value={totals ? totals.playbacksRecorded : "—"} label="Playbacks recorded" />
+                <Stat
+                  value={totals ? totals.onUnsupportedDevices : "—"}
+                  label="Recorded on devices that can't vibrate"
+                  tone={totals && totals.onUnsupportedDevices > 0 ? WARN : GOLDB}
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', color: C.white60, marginBottom: '8px', fontWeight: '600' }}>Urgency Level</label>
-                <select
-                  value={inputUrgency}
-                  onChange={(e) => setInputUrgency(e.target.value)}
+              {supported === false ? (
+                <div style={{ marginTop: 14 }}>
+                  <Missing
+                    label="This browser cannot vibrate, so every Play button below is disabled."
+                    reason={
+                      platform
+                        ? `${platform.iosNote} ${platform.desktopNote}`
+                        : "navigator.vibrate is not available in this browser."
+                    }
+                  />
+                </div>
+              ) : null}
+
+              {supported === true ? (
+                <p style={{ font: `400 12px/1.7 ${FB}`, color: C.muted, margin: "14px 0 0" }}>
+                  Vibration is available. Android also requires a real tap on the page before it will fire, so the first
+                  press may be silent — that is the browser, not the pattern.
+                </p>
+              ) : null}
+            </Panel>
+
+            {/* MEASURED READS */}
+            <Panel
+              title="Measured reads"
+              note="Every round trip on this page, timed with performance.now(). Nothing here is cached or estimated."
+              icon={<RefreshCw size={15} color={GOLD} />}
+              right={
+                <button
+                  onClick={load}
                   style={{
-                    width: '100%',
-                    padding: '12px',
-                    background: C.black,
-                    border: `1px solid ${C.white10}`,
-                    borderRadius: '6px',
-                    color: C.white,
-                    marginBottom: '12px',
-                    cursor: 'pointer',
+                    background: "transparent",
+                    border: `1px solid ${C.border}`,
+                    color: GOLD,
+                    borderRadius: 2,
+                    padding: "6px 12px",
+                    font: `500 10px/1 ${FH}`,
+                    letterSpacing: "0.16em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
                   }}
                 >
-                  <option value="critical">🔴 CRITICAL</option>
-                  <option value="high">🟠 HIGH</option>
-                  <option value="normal">🟡 NORMAL</option>
-                  <option value="low">🟢 LOW</option>
-                </select>
-
-                <label style={{ display: 'block', fontSize: '13px', color: C.white60, marginBottom: '8px', fontWeight: '600' }}>Emotion/Tone</label>
-                <select
-                  value={inputEmotion}
-                  onChange={(e) => setInputEmotion(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    background: C.black,
-                    border: `1px solid ${C.white10}`,
-                    borderRadius: '6px',
-                    color: C.white,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <option value="calm">😌 Calm</option>
-                  <option value="urgent">⚡ Urgent</option>
-                  <option value="confident">💪 Confident</option>
-                  <option value="confused">❓ Confused</option>
-                  <option value="hesitant">🤔 Hesitant</option>
-                </select>
-              </div>
-            </div>
-
-            <button
-              onClick={handleTestHaptic}
-              disabled={!inputText}
-              style={{
-                padding: '14px 28px',
-                background: isVibrating ? C.green : C.cyan,
-                color: C.black,
-                border: 'none',
-                borderRadius: '6px',
-                fontWeight: '700',
-                fontSize: '16px',
-                cursor: inputText ? 'pointer' : 'not-allowed',
-                opacity: inputText ? 1 : 0.5,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '32px',
-                transition: 'all 0.3s',
-              }}
+                  Re-read
+                </button>
+              }
             >
-              📳 {isVibrating ? 'Vibrating...' : 'Test Vibration Pattern'}
-            </button>
+              {reads.map((r, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    gap: 12,
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    font: `400 12px/1.8 ${FM}`,
+                    color: C.white,
+                    borderBottom: i < reads.length - 1 ? `1px solid ${C.border}` : "none",
+                    padding: "4px 0",
+                  }}
+                >
+                  <span style={{ color: GOLD }}>{r.status}</span>
+                  <span>{r.url}</span>
+                  <span style={{ color: C.muted }}>{r.bytes} B</span>
+                  <span style={{ color: r.ms >= SLOW_MS ? WARN : C.muted }}>
+                    {r.ms} ms{r.ms >= SLOW_MS ? "  ← slow" : ""}
+                  </span>
+                </div>
+              ))}
+            </Panel>
 
-            {hapticHistory.length > 0 && (
-              <div>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '12px' }}>Last 10 Patterns</h3>
-                <div style={{ display: 'grid', gap: '12px' }}>
-                  {hapticHistory.map((h, i) => (
-                    <div key={i} style={{
-                      background: C.black,
-                      border: `1px solid ${C.white10}`,
-                      borderRadius: '6px',
-                      padding: '12px',
-                      fontSize: '12px',
-                    }}>
-                      <div style={{ color: C.gold, fontWeight: '700', marginBottom: '4px' }}>Pattern #{i + 1}</div>
-                      <div style={{ color: C.white60, marginBottom: '4px' }}>{h.text}</div>
-                      <div style={{ color: C.cyan, fontSize: '11px' }}>
-                        {h.description} • {h.duration}ms • {h.pattern.length} elements
+            {/* ENCODING + VERSION */}
+            <Panel
+              title="Encoding and version"
+              note="GET /api/haptic → encoding, version. sha256 of every pattern key and its exact on/off array, computed server-side."
+              icon={<Hash size={15} color={GOLD} />}
+            >
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                <Tag text={data.encoding ? data.encoding.format : "—"} />
+                {limits ? (
+                  <Tag
+                    text={limits.allWithinLimit ? `ALL UNDER ${limits.maxTotalMs} MS` : "LIMIT EXCEEDED"}
+                    tone={limits.allWithinLimit ? GOLD : WARN}
+                  />
+                ) : null}
+                {limits ? <Tag text={`LONGEST ${limits.longestTotalMs} MS`} /> : null}
+              </div>
+              <div style={{ font: `400 11px/1.7 ${FM}`, color: GOLDB, wordBreak: "break-all", marginBottom: 12 }}>
+                {data.version}
+              </div>
+              <p style={{ font: `400 13px/1.75 ${FB}`, color: C.muted, margin: 0 }}>
+                {data.encoding ? data.encoding.note : null}
+              </p>
+              <div
+                style={{
+                  marginTop: 12,
+                  border: `1px solid ${WARN}`,
+                  borderRadius: 4,
+                  padding: 12,
+                  font: `400 12px/1.75 ${FB}`,
+                  color: C.white,
+                }}
+              >
+                <div
+                  style={{
+                    font: `500 10px/1.3 ${FH}`,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    color: WARN,
+                    marginBottom: 6,
+                  }}
+                >
+                  What was wrong before
+                </div>
+                {data.encoding ? data.encoding.previousFormatBug : null}
+              </div>
+            </Panel>
+
+            {/* PATTERNS */}
+            {groups.map((g) => (
+              <Panel
+                key={g}
+                title={CATEGORY_LABEL[g]}
+                note="Gold blocks are vibration, gaps are silence, width is proportional to milliseconds. Played with the server's array, unmodified."
+                icon={<Vibrate size={15} color={GOLD} />}
+              >
+                {patterns
+                  .filter((p) => p.category === g)
+                  .map((p, idx, arr) => (
+                    <div
+                      key={p.key}
+                      style={{
+                        padding: "12px 0",
+                        borderBottom: idx < arr.length - 1 ? `1px solid ${C.border}` : "none",
+                      }}
+                    >
+                      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                        <div style={{ font: `400 20px/1 ${FD}`, color: GOLDB, letterSpacing: "0.03em" }}>{p.label}</div>
+                        <Tag text={`${p.pulseCount} PULSE${p.pulseCount === 1 ? "" : "S"}`} />
+                        <Tag text={`${p.onTimeMs} MS ON`} />
+                        <Tag text={`${p.totalMs} MS TOTAL`} />
+                        <button
+                          onClick={() => play(p)}
+                          disabled={!supported || playing === p.key}
+                          style={{
+                            marginLeft: "auto",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 7,
+                            background: "transparent",
+                            border: `1px solid ${supported ? GOLD : C.border}`,
+                            color: supported ? GOLD : C.dim,
+                            borderRadius: 2,
+                            padding: "7px 13px",
+                            font: `500 10px/1 ${FH}`,
+                            letterSpacing: "0.16em",
+                            textTransform: "uppercase",
+                            cursor: supported ? "pointer" : "not-allowed",
+                          }}
+                        >
+                          {supported ? <Play size={12} /> : <Ban size={12} />}
+                          {playing === p.key ? "Playing" : supported ? "Play" : "No vibration"}
+                        </button>
                       </div>
-                      <div style={{ color: C.white30, fontSize: '10px', marginTop: '4px', fontFamily: 'monospace' }}>
-                        [{h.pattern.join(', ')}]
+                      <p style={{ font: `400 13px/1.7 ${FB}`, color: C.muted, margin: "8px 0 10px" }}>{p.meaning}</p>
+                      <Waveform pattern={p.pattern} />
+                      <div style={{ font: `400 11px/1.7 ${FM}`, color: C.dim, marginTop: 6 }}>
+                        [{p.pattern.join(", ")}]
                       </div>
                     </div>
                   ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+              </Panel>
+            ))}
 
-        {/* TRUCKING PATTERNS TAB */}
-        {tab === 'trucking' && (
-          <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '32px', marginBottom: '40px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '24px' }}>Pre-Built Trucking Patterns</h2>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-              {Object.keys(TRUCKING_PATTERNS).map(key => (
+            {/* PLAYBACK RESULT */}
+            {playErr ? (
+              <Panel title="Playback failed" note="POST /api/haptic/play" icon={<AlertTriangle size={15} color={WARN} />}>
+                <Err msg={playErr} />
+              </Panel>
+            ) : null}
+
+            {lastPlay ? (
+              <Panel
+                title="Last playback recorded"
+                note="POST /api/haptic/play → one append-only row in haptic_playbacks. Never updated, never deleted."
+                icon={<Clock size={15} color={GOLD} />}
+              >
+                <div style={{ font: `400 12px/1.9 ${FM}`, color: C.white }}>
+                  <div>
+                    id <span style={{ color: GOLDB }}>{lastPlay.id}</span>
+                  </div>
+                  <div>
+                    pattern <span style={{ color: GOLDB }}>{lastPlay.patternKey}</span> [
+                    {(lastPlay.pattern || []).join(", ")}]
+                  </div>
+                  <div>
+                    on-time <span style={{ color: GOLDB }}>{lastPlay.onTimeMs} ms</span> · total{" "}
+                    <span style={{ color: GOLDB }}>{lastPlay.totalMs} ms</span> · pulses{" "}
+                    <span style={{ color: GOLDB }}>{lastPlay.pulseCount}</span>
+                  </div>
+                  <div>
+                    browser reported support{" "}
+                    <span style={{ color: lastPlay.deviceSupported ? GOLDB : WARN }}>
+                      {lastPlay.deviceSupported ? "YES" : "NO"}
+                    </span>{" "}
+                    · navigator.vibrate() returned{" "}
+                    <span style={{ color: lastPlay.fired ? GOLDB : WARN }}>{String(lastPlay.fired)}</span>
+                  </div>
+                  <div>
+                    attributed to an account{" "}
+                    <span style={{ color: lastPlay.attributed ? GOLDB : WARN }}>
+                      {lastPlay.attributed ? "YES" : "NO — recorded anonymously"}
+                    </span>
+                  </div>
+                </div>
+                <p style={{ font: `400 13px/1.75 ${FB}`, color: C.muted, margin: "12px 0 0" }}>{lastPlay.note}</p>
+              </Panel>
+            ) : null}
+
+            {/* HISTORY */}
+            <Panel
+              title="Recorded playbacks"
+              note="GET /api/haptic/list — the last 200 rows in haptic_playbacks. Loaded on demand because most visits do not need it."
+              icon={<Clock size={15} color={GOLD} />}
+              right={
                 <button
-                  key={key}
-                  onClick={() => setSelectedTrucking(key)}
+                  onClick={loadHistory}
                   style={{
-                    padding: '12px 16px',
-                    background: selectedTrucking === key ? C.gold : C.black,
-                    color: selectedTrucking === key ? C.black : C.white,
-                    border: `1px solid ${selectedTrucking === key ? C.gold : C.white30}`,
-                    borderRadius: '6px',
-                    fontWeight: selectedTrucking === key ? '700' : '500',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    transition: 'all 0.2s',
+                    background: "transparent",
+                    border: `1px solid ${C.border}`,
+                    color: GOLD,
+                    borderRadius: 2,
+                    padding: "6px 12px",
+                    font: `500 10px/1 ${FH}`,
+                    letterSpacing: "0.16em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
                   }}
                 >
-                  {key}
+                  Load
                 </button>
-              ))}
-            </div>
-
-            <button
-              onClick={handleTruckingPattern}
-              style={{
-                padding: '14px 28px',
-                background: C.cyan,
-                color: C.black,
-                border: 'none',
-                borderRadius: '6px',
-                fontWeight: '700',
-                fontSize: '16px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '24px',
-              }}
+              }
             >
-              📳 Test: {selectedTrucking}
-            </button>
+              {history === null ? (
+                <p style={{ font: `400 13px/1.7 ${FB}`, color: C.muted, margin: 0 }}>Not loaded yet.</p>
+              ) : history.total === 0 ? (
+                <Missing
+                  label="No playbacks recorded yet."
+                  reason="haptic_playbacks is empty. Nothing is seeded and no example rows are invented — the table fills only when a real device plays a pattern."
+                />
+              ) : (
+                <div style={{ font: `400 12px/1.9 ${FM}`, color: C.white }}>
+                  {history.playbacks.map((r) => (
+                    <div key={r.id} style={{ display: "flex", gap: 12, flexWrap: "wrap", borderBottom: `1px solid ${C.border}`, padding: "3px 0" }}>
+                      <span style={{ color: GOLD }}>{r.patternKey}</span>
+                      <span style={{ color: C.muted }}>{r.onTimeMs} ms on</span>
+                      <span style={{ color: C.muted }}>{r.pulseCount} pulses</span>
+                      <span style={{ color: r.deviceSupported ? C.muted : WARN }}>
+                        {r.deviceSupported ? "device supported" : "no vibration hardware"}
+                      </span>
+                      <span style={{ color: C.dim }}>{r.userId ? "signed in" : "anonymous"}</span>
+                    </div>
+                  ))}
+                  {history.staleRows > 0 ? (
+                    <p style={{ font: `400 12px/1.7 ${FB}`, color: WARN, margin: "10px 0 0" }}>
+                      {history.staleRows} row(s) were played with an older encoding version. They are kept as recorded,
+                      not rewritten.
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </Panel>
 
-            <div style={{ background: C.black, borderRadius: '6px', padding: '16px', fontSize: '12px' }}>
-              <p style={{ color: C.gold, fontWeight: '700', marginBottom: '8px' }}>Pattern Details:</p>
-              <p style={{ color: C.white60, margin: 0, fontFamily: 'monospace' }}>
-                {TRUCKING_PATTERNS[selectedTrucking].join(', ')} ms
-              </p>
-              <p style={{ color: C.cyan, fontSize: '11px', marginTop: '8px' }}>
-                Duration: {TRUCKING_PATTERNS[selectedTrucking].reduce((a, b) => a + b, 0)}ms • Pulses: {Math.ceil(TRUCKING_PATTERNS[selectedTrucking].length / 2)}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* DIALOGUE TAB */}
-        {tab === 'dialogue' && (
-          <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '32px', marginBottom: '40px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '24px' }}>Real Dialogue Example</h2>
-            
-            <div style={{ background: C.black, borderRadius: '6px', padding: '20px', marginBottom: '24px', border: `1px solid ${C.white10}` }}>
-              <p style={{ fontSize: '14px', color: C.white60, marginBottom: '12px' }}>Hearing Dispatcher Message:</p>
-              <textarea
-                value={dialogueMessage}
-                onChange={(e) => setDialogueMessage(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  background: C.card,
-                  border: `1px solid ${C.white10}`,
-                  borderRadius: '6px',
-                  color: C.white,
-                  minHeight: '80px',
-                  fontFamily: 'monospace',
-                  fontSize: '13px',
-                }}
-              />
-            </div>
-
-            <button
-              onClick={handleDialogue}
-              style={{
-                padding: '14px 28px',
-                background: C.green,
-                color: C.black,
-                border: 'none',
-                borderRadius: '6px',
-                fontWeight: '700',
-                fontSize: '16px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '32px',
-              }}
+            {/* WHAT THIS DOES NOT DO */}
+            <Panel
+              title="What this page does not do"
+              note="Rendered from the server's own claims and platform fields, so the page cannot drift from the API's admissions."
+              icon={<AlertTriangle size={15} color={WARN} />}
             >
-              🤝 Test Full Dialogue
-            </button>
-
-            <div style={{
-              background: C.black,
-              borderRadius: '6px',
-              padding: '20px',
-              border: `1px solid ${C.white10}`,
-            }}>
-              <p style={{ fontSize: '12px', color: C.white60, marginBottom: '16px', fontStyle: 'italic' }}>Exchange Flow:</p>
-              <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: C.white60, lineHeight: 1.8 }}>
-                <li><strong style={{ color: C.cyan }}>Hearing Dispatcher Speaks:</strong> Message is converted to haptic pattern</li>
-                <li><strong style={{ color: C.cyan }}>Deaf Driver Feels:</strong> Receives and understands the vibration pattern</li>
-                <li><strong style={{ color: C.cyan }}>Deaf Driver Responds:</strong> Sends haptic acknowledgment (two short pulses = "understood")</li>
-                <li><strong style={{ color: C.cyan }}>Hearing Driver Receives:</strong> Vibration pattern decoded as tone and intent</li>
+              <ol style={{ margin: 0, paddingLeft: 20, font: `400 13px/1.85 ${FB}`, color: C.muted }}>
+                {claims ? <li>{claims.bidirectionalNote}</li> : null}
+                {claims ? <li>{claims.learnedLanguageNote}</li> : null}
+                {platform ? <li>{platform.iosNote}</li> : null}
+                {platform ? <li>{platform.desktopNote}</li> : null}
+                {claims ? <li>{claims.emergencyOverrideNote}</li> : null}
+                <li>
+                  No accessibility certification and no WCAG conformance level is claimed. This page has not been
+                  independently audited.
+                </li>
+                <li>
+                  A vibration is a nudge, not a safety system. It is not a substitute for mirrors, a visual alert, or
+                  looking. Nothing here is an FMCSA-approved warning device.
+                </li>
               </ol>
-            </div>
-          </div>
-        )}
+            </Panel>
 
-        {/* PATTERNS LIBRARY TAB */}
-        {tab === 'patterns' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '40px' }}>
-            <div style={{ background: C.card, border: `1px solid ${C.green}`, borderRadius: '8px', padding: '20px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '700', color: C.green, marginBottom: '12px' }}>✓ Acknowledgments</h3>
-              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: C.white60, lineHeight: 1.8 }}>
-                <li><strong>ACK_YES:</strong> Two short = understood</li>
-                <li><strong>ACK_NO:</strong> Two long = negative</li>
-                <li><strong>ACK_READY:</strong> Three singles = ready to go</li>
-              </ul>
-            </div>
-
-            <div style={{ background: C.card, border: `1px solid ${C.red}`, borderRadius: '8px', padding: '20px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '700', color: C.red, marginBottom: '12px' }}>🚨 Emergency</h3>
-              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: C.white60, lineHeight: 1.8 }}>
-                <li><strong>DANGER:</strong> SOS pattern (three long)</li>
-                <li><strong>ACCIDENT:</strong> Five rapid pulses</li>
-                <li><strong>STOP:</strong> Four quick pulses</li>
-              </ul>
-            </div>
-
-            <div style={{ background: C.card, border: `1px solid ${C.blue}`, borderRadius: '8px', padding: '20px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '700', color: C.blue, marginBottom: '12px' }}>📍 Navigation</h3>
-              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: C.white60, lineHeight: 1.8 }}>
-                <li><strong>TURN_LEFT:</strong> One medium pulse</li>
-                <li><strong>TURN_RIGHT:</strong> One short pulse</li>
-                <li><strong>GO_STRAIGHT:</strong> Balanced pulse</li>
-              </ul>
-            </div>
-
-            <div style={{ background: C.card, border: `1px solid ${C.orange}`, borderRadius: '8px', padding: '20px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '700', color: C.orange, marginBottom: '12px' }}>⚡ Alerts</h3>
-              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: C.white60, lineHeight: 1.8 }}>
-                <li><strong>LOAD_ASSIGNED:</strong> Double-beat pattern</li>
-                <li><strong>BROKER_ALERT:</strong> Warning rhythm</li>
-                <li><strong>WEATHER_WARNING:</strong> Variable pattern</li>
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {/* SCIENCE TAB */}
-        {tab === 'science' && (
-          <div style={{ background: C.card, border: `1px solid ${C.white10}`, borderRadius: '8px', padding: '32px', marginBottom: '40px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '24px' }}>The Science Behind Haptic Language</h2>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-              <div style={{ background: C.black, borderRadius: '6px', padding: '20px', border: `1px solid ${C.white10}` }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: C.cyan, marginBottom: '12px' }}>📱 Haptic Perception</h3>
-                <p style={{ fontSize: '13px', color: C.white60, lineHeight: 1.7, margin: 0 }}>
-                  The skin has ~600 touch receptors per square inch. Humans can detect vibration frequencies from 10-300 Hz with perfect discrimination. Pattern recognition through touch is a learned skill — like reading braille or morse code.
-                </p>
-              </div>
-
-              <div style={{ background: C.black, borderRadius: '6px', padding: '20px', border: `1px solid ${C.white10}` }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: C.green, marginBottom: '12px' }}>🧠 Pattern Recognition</h3>
-                <p style={{ fontSize: '13px', color: C.white60, lineHeight: 1.7, margin: 0 }}>
-                  Rhythm and timing are easier to learn than absolute frequencies. A "three-pulse" pattern is more recognizable than a specific vibration frequency. Our engine uses temporal patterns (timing) not frequency modulation.
-                </p>
-              </div>
-
-              <div style={{ background: C.black, borderRadius: '6px', padding: '20px', border: `1px solid ${C.white10}` }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: C.purple, marginBottom: '12px' }}>💬 Communication Speed</h3>
-                <p style={{ fontSize: '13px', color: C.white60, lineHeight: 1.7, margin: 0 }}>
-                  Haptic communication is slower than speech (~20-30 words per minute vs 150 wpm). Best for short messages, alerts, and directional cues. Combines with visual captions for full speed communication.
-                </p>
-              </div>
-
-              <div style={{ background: C.black, borderRadius: '6px', padding: '20px', border: `1px solid ${C.white10}` }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: C.blue, marginBottom: '12px' }}>🎓 Learning Curve</h3>
-                <p style={{ fontSize: '13px', color: C.white60, lineHeight: 1.7, margin: 0 }}>
-                  Most users achieve fluency in 2-4 weeks with daily practice. Emergency signals (danger, stop) are learned within days. Pre-built trucking patterns accelerate adoption by 60%.
-                </p>
-              </div>
-
-              <div style={{ background: C.black, borderRadius: '6px', padding: '20px', border: `1px solid ${C.white10}` }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: C.gold, marginBottom: '12px' }}>🌍 Cultural Context</h3>
-                <p style={{ fontSize: '13px', color: C.white60, lineHeight: 1.7, margin: 0 }}>
-                  Haptic patterns are language-agnostic. A driver in any country learns the same rhythm patterns. No translation needed between international fleets.
-                </p>
-              </div>
-
-              <div style={{ background: C.black, borderRadius: '6px', padding: '20px', border: `1px solid ${C.white10}` }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: C.orange, marginBottom: '12px' }}>⚠️ Safety Notes</h3>
-                <p style={{ fontSize: '13px', color: C.white60, lineHeight: 1.7, margin: 0 }}>
-                  Haptic alerts work while driving without visual distraction. Emergency signals override all other vibrations. Maximum vibration pattern is 5 seconds to prevent fatigue.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+            <p style={{ font: `400 11px/1.8 ${FM}`, color: C.dim, margin: 0 }}>
+              Pattern registry, version hash and platform facts served by /api/haptic. Playbacks recorded in
+              haptic_playbacks, append-only. Device support measured on your own browser. No human-factors statistic,
+              fluency timeline or adoption rate appears on this page, because none was ever sourced.
+            </p>
+          </>
+        ) : null}
       </div>
     </div>
   );

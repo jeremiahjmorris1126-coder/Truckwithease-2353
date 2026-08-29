@@ -53,6 +53,7 @@ import { auth } from "./auth";
 import { sessionRoute } from "./routes/session";
 import { functionsIndex } from "./routes/functions";
 import { responsibleUseRoute } from "./routes/responsibleuse";
+import { hapticRoute } from "./routes/haptic";
 
 const app = new Hono()
   .basePath('api')
@@ -112,6 +113,7 @@ const app = new Hono()
   .route("/dispatch-zero", dispatchZero)
   .route("/session", sessionRoute)
   .route("/responsible-use", responsibleUseRoute)
+  .route("/haptic", hapticRoute)
   // The function index reads the app's OWN registered route table at request time. It cannot
   // import `app` (circular), so it takes a getter that is resolved lazily, after construction.
   .route("/functions", functionsIndex(() => app.routes as { method: string; path: string }[]));
