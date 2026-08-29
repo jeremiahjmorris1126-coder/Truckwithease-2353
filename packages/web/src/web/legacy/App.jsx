@@ -206,6 +206,7 @@ const RevenueForecastPage = lazy(() => import("./pages/RevenueForecastPage"));
 const CatScalesPage = lazy(() => import("./pages/CatScalesPage"));
 const StaffAppointedPage = lazy(() => import("./pages/StaffAppointedPage"));
 const EntitledIndexPage = lazy(() => import("./pages/EntitledIndexPage"));
+const FunctionIndexPage = lazy(() => import("./pages/FunctionIndexPage"));
 const LowBridgePage = lazy(() => import("./pages/LowBridgePage"));
 const DispatchZeroPage = lazy(() => import("./pages/DispatchZeroPage"));
 const SignInPage = lazy(() => import("./pages/SignInPage"));
@@ -512,7 +513,10 @@ export default function App() {
   if (path === "/tutorials") return <TutorialsPage />;
   if (path === "/daily-maintenance") return <DailyMaintenanceAgent />;
   if (path === "/staff" || path === "/staff-appointed" || path === "/appointed") return <StaffAppointedPage />;
-  if (path === "/entitled-index" || path === "/index" || path === "/master-hub" || path === "/entitled") return <EntitledIndexPage />;
+  // /entitled is the FUNCTION index (every function + its evidence). /entitled-index stays
+  // the DATA index (tables, rows, filings). Both are reachable; neither shadows the other.
+  if (path === "/entitled" || path === "/function-index" || path === "/functions") return <FunctionIndexPage />;
+  if (path === "/entitled-index" || path === "/index" || path === "/master-hub") return <EntitledIndexPage />;
   if (path === "/low-bridges" || path === "/bridges" || path === "/clearance" || path === "/bridge-alerts") return <LowBridgePage />;
   if (path === "/dispatch-zero" || path === "/dispatch-ledger" || path === "/decision-ledger") return <DispatchZeroPage />;
   if (path === "/pre-launch" || path === "/assurance" || path === "/launch-assurance" || path === "/error-scenarios") return <PreLaunchAssurancePage />;

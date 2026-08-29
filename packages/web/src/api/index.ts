@@ -51,6 +51,7 @@ import { bridges } from "./routes/bridges";
 import { dispatchZero } from "./routes/dispatchzero";
 import { auth } from "./auth";
 import { sessionRoute } from "./routes/session";
+import { functionsIndex } from "./routes/functions";
 
 const app = new Hono()
   .basePath('api')
@@ -108,7 +109,10 @@ const app = new Hono()
   .route("/data-index", dataIndex)
   .route("/bridges", bridges)
   .route("/dispatch-zero", dispatchZero)
-  .route("/session", sessionRoute);
+  .route("/session", sessionRoute)
+  // The function index reads the app's OWN registered route table at request time. It cannot
+  // import `app` (circular), so it takes a getter that is resolved lazily, after construction.
+  .route("/functions", functionsIndex(() => app.routes as { method: string; path: string }[]));
 
 export type AppType = typeof app;
 export default app;
