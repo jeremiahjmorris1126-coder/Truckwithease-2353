@@ -32,7 +32,6 @@ type Feature = {
   tag: Tag;
   title: string;
   blurb: string;
-  competitors: { name: string; state: "no" | "partial" }[];
   note?: string;
 };
 
@@ -41,150 +40,78 @@ const FEATURES: Feature[] = [
     tag: "PROPRIETARY",
     title: "Ghost Nerve Intelligence",
     blurb: "Baselines every unit against itself and flags drift before it becomes a breakdown.",
-    competitors: [
-      { name: "Samsara", state: "no" },
-      { name: "Motive", state: "no" },
-      { name: "DAT", state: "no" },
-      { name: "Trucker Path", state: "no" },
-    ],
   },
   {
     tag: "QUANTUM",
     title: "Quantum Dispatch Mission Control",
     blurb: "Live map, multi-layer load scoring, dispatch without leaving the screen.",
-    competitors: [
-      { name: "Samsara", state: "no" },
-      { name: "Motive", state: "no" },
-      { name: "DAT", state: "no" },
-      { name: "Trucker Path", state: "no" },
-    ],
   },
   {
     tag: "EXCLUSIVE",
     title: "Sovereign ELD — FMCSA registration in progress",
     blurb: "An HOS log no outside platform can read, alter, or mirror.",
-    competitors: [
-      { name: "Samsara", state: "partial" },
-      { name: "Motive", state: "partial" },
-      { name: "DAT", state: "no" },
-      { name: "Trucker Path", state: "no" },
-    ],
     note: "Registration is filed and pending. Not yet on the FMCSA registered list.",
   },
   {
     tag: "EXCLUSIVE",
     title: "HREase — full hiring to paycheck",
     blurb: "Post a job, hire the driver, pay them — never leave the app.",
-    competitors: [
-      { name: "Samsara", state: "no" },
-      { name: "Motive", state: "no" },
-      { name: "DAT", state: "no" },
-      { name: "Trucker Path", state: "no" },
-    ],
   },
   {
     tag: "EXCLUSIVE",
     title: "ELD-to-payroll — zero manual entry",
     blurb: "Miles verified by the ELD. Paycheck generated from the same record.",
-    competitors: [
-      { name: "Samsara", state: "no" },
-      { name: "Motive", state: "no" },
-      { name: "DAT", state: "no" },
-      { name: "Trucker Path", state: "no" },
-    ],
   },
   {
     tag: "REAL TIME",
     title: "Lane profit intelligence",
     blurb: "Lanes ranked by net profit after fuel, tolls and time — not by posted rate.",
-    competitors: [
-      { name: "Samsara", state: "no" },
-      { name: "Motive", state: "no" },
-      { name: "DAT", state: "partial" },
-      { name: "Trucker Path", state: "no" },
-    ],
   },
   {
     tag: "UNIQUE",
     title: "Three vehicle worlds — one platform",
     blurb: "Class A trucks, courier cars, bikes and scooters. One account, one paycheck view.",
-    competitors: [
-      { name: "Samsara", state: "no" },
-      { name: "Motive", state: "no" },
-      { name: "DAT", state: "no" },
-      { name: "Trucker Path", state: "no" },
-    ],
   },
   {
     tag: "LIFE SAFETY",
     title: "Safety SOS — 911 and state patrol",
     blurb: "One button. Your GPS position, the right dispatch desk, no menu tree.",
-    competitors: [
-      { name: "Samsara", state: "no" },
-      { name: "Motive", state: "no" },
-      { name: "DAT", state: "no" },
-      { name: "Trucker Path", state: "no" },
-    ],
   },
   {
     tag: "EXCLUSIVE",
     title: "Game Up — gamified driver training",
     blurb: "FMCSA-aligned modules. Real scores. Rig Bucks on every pass.",
-    competitors: [
-      { name: "Samsara", state: "partial" },
-      { name: "Motive", state: "no" },
-      { name: "DAT", state: "no" },
-      { name: "Trucker Path", state: "no" },
-    ],
   },
   {
     tag: "PROPRIETARY",
     title: "Fleet Voice — hands-free through cab speakers",
     blurb: "Real numbers, real calls, through the speakers you already have. No second app.",
-    competitors: [
-      { name: "Samsara", state: "no" },
-      { name: "Motive", state: "no" },
-      { name: "DAT", state: "no" },
-      { name: "Trucker Path", state: "no" },
-    ],
   },
   {
     tag: "UNIQUE",
     title: "Rig Bucks — loyalty that actually retains",
     blurb: "Points on every clean day, every safe mile, every passed inspection.",
-    competitors: [
-      { name: "Samsara", state: "no" },
-      { name: "Motive", state: "no" },
-      { name: "DAT", state: "no" },
-      { name: "Trucker Path", state: "no" },
-    ],
   },
   {
     tag: "QUANTUM",
     title: "Quantum Scan & Bill — one invoice, four recipients",
     blurb: "Snap the BOL. Bill the broker, factor, shipper and AP desk off one scan.",
-    competitors: [
-      { name: "Samsara", state: "no" },
-      { name: "Motive", state: "no" },
-      { name: "DAT", state: "no" },
-      { name: "Trucker Path", state: "no" },
-    ],
   },
 ];
 
 const STATS = [
-  { value: "12", label: "AI agents live" },
-  { value: "45", label: "States of HOS rules" },
-  { value: "46", label: "Languages" },
+  { value: "12", label: "AI agents in the roster" },
+  { value: "49 CFR 395", label: "Federal HOS rules coded" },
+  { value: "7,869", label: "Low bridges mapped (FHWA NBI 2025)" },
   { value: "$29.99", label: "Starting per driver" },
   { value: "14", label: "Day free trial" },
 ];
 
 const PRICING = [
-  { name: "Samsara", price: "$800+", unit: "/truck/mo", muted: true },
-  { name: "Motive", price: "$600", unit: "/truck/mo", muted: true },
-  { name: "DAT", price: "$160", unit: "/mo", muted: true },
-  { name: "TruckWithEase", price: "$29.99", unit: "/driver/mo", muted: false },
+  { name: "Solo", price: "$29.99", unit: "/driver/mo", muted: false },
+  { name: "Pro", price: "$39.99", unit: "/driver/mo", muted: true },
+  { name: "Fleet (hardware leased)", price: "$49.99", unit: "/truck/mo", muted: true },
+  { name: "Fleet (hardware owned)", price: "$59.99", unit: "/driver/mo", muted: true },
 ];
 
 function Badge({ children }: { children: React.ReactNode }) {
@@ -204,25 +131,6 @@ function Badge({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-    </span>
-  );
-}
-
-function CompetitorChip({ name, state }: { name: string; state: "no" | "partial" }) {
-  const partial = state === "partial";
-  return (
-    <span
-      style={{
-        fontFamily: "JetBrains Mono, monospace",
-        fontSize: 10,
-        color: partial ? "#B9945A" : "#8A8A8A",
-        border: `1px solid ${partial ? "#5A4620" : "#2A2A2A"}`,
-        background: partial ? "#221A08" : "#131313",
-        padding: "3px 7px",
-        borderRadius: 3,
-      }}
-    >
-      {name}: {partial ? "partial" : "no"}
     </span>
   );
 }
@@ -254,9 +162,9 @@ export default function LandingPage() {
         <span style={{ color: GOLD_BRIGHT, letterSpacing: "0.15em" }}>● LIVE</span>
         <span>Safety SOS — direct to 911 and state patrol</span>
         <span style={{ color: "#3A3A3A" }}>|</span>
-        <span>HOS rules loaded for 45 states</span>
+        <span>Federal HOS rules coded from 49 CFR 395</span>
         <span style={{ color: "#3A3A3A" }}>|</span>
-        <span>12 AI agents on shift</span>
+        <span>7,869 low bridges from FHWA NBI 2025</span>
       </div>
 
       {/* nav */}
@@ -555,9 +463,9 @@ export default function LandingPage() {
             lineHeight: 1.6,
           }}
         >
-          Competitor figures are indicative published list pricing, not quotes, and vary by contract
-          and hardware terms. TruckWithEase pricing: Solo $29.99/driver/mo, Pro $39.99/driver/mo,
-          Fleet $49.99/truck/mo with hardware lease or $59.99/driver/mo hardware-owned.
+          TruckWithEase pricing of record: Solo $29.99/driver/mo, Pro $39.99/driver/mo, Fleet
+          $49.99/truck/mo with hardware lease included, or $59.99/driver/mo hardware-owned
+          ($600/truck one-time). 14-day trial, no contracts, Net 30. There is no enterprise tier.
         </p>
       </section>
 
@@ -666,16 +574,6 @@ export default function LandingPage() {
                 }}
               >
                 <Badge>{f.tag}</Badge>
-                <span
-                  style={{
-                    fontFamily: "JetBrains Mono, monospace",
-                    fontSize: 10,
-                    color: "#5E5E5E",
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  ZERO COMPETITORS ✓
-                </span>
               </div>
               <h3
                 style={{
@@ -691,11 +589,6 @@ export default function LandingPage() {
                 {f.title}
               </h3>
               <p style={{ margin: 0, fontSize: 13, color: GOLD, lineHeight: 1.6 }}>{f.blurb}</p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: "auto" }}>
-                {f.competitors.map((c) => (
-                  <CompetitorChip key={c.name} name={c.name} state={c.state} />
-                ))}
-              </div>
               {f.note && (
                 <div style={{ fontSize: 11, color: "#7A7A7A", lineHeight: 1.55 }}>{f.note}</div>
               )}

@@ -747,11 +747,10 @@ export default function TruckWithEaseELDPage() {
               </table>
             </div>
             <div style={{ marginTop: 20, background: G + '10', border: `1px solid ${G}30`, borderRadius: 14, padding: 22, textAlign: 'center' }}>
-              <div style={{ fontSize: 16, fontWeight: 900, color: WHITE, marginBottom: 6 }}>A 20-truck fleet saves $6,240/year switching to TruckWithEase ELD</div>
-              <div style={{ fontSize: 11, color: DIM, marginBottom: 16 }}>($45 − $19) × 20 trucks × 12 months. Plus you get 12 Quantum layers, a load board, factoring, payroll, and more.</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: WHITE, marginBottom: 6 }}>Fleet pricing: $49.99/truck/mo with the hardware lease included</div>
+              <div style={{ fontSize: 11, color: DIM, marginBottom: 16 }}>Or $59.99/driver/mo hardware-owned ($600/truck one-time). 14-day trial, no contract. We do not quote other vendors' prices, so run your own numbers against your current invoice.</div>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <button onClick={() => setTab('order')} style={{ background: `linear-gradient(135deg,${G},${G2})`, color: '#000', padding: '12px 28px', borderRadius: 10, border: 'none', fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>Order Now →</button>
-                <a href="/switch-from-samsara" style={{ background: RED + '20', border: `1px solid ${RED}40`, color: RED, padding: '12px 28px', borderRadius: 10, fontWeight: 900, fontSize: 13, textDecoration: 'none' }}>Switch from Samsara Guide →</a>
               </div>
             </div>
           </div>

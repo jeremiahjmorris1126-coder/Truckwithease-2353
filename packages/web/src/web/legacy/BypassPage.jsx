@@ -136,54 +136,6 @@ function calcAllocation(steer, drive, trailer, stateCode) {
   return { code, bypassRec, reason, actions, gross, limit, margin, steerOk, driveOk, trailerOk, grossOk };
 }
 
-// ─── Samsara API integration ──────────────────────────────────────────────────
-// Samsara Fleet API v1 — reads live vehicle data including GPS, HOS, and
-// vehicle stats (including weight sensors if configured on the gateway).
-// Docs: https://developers.samsara.com/reference/getvehicles
-// Auth: Bearer token stored in platform_settings.samsara_app_id
-
-async function fetchSamsaraVehicles(apiToken) {
-  // Samsara Fleet API — GET /fleet/vehicles with live stats
-  const res = await fetch("https://api.samsara.com/fleet/vehicles?limit=25&parentTagIds=", {
-    headers: {
-      "Authorization": `Bearer ${apiToken}`,
-      "Accept": "application/json",
-    },
-  });
-  if (!res.ok) throw new Error(`Samsara API ${res.status}: ${await res.text()}`);
-  return res.json();
-}
-
-async function fetchSamsaraVehicleStats(apiToken, vehicleId) {
-  // Samsara Fleet API — GET /fleet/vehicles/stats for live engine/weight data
-  const res = await fetch(
-    `https://api.samsara.com/fleet/vehicles/stats?vehicleIds=${vehicleId}&types=gps,engineLoadPercent,gpsOdometer,obdEngineSeconds`,
-    {
-      headers: {
-        "Authorization": `Bearer ${apiToken}`,
-        "Accept": "application/json",
-      },
-    }
-  );
-  if (!res.ok) throw new Error(`Samsara stats ${res.status}`);
-  return res.json();
-}
-
-async function fetchSamsaraHOS(apiToken, driverIds) {
-  // Samsara HOS — GET /fleet/hos/current-violations
-  const res = await fetch(
-    `https://api.samsara.com/fleet/hos/current-violations?driverIds=${driverIds}`,
-    {
-      headers: {
-        "Authorization": `Bearer ${apiToken}`,
-        "Accept": "application/json",
-      },
-    }
-  );
-  if (!res.ok) return null;
-  return res.json();
-}
-
 // ─── Sample bypass history ────────────────────────────────────────────────────
 const BYPASS_HISTORY = [
   { date:"Aug 14", location:"Sikeston, MO",    route:"I-55 NB",  result:"BYPASS",  gross:77200, state:"MO", points:50 },
@@ -215,7 +167,7 @@ const REQUIREMENTS = [
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function BypassPage() {
-  const [tab, setTab]               = useState("status");  // status | weights | samsara | history
+  const [tab, setTab]               = useState("status");  // status | weights | history
   const [bypassActive, setBypassActive] = useState(true);
   const [simulating, setSimulating] = useState({});
   const [demoResults, setDemoResults] = useState({});
@@ -227,25 +179,6 @@ export default function BypassPage() {
   const [trailerW, setTrailerW]     = useState("");
   const [allocResult, setAllocResult] = useState(null);
 
-  // Samsara
-  const [samsaraToken, setSamsaraToken] = useState("");
-  const [samsaraStatus, setSamsaraStatus] = useState("idle"); // idle | loading | connected | error
-  const [samsaraVehicles, setSamsaraVehicles] = useState([]);
-  const [samsaraError, setSamsaraError] = useState("");
-  const [selectedVehicle, setSelectedVehicle] = useState(null);
-  const [vehicleStats, setVehicleStats] = useState(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-
-  // Load saved Samsara token from platform settings
-  useEffect(() => {
-    pb.collection("platform_settings").getList(1, 1)
-      .then(r => {
-        const rec = r.items[0];
-        if (rec?.samsara_app_id) setSamsaraToken(rec.samsara_app_id);
-      })
-      .catch(() => {});
-  }, []);
-
   const totalBypasses = BYPASS_HISTORY.filter(h => h.result === "BYPASS").length;
   const totalPoints   = BYPASS_HISTORY.reduce((a, b) => a + b.points, 0);
   const totalTimeSaved = totalBypasses * 22; // avg 22 min saved per bypass
@@ -256,72 +189,6 @@ export default function BypassPage() {
       parseInt(steerW), parseInt(driveW), parseInt(trailerW), stateCode
     );
     setAllocResult(result);
-  }
-
-  // Auto-run allocation when Samsara vehicle stats are loaded (if weight data available)
-  function applyVehicleWeights(stats) {
-    // Samsara returns weight via engineStates or sensor data
-    // We use placeholder weights from the vehicle profile as demonstration
-    // In production: parse stats.data[0].engineStates for weight sensor values
-    setSteerW("11800");
-    setDriveW("33400");
-    setTrailerW("34000");
-    const result = calcAllocation(11800, 33400, 34000, stateCode);
-    setAllocResult(result);
-  }
-
-  async function connectSamsara() {
-    if (!samsaraToken.trim()) return;
-    setSamsaraStatus("loading");
-    setSamsaraError("");
-    try {
-      const data = await fetchSamsaraVehicles(samsaraToken.trim());
-      const vehicles = data.data || [];
-      setSamsaraVehicles(vehicles);
-      setSamsaraStatus("connected");
-      // Save token to platform settings for reuse
-      try {
-        const existing = await pb.collection("platform_settings").getList(1, 1);
-        if (existing.items[0]) {
-          await pb.collection("platform_settings").update(existing.items[0].id, { samsara_app_id: samsaraToken.trim() });
-        } else {
-          await pb.collection("platform_settings").create({ samsara_app_id: samsaraToken.trim() });
-        }
-      } catch (_) {}
-    } catch (e) {
-      setSamsaraStatus("error");
-      setSamsaraError(e.message || "Connection failed — verify your API token and try again");
-      // Demo mode: show sample vehicles so user can see the UI
-      setSamsaraVehicles([
-        { id: "demo-1", name: "Truck 101 — Peterbilt 579", externalIds: { "samsara.serial": "SG1-DEMO" }, attributes: [] },
-        { id: "demo-2", name: "Truck 102 — Freightliner Cascadia", externalIds: {}, attributes: [] },
-        { id: "demo-3", name: "Truck 103 — Kenworth T680", externalIds: {}, attributes: [] },
-      ]);
-      setSamsaraStatus("demo");
-    }
-  }
-
-  async function loadVehicleStats(vehicle) {
-    setSelectedVehicle(vehicle);
-    setStatsLoading(true);
-    setVehicleStats(null);
-    try {
-      const data = await fetchSamsaraVehicleStats(samsaraToken, vehicle.id);
-      setVehicleStats(data.data?.[0] || null);
-      // If we got live GPS/load data, feed into allocation
-      applyVehicleWeights(data.data?.[0]);
-    } catch (_) {
-      // Demo stats
-      setVehicleStats({
-        id: vehicle.id,
-        name: vehicle.name,
-        gps: { latitude: 35.2271, longitude: -80.8431, speedMilesPerHour: 62, reverseGeo: { formattedLocation: "Charlotte, NC · I-485" } },
-        gpsOdometer: { value: 487320 },
-        engineLoadPercent: { value: 67 },
-      });
-      applyVehicleWeights(null);
-    }
-    setStatsLoading(false);
   }
 
   function simulateBypass(stationId) {
@@ -341,7 +208,6 @@ export default function BypassPage() {
   const TABS = [
     { id: "status",  label: "Bypass Status", icon: "⚡" },
     { id: "weights", label: "Allocation Code", icon: "⚖️" },
-    { id: "samsara", label: "Live ELD Data", icon: "📡" },
     { id: "history", label: "Trip History",  icon: "📋" },
   ];
 
@@ -616,108 +482,6 @@ export default function BypassPage() {
                 )}
               </div>
             </div>
-          </div>
-        )}
-
-        {/* ══ SAMSARA LIVE ELD TAB ══ */}
-        {tab === "samsara" && (
-          <div style={{ animation:"fadeUp 0.3s ease both" }}>
-            <div style={{ background:C.greenDim, border:`1px solid ${C.green}33`, borderRadius:10, padding:"12px 16px", marginBottom:20, fontSize:13, color:C.green, lineHeight:1.6 }}>
-              📡 <strong>Live ELD Connection.</strong> Connect your Samsara fleet account — TruckWithEase reads live GPS position, engine load, odometer, and vehicle data, then feeds it directly into the Allocation Code engine so your bypass decision is based on real-time data from your truck.
-            </div>
-
-            {/* Token input */}
-            {samsaraStatus !== "connected" && samsaraStatus !== "demo" && (
-              <div className="bp-card" style={{ marginBottom:20 }}>
-                <div style={{ fontFamily:FD, fontSize:15, letterSpacing:"0.08em", color:C.white, marginBottom:4 }}>SAMSARA API CONNECTION</div>
-                <div style={{ fontSize:12, color:C.white40, marginBottom:16 }}>
-                  Your API token is stored privately — it never leaves your account.
-                  Get your token at <a href="https://cloud.samsara.com/settings/api-tokens" target="_blank" rel="noopener noreferrer" style={{ color:C.gold }}>cloud.samsara.com → Settings → API Tokens</a>
-                </div>
-                <div style={{ display:"flex", gap:10 }}>
-                  <input className="bp-input" type="password" placeholder="samsara_api_xxxxxxxxxxxxxxxx"
-                    value={samsaraToken} onChange={e => setSamsaraToken(e.target.value)}
-                    style={{ flex:1 }} />
-                  <button className="bp-btn" onClick={connectSamsara}
-                    disabled={samsaraStatus === "loading"}
-                    style={{ background:C.green, borderRadius:8, padding:"10px 20px", fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", flexShrink:0 }}>
-                    {samsaraStatus === "loading"
-                      ? <span style={{ animation:"spin 0.8s linear infinite", display:"inline-block" }}>⟳</span>
-                      : "Connect"}
-                  </button>
-                </div>
-                {samsaraError && (
-                  <div style={{ marginTop:12, padding:"10px 14px", background:C.amberDim, border:`1px solid ${C.amber}44`, borderRadius:8, fontSize:12, color:C.amber }}>
-                    ⚠️ {samsaraError} — showing demo vehicles below.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Connected status */}
-            {(samsaraStatus === "connected" || samsaraStatus === "demo") && (
-              <div style={{ background:samsaraStatus === "connected" ? C.greenDim : C.amberDim, border:`1px solid ${samsaraStatus === "connected" ? C.green : C.amber}44`, borderRadius:10, padding:"12px 16px", marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <span style={{ fontSize:13, color:samsaraStatus === "connected" ? C.green : C.amber, fontWeight:700 }}>
-                  {samsaraStatus === "connected" ? `✅ Connected — ${samsaraVehicles.length} vehicles loaded` : "⚠️ Demo mode — enter your API token to see live data"}
-                </span>
-                <button className="bp-btn" onClick={() => { setSamsaraStatus("idle"); setSamsaraVehicles([]); setSelectedVehicle(null); }}
-                  style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:6, padding:"4px 10px", fontSize:11, color:C.white40, cursor:"pointer" }}>
-                  Disconnect
-                </button>
-              </div>
-            )}
-
-            {/* Vehicle list */}
-            {samsaraVehicles.length > 0 && (
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:12, marginBottom:20 }}>
-                {samsaraVehicles.map(v => (
-                  <div key={v.id} className="bp-card"
-                    onClick={() => loadVehicleStats(v)}
-                    style={{ cursor:"pointer", border:`1px solid ${selectedVehicle?.id === v.id ? C.green + "66" : C.border}`, background: selectedVehicle?.id === v.id ? C.greenDim : C.surface }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
-                      <div style={{ fontWeight:700, fontSize:13, color:C.white }}>{v.name || "Vehicle"}</div>
-                      <div style={{ background:C.greenDim, border:`1px solid ${C.green}33`, borderRadius:4, padding:"2px 6px", fontSize:10, color:C.green, fontWeight:700 }}>LIVE</div>
-                    </div>
-                    <div style={{ fontSize:11, color:C.white40 }}>ID: {v.id}</div>
-                    <div style={{ marginTop:10 }}>
-                      <button className="bp-btn"
-                        style={{ width:"100%", background:selectedVehicle?.id === v.id ? C.green : "transparent", border:`1px solid ${selectedVehicle?.id === v.id ? C.green : C.borderHi}`, borderRadius:6, padding:"7px 0", fontSize:12, color:selectedVehicle?.id === v.id ? "#fff" : C.white40, cursor:"pointer", fontWeight:600 }}>
-                        {statsLoading && selectedVehicle?.id === v.id
-                          ? <span style={{ animation:"spin 0.8s linear infinite", display:"inline-block" }}>⟳</span>
-                          : selectedVehicle?.id === v.id ? "✓ Selected" : "Load Live Data"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Live stats panel */}
-            {vehicleStats && (
-              <div className="bp-card" style={{ border:`1px solid ${C.green}44` }}>
-                <div style={{ fontFamily:FD, fontSize:15, letterSpacing:"0.08em", color:C.green, marginBottom:14 }}>LIVE VEHICLE DATA — {selectedVehicle?.name}</div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:12, marginBottom:16 }}>
-                  {[
-                    { label:"Current Location", val:vehicleStats.gps?.reverseGeo?.formattedLocation || "GPS Active" },
-                    { label:"Speed",             val:`${vehicleStats.gps?.speedMilesPerHour || 0} MPH` },
-                    { label:"Odometer",          val:`${((vehicleStats.gpsOdometer?.value || 0) / 1609).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,",")} mi` },
-                    { label:"Engine Load",       val:`${vehicleStats.engineLoadPercent?.value || "--"}%` },
-                  ].map((s,i) => (
-                    <div key={i} style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:7, padding:"10px 14px" }}>
-                      <div style={{ fontSize:10, color:C.white40, fontWeight:700, letterSpacing:"0.07em", marginBottom:4 }}>{s.label}</div>
-                      <div style={{ fontFamily:FM, fontSize:14, color:C.white, fontWeight:600 }}>{s.val}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ background:C.greenDim, border:`1px solid ${C.green}33`, borderRadius:8, padding:"12px 16px", fontSize:13, color:C.green }}>
-                  ✅ Live data loaded into Allocation Code engine — weights pre-filled. Switch to the <strong>Allocation Code</strong> tab to get your bypass recommendation.
-                </div>
-                <button className="bp-btn" onClick={() => setTab("weights")}
-                  style={{ marginTop:12, background:C.green, border:"none", borderRadius:8, padding:"10px 24px", fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer" }}>
-                  ⚖️ View Allocation Code & Bypass Decision →
-                </button>
-              </div>
-            )}
           </div>
         )}
 

@@ -39,7 +39,7 @@ export default function Index() {
       <section className="twe-navy-grad text-white">
         <div className="max-w-6xl mx-auto px-6 pt-16 pb-24 text-center">
           <div className="inline-flex items-center gap-2 rounded-full bg-[#161616]/10 px-3 py-1 text-xs font-medium text-[#FFD778] mb-6">
-            <Sparkles className="h-3.5 w-3.5" />No contracts · Cancel anytime · ~60% below Motive
+            <Sparkles className="h-3.5 w-3.5" />No contracts · Cancel anytime · 14-day free trial
           </div>
           <h1 className="text-4xl md:text-6xl font-bold leading-tight max-w-3xl mx-auto">
             Everything a Class A driver needs — <span className="text-[#C9A84C]">in one app.</span>
@@ -48,11 +48,11 @@ export default function Index() {
             HOS, ELD, DVIR, live GPS, fuel, tolls, and state-aware DOT compliance — with two AI experts riding shotgun. Drive Smart. Stay Compliant.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/app" className="inline-flex items-center gap-2 rounded-lg bg-[#C9A84C] px-6 py-3 font-semibold text-[#F5F5F5] hover:bg-[#FFD700]">Start free 30-day trial <ArrowRight className="h-4 w-4" /></Link>
+            <Link to="/app" className="inline-flex items-center gap-2 rounded-lg bg-[#C9A84C] px-6 py-3 font-semibold text-[#F5F5F5] hover:bg-[#FFD700]">Start free 14-day trial <ArrowRight className="h-4 w-4" /></Link>
             <Link to="/app" className="inline-flex items-center gap-2 rounded-lg border border-white/25 px-6 py-3 font-semibold text-white hover:bg-[#161616]/10">Explore the demo</Link>
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-[#8A8A8A]">
-            {["FMCSA ELD compliant", "State-aware DOT AI", "Built-in loyalty rewards"].map((t) => (
+            {["HOS clocks coded from 49 CFR 395", "State-aware DOT AI", "Built-in loyalty rewards"].map((t) => (
               <span key={t} className="flex items-center gap-1.5"><Check className="h-4 w-4 text-[#C9A84C]" />{t}</span>
             ))}
           </div>
@@ -89,7 +89,7 @@ export default function Index() {
                 { icon: Brain, t: "Two AI experts on board", d: "Fleet Chief diagnoses trucks and trailers like a master mechanic. Health Chief keeps your DOT card current." },
                 { icon: Trophy, t: "You actually get rewarded", d: "Every mile, clean day, and fill-up earns points — redeemable for real fuel and subscription credits." },
                 { icon: ShieldCheck, t: "Compliance that's proactive", d: "State-aware DOT AI warns you before a violation, not after the ticket." },
-                { icon: Camera, t: "Dashcam bundle option", d: "Records video, syncs to the app, cloud storage + incident clips. The Motive killer, without the Motive price." },
+                { icon: Camera, t: "Dashcam bundle option", d: "Optional hardware: $600/truck one-time, or included in the Fleet lease at $49.99/truck/mo. Records video, syncs to the app, cloud storage + incident clips." },
               ].map((r) => {
                 const Icon = r.icon;
                 return (
@@ -104,7 +104,7 @@ export default function Index() {
           <div className="rounded-2xl twe-navy-grad text-white p-8">
             <div className="text-sm font-semibold uppercase tracking-wide text-[#C9A84C]">Simple pricing</div>
             <div className="mt-4 space-y-3">
-              {[["Solo", "$19.99", "/mo"], ["Pro", "$34.99", "/mo"], ["Fleet", "$24.99", "/seat"]].map(([n, p, u]) => (
+              {[["Solo", "$29.99", "/driver/mo"], ["Pro", "$39.99", "/driver/mo"], ["Fleet", "$49.99", "/truck/mo"]].map(([n, p, u]) => (
                 <div key={n} className="flex items-center justify-between rounded-lg bg-[#161616]/5 px-4 py-3">
                   <span className="font-medium">{n}</span>
                   <span className="font-mono-data font-bold text-[#C9A84C]">{p}<span className="text-xs text-[#8A8A8A]">{u}</span></span>
@@ -112,7 +112,7 @@ export default function Index() {
               ))}
             </div>
             <Link to="/app/pricing" className="mt-6 flex items-center justify-center gap-2 rounded-lg bg-[#C9A84C] px-4 py-3 font-semibold text-[#F5F5F5] hover:bg-[#FFD700]">See full plans <ArrowRight className="h-4 w-4" /></Link>
-            <p className="mt-3 text-center text-xs text-[#8A8A8A]">30-day free trial · No contracts · Cancel anytime</p>
+            <p className="mt-3 text-center text-xs text-[#8A8A8A]">14-day free trial · No contracts · Cancel anytime</p>
           </div>
         </div>
       </section>

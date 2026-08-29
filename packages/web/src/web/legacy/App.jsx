@@ -7,7 +7,6 @@ const MorrishiveELDRevolutionPage = lazy(() => import("./pages/MorrishiveELDRevo
 const QuantumHOSAnalyticsDashboard = lazy(() => import("./pages/QuantumHOSAnalyticsDashboard"));
 const ELDHardwareMarketingPage = lazy(() => import("./pages/ELDHardwareMarketingPage"));
 const TruckWithEaseELDPage = lazy(() => import("./pages/TruckWithEaseELDPage"));
-const SwitchFromSamsaraPage = lazy(() => import("./pages/SwitchFromSamsaraPage"));
 const FMCSARegistrationPage = lazy(() => import("./pages/FMCSARegistrationPage"));
 const SignupPage = lazy(() => import("./SignupPage"));
 const AccessibleSignupPage = lazy(() => import("./AccessibleSignupPage"));
@@ -106,7 +105,6 @@ const VoicePage = lazy(() => import("./VoicePage"));
 const HardwareInventoryAgentPage = lazy(() => import("./HardwareInventoryAgentPage"));
 const PayrollPage = lazy(() => import("./pages/PayrollPage"));
 const CompetitiveIntelligencePage = lazy(() => import("./pages/CompetitiveIntelligencePage"));
-const SamsaraConnectPage = lazy(() => import("./pages/SamsaraConnectPage"));
 const FleetVoicePage = lazy(() => import("./pages/FleetVoicePage"));
 const TwilioSetupPage = lazy(() => import("./pages/TwilioSetupPage"));
 const PageGuardianAgent = lazy(() => import("./pages/PageGuardianAgent"));
@@ -180,7 +178,6 @@ const HapticLanguagePage = lazy(() => import("./pages/HapticLanguagePage"));
 const LiveCaptionsPage = lazy(() => import("./pages/LiveCaptionsPage"));
 const MultiDeviceHapticsPage = lazy(() => import("./pages/MultiDeviceHapticsPage"));
 const JJKellerCompliancePage = lazy(() => import("./pages/JJKellerCompliancePage"));
-const SignLanguageLearningPage = lazy(() => import("./pages/SignLanguageLearningPage"));
 const AgentTechnicianPage = lazy(() => import("./pages/AgentTechnicianPage"));
 const ResponsibleUseOnboardingPage = lazy(() => import("./pages/ResponsibleUseOnboardingPage"));
 const DriverHealthRecoveryPage = lazy(() => import("./pages/DriverHealthRecoveryPage"));
@@ -278,48 +275,23 @@ const features = [
 
 const plans = [
   {
-    id: "solo", name: "Solo", price: "$19.99", period: "/mo",
+    id: "solo", name: "Solo", price: "$29.99", period: "/driver/mo",
     tag: "Owner-Operators", color: AMBER,
-    features: ["HOS/ELD Logger","GPS Tracking","Pre-Trip DVIR","State DOT AI Watcher","Live Fuel Finder","Parking Finder","Load Board","IFTA Tracking","Load Profit Calculator","Expense Tracker","Detention Pay Tracker","Trip Planner","Digital Permit Book","Driver Safety Scorecard","Breakdown SOS","Voice Commands"],
-    cta: "Start Free Trial",
+    features: ["HOS clocks coded from 49 CFR 395","GPS tracking","Pre-trip DVIR","State DOT rule notes","Fuel price finder (EIA data)","Parking finder","Load board","Load profit calculator","Expense tracker","Detention pay tracker","Trip planner","Digital permit book","Driver safety scorecard","Breakdown SOS","Voice commands","Low-bridge alerts (FHWA NBI)"],
+    cta: "Start 14-Day Trial",
   },
   {
-    id: "pro", name: "Pro", price: "$34.99", period: "/mo",
+    id: "pro", name: "Pro", price: "$39.99", period: "/driver/mo",
     tag: "Most Popular", color: ORANGE,
-    features: ["Everything in Solo","💳 $100 Fuel Card included","Dispatch Messaging","Factoring Integration","⚡ Weigh Station Bypass (PrePass)","🛣️ Toll Route Optimizer","🔧 Fleet Chief AI","🩺 Health Chief AI","🎤 Voice Commands (Priority)","🎬 Moviease","TruckEase Cam Integration","Speed & Idle Tracking"],
-    cta: "Start Free Trial", highlight: true,
+    features: ["Everything in Solo","Dispatch messaging","Signed dispatch decision ledger","Toll route notes","Fleet Chief AI","Health Chief AI","Voice commands (priority)","Moviease","Speed and idle tracking","TRAXES financial AI"],
+    cta: "Start 14-Day Trial", highlight: true,
   },
   {
-    id: "fleet", name: "Fleet", price: "$24.99", period: "/seat/mo",
-    tag: "Fleet Managers", color: GREEN,
-    features: ["Everything in Pro","Unlimited Drivers","Multi-vehicle Admin Map","Fleet HOS Overview","Bulk DVIR Reports","Driver Safety Scorecards","State Patrol Intelligence","California AB5 Compliance Tools","Driver Coaching Alerts","Custom Integrations","Dedicated Support"],
-    cta: "Contact Sales",
+    id: "fleet", name: "Fleet", price: "$49.99", period: "/truck/mo",
+    tag: "Fleet Managers — hardware lease included", color: GREEN,
+    features: ["Everything in Pro","Hardware lease included (or $59.99/driver/mo if you own hardware, $600/truck one-time)","Unlimited drivers","Multi-vehicle admin map","Fleet HOS overview","Bulk DVIR reports","Driver safety scorecards","State patrol intelligence","Driver coaching alerts","HR module","Dedicated support"],
+    cta: "Start 14-Day Trial",
   },
-];
-
-const compareRows = [
-  { feature: "Live GPS Tracking (All Trucks)",  us: true,     motive: true,      trucker: false,     dat: false },
-  { feature: "FMCSA-Registered ELD / HOS",      us: true,     motive: true,      trucker: false,     dat: false },
-  { feature: "Pre-Trip / Post-Trip DVIR",       us: true,     motive: true,      trucker: false,     dat: false },
-  { feature: "Driver Safety Scorecard",         us: true,     motive: "partial", trucker: false,     dat: false },
-  { feature: "Dash Cam / Video Integration",    us: true,     motive: true,      trucker: false,     dat: false },
-  { feature: "Real-Time Violation Alerts",      us: true,     motive: true,      trucker: false,     dat: false },
-  { feature: "$100 Fuel Card Included",        us: true,     motive: false,     trucker: false,     dat: false },
-  { feature: "Load Profitability Calculator",  us: true,     motive: false,     trucker: false,     dat: false },
-  { feature: "Traxes Financial AI",            us: true,     motive: false,     trucker: false,     dat: false },
-  { feature: "Detention Pay Tracker",          us: true,     motive: false,     trucker: false,     dat: false },
-  { feature: "Weigh Station Bypass (PrePass)", us: true,     motive: "partial", trucker: false,     dat: false },
-  { feature: "Driver Safety Scorecard",        us: true,     motive: "partial", trucker: false,     dat: false },
-  { feature: "Fleet Chief AI (Diagnostics)",   us: true,     motive: false,     trucker: false,     dat: false },
-  { feature: "Driver Health & DOT Medical",    us: true,     motive: false,     trucker: false,     dat: false },
-  { feature: "Rig Bucks Rewards",         us: true,     motive: false,     trucker: false,     dat: false },
-  { feature: "Moviease",           us: true,     motive: false,     trucker: false,     dat: false },
-  { feature: "State DOT AI Watcher",           us: true,     motive: "partial", trucker: false,     dat: false },
-  { feature: "HOS / ELD Compliance",           us: true,     motive: true,      trucker: false,     dat: false },
-  { feature: "Factoring Integration",          us: true,     motive: false,     trucker: false,     dat: false },
-  { feature: "Load Board Access",              us: true,     motive: false,     trucker: "partial", dat: true  },
-  { feature: "No Contracts, Cancel Anytime",   us: true,     motive: false,     trucker: true,      dat: true  },
-  { feature: "Price (Owner-Op / mo)",          us: "$19.99", motive: "$35–99+", trucker: "$35",     dat: "$59+"},
 ];
 
 const screenshots = [
@@ -335,13 +307,6 @@ const screenshots = [
 ];
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-function CompareCell({ v }) {
-  if (v === true)      return <span style={{ color: GREEN,    fontSize: 18, fontWeight: 900 }}>✓</span>;
-  if (v === false)     return <span style={{ color: "#CBD5E1",fontSize: 18, fontWeight: 900 }}>✕</span>;
-  if (v === "partial") return <span style={{ color: "#F59E0B",fontSize: 12, fontWeight: 700 }}>~ limited</span>;
-  return <span style={{ color: "#0F172A", fontSize: 12, fontWeight: 700 }}>{v}</span>;
-}
-
 function useScrollY() {
   const [y, setY] = useState(0);
   useEffect(() => {
@@ -595,7 +560,6 @@ export default function App() {
   if (path === "/quantum-hos" || path === "/hos-analytics" || path === "/fatigue-analysis") return <QuantumHOSAnalyticsDashboard />;
   if (path === "/eld-hardware" || path === "/eld-marketing" || path === "/hardware-bundle") return <ELDHardwareMarketingPage />;
   if (path === "/twe-eld" || path === "/eld" || path === "/eld-system" || path === "/hardware") return <TruckWithEaseELDPage />;
-  if (path === "/switch-from-samsara" || path === "/switch" || path === "/vs-samsara-switch") return <SwitchFromSamsaraPage />;
   if (path === "/fmcsa-registration") return <FMCSARegistrationPage />;
   if (path === "/hardware-bundle") return <HardwareSoftwareBundle />;
   if (path === "/pricing-strategy") return <PricingStrategy />;
@@ -670,7 +634,6 @@ export default function App() {
   if (path === "/safety-sos") return <SafetySOSPage />;
   if (path === "/customer-book") return <CustomerBookPage />;
   if (path === "/competitive-intelligence" || path === "/vs-samsara" || path === "/compete") return <CompetitiveIntelligencePage />;
-  if (path === "/samsara-connect" || path === "/samsara") return <SamsaraConnectPage />;
   if (path === "/fleet-voice" || path === "/voice-calls" || path === "/hands-free") return <FleetVoicePage />;
   if (path === "/page-guardian" || path === "/guardian" || path === "/page-monitor") return <PageGuardianAgent />;
   if (path === "/neural-safety" || path === "/safety-core" || path === "/trucking-guru") return <NeuralSafetyCore />;
@@ -693,7 +656,6 @@ export default function App() {
   if (path === "/captions" || path === "/live-captions" || path === "/translate") return <LiveCaptionsPage />;
   if (path === "/multi-device-haptics" || path === "/device-sync" || path === "/haptic-broadcast") return <MultiDeviceHapticsPage />;
   if (path === "/jj-keller" || path === "/compliance-training" || path === "/vehicle-compliance") return <JJKellerCompliancePage />;
-  if (path === "/sign-language" || path === "/asl-learning" || path === "/deaf-communication") return <SignLanguageLearningPage />;
   if (path === "/agent-technician" || path === "/system-monitor" || path === "/test-dashboard") return <AgentTechnicianPage />;
   if (path === "/responsible-use" || path === "/onboarding" || path === "/community-pledge") return <ResponsibleUseOnboardingPage />;
   if (path === "/health-recovery" || path === "/physical-failure" || path === "/driver-health") return <DriverHealthRecoveryPage />;
@@ -742,7 +704,6 @@ export default function App() {
     { label: "🤝 HRease (Fleet)", href: "/humanai" },
     { label: "⚡ EV Charging", href: "/charging-stations" },
     { label: "📡 TruckWithEase ELD", href: "/twe-eld" },
-    { label: "🔄 Switch from Samsara", href: "/switch-from-samsara" },
     { label: "App Preview", href: "#preview" },
     { label: "📰 News", href: "/news" },
     { label: "Pricing", href: "#pricing" },
@@ -780,7 +741,6 @@ export default function App() {
           .two-col { grid-template-columns: 1fr !important; }
           .hide-mobile { display: none !important; }
           .nav-desktop { display: none !important; }
-          .compare-wrap { overflow-x: auto; }
           .plans-grid { grid-template-columns: 1fr !important; }
           .hero-btns { flex-direction: column !important; }
         }
@@ -1051,7 +1011,6 @@ export default function App() {
               {[
                 { label: "⚡ EV & Bike Charging", href: "/charging-stations", color: "#00E5FF" },
                 { label: "📡 TruckWithEase ELD", href: "/twe-eld", color: "#c9a84c" },
-                { label: "🔄 Switch from Samsara", href: "/switch-from-samsara", color: "#ff4757" },
               ].map(tile => (
                 <a key={tile.label} href={tile.href} style={{
                   display: "inline-block", padding: "10px 18px", borderRadius: 24,
@@ -1103,7 +1062,7 @@ export default function App() {
           {/* Bottom tagline */}
           <div style={{ position: "absolute", bottom: 28, left: 0, right: 0, textAlign: "center", pointerEvents: "none" }}>
             <div style={{ color: "rgba(255,255,255,0.75)", fontSize: "clamp(0.75rem, 1.5vw, 1rem)", fontWeight: 600, letterSpacing: 3, textTransform: "uppercase", fontFamily: "'Poppins', sans-serif", textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}>
-              HOS · FMCSA-Registered ELDs · DOT AI · Traxes · Rig Bucks
+              HOS · DVIR · Low Bridges · Traxes · Rig Bucks
             </div>
           </div>
         </div>
@@ -1455,73 +1414,76 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── WHY US ───────────────────────────────────────────────────────────── */}
-      <section id="why-us" style={{ padding: "64px 5%", background: NAVY, position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -120, right: -120, width: 480, height: 480, borderRadius: "50%", background: "rgba(255,107,0,0.07)", pointerEvents: "none" }} />
+      {/* ── WHY US ───────────────────────────────────────────────────────────────
+          Rewritten 2026-08-29. Removed, and not replaced with softer wording:
+            · the "FMCSA-Registered ELD / HOS" row and every prose ELD claim —
+              TruckWithEase is NOT a registered ELD provider.
+            · the 22-row Samsara / Motive / Trucker Path / DAT comparison table
+              and its $19.99 price cell (no such tier; Solo is $29.99).
+            · "Owner-ops rate them 3.4/5" — invented statistic, no source.
+            · "Samsara charges $25-$50/truck/month" — competitor pricing.
+          What this section now claims is limited to what the codebase actually
+          does, and each card names the route that proves it.
+      ─────────────────────────────────────────────────────────────────────────── */}
+      <section id="why-us" style={{ padding: "64px 5%", background: "#0a0a0a", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -120, right: -120, width: 480, height: 480, borderRadius: "50%", background: "rgba(201,168,76,0.06)", pointerEvents: "none" }} />
         <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 2 }}>
           <FadeIn>
             <div style={{ textAlign: "center", marginBottom: 56 }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,107,0,0.15)", border: "1px solid rgba(255,107,0,0.4)", borderRadius: 20, padding: "6px 16px", marginBottom: 20 }}>
-                <span style={{ color: ORANGE, fontSize: 13 }}>⚡</span>
-                <span style={{ color: "#FFB366", fontSize: 12, fontWeight: 700 }}>THE HARD TRUTH</span>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(201,168,76,0.10)", border: "1px solid rgba(201,168,76,0.45)", borderRadius: 4, padding: "6px 16px", marginBottom: 20 }}>
+                <span style={{ color: "#FFD700", fontSize: 11, fontFamily: "Oswald, sans-serif", letterSpacing: "0.22em", textTransform: "uppercase" }}>What we actually built</span>
               </div>
-              <h2 style={{ fontSize: "clamp(2rem,4vw,3rem)", fontWeight: 900, color: "white", lineHeight: 1.1, marginBottom: 16 }}>
-                Every other app was built<br /><span style={{ color: ORANGE }}>for the fleet office.</span><br />We built ours for you.
+              <h2 style={{ fontFamily: "Bebas Neue, Oswald, sans-serif", fontSize: "clamp(2rem,4vw,3rem)", color: "#fff", lineHeight: 1.06, marginBottom: 16 }}>
+                Built for the driver,<br /><span style={{ color: "#FFD700" }}>not the compliance office.</span>
               </h2>
-              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 17, maxWidth: 660, margin: "0 auto", lineHeight: 1.8 }}>
-                Samsara, Motive, KeepTruckin — built for fleet compliance officers, sold on 3-year contracts, priced per truck. TruckWithEase does everything they do — live GPS, ELD, DVIR, driver scoring, violation alerts — plus the tools they never built: fuel cards, load boards, factoring, tax tracking, driver rewards, and an AI that actually talks to your drivers. No contracts. Fraction of the price.
+              <p style={{ color: "#A8A8A8", fontSize: 16, maxWidth: 680, margin: "0 auto", lineHeight: 1.8 }}>
+                No contracts, no per-truck lock-in, and no claim we cannot show you on a screen.
+                TruckWithEase is not a registered ELD provider and does not file anything with any
+                agency. Everything below is a page you can open and check today.
               </p>
             </div>
           </FadeIn>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 20, marginBottom: 60 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 20, marginBottom: 48 }}>
             {[
-              { icon: "📡", title: "Samsara does GPS & ELD. So do we — plus everything else.", desc: "Live truck tracking, HOS logging, DVIR, driver scoring, violation alerts — TruckWithEase does all of it. Then adds fuel cards, load board, factoring, and Traxes. Samsara stops at the cab door. We don't." },
-              { icon: "🏢", title: "Built for fleet safety offices, not solo drivers", desc: "Samsara and Motive sell compliance dashboards on 3-year contracts. Owner-ops rate them 3.4/5 — great for fleet managers, hard for solo drivers who just want to run loads." },
-              { icon: "🏦", title: "Hardware costs on top of monthly fees", desc: "Samsara charges $25–$50/truck/month PLUS hardware you have to buy. TruckWithEase is software-first — no hardware required, no per-truck markup, one flat price." },
-              { icon: "🔒", title: "No contracts — ever. That's the whole point.", desc: "3-year lock-ins aren't a tech limitation — they're a revenue model. We built TruckWithEase so drivers can cancel anytime. Confidence that you'll stay is the only contract we want." },
+              {
+                title: "Signed dispatch decisions",
+                desc: "Every load assignment is scored on HOS feasibility, low-bridge clearance and driver safety, then sealed into a SHA-256 hash chain. If a load goes wrong you can prove what was checked and that nobody edited the record afterward.",
+                proof: "/dispatch-zero",
+              },
+              {
+                title: "7,869 low bridges, mapped in-house",
+                desc: "Built from the FHWA National Bridge Inventory 2025 — underclearance item 54B only. Scan any planned route for clearance below your trailer height. Zero flagged bridges means no data on file, never \“clear.\”",
+                proof: "/low-bridges",
+              },
+              {
+                title: "Federal HOS clocks, 49 CFR 395",
+                desc: "11-hour driving, 14-hour window, 70-hour cycle and the 30-minute break, computed server-side from logged duty status. Violations are surfaced with the rule that triggered them, not a generic warning.",
+                proof: "/app/compliance",
+              },
+              {
+                title: "An index of our own gaps",
+                desc: "A live page listing every table, row count and route in the platform — plus the 15 compliance workflows we have NOT built yet, named out loud. If a number is not tracked, the app prints MISSING instead of zero.",
+                proof: "/entitled-index",
+              },
             ].map((item, i) => (
               <FadeIn key={item.title} delay={i * 60}>
-                <div style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(10px)", borderRadius: 16, padding: 26, border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <div style={{ fontSize: 28, marginBottom: 12 }}>{item.icon}</div>
-                  <h3 style={{ color: "white", fontSize: 15, fontWeight: 800, marginBottom: 10, lineHeight: 1.4 }}>{item.title}</h3>
-                  <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 13.5, lineHeight: 1.75 }}>{item.desc}</p>
+                <div style={{ background: "#161616", borderRadius: 10, padding: 26, border: "1px solid #222" }}>
+                  <h3 style={{ fontFamily: "Oswald, sans-serif", color: "#fff", fontSize: 15, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 10, lineHeight: 1.35 }}>{item.title}</h3>
+                  <p style={{ color: "#8a8a8a", fontSize: 13.5, lineHeight: 1.75, marginBottom: 14 }}>{item.desc}</p>
+                  <a href={item.proof} style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#C9A84C", textDecoration: "none", borderBottom: "1px solid #33302a" }}>
+                    see it: {item.proof}
+                  </a>
                 </div>
               </FadeIn>
             ))}
           </div>
 
-          {/* Comparison table */}
           <FadeIn>
-            <div className="compare-wrap">
-              <div style={{ background: "white", borderRadius: 20, padding: 8, minWidth: 640 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: "left", padding: "18px 20px", fontSize: 13, color: "#64748B", fontWeight: 700 }}>What matters to drivers</th>
-                      {["TruckWithEase","Samsara","Motive","DAT"].map((h, i) => (
-                        <th key={h} style={{ padding: "18px 10px", textAlign: "center", fontSize: 12, fontWeight: 800, color: i === 0 ? NAVY : "#64748B" }}>
-                          {i === 0 ? <><span style={{ color: NAVY }}>Truck</span><span style={{ color: ORANGE }}>WithEase</span></> : h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {compareRows.map((row, i) => (
-                      <tr key={row.feature} style={{ background: i % 2 === 0 ? "#F8FAFC" : "white" }}>
-                        <td style={{ padding: "13px 20px", fontSize: 13, fontWeight: 600, color: "#0F172A" }}>{row.feature}</td>
-                        <td style={{ padding: "13px 10px", textAlign: "center", background: "rgba(255,180,0,0.07)" }}><CompareCell v={row.us} /></td>
-                        <td style={{ padding: "13px 10px", textAlign: "center" }}><CompareCell v={row.motive} /></td>
-                        <td style={{ padding: "13px 10px", textAlign: "center" }}><CompareCell v={row.trucker} /></td>
-                        <td style={{ padding: "13px 10px", textAlign: "center" }}><CompareCell v={row.dat} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <p style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 14 }}>
-              Comparison based on publicly listed features and pricing as of 2026. Competitor pricing varies by plan/fleet size.
+            <p style={{ textAlign: "center", color: "#666", fontSize: 11, lineHeight: 1.7, maxWidth: 760, margin: "0 auto 8px", fontFamily: "JetBrains Mono, monospace" }}>
+              We do not compare ourselves to other vendors or quote their prices. TruckWithEase holds
+              no compliance certification, is not an FMCSA-registered ELD, and files no returns on
+              your behalf. Routing is Google Directions and is not truck-legal.
             </p>
           </FadeIn>
 

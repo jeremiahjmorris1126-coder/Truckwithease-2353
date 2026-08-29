@@ -24,7 +24,7 @@ const STATE_DOT: Record<string, { chains: string; speed: string; note: string }>
   CA: { chains: "R1-R3 chain controls Oct-Apr in mountains", speed: "55 mph trucks", note: "CARB clean-truck rules; strict idling limits (5 min)." },
   CO: { chains: "Chain law I-70 Sep 1-May 31", speed: "65 mph", note: "Passive chain law; carry chains or face fines." },
   TX: { chains: "None", speed: "Up to 75 mph", note: "Watch weigh stations on I-10/I-20; ELD strictly enforced." },
-  IL: { chains: "None", speed: "65 mph", note: "Tollway heavy; PrePass/EZpass saves ~18%." },
+  IL: { chains: "None", speed: "65 mph", note: "Tollway heavy; a transponder account (PrePass / E-ZPass) is worth pricing out — we do not have a verified savings figure." },
   OH: { chains: "None", speed: "70 mph turnpike", note: "Ohio Turnpike axle-based tolls." },
   PA: { chains: "Snow removal law", speed: "65 mph", note: "Turnpike is the priciest per-mile in the network." },
 };

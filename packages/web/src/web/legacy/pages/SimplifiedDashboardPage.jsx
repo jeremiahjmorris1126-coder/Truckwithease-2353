@@ -215,18 +215,9 @@ const SimplifiedDashboardPage = () => {
       icon: '📖',
       title: 'Every Word Captioned',
       action: 'See everything that\'s said',
-      description: '99.8% accuracy. Real-time. Every message, every alert.',
+      description: 'Live captions from Gemini. Accuracy is not measured, so we do not publish a number.',
       color: 'from-cyan-500/20 to-blue-600/20',
       border: 'border-cyan-500/50'
-    },
-    {
-      id: 'sign-language',
-      icon: '🤟',
-      title: 'AI Sign Language',
-      action: 'Messages in ASL',
-      description: '7 languages. Fluent signing. Professional interpreters.',
-      color: 'from-green-500/20 to-teal-600/20',
-      border: 'border-green-500/50'
     },
     {
       id: 'haptic',

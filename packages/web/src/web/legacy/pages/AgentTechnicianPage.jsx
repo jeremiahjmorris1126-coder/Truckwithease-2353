@@ -124,15 +124,6 @@ const TEST_FUNCTIONS = [
     uptime: '99.85%',
   },
   {
-    id: 'sign-language-engine',
-    name: 'Sign Language Translation',
-    category: 'Accessibility',
-    interval: '1h',
-    lastRun: '19 min ago',
-    status: 'pass',
-    uptime: '99.7%',
-  },
-  {
     id: 'broker-arrival-alerts',
     name: 'Broker Arrival Notifications',
     category: 'Integration',

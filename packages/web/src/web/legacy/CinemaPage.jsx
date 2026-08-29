@@ -423,11 +423,11 @@ export default function CinemaPage() {
               Moviease is included<br />in <span style={{ color: ORANGE }}>Pro & Fleet plans.</span>
             </h2>
             <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 15, lineHeight: 1.8, marginBottom: 28, maxWidth: 460, margin: "0 auto 28px" }}>
-              Upgrade to Pro and get full Cinema access alongside every compliance tool, Traxes financial AI, Rig Bucks, and the $100 fuel card — all for $34.99/mo.
+              Upgrade to Pro and get full Cinema access alongside every compliance tool, TRAXES financial AI, and Rig Bucks — all for $39.99 per driver per month.
             </p>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
               <a href="/#pricing" style={{ background: ORANGE, color: "white", padding: "14px 32px", borderRadius: 10, fontWeight: 800, fontSize: 15, textDecoration: "none", boxShadow: "0 6px 24px rgba(255,107,0,0.4)" }}>
-                Upgrade to Pro — $34.99/mo
+                Upgrade to Pro — $39.99/driver/mo
               </a>
               <a href="/" style={{ background: "rgba(255,255,255,0.08)", color: "white", padding: "14px 24px", borderRadius: 10, fontWeight: 600, fontSize: 15, textDecoration: "none", border: "1px solid rgba(255,255,255,0.12)" }}>
                 ← Back to Site
