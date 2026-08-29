@@ -19,9 +19,18 @@
 //     add-on. Hardware pricing lives on the Hardware tab of PricingPage.
 //
 // The authoritative source for the monthly plan prices is PLANS in
-// src/api/routes/signup.ts (field `unitPrice`). PricingPage.jsx fetches those
-// over GET /api/signup instead of reading them here. Do not retype a monthly
-// price in this file.
+// src/api/routes/signup.ts. PricingPage.jsx and CheckoutPage.jsx both fetch those
+// over GET /api/signup. Do not retype a monthly price in this file.
+//
+// REMOVED 2026-08-29: the entire `pricingPlans` export. It was a SECOND price list
+// holding $29.99 / $39.99 / $49.99 / $59.99 plus per-plan `included` bullets, and
+// CheckoutPage.jsx rendered it, so this product shipped two price lists that could
+// drift apart. Deleted. The bullets it carried were fabricated anyway - among them
+// "HOS/ELD Logger (built-in, no extra device needed)" (this is not an ELD and no
+// device ships), "Load Board" (there is no load board integration of any kind),
+// "Parking Finder", "Live Fuel Finder" and a "Most Popular" highlight flag with no
+// adoption data behind it. Only `featurePrices` - the Solo a-la-carte add-on menu -
+// survives in this file.
 
 export const featurePrices = [
   { id: "dispatch", name: "Dispatch Routing & Messaging", price: "$4.99" },
@@ -40,126 +49,4 @@ export const featurePrices = [
   { id: "compliance-tools", name: "State Compliance Tools (AB5, etc.)", price: "$6.99" },
   { id: "custom-integrations", name: "Custom Integrations & API Access", price: "$10.99" },
   { id: "dedicated-support", name: "Priority Email Support", price: "$9.99" },
-];
-
-export const pricingPlans = [
-  {
-    id: "solo",
-    name: "Solo",
-    price: "$29.99",
-    period: "/mo",
-    tag: "Owner-Operators",
-    description: "Download the app (iOS, Android, Mac) and start logging HOS instantly—build your own with features as you grow",
-    included: [
-      "🚚 HOS/ELD Logger (built-in, no extra device needed)",
-      "📍 GPS Tracking",
-      "🔍 Pre-Trip DVIR",
-      "⚠️ State DOT AI Watcher",
-      "⛽ Live Fuel Finder",
-      "🅿️ Parking Finder",
-      "📦 Load Board",
-      "📊 IFTA Tracking",
-      "💰 Load Profit Calculator",
-      "💳 Expense Tracker",
-      "⏰ Detention Pay Tracker",
-      "🗺️ Trip Planner",
-      "📋 Digital Permit Book",
-      "🆘 Breakdown SOS",
-      "📱 Download app to iOS, Android, or Mac"
-    ],
-    addOns: "Add any feature à la carte ($2.99–$10.99/mo)",
-    cta: "Start Free Trial",
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "$39.99",
-    period: "/mo",
-    tag: "Most Popular",
-    description: "All Solo features + dispatch, fleet tracking, and AI tools—download app or add ELD hardware as an option",
-    included: [
-      "All Solo features",
-      "🚚 HOS/ELD Logger (app-based or with optional hardware)",
-      "📍 Dispatch Routing & Messaging",
-      "🗺️ Live Fleet Map (multi-driver view)",
-      "⛽ Fuel Card Integration",
-      "💵 Factoring & Invoice Management",
-      "🔧 Fleet Chief AI (Diagnostics)",
-      "❤️ Health Chief AI",
-      "🛣️ Weigh Station Bypass (PrePass)",
-      "🛣️ Toll Route Optimizer",
-      "📹 TruckEase Cam Integration",
-      "🏆 Driver Safety Scorecard",
-      "🎙️ Voice Commands (Priority)",
-      "📊 Speed & Idle Tracking",
-      "📱 Download app to iOS, Android, or Mac",
-      "📱 Optional: Add ELD tablet hardware ($600 one-time per truck)"
-    ],
-    excluded: "Fleet management (multi-driver admin, bulk reporting)",
-    cta: "Start Free Trial",
-    highlight: true,
-  },
-  {
-    id: "fleet-rental",
-    name: "Fleet (App + ELD Optional)",
-    price: "$49.99",
-    period: "/truck/mo",
-    tag: "Fleet Managers",
-    description: "All Pro features + multi-driver admin—drivers download the app, or you provide ELD tablets for the fleet",
-    included: [
-      "All Pro features",
-      "🚚 HOS/ELD Logger (app-based, available to all drivers)",
-      "👥 Multi-driver Fleet Admin Map",
-      "👥 Unlimited Drivers per Fleet",
-      "📊 Fleet HOS Overview & Status",
-      "📋 Bulk DVIR Reports",
-      "🏆 Driver Safety Scorecards",
-      "🚔 State Patrol Intelligence",
-      "⚖️ CA AB5 Compliance Tools",
-      "📢 Driver Coaching Alerts",
-      "🔗 Custom Integrations",
-      "💼 Priority Email Support",
-      "📱 Drivers download app (iOS, Android, Mac)",
-      "📱 ELD tablet hardware lease included — no separate fee"
-    ],
-    hardwareNote: "Drivers use the app on their own phones — no hardware required. If you want ELD tablets, the hardware lease is included in the $49.99/truck/mo price. There is no separate monthly hardware fee.",
-    cta: "Start Free Trial",
-  },
-  {
-    id: "fleet-owned",
-    name: "Fleet (App + ELD Hardware Owned)",
-    price: "$59.99",
-    period: "/driver/mo",
-    tag: "Fleet Managers",
-    description: "All features + owned ELD hardware per driver—one-time purchase, full control",
-    included: [
-      "All Pro features",
-      "🚚 HOS/ELD Logger (dedicated hardware)",
-      "👥 Multi-driver Fleet Admin Map",
-      "👥 Unlimited Drivers per Fleet",
-      "📊 Fleet HOS Overview & Status",
-      "📋 Bulk DVIR Reports",
-      "🏆 Driver Safety Scorecards",
-      "🚔 State Patrol Intelligence",
-      "⚖️ CA AB5 Compliance Tools",
-      "📢 Driver Coaching Alerts",
-      "🔗 Custom Integrations",
-      "💼 Priority Email Support",
-      "📱 ELD Tablet Hardware (Owned) — $600 one-time per truck"
-    ],
-    hardwareNote: "One-time hardware purchase of $600 per truck. Subscription continues at $59.99/driver/mo. Fleet owns and controls the hardware lifecycle.",
-    cta: "Contact Sales",
-  },
-];
-
-export const compareRows = [
-  { feature: "Base Monthly Price", solo: "$29.99", pro: "$39.99", fleetRental: "$49.99", fleetOwned: "$59.99/driver" },
-  { feature: "HOS/ELD Logger", solo: "✓ App-based", pro: "✓ App-based", fleetRental: "✓ App-based + optional hardware", fleetOwned: "✓ Dedicated hardware" },
-  { feature: "Download to Phone/Mac", solo: "✓ iOS, Android, Mac", pro: "✓ iOS, Android, Mac", fleetRental: "✓ iOS, Android, Mac", fleetOwned: "✓ iOS, Android, Mac + tablet" },
-  { feature: "Build-Your-Own Features", solo: "Yes ($2.99–$10.99 each)", pro: "All included", fleetRental: "All included", fleetOwned: "All included" },
-  { feature: "Dispatch & Multi-Driver", solo: "Add for $4.99", pro: "✓ Included", fleetRental: "✓ Included", fleetOwned: "✓ Included" },
-  { feature: "Fleet Admin Map", solo: "Add for $3.99", pro: "Add for $3.99", fleetRental: "✓ Included", fleetOwned: "✓ Included" },
-  { feature: "ELD Hardware", solo: "Not included — $600 one-time per truck", pro: "Not included — $600 one-time per truck", fleetRental: "✓ Lease included in $49.99/truck/mo", fleetOwned: "✓ Owned — $600 one-time per truck" },
-  { feature: "Support", solo: "Email", pro: "Priority email", fleetRental: "Priority email", fleetOwned: "Priority email" },
-  { feature: "Best For", solo: "Owner-operators, cost-conscious startups", pro: "Independent operators, small fleets, phone-based logging", fleetRental: "Fleets wanting app flexibility + optional hardware rental", fleetOwned: "Fleets wanting dedicated ELD tablets per driver" },
 ];

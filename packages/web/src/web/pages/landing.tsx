@@ -1,703 +1,1214 @@
-import { useMemo, useState } from "react";
-import { Link } from "wouter";
-
 /**
- * Public marketing homepage at "/".
- * Layout follows the launch landing page Jeremiah sent; palette is the
- * confirmed TruckWithEase brand: gold on black. No neon.
+ * landing.tsx — the public front door for truckwithease.com.
  *
- * Every number on this page is either real (counted from the codebase) or
- * labelled as an estimate. Nothing here is invented traction.
+ * This is the page wouter serves at "/" (see app.tsx: <Route path="/" component={Landing} />).
+ * Every number, price, hour and capability claim on it is fetched from this
+ * platform's own API at page load and printed next to the endpoint it came from.
+ * Nothing on this page is typed in as prose.
+ *
+ * READS (every round trip is timed and printed at the bottom of the page)
+ *   GET  /api/signup              — the pricing source of truth (PLANS in
+ *                                   api/routes/signup.ts), trialDays, and the two
+ *                                   honesty notes the server itself publishes:
+ *                                   notes.mcCheck and notes.payment.
+ *   GET  /api/support             — real support email, billing email, phone, the
+ *                                   actual per-day hours, and openNow computed
+ *                                   server-side in America/Chicago.
+ *   GET  /api/functions           — the capability index: how many capabilities are
+ *                                   live vs built_empty vs needs_key vs not_built.
+ *                                   A marketing page that publishes its own
+ *                                   not_built count is the honest version of
+ *                                   "165+ routes".
+ *   GET  /api/integrations/status — 19 providers, how many are actually connected.
+ *
+ * COMPUTES LOCALLY
+ *   - Round-trip latency per fetch with performance.now(), flagged at 3000 ms.
+ *   - Nothing else. No counter, no animation driven by a random number, and no
+ *     derived "customers", "miles" or "drivers online" figure anywhere.
+ *
+ * REMOVED IN THIS REWRITE — by name, from the previous 706-line landing.tsx
+ *   Its own header comment claimed "Nothing here is invented traction." That was
+ *   false. Deleted:
+ *   - The ticker line '● LIVE — "Safety SOS — direct to 911 and state patrol"'.
+ *     NOTHING dials 911. There is no SOS endpoint and no state patrol dispatch
+ *     integration. Labelling it LIVE was the single worst line in the product.
+ *   - The FEATURES array: 12 cards, most of them not built. Specifically
+ *     "Ghost Nerve Intelligence", "Quantum Dispatch Mission Control",
+ *     "HREase — full hiring to paycheck" ("Post a job, hire the driver, pay them" —
+ *     there is no job posting and no payroll run), "ELD-to-payroll — zero manual
+ *     entry" ("Miles verified by the ELD"), "Lane profit intelligence",
+ *     "Three vehicle worlds — one platform" (vehicleWorlds is only an enum on the
+ *     signup record), "Safety SOS — 911 and state patrol", "Game Up — gamified
+ *     driver training" ("FMCSA-aligned modules. Real scores. Rig Bucks on every
+ *     pass."), "Fleet Voice — hands-free through cab speakers" ("Real numbers, real
+ *     calls"), "Rig Bucks — loyalty that actually retains", and
+ *     "Quantum Scan & Bill — one invoice, four recipients".
+ *   - **"Sovereign ELD — FMCSA registration in progress"** with the note
+ *     "Registration is filed and pending. Not yet on the FMCSA registered list."
+ *     NOTHING WAS EVER FILED. TruckWithEase does not ship a device, does not
+ *     self-certify, and is not pursuing FMCSA ELD provider registration. This card
+ *     is deleted outright, not softened.
+ *   - The STATS array, including { value: "12", label: "AI agents in the roster" } —
+ *     an invented count — and the "12 AI AGENTS IN THE ROSTER" headline.
+ *   - The eyebrow "The platform nothing else can build" and the hero paragraph
+ *     "Twelve proprietary features no competitor has shipped. Three vehicle worlds —
+ *     trucks, cars, bikes — on one platform that hires, dispatches, pays, trains and
+ *     protects without a single manual step." Nothing hires, pays or trains.
+ *   - The section headings "Every feature a competitor can't copy" and
+ *     "12 REASONS NOTHING COMPETES", the closing "Nothing comes close" /
+ *     "YOUR FLEET. YOUR ADVANTAGE. OUR PLATFORM.", and the whole TAGS filter
+ *     (ALL / PROPRIETARY / EXCLUSIVE / REAL TIME / UNIQUE / LIFE SAFETY / QUANTUM)
+ *     which existed only to sort those invented cards. Comparison and competitor
+ *     framing is banned inside the product.
+ *   - The "Live demo" button pointing at /app. A scripted demo is never labelled
+ *     live. The primary CTA now points at /signup, not /app/billing.
+ *   - The hardcoded PRICING array ($29.99 / $39.99 / $49.99 / $59.99 typed into the
+ *     page) — a duplicate of PLANS in api/routes/signup.ts. Prices are now read
+ *     from GET /api/signup.
+ *   - "14-day trial, no contracts, Net 30." — "Net 30" is an invented commercial
+ *     term. Nothing bills at all; the server says so and that sentence is now
+ *     printed on the page in the server's own words.
+ *   - The nav and footer logo /static/twe-logo-horizontal-trim.png, which has
+ *     "MORRISHIVE.COM" baked into the raster. Every horizontal raster in
+ *     public/static does. Replaced with a text wordmark. morrishive.com is not this
+ *     brand and does not belong on the truckwithease.com front door.
+ *   - The footer contact jeremiahjmorris1126@gmail.com — that is the BILLING
+ *     address. Public support is truckeasecare@gmail.com. Both now come from
+ *     /api/support and are labelled correctly.
+ *
+ * WHAT THIS PAGE DOES NOT CLAIM
+ *   - TruckWithEase is NOT an FMCSA-registered ELD. It does not appear on
+ *     eld.fmcsa.dot.gov/List. It runs alongside the ELD the driver already has.
+ *   - No hardware ships today. The $600/truck and lease lines in the Fleet plans are
+ *     the plan table, not a shipping product.
+ *   - TruckWithEase files nothing with any agency. No IFTA, no 2290, no tax filing.
+ *   - Payment processing is not live. Signing up stores a record and charges nothing.
+ *   - No load board integration. No uptime percentage. No compliance certification
+ *     (no SOC 2, no PCI-DSS, no GDPR/CCPA, no WCAG conformance level).
+ *   - No competitor is named, priced or scored anywhere on this page.
  */
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "wouter";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Ban,
+  CheckCircle2,
+  Clock,
+  Ear,
+  Gauge,
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  Plug,
+  RefreshCw,
+  Route as RouteIcon,
+  ShieldCheck,
+  Truck,
+} from "lucide-react";
 
 const GOLD = "#C9A84C";
-const GOLD_BRIGHT = "#FFD700";
-const BLACK = "#0a0a0a";
-const CARD = "#161616";
-const BORDER = "#222222";
+const GOLDB = "#FFD700";
+const WARN = "#c96a4c";
+const C = {
+  black: "#0a0a0a",
+  card: "#161616",
+  nav: "#111111",
+  border: "#222222",
+  white: "#f2f2f2",
+  muted: "#8a8a8a",
+  dim: "#666666",
+};
+const FD = "'Bebas Neue', sans-serif";
+const FH = "'Oswald', sans-serif";
+const FB = "'Inter', sans-serif";
+const FM = "'JetBrains Mono', monospace";
+const SLOW_MS = 3000;
 
-const TAGS = [
-  "ALL",
-  "PROPRIETARY",
-  "EXCLUSIVE",
-  "REAL TIME",
-  "UNIQUE",
-  "LIFE SAFETY",
-  "QUANTUM",
-] as const;
-
-type Tag = Exclude<(typeof TAGS)[number], "ALL">;
-
-type Feature = {
-  tag: Tag;
-  title: string;
-  blurb: string;
-  note?: string;
+const DAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+const DAY_LABEL: Record<string, string> = {
+  mon: "Monday",
+  tue: "Tuesday",
+  wed: "Wednesday",
+  thu: "Thursday",
+  fri: "Friday",
+  sat: "Saturday",
+  sun: "Sunday",
 };
 
-const FEATURES: Feature[] = [
+const PLAN_ORDER = ["solo", "pro", "fleet_lease", "fleet_owned"];
+
+const STATUS_LABEL: Record<string, string> = {
+  live: "Live and returning real data",
+  built_empty: "Built, table is still empty",
+  needs_key: "Built, waiting on a provider key",
+  not_built: "Not built",
+};
+
+/** Two facts on the strip. Both are verifiable. Nothing else goes here. */
+const FACTS = [
+  "Federal HOS rules coded directly from 49 CFR 395",
+  "7,869 low bridges loaded from the FHWA National Bridge Inventory 2025, Item 54B",
+];
+
+/**
+ * Six capabilities that exist, each with the endpoint that proves it. Every entry
+ * here was verified returning HTTP 200 against the running server.
+ */
+const REAL_CAPABILITIES = [
   {
-    tag: "PROPRIETARY",
-    title: "Ghost Nerve Intelligence",
-    blurb: "Baselines every unit against itself and flags drift before it becomes a breakdown.",
+    icon: Clock,
+    title: "HOS clock math",
+    endpoint: "GET /api/hos",
+    body:
+      "Driving, on-duty window, 70-hour cycle and 30-minute break clocks computed in minutes from 49 CFR 395, with violation levels per driver. It reads the logs you already keep — it is not an ELD and does not record engine data.",
   },
   {
-    tag: "QUANTUM",
-    title: "Quantum Dispatch Mission Control",
-    blurb: "Live map, multi-layer load scoring, dispatch without leaving the screen.",
+    icon: MapPin,
+    title: "Low-bridge alerting",
+    endpoint: "GET /api/bridges/status",
+    body:
+      "7,869 structures with a vertical clearance under 174 inches, taken from the federal FHWA National Bridge Inventory 2025, Item 54B only. Compared against a 162-inch standard trailer. In-house, off free federal data.",
   },
   {
-    tag: "EXCLUSIVE",
-    title: "Sovereign ELD — FMCSA registration in progress",
-    blurb: "An HOS log no outside platform can read, alter, or mirror.",
-    note: "Registration is filed and pending. Not yet on the FMCSA registered list.",
+    icon: Ear,
+    title: "Deaf and hard-of-hearing support",
+    endpoint: "GET /api/captions/status",
+    body:
+      "Live captioning through a real provider, plus a 15-pattern haptic alert vocabulary with every pattern measured against a 5,000 ms ceiling. Sign-language video is not built and the page says so.",
   },
   {
-    tag: "EXCLUSIVE",
-    title: "HREase — full hiring to paycheck",
-    blurb: "Post a job, hire the driver, pay them — never leave the app.",
+    icon: Gauge,
+    title: "Safety scoring",
+    endpoint: "GET /api/safety/:driverId",
+    body:
+      "A 0–100 score over a 30-day window from speeding, HOS, violations, DVIR and fatigue inputs with published weights. Any component with no data is listed as missing instead of being scored as zero.",
   },
   {
-    tag: "EXCLUSIVE",
-    title: "ELD-to-payroll — zero manual entry",
-    blurb: "Miles verified by the ELD. Paycheck generated from the same record.",
+    icon: RouteIcon,
+    title: "Dispatch Zero",
+    endpoint: "GET /api/dispatch-zero/status",
+    body:
+      "Load assignment ranked by revenue per remaining-clock-hour, so a load is never offered to a driver who has no hours to run it. Every decision is written to an append-only, hash-chained ledger you can verify.",
   },
   {
-    tag: "REAL TIME",
-    title: "Lane profit intelligence",
-    blurb: "Lanes ranked by net profit after fuel, tolls and time — not by posted rate.",
-  },
-  {
-    tag: "UNIQUE",
-    title: "Three vehicle worlds — one platform",
-    blurb: "Class A trucks, courier cars, bikes and scooters. One account, one paycheck view.",
-  },
-  {
-    tag: "LIFE SAFETY",
-    title: "Safety SOS — 911 and state patrol",
-    blurb: "One button. Your GPS position, the right dispatch desk, no menu tree.",
-  },
-  {
-    tag: "EXCLUSIVE",
-    title: "Game Up — gamified driver training",
-    blurb: "FMCSA-aligned modules. Real scores. Rig Bucks on every pass.",
-  },
-  {
-    tag: "PROPRIETARY",
-    title: "Fleet Voice — hands-free through cab speakers",
-    blurb: "Real numbers, real calls, through the speakers you already have. No second app.",
-  },
-  {
-    tag: "UNIQUE",
-    title: "Rig Bucks — loyalty that actually retains",
-    blurb: "Points on every clean day, every safe mile, every passed inspection.",
-  },
-  {
-    tag: "QUANTUM",
-    title: "Quantum Scan & Bill — one invoice, four recipients",
-    blurb: "Snap the BOL. Bill the broker, factor, shipper and AP desk off one scan.",
+    icon: ShieldCheck,
+    title: "DVIR inspections",
+    endpoint: "GET /api/dvir",
+    body:
+      "Pre-trip and post-trip inspection records with defects, stored and queryable. Paper-equivalent recordkeeping, not a substitute for your annual DOT inspection.",
   },
 ];
 
-const STATS = [
-  { value: "12", label: "AI agents in the roster" },
-  { value: "49 CFR 395", label: "Federal HOS rules coded" },
-  { value: "7,869", label: "Low bridges mapped (FHWA NBI 2025)" },
-  { value: "$29.99", label: "Starting per driver" },
-  { value: "14", label: "Day free trial" },
+/** Rendered as a numbered list. This is the section he asked for by name. */
+const NOT_CLAIMED = [
+  "TruckWithEase is not an FMCSA-registered ELD. It does not appear on eld.fmcsa.dot.gov/List. Nothing has been filed and no registration is being pursued.",
+  "We do not ship hardware today. The hardware lines in the Fleet plans are plan pricing, not a shipping product.",
+  "We do not file anything with any agency. No IFTA return, no Form 2290, no tax filing, no MCS-150 update.",
+  "Payment processing is not live. Signing up stores a record and charges nothing.",
+  "There is no load board integration. No DAT, no Uber Freight, no broker feed of any kind.",
+  "We do not run payroll, post jobs, or move money. No banking or payment-method data is stored anywhere in this platform.",
+  "We publish no uptime percentage, because we do not measure one.",
+  "We hold no compliance certification — no SOC 2, no PCI-DSS, no GDPR or CCPA attestation, no WCAG conformance level, and no e-signature capability.",
+  "We do not name, price or score any competitor, here or anywhere in the product.",
 ];
 
-const PRICING = [
-  { name: "Solo", price: "$29.99", unit: "/driver/mo", muted: false },
-  { name: "Pro", price: "$39.99", unit: "/driver/mo", muted: true },
-  { name: "Fleet (hardware leased)", price: "$49.99", unit: "/truck/mo", muted: true },
-  { name: "Fleet (hardware owned)", price: "$59.99", unit: "/driver/mo", muted: true },
-];
+type Timed = { body: any; ms: number; status: number; url: string };
 
-function Badge({ children }: { children: React.ReactNode }) {
+async function timedGet(url: string): Promise<Timed> {
+  const t0 = performance.now();
+  let res: Response;
+  try {
+    res = await fetch(url, { credentials: "include" });
+  } catch (e: any) {
+    throw new Error(`${url} — ${e?.message ?? "network error"}`);
+  }
+  const ms = Math.round(performance.now() - t0);
+  let body: any = null;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+  if (!res.ok) throw new Error((body && body.error) || `${url} returned ${res.status}`);
+  return { body, ms, status: res.status, url };
+}
+
+function Spin() {
+  return (
+    <>
+      <style>{"@keyframes twe-spin{to{transform:rotate(360deg)}}"}</style>
+      <Loader2 size={16} color={GOLD} style={{ animation: "twe-spin 1s linear infinite" }} />
+    </>
+  );
+}
+
+function Wordmark({ size = 26 }: { size?: number }) {
   return (
     <span
       style={{
-        fontFamily: "Oswald, sans-serif",
-        fontSize: 10,
-        letterSpacing: "0.16em",
-        textTransform: "uppercase",
-        color: GOLD_BRIGHT,
-        border: `1px solid ${GOLD}55`,
-        background: "#C9A84C14",
-        padding: "4px 9px",
-        borderRadius: 4,
+        font: `400 ${size}px ${FD}`,
+        letterSpacing: "0.06em",
+        color: C.white,
+        lineHeight: 1,
         whiteSpace: "nowrap",
       }}
     >
-      {children}
+      TRUCK<span style={{ color: GOLDB }}>WITH</span>EASE
     </span>
   );
 }
 
-export default function LandingPage() {
-  const [tag, setTag] = useState<(typeof TAGS)[number]>("ALL");
-  const shown = useMemo(
-    () => (tag === "ALL" ? FEATURES : FEATURES.filter((f) => f.tag === tag)),
-    [tag],
-  );
-
+function Panel({
+  title,
+  note,
+  right,
+  icon,
+  children,
+}: {
+  title: string;
+  note?: string;
+  right?: React.ReactNode;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <div style={{ background: BLACK, color: "#F5F5F5", minHeight: "100vh" }}>
-      {/* ticker */}
-      <div
-        style={{
-          borderBottom: `1px solid ${BORDER}`,
-          background: "#111111",
-          padding: "7px 20px",
-          fontFamily: "JetBrains Mono, monospace",
-          fontSize: 11,
-          color: "#9A9A9A",
-          display: "flex",
-          gap: 18,
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
-      >
-        <span style={{ color: GOLD_BRIGHT, letterSpacing: "0.15em" }}>● LIVE</span>
-        <span>Safety SOS — direct to 911 and state patrol</span>
-        <span style={{ color: "#3A3A3A" }}>|</span>
-        <span>Federal HOS rules coded from 49 CFR 395</span>
-        <span style={{ color: "#3A3A3A" }}>|</span>
-        <span>7,869 low bridges from FHWA NBI 2025</span>
-      </div>
-
-      {/* nav */}
+    <section
+      style={{
+        background: C.card,
+        border: `1px solid ${C.border}`,
+        borderRadius: 4,
+        marginBottom: 20,
+      }}
+    >
       <header
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          padding: "16px 24px",
-          borderBottom: `1px solid ${BORDER}`,
-          background: "#0d0d0d",
+          gap: 10,
+          padding: "14px 18px",
+          borderBottom: `1px solid ${C.border}`,
+          flexWrap: "wrap",
         }}
       >
-        <img src="/static/twe-logo-horizontal-trim.png" alt="TruckWithEase" style={{ height: 34 }} />
-        <nav style={{ display: "flex", gap: 18, alignItems: "center" }}>
-          <Link
-            to="/app/pricing"
-            style={{
-              fontFamily: "Oswald, sans-serif",
-              fontSize: 13,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: "#C9C9C9",
-            }}
-          >
-            Pricing
-          </Link>
-          <Link
-            to="/app"
-            style={{
-              fontFamily: "Oswald, sans-serif",
-              fontSize: 13,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: BLACK,
-              background: `linear-gradient(135deg,${GOLD} 0%,${GOLD_BRIGHT} 40%,${GOLD} 70%,#8A6E2F 100%)`,
-              padding: "9px 18px",
-              borderRadius: 5,
-              fontWeight: 600,
-            }}
-          >
-            Open the app
-          </Link>
-        </nav>
-      </header>
-
-      {/* hero */}
-      <section
-        style={{
-          padding: "84px 24px 72px",
-          textAlign: "center",
-          background:
-            "radial-gradient(circle at 50% 0%, #1a1508 0%, #0a0a0a 62%)",
-          borderBottom: `1px solid ${BORDER}`,
-        }}
-      >
-        <div
+        {icon ? <span style={{ display: "flex", color: GOLD }}>{icon}</span> : null}
+        <h2
           style={{
-            fontFamily: "Oswald, sans-serif",
-            fontSize: 11,
-            letterSpacing: "0.34em",
+            font: `500 15px ${FH}`,
+            color: C.white,
             textTransform: "uppercase",
-            color: GOLD,
-            marginBottom: 22,
-          }}
-        >
-          The platform nothing else can build
-        </div>
-        <h1
-          style={{
-            fontFamily: "Bebas Neue, Oswald, sans-serif",
-            fontSize: "clamp(46px, 8.5vw, 108px)",
-            lineHeight: 0.94,
-            letterSpacing: "0.01em",
+            letterSpacing: "0.22em",
             margin: 0,
           }}
         >
-          TRUCK
-          <span
-            style={{
-              background: `linear-gradient(135deg,${GOLD} 0%,${GOLD_BRIGHT} 40%,${GOLD} 70%,#8A6E2F 100%)`,
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
-            }}
-          >
-            WITH
-          </span>
-          EASE
-        </h1>
+          {title}
+        </h2>
+        <div style={{ marginLeft: "auto" }}>{right}</div>
+      </header>
+      {note ? (
         <p
           style={{
-            maxWidth: 620,
-            margin: "22px auto 0",
-            color: "#A8A8A8",
-            fontSize: 15,
-            lineHeight: 1.7,
+            font: `400 12px ${FM}`,
+            color: C.dim,
+            margin: 0,
+            padding: "10px 18px",
+            borderBottom: `1px solid ${C.border}`,
           }}
         >
-          Twelve proprietary features no competitor has shipped. Three vehicle worlds — trucks,
-          cars, bikes — on one platform that hires, dispatches, pays, trains and protects without a
-          single manual step.
+          {note}
         </p>
+      ) : null}
+      <div style={{ padding: 18 }}>{children}</div>
+    </section>
+  );
+}
 
+function Missing({ label, reason }: { label: string; reason: string }) {
+  return (
+    <div
+      style={{
+        border: `1px dashed #333333`,
+        borderRadius: 4,
+        padding: "12px 14px",
+        display: "flex",
+        gap: 10,
+        alignItems: "flex-start",
+        background: "#121212",
+      }}
+    >
+      <AlertTriangle size={16} color={WARN} style={{ flexShrink: 0, marginTop: 2 }} />
+      <div>
         <div
           style={{
-            display: "flex",
-            gap: "clamp(20px, 5vw, 56px)",
-            justifyContent: "center",
-            flexWrap: "wrap",
-            margin: "40px 0 36px",
+            font: `500 11px ${FH}`,
+            color: WARN,
+            textTransform: "uppercase",
+            letterSpacing: "0.18em",
           }}
         >
-          {STATS.map((s) => (
-            <div key={s.label} style={{ textAlign: "center" }}>
-              <div
-                style={{
-                  fontFamily: "Bebas Neue, Oswald, sans-serif",
-                  fontSize: 42,
-                  lineHeight: 1,
-                  background: `linear-gradient(135deg,${GOLD} 0%,${GOLD_BRIGHT} 50%,#8A6E2F 100%)`,
-                  WebkitBackgroundClip: "text",
-                  backgroundClip: "text",
-                  color: "transparent",
-                }}
-              >
-                {s.value}
-              </div>
-              <div
-                style={{
-                  fontFamily: "Oswald, sans-serif",
-                  fontSize: 10,
-                  letterSpacing: "0.16em",
-                  textTransform: "uppercase",
-                  color: "#7A7A7A",
-                  marginTop: 6,
-                }}
-              >
-                {s.label}
-              </div>
-            </div>
+          MISSING / NOT TRACKED
+        </div>
+        <div style={{ font: `600 13px ${FB}`, color: C.white, marginTop: 4 }}>{label}</div>
+        <div style={{ font: `400 12px ${FB}`, color: C.muted, marginTop: 4, lineHeight: 1.55 }}>
+          {reason}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  value,
+  label,
+  tone,
+}: {
+  value: React.ReactNode;
+  label: string;
+  tone?: "gold" | "warn";
+}) {
+  return (
+    <div style={{ minWidth: 120 }}>
+      <div
+        style={{
+          font: `400 34px ${FD}`,
+          color: tone === "warn" ? WARN : tone === "gold" ? GOLDB : C.white,
+          lineHeight: 1.05,
+        }}
+      >
+        {value}
+      </div>
+      <div
+        style={{
+          font: `400 11px ${FH}`,
+          color: C.muted,
+          textTransform: "uppercase",
+          letterSpacing: "0.18em",
+          marginTop: 4,
+        }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function Tag({ text, tone }: { text: string; tone?: "gold" | "warn" | "dim" }) {
+  const color = tone === "warn" ? WARN : tone === "dim" ? C.muted : GOLD;
+  return (
+    <span
+      style={{
+        font: `500 10px ${FH}`,
+        textTransform: "uppercase",
+        letterSpacing: "0.18em",
+        color,
+        border: `1px solid ${color}`,
+        borderRadius: 2,
+        padding: "3px 8px",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
+function Err({ msg }: { msg: string }) {
+  return (
+    <pre
+      style={{
+        font: `400 12px ${FM}`,
+        color: WARN,
+        background: "#121212",
+        border: `1px solid #332222`,
+        borderRadius: 4,
+        padding: "12px 14px",
+        whiteSpace: "pre-wrap",
+        margin: 0,
+      }}
+    >
+      {msg}
+    </pre>
+  );
+}
+
+function Cta({
+  to,
+  children,
+  primary,
+}: {
+  to: string;
+  children: React.ReactNode;
+  primary?: boolean;
+}) {
+  return (
+    <Link
+      href={to}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        font: `500 13px ${FH}`,
+        textTransform: "uppercase",
+        letterSpacing: "0.18em",
+        textDecoration: "none",
+        padding: "12px 20px",
+        borderRadius: 3,
+        background: primary ? GOLD : "transparent",
+        color: primary ? "#0a0a0a" : C.white,
+        border: `1px solid ${primary ? GOLD : C.border}`,
+      }}
+    >
+      {children}
+    </Link>
+  );
+}
+
+export default function Landing() {
+  const [state, setState] = useState<"loading" | "ok" | "error">("loading");
+  const [error, setError] = useState<string>("");
+  const [signup, setSignup] = useState<any>(null);
+  const [support, setSupport] = useState<any>(null);
+  const [fns, setFns] = useState<any>(null);
+  const [fnsErr, setFnsErr] = useState<string>("");
+  const [integ, setInteg] = useState<any>(null);
+  const [integErr, setIntegErr] = useState<string>("");
+  const [reads, setReads] = useState<{ url: string; ms: number; status: number | null; err?: string }[]>([]);
+  const alive = useRef(false);
+
+  const load = useCallback(async () => {
+    setState("loading");
+    setError("");
+    setFnsErr("");
+    setIntegErr("");
+    setReads([]);
+    const log: { url: string; ms: number; status: number | null; err?: string }[] = [];
+
+    // The page cannot honestly render without pricing and support hours.
+    try {
+      const [s, sup] = await Promise.all([timedGet("/api/signup"), timedGet("/api/support")]);
+      log.push({ url: s.url, ms: s.ms, status: s.status });
+      log.push({ url: sup.url, ms: sup.ms, status: sup.status });
+      if (!alive.current) return;
+      setSignup(s.body);
+      setSupport(sup.body);
+      setState("ok");
+    } catch (e: any) {
+      if (!alive.current) return;
+      log.push({ url: "/api/signup + /api/support", ms: 0, status: null, err: e?.message });
+      setReads(log);
+      setError(e?.message ?? "unknown error");
+      setState("error");
+      return;
+    }
+
+    // These two degrade to a MISSING box rather than a fabricated number.
+    const [f, i] = await Promise.allSettled([
+      timedGet("/api/functions"),
+      timedGet("/api/integrations/status"),
+    ]);
+    if (!alive.current) return;
+    if (f.status === "fulfilled") {
+      log.push({ url: f.value.url, ms: f.value.ms, status: f.value.status });
+      setFns(f.value.body);
+    } else {
+      log.push({ url: "/api/functions", ms: 0, status: null, err: String(f.reason?.message ?? f.reason) });
+      setFnsErr(String(f.reason?.message ?? f.reason));
+    }
+    if (i.status === "fulfilled") {
+      log.push({ url: i.value.url, ms: i.value.ms, status: i.value.status });
+      setInteg(i.value.body);
+    } else {
+      log.push({
+        url: "/api/integrations/status",
+        ms: 0,
+        status: null,
+        err: String(i.reason?.message ?? i.reason),
+      });
+      setIntegErr(String(i.reason?.message ?? i.reason));
+    }
+    setReads(log);
+  }, []);
+
+  useEffect(() => {
+    alive.current = true;
+    load();
+    return () => {
+      alive.current = false;
+    };
+  }, [load]);
+
+  const plans: any[] = signup?.plans
+    ? PLAN_ORDER.filter((k) => signup.plans[k]).map((k) => ({ key: k, ...signup.plans[k] }))
+    : [];
+  const counts = fns?.counts ?? null;
+  const byStatus: Record<string, number> = counts?.byStatus ?? {};
+  const iCounts = integ?.counts ?? null;
+  const hours = support?.hours ?? null;
+  const today: string = support?.today ?? "";
+
+  const wrap: React.CSSProperties = { maxWidth: 1180, margin: "0 auto", padding: "0 24px" };
+
+  return (
+    <div style={{ background: C.black, minHeight: "100vh", fontFamily: FB }}>
+      {/* NAV */}
+      <nav
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 40,
+          background: C.nav,
+          borderBottom: `1px solid ${C.border}`,
+        }}
+      >
+        <div
+          style={{
+            ...wrap,
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            height: 64,
+          }}
+        >
+          <Truck size={22} color={GOLD} />
+          <Wordmark />
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+            <Cta to="/sign-in">Sign in</Cta>
+            <Cta to="/signup" primary>
+              Create an account <ArrowRight size={14} />
+            </Cta>
+          </div>
+        </div>
+      </nav>
+
+      {/* FACT STRIP — two verifiable facts, nothing labelled LIVE */}
+      <div style={{ background: "#0d0d0d", borderBottom: `1px solid ${C.border}` }}>
+        <div
+          style={{
+            ...wrap,
+            display: "flex",
+            gap: 28,
+            flexWrap: "wrap",
+            padding: "10px 24px",
+            font: `400 12px ${FM}`,
+            color: C.muted,
+          }}
+        >
+          {FACTS.map((f) => (
+            <span key={f} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <CheckCircle2 size={13} color={GOLD} />
+              {f}
+            </span>
           ))}
         </div>
+      </div>
 
-        <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-          <Link
-            to="/app/billing"
-            style={{
-              fontFamily: "Oswald, sans-serif",
-              fontSize: 14,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-              color: BLACK,
-              background: `linear-gradient(135deg,${GOLD} 0%,${GOLD_BRIGHT} 40%,${GOLD} 70%,#8A6E2F 100%)`,
-              padding: "14px 30px",
-              borderRadius: 6,
-            }}
-          >
-            Start free trial
-          </Link>
-          <Link
-            to="/app"
-            style={{
-              fontFamily: "Oswald, sans-serif",
-              fontSize: 14,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-              color: GOLD_BRIGHT,
-              border: `1px solid ${GOLD}66`,
-              padding: "14px 30px",
-              borderRadius: 6,
-            }}
-          >
-            Live demo
-          </Link>
-        </div>
-      </section>
-
-      {/* price proof */}
-      <section style={{ padding: "70px 24px", borderBottom: `1px solid ${BORDER}` }}>
-        <div
-          style={{
-            fontFamily: "Oswald, sans-serif",
-            fontSize: 11,
-            letterSpacing: "0.32em",
-            textTransform: "uppercase",
-            color: GOLD,
-            textAlign: "center",
-          }}
-        >
-          The price proof
-        </div>
-        <h2
-          style={{
-            fontFamily: "Bebas Neue, Oswald, sans-serif",
-            fontSize: "clamp(30px, 5vw, 54px)",
-            textAlign: "center",
-            margin: "16px auto 8px",
-            maxWidth: 780,
-            lineHeight: 1.04,
-          }}
-        >
-          WHY FLEET OWNERS SWITCH{" "}
+      {/* HERO */}
+      <header
+        style={{
+          background: `linear-gradient(180deg, ${C.nav} 0%, ${C.black} 100%)`,
+          borderBottom: `1px solid ${C.border}`,
+          padding: "56px 0 48px",
+        }}
+      >
+        <div style={wrap}>
           <span
             style={{
-              background: `linear-gradient(135deg,${GOLD} 0%,${GOLD_BRIGHT} 50%,#8A6E2F 100%)`,
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              border: `1px solid ${C.border}`,
+              borderRadius: 999,
+              padding: "6px 14px",
+              font: `500 11px ${FH}`,
+              textTransform: "uppercase",
+              letterSpacing: "0.2em",
+              color: GOLD,
             }}
           >
-            IN THE FIRST CONVERSATION
+            <ShieldCheck size={13} /> Compliance and fleet software for Class A drivers
           </span>
-        </h2>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-            gap: 16,
-            maxWidth: 900,
-            margin: "36px auto 0",
-          }}
-        >
-          {PRICING.map((p) => (
-            <div
-              key={p.name}
+          <h1
+            style={{
+              font: `400 clamp(38px,7vw,68px) ${FD}`,
+              color: C.white,
+              lineHeight: 1.02,
+              margin: "20px 0 0",
+              letterSpacing: "0.01em",
+              maxWidth: 900,
+            }}
+          >
+            Runs alongside <span style={{ color: GOLDB }}>the ELD you already have</span> — and does
+            the compliance work it will not do
+          </h1>
+
+          <p
+            style={{
+              font: `400 16px ${FB}`,
+              color: C.muted,
+              lineHeight: 1.65,
+              maxWidth: 760,
+              marginTop: 18,
+            }}
+          >
+            TruckWithEase is not an ELD and does not replace one. It reads the hours you already log
+            and does the parts nobody else does: federal HOS clock math, low-bridge alerting off the
+            federal bridge inventory, deaf and hard-of-hearing support, and load assignment ranked by
+            the clock hours a driver actually has left. Everything below is read from this platform's
+            own API right now, and the endpoint is printed next to it.
+          </p>
+
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 26 }}>
+            <Cta to="/signup" primary>
+              Create an account <ArrowRight size={14} />
+            </Cta>
+            <Cta to="/entitled">See every capability and its status</Cta>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 40,
+              flexWrap: "wrap",
+              marginTop: 38,
+              paddingTop: 26,
+              borderTop: `1px solid ${C.border}`,
+            }}
+          >
+            {state === "loading" ? (
+              <span
+                style={{
+                  display: "inline-flex",
+                  gap: 10,
+                  alignItems: "center",
+                  font: `400 13px ${FM}`,
+                  color: C.dim,
+                }}
+              >
+                <Spin /> reading /api/signup, /api/support, /api/functions, /api/integrations/status
+              </span>
+            ) : (
+              <>
+                <Stat
+                  value={counts ? counts.capabilities : "—"}
+                  label="Capabilities indexed"
+                  tone="gold"
+                />
+                <Stat value={byStatus.live ?? "—"} label="Live and returning real data" />
+                <Stat value={byStatus.not_built ?? "—"} label="Not built yet" tone="warn" />
+                <Stat
+                  value={iCounts ? `${iCounts.connected}/${iCounts.total}` : "—"}
+                  label="Integrations connected"
+                />
+                <Stat
+                  value={signup?.trialDays != null ? `${signup.trialDays}` : "—"}
+                  label="Day free trial"
+                />
+              </>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main style={{ ...wrap, padding: "36px 24px 0" }}>
+        {state === "error" ? (
+          <Panel
+            title="This page could not load its own data"
+            note="GET /api/signup and GET /api/support are required. Rather than print prices and hours from memory, this page shows the failure."
+            icon={<AlertTriangle size={16} />}
+          >
+            <Err msg={error} />
+            <button
+              type="button"
+              onClick={load}
               style={{
-                position: "relative",
-                background: p.muted ? "#121212" : CARD,
-                border: `1px solid ${p.muted ? BORDER : GOLD}`,
-                borderRadius: 10,
-                padding: "26px 20px",
-                boxShadow: p.muted ? "none" : "0 0 0 3px #C9A84C1a",
+                marginTop: 14,
+                font: `500 12px ${FH}`,
+                textTransform: "uppercase",
+                letterSpacing: "0.18em",
+                color: C.white,
+                background: "transparent",
+                border: `1px solid ${C.border}`,
+                borderRadius: 3,
+                padding: "10px 16px",
+                cursor: "pointer",
               }}
             >
-              {!p.muted && (
+              Try again
+            </button>
+          </Panel>
+        ) : null}
+
+        {/* WHAT IS ACTUALLY BUILT */}
+        <Panel
+          title="What is actually built"
+          note="Each card names the endpoint that serves it. All six were verified returning HTTP 200 against this server."
+          icon={<CheckCircle2 size={16} />}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
+              gap: 14,
+            }}
+          >
+            {REAL_CAPABILITIES.map((c) => {
+              const Icon = c.icon;
+              return (
                 <div
+                  key={c.title}
                   style={{
-                    position: "absolute",
-                    top: -10,
-                    left: 18,
-                    fontFamily: "Oswald, sans-serif",
-                    fontSize: 9,
-                    letterSpacing: "0.18em",
-                    textTransform: "uppercase",
-                    color: BLACK,
-                    background: GOLD_BRIGHT,
-                    padding: "3px 9px",
-                    borderRadius: 3,
-                    fontWeight: 600,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 4,
+                    padding: 16,
+                    background: "#121212",
                   }}
                 >
-                  Best value
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Icon size={17} color={GOLD} />
+                    <h3
+                      style={{
+                        font: `500 14px ${FH}`,
+                        color: C.white,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.14em",
+                        margin: 0,
+                      }}
+                    >
+                      {c.title}
+                    </h3>
+                  </div>
+                  <div style={{ font: `400 11px ${FM}`, color: GOLD, marginTop: 8 }}>
+                    {c.endpoint}
+                  </div>
+                  <p
+                    style={{
+                      font: `400 13px ${FB}`,
+                      color: C.muted,
+                      lineHeight: 1.6,
+                      margin: "10px 0 0",
+                    }}
+                  >
+                    {c.body}
+                  </p>
                 </div>
-              )}
+              );
+            })}
+          </div>
+        </Panel>
+
+        {/* PRICING — read live */}
+        <Panel
+          title="Pricing"
+          note="GET /api/signup — PLANS in api/routes/signup.ts is the only price list. Nothing on this page is typed in."
+          icon={<Truck size={16} />}
+          right={
+            signup?.trialDays != null ? <Tag text={`${signup.trialDays}-day trial`} /> : null
+          }
+        >
+          {state === "loading" ? (
+            <Spin />
+          ) : plans.length === 0 ? (
+            <Missing
+              label="Plan pricing"
+              reason="GET /api/signup did not return a plans object. No price is shown rather than a remembered one."
+            />
+          ) : (
+            <>
               <div
                 style={{
-                  fontFamily: "Oswald, sans-serif",
-                  fontSize: 13,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  color: p.muted ? "#8A8A8A" : GOLD_BRIGHT,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
+                  gap: 14,
                 }}
               >
-                {p.name}
+                {plans.map((p) => (
+                  <div
+                    key={p.key}
+                    style={{
+                      border: `1px solid ${C.border}`,
+                      borderRadius: 4,
+                      padding: 16,
+                      background: "#121212",
+                    }}
+                  >
+                    <div style={{ font: `400 11px ${FM}`, color: C.dim }}>{p.key}</div>
+                    <div
+                      style={{
+                        font: `500 15px ${FH}`,
+                        color: C.white,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.16em",
+                        marginTop: 4,
+                      }}
+                    >
+                      {p.name ?? p.key}
+                    </div>
+                    <div style={{ font: `400 40px ${FD}`, color: GOLDB, marginTop: 10 }}>
+                      {p.price != null ? `$${p.price}` : "—"}
+                    </div>
+                    <div style={{ font: `400 12px ${FM}`, color: C.muted }}>{p.unit ?? ""}</div>
+                    {p.note ? (
+                      <p
+                        style={{
+                          font: `400 12px ${FB}`,
+                          color: C.muted,
+                          lineHeight: 1.55,
+                          margin: "10px 0 0",
+                        }}
+                      >
+                        {p.note}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
               </div>
-              <div
-                style={{
-                  fontFamily: "Bebas Neue, Oswald, sans-serif",
-                  fontSize: 40,
-                  marginTop: 10,
-                  color: p.muted ? "#6E6E6E" : "#FFFFFF",
-                }}
-              >
-                {p.price}
-                <span style={{ fontSize: 14, color: "#7A7A7A", marginLeft: 4 }}>{p.unit}</span>
+
+              <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
+                {signup?.notes?.payment ? (
+                  <Missing label="Billing is not live" reason={signup.notes.payment} />
+                ) : null}
+                {signup?.notes?.mcCheck ? (
+                  <Missing label="MC number is not verified with FMCSA" reason={signup.notes.mcCheck} />
+                ) : null}
               </div>
-              {!p.muted && (
-                <div style={{ marginTop: 12, fontSize: 12, color: "#A8A8A8", lineHeight: 1.6 }}>
-                  Everything above. 14-day trial. No contract, cancel any time.
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <p
-          style={{
-            maxWidth: 900,
-            margin: "18px auto 0",
-            fontSize: 11,
-            color: "#6E6E6E",
-            textAlign: "center",
-            lineHeight: 1.6,
-          }}
-        >
-          TruckWithEase pricing of record: Solo $29.99/driver/mo, Pro $39.99/driver/mo, Fleet
-          $49.99/truck/mo with hardware lease included, or $59.99/driver/mo hardware-owned
-          ($600/truck one-time). 14-day trial, no contracts, Net 30. There is no enterprise tier.
-        </p>
-      </section>
+            </>
+          )}
+        </Panel>
 
-      {/* 12 reasons */}
-      <section style={{ padding: "70px 24px", borderBottom: `1px solid ${BORDER}` }}>
-        <div
-          style={{
-            fontFamily: "Oswald, sans-serif",
-            fontSize: 11,
-            letterSpacing: "0.32em",
-            textTransform: "uppercase",
-            color: GOLD,
-            textAlign: "center",
-          }}
+        {/* SUPPORT */}
+        <Panel
+          title="Support hours"
+          note="GET /api/support — real hours per day, computed server-side in America/Chicago. Support is not 24/7 and this page does not say it is."
+          icon={<Phone size={16} />}
+          right={
+            support ? (
+              <Tag
+                text={support.openNow ? "Open right now" : "Closed right now"}
+                tone={support.openNow ? "gold" : "warn"}
+              />
+            ) : null
+          }
         >
-          Every feature a competitor can't copy
-        </div>
-        <h2
-          style={{
-            fontFamily: "Bebas Neue, Oswald, sans-serif",
-            fontSize: "clamp(30px, 5vw, 54px)",
-            textAlign: "center",
-            margin: "16px 0 30px",
-            lineHeight: 1.04,
-          }}
-        >
-          12 REASONS{" "}
-          <span
-            style={{
-              background: `linear-gradient(135deg,${GOLD} 0%,${GOLD_BRIGHT} 50%,#8A6E2F 100%)`,
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
-            }}
-          >
-            NOTHING COMPETES
-          </span>
-        </h2>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            justifyContent: "center",
-            flexWrap: "wrap",
-            marginBottom: 30,
-          }}
-        >
-          {TAGS.map((t) => {
-            const active = t === tag;
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTag(t)}
-                style={{
-                  fontFamily: "Oswald, sans-serif",
-                  fontSize: 11,
-                  letterSpacing: "0.14em",
-                  textTransform: "uppercase",
-                  padding: "8px 15px",
-                  borderRadius: 5,
-                  cursor: "pointer",
-                  color: active ? BLACK : "#9A9A9A",
-                  background: active
-                    ? `linear-gradient(135deg,${GOLD} 0%,${GOLD_BRIGHT} 60%,#8A6E2F 100%)`
-                    : "transparent",
-                  border: `1px solid ${active ? GOLD : BORDER}`,
-                  fontWeight: active ? 600 : 400,
-                }}
-              >
-                {t}
-              </button>
-            );
-          })}
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-            gap: 18,
-            maxWidth: 1180,
-            margin: "0 auto",
-          }}
-        >
-          {shown.map((f) => (
-            <article
-              key={f.title}
+          {state === "loading" ? (
+            <Spin />
+          ) : !hours ? (
+            <Missing
+              label="Support hours"
+              reason="GET /api/support returned no hours object. No hours are shown rather than invented ones."
+            />
+          ) : (
+            <div
               style={{
-                background: CARD,
-                border: `1px solid ${BORDER}`,
-                borderRadius: 10,
-                padding: 22,
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
+                gap: 18,
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 10,
-                }}
-              >
-                <Badge>{f.tag}</Badge>
+              <div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <tbody>
+                    {DAY_ORDER.filter((d) => hours[d]).map((d) => (
+                      <tr key={d} style={{ borderBottom: `1px solid ${C.border}` }}>
+                        <td
+                          style={{
+                            font: `400 13px ${FB}`,
+                            color: d === today ? GOLDB : C.muted,
+                            padding: "8px 0",
+                          }}
+                        >
+                          {DAY_LABEL[d]}
+                          {d === today ? (
+                            <span style={{ font: `400 11px ${FM}`, color: GOLD }}> · today</span>
+                          ) : null}
+                        </td>
+                        <td
+                          style={{
+                            font: `400 13px ${FM}`,
+                            color: d === today ? GOLDB : C.white,
+                            padding: "8px 0",
+                            textAlign: "right",
+                          }}
+                        >
+                          {hours[d]}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {support?.timezone ? (
+                  <div style={{ font: `400 11px ${FM}`, color: C.dim, marginTop: 10 }}>
+                    timezone: {support.timezone}
+                  </div>
+                ) : null}
               </div>
-              <h3
+
+              <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
+                {support?.phone ? (
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <Phone size={15} color={GOLD} />
+                    <span style={{ font: `400 14px ${FM}`, color: C.white }}>{support.phone}</span>
+                  </div>
+                ) : null}
+                {support?.email ? (
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <Mail size={15} color={GOLD} />
+                    <span style={{ font: `400 13px ${FM}`, color: C.white }}>
+                      {support.email}
+                      <span style={{ color: C.dim }}> · support</span>
+                    </span>
+                  </div>
+                ) : null}
+                {support?.billingEmail ? (
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <Mail size={15} color={C.muted} />
+                    <span style={{ font: `400 13px ${FM}`, color: C.muted }}>
+                      {support.billingEmail}
+                      <span style={{ color: C.dim }}> · billing only</span>
+                    </span>
+                  </div>
+                ) : null}
+                {support?.categories ? (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                    {Object.keys(support.categories).map((k) => (
+                      <Tag key={k} text={k} tone="dim" />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          )}
+        </Panel>
+
+        {/* INTEGRATIONS */}
+        <Panel
+          title="Integrations"
+          note="GET /api/integrations/status — a provider counts as connected only when a live call to it succeeded. A stored key is not a connection."
+          icon={<Plug size={16} />}
+        >
+          {state === "loading" ? (
+            <Spin />
+          ) : integErr ? (
+            <Missing label="Integration status" reason={integErr} />
+          ) : !iCounts ? (
+            <Missing
+              label="Integration status"
+              reason="GET /api/integrations/status returned no counts object."
+            />
+          ) : (
+            <div style={{ display: "flex", gap: 36, flexWrap: "wrap" }}>
+              <Stat value={iCounts.total} label="Providers wired" />
+              <Stat value={iCounts.connected} label="Verified connected" tone="gold" />
+              <Stat value={iCounts.keyPresentUnverified} label="Key present, unverified" />
+              <Stat value={iCounts.rejected} label="Key rejected by provider" tone="warn" />
+              <Stat value={iCounts.notConnected} label="No credential" tone="warn" />
+            </div>
+          )}
+        </Panel>
+
+        {/* CAPABILITY STATUS */}
+        <Panel
+          title="Capability status, in full"
+          note="GET /api/functions — the server's own status names. This is published so nobody has to take a marketing sentence on faith."
+          icon={<Gauge size={16} />}
+          right={
+            counts ? <Tag text={`${counts.endpoints} endpoints`} tone="dim" /> : null
+          }
+        >
+          {state === "loading" ? (
+            <Spin />
+          ) : fnsErr ? (
+            <Missing label="Capability index" reason={fnsErr} />
+          ) : !counts ? (
+            <Missing label="Capability index" reason="GET /api/functions returned no counts object." />
+          ) : (
+            <>
+              <div style={{ display: "flex", gap: 36, flexWrap: "wrap", marginBottom: 18 }}>
+                <Stat value={counts.capabilities} label="Capabilities" tone="gold" />
+                <Stat value={counts.endpoints} label="HTTP endpoints" />
+              </div>
+              <div style={{ display: "grid", gap: 10 }}>
+                {Object.keys(byStatus).map((k) => (
+                  <div
+                    key={k}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      border: `1px solid ${C.border}`,
+                      borderRadius: 4,
+                      padding: "10px 14px",
+                      background: "#121212",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <span style={{ font: `400 26px ${FD}`, color: k === "live" ? GOLDB : WARN }}>
+                      {byStatus[k]}
+                    </span>
+                    <span style={{ font: `400 11px ${FM}`, color: GOLD }}>{k}</span>
+                    <span style={{ font: `400 13px ${FB}`, color: C.muted }}>
+                      {STATUS_LABEL[k] ?? "status reported by the server"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <Link
+                href="/entitled"
                 style={{
-                  fontFamily: "Oswald, sans-serif",
-                  fontSize: 19,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 16,
+                  font: `500 12px ${FH}`,
                   textTransform: "uppercase",
-                  letterSpacing: "0.02em",
-                  margin: 0,
-                  color: "#FFFFFF",
-                  lineHeight: 1.25,
+                  letterSpacing: "0.18em",
+                  color: GOLD,
+                  textDecoration: "none",
                 }}
               >
-                {f.title}
-              </h3>
-              <p style={{ margin: 0, fontSize: 13, color: GOLD, lineHeight: 1.6 }}>{f.blurb}</p>
-              {f.note && (
-                <div style={{ fontSize: 11, color: "#7A7A7A", lineHeight: 1.55 }}>{f.note}</div>
-              )}
-            </article>
-          ))}
-        </div>
-      </section>
+                Open the full capability index <ArrowRight size={13} />
+              </Link>
+            </>
+          )}
+        </Panel>
 
-      {/* closing */}
-      <section
-        style={{
-          padding: "80px 24px",
-          textAlign: "center",
-          background: "radial-gradient(circle at 50% 100%, #1a1508 0%, #0a0a0a 65%)",
-        }}
-      >
-        <div
-          style={{
-            fontFamily: "Oswald, sans-serif",
-            fontSize: 11,
-            letterSpacing: "0.32em",
-            textTransform: "uppercase",
-            color: GOLD,
-          }}
+        {/* WHAT WE DO NOT DO */}
+        <Panel
+          title="What TruckWithEase does not do"
+          note="Published on the front page on purpose. If it is not on this site, it is not in the product."
+          icon={<Ban size={16} />}
         >
-          Nothing comes close
-        </div>
-        <h2
-          style={{
-            fontFamily: "Bebas Neue, Oswald, sans-serif",
-            fontSize: "clamp(32px, 6vw, 64px)",
-            lineHeight: 1.02,
-            margin: "18px 0 0",
-          }}
-        >
-          YOUR FLEET.
-          <br />
-          <span
-            style={{
-              background: `linear-gradient(135deg,${GOLD} 0%,${GOLD_BRIGHT} 50%,#8A6E2F 100%)`,
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
-            }}
-          >
-            YOUR ADVANTAGE.
-          </span>
-          <br />
-          OUR PLATFORM.
-        </h2>
-        <p style={{ color: "#A8A8A8", fontSize: 14, margin: "20px auto 30px", maxWidth: 460, lineHeight: 1.7 }}>
-          No contracts. No hardware lock-in. Fourteen days free — every feature, every driver, from
-          the moment you sign up.
-        </p>
-        <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-          <Link
-            to="/app/billing"
-            style={{
-              fontFamily: "Oswald, sans-serif",
-              fontSize: 14,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-              color: BLACK,
-              background: `linear-gradient(135deg,${GOLD} 0%,${GOLD_BRIGHT} 40%,${GOLD} 70%,#8A6E2F 100%)`,
-              padding: "14px 30px",
-              borderRadius: 6,
-            }}
-          >
-            Start now — free trial
-          </Link>
-          <Link
-            to="/app/pricing"
-            style={{
-              fontFamily: "Oswald, sans-serif",
-              fontSize: 14,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-              color: GOLD_BRIGHT,
-              border: `1px solid ${GOLD}66`,
-              padding: "14px 30px",
-              borderRadius: 6,
-            }}
-          >
-            See all pricing
-          </Link>
-        </div>
-      </section>
+          <ol style={{ margin: 0, paddingLeft: 22, display: "grid", gap: 10 }}>
+            {NOT_CLAIMED.map((n, i) => (
+              <li
+                key={i}
+                style={{ font: `400 13px ${FB}`, color: C.muted, lineHeight: 1.65 }}
+              >
+                {n}
+              </li>
+            ))}
+          </ol>
+        </Panel>
 
+        {/* MEASURED READS */}
+        <Panel
+          title="Measured reads"
+          note="Every round trip this page made, with the status the server returned and the time it took, measured with performance.now()."
+          icon={<Clock size={16} />}
+          right={
+            <button
+              type="button"
+              onClick={load}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                font: `500 11px ${FH}`,
+                textTransform: "uppercase",
+                letterSpacing: "0.18em",
+                color: C.white,
+                background: "transparent",
+                border: `1px solid ${C.border}`,
+                borderRadius: 3,
+                padding: "8px 12px",
+                cursor: "pointer",
+              }}
+            >
+              <RefreshCw size={12} /> Re-read
+            </button>
+          }
+        >
+          {reads.length === 0 ? (
+            <Spin />
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <tbody>
+                {reads.map((r, i) => (
+                  <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
+                    <td style={{ font: `400 12px ${FM}`, color: C.white, padding: "8px 0" }}>
+                      {r.url}
+                    </td>
+                    <td
+                      style={{
+                        font: `400 12px ${FM}`,
+                        color: r.status === 200 ? GOLD : WARN,
+                        padding: "8px 12px",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {r.status ?? "failed"}
+                    </td>
+                    <td
+                      style={{
+                        font: `400 12px ${FM}`,
+                        color: r.ms >= SLOW_MS ? WARN : C.muted,
+                        padding: "8px 0",
+                        textAlign: "right",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {r.err ? r.err : `${r.ms} ms${r.ms >= SLOW_MS ? "  ← slow" : ""}`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+      </main>
+
+      {/* FOOTER */}
       <footer
         style={{
-          borderTop: `1px solid ${BORDER}`,
-          background: "#0d0d0d",
-          padding: "26px 24px",
-          textAlign: "center",
-          fontSize: 12,
-          color: "#6E6E6E",
-          lineHeight: 1.8,
+          borderTop: `1px solid ${C.border}`,
+          background: C.nav,
+          marginTop: 20,
+          padding: "32px 0",
         }}
       >
-        <img
-          src="/static/twe-logo-horizontal-trim.png"
-          alt="TruckWithEase"
-          style={{ height: 26, opacity: 0.75, marginBottom: 10 }}
-        />
-        <div>Drive smart. Stay compliant.</div>
-        <div>
-          My Dads Trucking LLC · Springfield, MO · 636-706-8338 · jeremiahjmorris1126@gmail.com
+        <div style={{ ...wrap, display: "grid", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <Truck size={20} color={GOLD} />
+            <Wordmark size={22} />
+            <span style={{ font: `400 12px ${FM}`, color: C.dim }}>truckwithease.com</span>
+          </div>
+          <p
+            style={{
+              font: `400 12px ${FB}`,
+              color: C.dim,
+              lineHeight: 1.7,
+              maxWidth: 860,
+              margin: 0,
+            }}
+          >
+            TruckWithEase is compliance and fleet-management software. It is not an electronic
+            logging device, it is not registered with FMCSA as an ELD provider, and it does not
+            replace the ELD in your truck. It files nothing with any agency. Payment processing is
+            not live. Support is not 24/7 — the real hours are on this page, read from the server.
+          </p>
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+            {support?.email ? (
+              <span style={{ font: `400 12px ${FM}`, color: C.muted }}>
+                Support: {support.email}
+              </span>
+            ) : null}
+            {support?.phone ? (
+              <span style={{ font: `400 12px ${FM}`, color: C.muted }}>{support.phone}</span>
+            ) : null}
+            <Link href="/pricing" style={{ font: `400 12px ${FM}`, color: GOLD, textDecoration: "none" }}>
+              Pricing
+            </Link>
+            <Link href="/entitled" style={{ font: `400 12px ${FM}`, color: GOLD, textDecoration: "none" }}>
+              Capability index
+            </Link>
+            <Link
+              href="/responsible-use"
+              style={{ font: `400 12px ${FM}`, color: GOLD, textDecoration: "none" }}
+            >
+              Responsible use
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

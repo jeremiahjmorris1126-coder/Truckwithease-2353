@@ -1,6 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PocketBase from "pocketbase";
-import { pricingPlans } from "./PricingTiersConfig";
+
+// PRICES COME FROM THE SERVER. The `pricingPlans` import that used to sit here was
+// deleted with the duplicate price list in PricingTiersConfig.js, and the hardcoded
+// planDetails map below ($29.99 / $39.99 / $49.99 / $59.99) went with it. PLANS in
+// src/api/routes/signup.ts is the only price list in this product; this page reads it
+// over GET /api/signup. Do not retype a price in this file.
+//
+// STILL BROKEN, TRACKED FOR A FULL REWRITE: this page writes to a PocketBase
+// "subscriptions" collection that does not exist, fabricates a Stripe id with
+// Math.random(), and takes a card number in a plain input. Payment processing is NOT
+// live (GET /api/signup notes.payment says so). Nothing here charges anything.
 
 const pb = new PocketBase();
 
@@ -21,6 +31,31 @@ export default function CheckoutPage() {
   const [error, setError]       = useState("");
   const [success, setSuccess]   = useState(false);
   const [addons, setAddons] = useState({ dashcam: false, dashcamSeats: 1, voice: false, voiceSeats: 1, voiceDevice: "phone" });
+  const [serverPlans, setServerPlans] = useState([]);
+  const [plansError, setPlansError] = useState("");
+
+  // GET /api/signup - the only price list.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/signup", { credentials: "include" });
+        const body = await res.json().catch(() => null);
+        if (!res.ok) throw new Error((body && body.error) || `/api/signup returned ${res.status}`);
+        const order = ["solo", "pro", "fleet_lease", "fleet_owned"];
+        const list = order
+          .filter((k) => body && body.plans && body.plans[k])
+          .map((k) => ({ id: k, ...body.plans[k] }));
+        if (!alive) return;
+        setServerPlans(list);
+        if (list.length && !list.some((x) => x.id === plan)) setPlan(list[0].id);
+      } catch (e) {
+        if (!alive) return;
+        setPlansError(e.message || "could not read /api/signup");
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const addonOptions = [
     {
@@ -49,19 +84,14 @@ export default function CheckoutPage() {
     (addons.voice ? addons.voiceSeats * 8.99 : 0);
   const grandTotal = (getPlanPrice ? getPlanPrice() : 29.99) + addonTotal;
 
-  const planDetails = {
-    solo: { price: 29.99, name: "Solo" },
-    pro: { price: 39.99, name: "Pro" },
-    "fleet-rental": { price: 49.99, name: "Fleet (Rental)" },
-    "fleet-owned": { price: 59.99, name: "Fleet (Owned)" },
-  };
-
   const getPlanPrice = () => {
-    return planDetails[plan]?.price || 29.99;
+    const p = serverPlans.find((x) => x.id === plan);
+    return p && p.price != null ? p.price : 0;
   };
 
   const getPlanName = () => {
-    return planDetails[plan]?.name || "Plan";
+    const p = serverPlans.find((x) => x.id === plan);
+    return p ? p.name : "Plan";
   };
 
   const handlePayment = async (e) => {
@@ -139,7 +169,7 @@ export default function CheckoutPage() {
               gap: "20px",
               marginBottom: "40px"
             }}>
-              {pricingPlans.map((p) => (
+              {serverPlans.map((p) => (
                 <div
                   key={p.id}
                   onClick={() => setPlan(p.id)}
@@ -158,12 +188,13 @@ export default function CheckoutPage() {
                     {p.name}
                   </h3>
                   <div style={{ fontSize: "28px", fontWeight: "bold", color: ORANGE, marginBottom: "15px" }}>
-                    {p.price}
+                    {p.price != null ? `$${p.price}` : "-"}
+                    <span style={{ fontSize: 13, fontWeight: 400, opacity: 0.7 }}> {p.unit || ""}</span>
                   </div>
                   <p style={{ fontSize: "13px", opacity: 0.7, marginBottom: "15px" }}>
-                    {p.description}
+                    {p.note || ""}
                   </p>
-                  {p.highlight && (
+                  {false && (
                     <div style={{
                       fontSize: "12px",
                       padding: "6px 12px",

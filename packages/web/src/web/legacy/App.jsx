@@ -222,6 +222,7 @@ const RevolutionPage = lazy(() => import("./pages/RevolutionPage"));
 const DriverAssistanceQuantumPage = lazy(() => import("./pages/DriverAssistanceQuantumPage"));
 const LaunchLandingPage = lazy(() => import("./pages/LaunchLandingPage"));
 const SimplifiedDashboardPage = lazy(() => import("./pages/SimplifiedDashboardPage"));
+const TruckWithEaseHomePage = lazy(() => import("./pages/TruckWithEaseHomePage"));
 const CoreBreakthroughsPage = lazy(() => import("./pages/CoreBreakthroughsPage"));
 const JourneyPage = lazy(() => import("./pages/JourneyPage"));
 const FleetMemoryPage = lazy(() => import("./pages/FleetMemoryPage"));
@@ -368,7 +369,8 @@ export default function App() {
 
 
 
-  if (path === "/" || path === "/home" || path === "/morrishive" || path === "/drivewithease" || path === "/landing" || path === "/launch") return <SimplifiedDashboardPage />;
+  // truckwithease.com front door. The /morrishive alias was removed: wrong brand.
+  if (path === "/" || path === "/home" || path === "/drivewithease" || path === "/landing" || path === "/launch") return <TruckWithEaseHomePage />;
   if (path === "/core-breakthroughs" || path === "/live-proof" || path === "/entitled-systems") return <CoreBreakthroughsPage />;
   if (path === "/dashboard" || path === "/my-dashboard" || path === "/start") return <SimplifiedDashboardPage />;
   if (path === "/home-old" || path === "/cover") return <CoverPage />;
@@ -629,9 +631,9 @@ export default function App() {
     );
   }
 
-  // Unreachable in practice: "/" and "/home" are handled by SimplifiedDashboardPage
+  // Unreachable in practice: "/" and "/home" are handled by TruckWithEaseHomePage
   // above, and wouter serves pages/landing.tsx at "/". Kept as an explicit return so
   // the component always renders something.
-  return <SimplifiedDashboardPage />;
+  return <TruckWithEaseHomePage />;
 }
 

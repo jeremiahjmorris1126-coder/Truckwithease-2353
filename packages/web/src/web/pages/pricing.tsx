@@ -1,70 +1,182 @@
-import { PageHeader, Card, Button } from "../components/ui/kit";
-import { Check, Truck, Users, Building2, Sparkles } from "lucide-react";
+/**
+ * pricing.tsx — the in-app pricing page.
+ *
+ * READS
+ *   GET /api/signup — PLANS in api/routes/signup.ts is the ONLY price list in this
+ *                     product. This page renders whatever the server returns and
+ *                     nothing else, including the server's own notes.payment
+ *                     admission that billing is not live.
+ *
+ * REMOVED IN THIS REWRITE
+ *   - The hardcoded PLANS array (Solo 29.99 / Pro 39.99 / Fleet 49.99) — a second
+ *     price list that could drift from the API. Deleted.
+ *   - The invented feature bullets attached to those cards, by name:
+ *     "HOS / ELD logging (49 CFR 395)" (this is not an ELD),
+ *     "Live GPS tracking", "Load board access" (there is NO load board
+ *     integration of any kind), "EaseRewards loyalty points",
+ *     "$100 in-app Fuel Card", "Weigh-station bypass account setup guidance",
+ *     "Digital permit book", "Priority support" (support has one tier and real
+ *     published hours), "Health Chief AI wellness coach",
+ *     "Toll cost + cheapest-route engine", "Volume pricing available",
+ *     and "Everything in Solo" / "Everything in Pro" ladders built on them.
+ *   - The "MOST POPULAR" badge on Pro — there is no adoption data. 1 subscription
+ *     record exists and it is cancelled.
+ *   - "Start 14-day free trial" as a button that did nothing, and the
+ *     "Add the dashcam bundle / Records video, syncs to the app, cloud storage +
+ *     incident clips" card with its "Add hardware" button. No hardware ships and
+ *     no dashcam product exists.
+ *   - "No contracts. Cancel anytime." presented next to a checkout that cannot
+ *     charge. Replaced with the server's own statement about billing.
+ *   - The sentence comparing against "other vendors' prices". No competitor is
+ *     referenced anywhere in this product.
+ */
+import { useEffect, useState } from "react";
+import { Link } from "wouter";
+import { PageHeader, Card } from "../components/ui/kit";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
-const PLANS = [
-  {
-    id: "solo", name: "Solo", price: 29.99, unit: "/driver/mo", icon: Truck, popular: false,
-    tagline: "Owner-operators running their own truck.",
-    features: ["HOS / ELD logging (49 CFR 395)", "State-aware DOT AI Watcher", "Pre-trip DVIR inspections", "Live GPS tracking", "Fuel Finder + price compare", "EaseRewards loyalty points", "Load board access", "PDF / CSV exports"],
-  },
-  {
-    id: "pro", name: "Pro", price: 39.99, unit: "/driver/mo", icon: Sparkles, popular: true,
-    tagline: "Owner-operators who want every edge.",
-    features: ["Everything in Solo", "$100 in-app Fuel Card", "Weigh-station bypass account setup guidance", "Fleet Chief AI (truck + trailer)", "Health Chief AI wellness coach", "Toll cost + cheapest-route engine", "Digital permit book", "Priority support"],
-  },
-  {
-    id: "fleet", name: "Fleet", price: 49.99, unit: "/truck/mo", icon: Building2, popular: false,
-    tagline: "Carriers managing multiple trucks.",
-    features: ["Everything in Pro", "Fleet admin dashboard", "Live map of all trucks", "Dispatch ↔ driver chat", "Custom reports + attachments", "Driver assignment + truck numbers", "Compliance alerts across fleet", "Volume pricing available"],
-  },
-];
+const PLAN_ORDER = ["solo", "pro", "fleet_lease", "fleet_owned"];
 
 export default function Pricing() {
+  const [state, setState] = useState<"loading" | "ok" | "error">("loading");
+  const [err, setErr] = useState("");
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/signup", { credentials: "include" });
+        const body = await res.json().catch(() => null);
+        if (!res.ok) throw new Error((body && body.error) || `/api/signup returned ${res.status}`);
+        if (!alive) return;
+        setData(body);
+        setState("ok");
+      } catch (e: any) {
+        if (!alive) return;
+        setErr(e?.message ?? "unknown error");
+        setState("error");
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const plans = data?.plans
+    ? PLAN_ORDER.filter((k) => data.plans[k]).map((k) => ({ key: k, ...data.plans[k] }))
+    : [];
+
   return (
     <div>
-      <PageHeader title="Plans & Pricing" subtitle='No contracts. Cancel anytime. 14-day free trial on every plan. Drive Smart. Stay Compliant.' />
+      <PageHeader
+        title="Plans & Pricing"
+        subtitle="Read live from GET /api/signup. This page holds no price list of its own."
+      />
 
-      <div className="rounded-xl bg-[#C9A84C]/10 border border-[#C9A84C]/30 px-5 py-3 mb-6 text-sm text-[#F5F5F5] flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-[#FFD700]" />
-        <span><b>Fleet at $49.99/truck/mo includes the hardware lease</b>; hardware-owned is $59.99/driver/mo with a $600/truck one-time cost. We do not quote other vendors' prices — compare against your own invoice.</span>
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-5">
-        {PLANS.map((p) => {
-          const Icon = p.icon;
-          return (
-            <Card key={p.id} className={`p-6 flex flex-col relative ${p.popular ? "ring-2 ring-[#C9A84C]" : ""}`}>
-              {p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#C9A84C] px-3 py-1 text-xs font-bold text-[#0a0a0a]">MOST POPULAR</span>}
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1C1C1C]"><Icon className="h-5 w-5 text-[#C9A84C]" /></div>
-                <span className="font-bold text-lg text-[#F5F5F5]">{p.name}</span>
-              </div>
-              <p className="text-sm text-[#8A8A8A] mb-4 min-h-[40px]">{p.tagline}</p>
-              <div className="mb-5">
-                <span className="text-4xl font-bold font-mono-data text-[#C9A84C]">${p.price}</span>
-                <span className="text-sm text-[#8A8A8A]">{p.unit}</span>
-              </div>
-              <Button variant={p.popular ? "amber" : "primary"} className="w-full mb-5">Start 14-day free trial</Button>
-              <ul className="space-y-2.5">
-                {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-[#F5F5F5]"><Check className="h-4 w-4 text-[#C9A84C] shrink-0 mt-0.5" />{f}</li>
-                ))}
-              </ul>
-            </Card>
-          );
-        })}
-      </div>
-
-      <Card className="mt-6 p-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1C1C1C]"><Users className="h-5 w-5 text-[#C9A84C]" /></div>
-          <div>
-            <div className="font-bold text-[#F5F5F5]">Add the dashcam bundle</div>
-            <div className="text-sm text-[#8A8A8A]">Records video, syncs to the app, cloud storage + incident clips.</div>
-          </div>
+      {state === "loading" ? (
+        <div className="flex items-center gap-2 text-sm text-[#8A8A8A]">
+          <Loader2 className="h-4 w-4 animate-spin text-[#C9A84C]" /> reading /api/signup
         </div>
-        <Button variant="ghost">Add hardware</Button>
-      </Card>
+      ) : null}
+
+      {state === "error" ? (
+        <Card className="p-5 border border-[#332222]">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-4 w-4 text-[#c96a4c] mt-0.5 shrink-0" />
+            <div>
+              <div className="text-xs uppercase tracking-[0.18em] text-[#c96a4c]">
+                MISSING / NOT TRACKED
+              </div>
+              <div className="text-sm text-[#F5F5F5] mt-1">Plan pricing</div>
+              <pre className="mt-2 whitespace-pre-wrap font-mono-data text-xs text-[#c96a4c]">
+                {err}
+              </pre>
+              <p className="text-sm text-[#8A8A8A] mt-2">
+                No price is shown rather than a remembered one.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : null}
+
+      {state === "ok" ? (
+        <>
+          <div className="grid md:grid-cols-4 gap-5">
+            {plans.map((p) => (
+              <Card key={p.key} className="p-6 flex flex-col">
+                <span className="font-mono-data text-xs text-[#666666]">{p.key}</span>
+                <span className="font-bold text-lg text-[#F5F5F5] mt-1">{p.name ?? p.key}</span>
+                <div className="mt-4">
+                  <span className="text-4xl font-bold font-mono-data text-[#FFD700]">
+                    {p.price != null ? `$${p.price}` : "—"}
+                  </span>
+                  <span className="text-sm text-[#8A8A8A]"> {p.unit ?? ""}</span>
+                </div>
+                {p.note ? (
+                  <p className="text-sm text-[#8A8A8A] mt-3 leading-relaxed">{p.note}</p>
+                ) : null}
+              </Card>
+            ))}
+          </div>
+
+          <div className="grid gap-4 mt-6">
+            {data?.trialDays != null ? (
+              <Card className="p-5 text-sm text-[#F5F5F5]">
+                <b>{data.trialDays}-day free trial</b> — the trial length is set by the server
+                (<span className="font-mono-data text-xs text-[#C9A84C]">trialDays</span> on
+                GET /api/signup).
+              </Card>
+            ) : null}
+
+            {data?.notes?.payment ? (
+              <Card className="p-5 border border-[#333333]">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-4 w-4 text-[#c96a4c] mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-[#c96a4c]">
+                      MISSING / NOT TRACKED
+                    </div>
+                    <div className="text-sm text-[#F5F5F5] mt-1">Billing is not live</div>
+                    <p className="text-sm text-[#8A8A8A] mt-1 leading-relaxed">
+                      {data.notes.payment}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            ) : null}
+
+            {data?.notes?.mcCheck ? (
+              <Card className="p-5 border border-[#333333]">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-4 w-4 text-[#c96a4c] mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-[#c96a4c]">
+                      MISSING / NOT TRACKED
+                    </div>
+                    <div className="text-sm text-[#F5F5F5] mt-1">
+                      MC number is not verified with FMCSA
+                    </div>
+                    <p className="text-sm text-[#8A8A8A] mt-1 leading-relaxed">
+                      {data.notes.mcCheck}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            ) : null}
+
+            <Card className="p-5 text-sm text-[#8A8A8A] leading-relaxed">
+              TruckWithEase is compliance and fleet-management software. It is not an electronic
+              logging device and is not registered with FMCSA as an ELD provider. No hardware ships
+              today — the hardware lines above are plan pricing, not a shipping product. See the{" "}
+              <Link href="/entitled" className="text-[#C9A84C]">
+                capability index
+              </Link>{" "}
+              for what is built and what is not.
+            </Card>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
