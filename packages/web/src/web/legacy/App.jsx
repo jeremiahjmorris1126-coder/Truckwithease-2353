@@ -19,6 +19,7 @@ const FinancialModelDashboard = lazy(() => import("./FinancialModelDashboard"));
 const TutorialsPage = lazy(() => import("./TutorialsPage"));
 const SubscriberAgentPage = lazy(() => import("./SubscriberAgentPage"));
 const SystemMaintenanceAgentPage = lazy(() => import("./SystemMaintenanceAgentPage"));
+const StartupDataAgent = lazy(() => import("./StartupDataAgent"));
 const SecurityAgentPage = lazy(() => import("./SecurityAgentPage"));
 const HOSComplianceAgentPage = lazy(() => import("./HOSComplianceAgentPage"));
 const QualityAssuranceAgentPage = lazy(() => import("./QualityAssuranceAgentPage"));
@@ -392,6 +393,7 @@ export default function App() {
   if (path === "/demo") return <DemoPage />;
   if (path === "/subscriber-agent") return <SubscriberAgentPage />;
   if (path === "/system-maintenance") return <SystemMaintenanceAgentPage />;
+  if (path === "/startup-data-agent" || path === "/data-agent") return <StartupDataAgent />;
   if (path === "/security-agent") return <SecurityAgentPage />;
   if (path === "/hos-compliance") return <HOSComplianceAgentPage />;
   if (path === "/qa-agent") return <QualityAssuranceAgentPage />;
