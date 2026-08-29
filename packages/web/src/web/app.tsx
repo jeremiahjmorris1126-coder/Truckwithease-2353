@@ -1,8 +1,10 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Route, Switch } from "wouter";
 import { Provider } from "./components/provider";
 import { SessionProvider } from "./lib/session";
 import { Shell } from "./components/shell";
+import { ProtectedRoute } from "./components/protected-route";
+import { authClient } from "./lib/auth";
 import { AgentFeedback, RunableBadge } from "@runablehq/website-runtime";
 
 import Index from "./pages/index";
@@ -38,11 +40,43 @@ function RouteFallback() {
   );
 }
 
+/**
+ * Every /app/* page sits behind a real Better Auth session. No session means a
+ * redirect to /sign-in. This gates the UI only — GET /api/session/coverage
+ * states plainly that server-side authorization across the API is not finished.
+ */
 function AppShell({ children }: { children: React.ReactNode }) {
-  return <Shell>{children}</Shell>;
+  return (
+    <ProtectedRoute>
+      <Shell>{children}</Shell>
+    </ProtectedRoute>
+  );
+}
+
+/**
+ * Finishes a returning managed sign-in (the top-level redirect leg) once on
+ * startup, before routes render. No-op on desktop and on a normal page load.
+ */
+function useManagedRedirect() {
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    authClient.managedAuth
+      .handleRedirect()
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setDone(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return done;
 }
 
 function App() {
+  const authReady = useManagedRedirect();
+  if (!authReady) return <RouteFallback />;
   return (
     <Provider>
       <SessionProvider>
@@ -62,9 +96,9 @@ function App() {
           <Route path="/app/loads" component={() => <AppShell><Loads /></AppShell>} />
           <Route path="/app/chat" component={() => <AppShell><Chat /></AppShell>} />
           <Route path="/app/reports" component={() => <AppShell><Reports /></AppShell>} />
-          <Route path="/app/badges" component={() => <Badges />} />
-          <Route path="/app/pricing" component={() => <Billing />} />
-          <Route path="/app/billing" component={() => <Billing />} />
+          <Route path="/app/badges" component={() => <ProtectedRoute><Badges /></ProtectedRoute>} />
+          <Route path="/app/pricing" component={() => <ProtectedRoute><Billing /></ProtectedRoute>} />
+          <Route path="/app/billing" component={() => <ProtectedRoute><Billing /></ProtectedRoute>} />
           {/* Everything else falls through to the recovered launch build. */}
           <Route component={LegacyApp} />
         </Switch>

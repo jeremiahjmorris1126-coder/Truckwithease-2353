@@ -49,10 +49,15 @@ import { fleetio } from "./routes/fleetio";
 import { dataIndex } from "./routes/dataindex";
 import { bridges } from "./routes/bridges";
 import { dispatchZero } from "./routes/dispatchzero";
+import { auth } from "./auth";
+import { sessionRoute } from "./routes/session";
 
 const app = new Hono()
   .basePath('api')
   .use(cors({ origin: (origin) => origin ?? "*", credentials: true, exposeHeaders: ["set-auth-token"] }))
+  // Better Auth owns /api/auth/*. Registered before every feature route so a
+  // sign-in request never falls through to a feature router.
+  .on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw))
   .get('/ping', (c) => c.json({ message: `Pong! ${Date.now()}` }, 200))
   .get('/health', (c) => c.json({ status: 'ok' }, 200))
   .route("/fleet", fleet)
@@ -102,7 +107,8 @@ const app = new Hono()
   .route("/fleetio", fleetio)
   .route("/data-index", dataIndex)
   .route("/bridges", bridges)
-  .route("/dispatch-zero", dispatchZero);
+  .route("/dispatch-zero", dispatchZero)
+  .route("/session", sessionRoute);
 
 export type AppType = typeof app;
 export default app;

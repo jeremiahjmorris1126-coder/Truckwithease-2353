@@ -211,6 +211,7 @@ const StaffAppointedPage = lazy(() => import("./pages/StaffAppointedPage"));
 const EntitledIndexPage = lazy(() => import("./pages/EntitledIndexPage"));
 const LowBridgePage = lazy(() => import("./pages/LowBridgePage"));
 const DispatchZeroPage = lazy(() => import("./pages/DispatchZeroPage"));
+const SignInPage = lazy(() => import("./pages/SignInPage"));
 const PreLaunchAssurancePage = lazy(() => import("./pages/PreLaunchAssurancePage"));
 const LaunchScenarioCenterPage = lazy(() => import("./pages/LaunchScenarioCenterPage"));
 const FleetPaymentsPage = lazy(() => import("./pages/FleetPaymentsPage"));
@@ -647,7 +648,7 @@ export default function App() {
   if (path === "/quantum-integration") return <QuantumIntegrationHub />;
   if (path === "/microsoft-integration" || path === "/azure") return <MicrosoftIntegration />;
   if (path === "/satellite-maps" || path === "/maps") return <SatelliteMapsIntegration />;
-  if (path === "/sign-in") return <AccessibleSignupPage />;
+  if (path === "/sign-in" || path === "/login") return <SignInPage />;
   if (path === "/commands") return <CommandOptimizer />;
   if (path === "/health-monitor") return <FeatureHealthMonitor />;
   if (path === "/fleet-dashboard-customizer") return <FleetDashboardCustomizer />;
