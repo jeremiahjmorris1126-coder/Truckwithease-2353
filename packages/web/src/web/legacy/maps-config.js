@@ -74,18 +74,30 @@ export async function getDistanceMatrix(origins, destinations) {
   });
 }
 
-// ─── Geocoding API ───────────────────────────────────────────────────────────
+// ─── Geocoding — SERVER-SIDE, on purpose ─────────────────────────────────────
+//
+// This used to run in the browser through the Maps JavaScript API Geocoder. It could not work:
+// the browser only has VITE_GOOGLE_MAPS_KEY, and that key's API restrictions REJECT Geocoding
+// (measured 2026-08-30 -> REQUEST_DENIED). Geocoding answers only on GOOGLE_PLACES_API_KEY,
+// which is server-only and must never be shipped to a browser.
+//
+// So the call goes to our own API and the server sends the key Google will accept.
 export async function geocodeAddress(address) {
-  await loadGoogleMaps();
-  return new Promise((resolve, reject) => {
-    const gc = new window.google.maps.Geocoder();
-    gc.geocode({ address }, (results, status) => {
-      if (status === 'OK' && results[0]) {
-        const loc = results[0].geometry.location;
-        resolve({ lat: loc.lat(), lng: loc.lng(), formatted: results[0].formatted_address });
-      } else reject(new Error(`Geocoding failed: ${status}`));
-    });
-  });
+  const r = await fetch(`/api/routing/geocode?address=${encodeURIComponent(address)}`);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    // Surface Google's own words when it gave any, instead of a generic failure.
+    const detail = body.googleError || body.googleStatus || body.error || `HTTP ${r.status}`;
+    throw new Error(`Geocoding failed: ${detail}`);
+  }
+  return {
+    lat: body.lat,
+    lng: body.lng,
+    formatted: body.formatted,
+    placeId: body.placeId ?? null,
+    partialMatch: body.partialMatch === true,
+    provider: body.provider ?? 'google-geocoding',
+  };
 }
 
 // ─── Places Autocomplete (truck-stop / fuel-station aware) ───────────────────

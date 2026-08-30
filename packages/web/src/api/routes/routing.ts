@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { googleKeyFor, googleKeyReport } from "../lib/googlekeys";
+import { googleKeyFor, googleKeySourceFor, googleKeyReport } from "../lib/googlekeys";
 
 /**
  * Route planning — server-side, real Google Directions API.
@@ -142,6 +142,69 @@ routing.post("/plan", async (c) => {
       "Truck-prohibited roads and parkways",
       "Hours-of-service break placement along the route",
     ],
+  });
+});
+
+
+/**
+ * GET /api/routing/geocode?address=...
+ *
+ * Server-side geocoding. This exists because the browser cannot do it: the Maps JavaScript API
+ * Geocoder in the browser uses VITE_GOOGLE_MAPS_KEY, and that key's API restrictions REJECT
+ * Geocoding (measured 2026-08-30 -> REQUEST_DENIED). Geocoding answers only on
+ * GOOGLE_PLACES_API_KEY, which is server-only and must never reach the browser. So the browser
+ * calls this route and the server sends the key that Google will accept.
+ */
+routing.get("/geocode", async (c) => {
+  const address = (c.req.query("address") ?? "").trim();
+  if (!address) return c.json({ error: "address_required" }, 400);
+
+  const key = googleKeyFor("geocoding");
+  if (!key) {
+    return c.json(
+      { error: "no_geocoding_key", keySource: googleKeySourceFor("geocoding") },
+      503,
+    );
+  }
+
+  const t0 = Date.now();
+  const url = `${GEOCODE}?address=${encodeURIComponent(address)}&key=${encodeURIComponent(key)}`;
+  let body: any;
+  try {
+    const r = await fetch(url);
+    body = await r.json();
+  } catch (e: any) {
+    return c.json({ error: "geocode_request_failed", detail: String(e?.message ?? e) }, 502);
+  }
+
+  const status = String(body?.status ?? "UNKNOWN");
+  if (status !== "OK" || !Array.isArray(body?.results) || body.results.length === 0) {
+    // Google's own words, verbatim. REQUEST_DENIED here means the key restrictions changed.
+    return c.json(
+      {
+        error: "geocode_failed",
+        googleStatus: status,
+        googleError: body?.error_message ?? null,
+        keySource: googleKeySourceFor("geocoding"),
+        measuredMs: Date.now() - t0,
+      },
+      status === "ZERO_RESULTS" ? 404 : 502,
+    );
+  }
+
+  const top = body.results[0];
+  return c.json({
+    query: address,
+    lat: top?.geometry?.location?.lat ?? null,
+    lng: top?.geometry?.location?.lng ?? null,
+    formatted: top?.formatted_address ?? null,
+    locationType: top?.geometry?.location_type ?? null,
+    placeId: top?.place_id ?? null,
+    partialMatch: top?.partial_match === true,
+    resultCount: body.results.length,
+    provider: "google-geocoding",
+    keySource: googleKeySourceFor("geocoding"),
+    measuredMs: Date.now() - t0,
   });
 });
 
