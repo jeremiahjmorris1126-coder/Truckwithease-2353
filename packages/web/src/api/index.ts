@@ -58,6 +58,7 @@ import { dispatchZero } from "./routes/dispatchzero";
 import { auth } from "./auth";
 import { sessionRoute } from "./routes/session";
 import { functionsIndex } from "./routes/functions";
+import { openapiRoutes } from "./routes/openapi";
 import { responsibleUseRoute } from "./routes/responsibleuse";
 import { hapticRoute } from "./routes/haptic";
 
@@ -130,7 +131,10 @@ const app = new Hono()
   .route("/functions", functionsIndex(() => app.routes as { method: string; path: string }[]))
   // TRAXES as the platform's AI. Same lazy-getter contract as the function index: it reads the
   // app's own live route table so it can never describe an endpoint that is not mounted.
-  .route("/traxes", traxesAI(() => app.routes as { method: string; path: string }[]));
+  .route("/traxes", traxesAI(() => app.routes as { method: string; path: string }[]))
+  // OpenAPI 3.1 contract, generated off the same live route table so the spec cannot describe an
+  // endpoint that is not mounted.
+  .route("/", openapiRoutes(() => app.routes as { method: string; path: string }[]));
 
 export type AppType = typeof app;
 export default app;
