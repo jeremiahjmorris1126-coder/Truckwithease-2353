@@ -38,6 +38,8 @@
  */
 
 import { Hono } from "hono";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { sql } from "drizzle-orm";
 import { db } from "../database";
 
@@ -78,6 +80,12 @@ type Cap = {
   /** Env keys required for it to do anything real. Presence is reported as a boolean only. */
   envKeys: string[];
   /**
+   * In-app screen routes that surface this capability. Each one is checked at request time
+   * against the route table in legacy/App.jsx — a declared screen that no longer resolves is
+   * reported as routed:false rather than quietly listed.
+   */
+  pages?: string[];
+  /**
    * Capability + trust note. For AI rows: what the model does not tell us. For algorithm rows:
    * the sample floor. For human rows: who actually has to act.
    */
@@ -94,6 +102,7 @@ const CAPS: Cap[] = [
   /* ---------------- Compliance (truck world, federal rules) ---------------- */
   {
     id: "hos-clocks",
+    pages: ["/hos"],
     name: "Hours-of-service clocks",
     domain: "Compliance",
     what: "Computes driving, on-duty window, cycle and break clocks in minutes for every driver from hos_logs.",
@@ -108,6 +117,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "hos-violations",
+    pages: ["/hos", "/live-compliance"],
     name: "HOS violation detection",
     domain: "Compliance",
     what: "Flags each driver's clock breaches with a severity level and a plain-language message.",
@@ -122,6 +132,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "eld-telemetry-ingest",
+    pages: ["/twe-eld"],
     name: "ELD telemetry storage",
     domain: "Compliance",
     what: "Stores engine/position telemetry rows that HOS and safety math read from.",
@@ -136,6 +147,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "dvir-inspections",
+    pages: ["/dvir", "/compliance-dvir"],
     name: "DVIR inspection records",
     domain: "Compliance",
     what: "Pre/post-trip inspection reports with defects, per driver and truck.",
@@ -150,6 +162,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "compliance-vault",
+    pages: ["/dot-compliance-vault", "/permit-book"],
     name: "Document vault",
     domain: "Compliance",
     what: "Stores driver and carrier documents with an audit log of key access.",
@@ -164,6 +177,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "low-bridge-alert",
+    pages: ["/low-bridges"],
     name: "Low-bridge clearance alerting",
     domain: "Routing safety",
     what: "7,869 sub-standard vertical clearances scanned out of the federal bridge inventory, queried by corridor.",
@@ -178,6 +192,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "federal-weight-check",
+    pages: ["/bypass", "/catscales"],
     name: "Federal weight and axle check",
     domain: "Compliance",
     what: "Gross/single/tandem limits plus the Bridge Formula, computed in the browser from the citation.",
@@ -194,6 +209,7 @@ const CAPS: Cap[] = [
   /* ---------------- Safety ---------------- */
   {
     id: "safety-score",
+    pages: ["/driver-scorecard", "/dot-scorecard"],
     name: "Driver safety score",
     domain: "Safety",
     what: "0-100 composite per driver over a 30-day window with a letter grade.",
@@ -208,6 +224,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "speeding-events",
+    pages: ["/driver-scorecard"],
     name: "Speeding event capture",
     domain: "Safety",
     what: "Per-event speed exceedances, normalised per 100 miles before they touch a score.",
@@ -221,6 +238,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "incident-reports",
+    pages: ["/accident-report"],
     name: "Incident and accident reporting",
     domain: "Safety",
     what: "Driver-filed incident records for the carrier's own file.",
@@ -235,6 +253,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "fleet-safety-intel",
+    pages: ["/fleet-safety"],
     name: "Fleet safety intelligence view",
     domain: "Safety",
     what: "Cross-driver rollup of scores, violations and open defects for a fleet manager.",
@@ -250,6 +269,7 @@ const CAPS: Cap[] = [
   /* ---------------- Dispatch and loads ---------------- */
   {
     id: "load-board",
+    pages: ["/loads", "/fleet-load-board"],
     name: "Load board",
     domain: "Loads",
     what: "Available loads with origin, destination, miles, rate and computed rate-per-mile.",
@@ -264,6 +284,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "dispatch-zero-score",
+    pages: ["/dispatch-zero"],
     name: "Dispatch Zero candidate scoring",
     domain: "Dispatch",
     what: "Scores each driver against a load on revenue per remaining-clock-hour, and blocks anyone without legal clock.",
@@ -278,6 +299,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "dispatch-zero-ledger",
+    pages: ["/dispatch-zero"],
     name: "Signed dispatch decision ledger",
     domain: "Dispatch",
     what: "Append-only SHA-256 hash chain recording why each load was assigned, with a verify endpoint.",
@@ -292,6 +314,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "dispatch-chat",
+    pages: ["/walkie-talk"],
     name: "Dispatch messaging",
     domain: "Dispatch",
     what: "Driver/dispatcher message thread stored server-side.",
@@ -305,6 +328,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "dispatch-compliance-log",
+    pages: ["/dispatch-zero"],
     name: "Dispatch compliance log",
     domain: "Dispatch",
     what: "Records dispatch actions that touch a compliance limit.",
@@ -318,6 +342,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "route-plan",
+    pages: ["/trip-planner", "/dispatch"],
     name: "Route planning",
     domain: "Routing",
     what: "Turn-by-turn route with distance, duration and an overview polyline.",
@@ -332,6 +357,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "route-feedback",
+    pages: ["/trip-planner"],
     name: "Route stop feedback",
     domain: "Routing",
     what: "Driver-reported truth about a stop (access, wait, gate hours).",
@@ -347,6 +373,7 @@ const CAPS: Cap[] = [
   /* ---------------- Money ---------------- */
   {
     id: "traxes-records",
+    pages: ["/traxes"],
     name: "TRAXES financial records",
     domain: "Money",
     what: "Per-driver mileage, expense and settlement rows the accountant agent reads.",
@@ -361,6 +388,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "traxes-agent",
+    pages: ["/traxes"],
     name: "TRAXES accountant agent",
     domain: "Money",
     what: "Conversational agent over the driver's own mileage, cost-per-mile and expense rows.",
@@ -375,6 +403,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "fuel-prices",
+    pages: ["/fuel-finder"],
     name: "Fuel price reference",
     domain: "Money",
     what: "Regional diesel reference pricing and fuel-stop lookups.",
@@ -389,6 +418,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "toll-estimate",
+    pages: ["/tolls"],
     name: "Toll reference",
     domain: "Money",
     what: "Toll information surfaced alongside a route.",
@@ -402,6 +432,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "vat-rates",
+    pages: ["/tax-rates"],
     name: "VAT / tax rate lookup",
     domain: "Money",
     what: "Rate lookup used for invoicing outside the US.",
@@ -415,6 +446,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "subscription-plans",
+    pages: ["/pricing", "/checkout", "/forecast", "/revenue-forecast", "/index-forecast"],
     name: "Plan and pricing catalog",
     domain: "Billing",
     what: "The four plans, their unit prices, hardware terms and the 14-day trial.",
@@ -429,6 +461,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "subscription-admin",
+    pages: ["/admin/subscriptions"],
     name: "Subscription administration",
     domain: "Billing",
     what: "Lists real subscriptions with computed monthly totals and contracted MRR.",
@@ -443,6 +476,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "signup-intake",
+    pages: ["/signup", "/onboarding"],
     name: "Signup intake",
     domain: "Growth",
     what: "Captures role, vehicle world, fleet size and plan interest, with status tracking.",
@@ -457,6 +491,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "rewards-points",
+    pages: ["/rewards", "/leaderboard"],
     name: "Roadwards points engine",
     domain: "Rewards",
     what: "Idempotent points accrual on miles, fuel spend, clean days and violation-free weeks.",
@@ -473,6 +508,7 @@ const CAPS: Cap[] = [
   /* ---------------- AI and agents ---------------- */
   {
     id: "agent-cast",
+    pages: ["/ai-team", "/agent-dashboard"],
     name: "AI agent cast",
     domain: "AI",
     what: "Twelve named agents, each scoped to one domain, running over real tool calls.",
@@ -487,6 +523,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "agent-integrity",
+    pages: ["/qa-agent"],
     name: "Agent integrity log",
     domain: "AI",
     what: "Records agent runs so an answer can be traced back to what it actually read.",
@@ -500,6 +537,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "gemini-ocr",
+    pages: ["/scan-bill", "/documents"],
     name: "Document OCR",
     domain: "AI",
     what: "Reads a photographed BOL or receipt into structured fields for confirmation.",
@@ -514,6 +552,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "gemini-tts",
+    pages: ["/voice"],
     name: "Voice output",
     domain: "AI",
     what: "Server-side text-to-speech for agent replies and alerts.",
@@ -527,6 +566,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "captions-live",
+    pages: ["/accessibility"],
     name: "Live audio captions",
     domain: "Accessibility",
     what: "Transcribes audio and translates text for deaf and hard-of-hearing drivers.",
@@ -541,6 +581,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "fleet-memory",
+    pages: ["/fleet-memory"],
     name: "Per-driver memory layer",
     domain: "AI",
     what: "Durable facts an agent learned about a driver, reused across sessions.",
@@ -554,6 +595,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "algorithm-patterns",
+    pages: ["/driver-algorithm"],
     name: "Pattern learning layer",
     domain: "AI",
     what: "Learns a driver's own patterns from their history and refuses to assert on thin data.",
@@ -570,6 +612,7 @@ const CAPS: Cap[] = [
   /* ---------------- Accessibility ---------------- */
   {
     id: "accessibility-requests",
+    pages: ["/accessibility"],
     name: "Accessibility request queue",
     domain: "Accessibility",
     what: "Driver requests for captions, translation, haptic or sign-language support.",
@@ -584,6 +627,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "haptic-patterns",
+    pages: ["/haptic-language"],
     name: "Haptic alert language",
     domain: "Accessibility",
     what: "Seven distinct vibration patterns mapped to alert meanings across devices.",
@@ -613,6 +657,7 @@ const CAPS: Cap[] = [
   /* ---------------- HR ---------------- */
   {
     id: "hr-people",
+    pages: ["/hr", "/humanai"],
     name: "HR people records",
     domain: "HR",
     what: "Employee and contractor records with documents and occurrences.",
@@ -626,6 +671,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "hr-payroll",
+    pages: ["/payroll"],
     name: "Payroll calculation",
     domain: "HR",
     what: "Mileage or hourly pay computed into statements per run.",
@@ -640,6 +686,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "hr-screening",
+    pages: ["/hiring"],
     name: "AI pre-screen interview",
     domain: "HR",
     what: "Conversational pre-screen that remembers stated facts across a session.",
@@ -654,6 +701,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "hr-background-check",
+    pages: ["/hiring"],
     name: "Criminal background check request",
     domain: "HR",
     what: "Checkr request flow, built and waiting on a provider key.",
@@ -670,6 +718,7 @@ const CAPS: Cap[] = [
   /* ---------------- Maintenance ---------------- */
   {
     id: "maintenance-records",
+    pages: ["/maintenance"],
     name: "Maintenance records",
     domain: "Maintenance",
     what: "Service history per truck.",
@@ -683,6 +732,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "fleetio-read",
+    pages: ["/fleetio"],
     name: "Fleetio vehicle sync",
     domain: "Maintenance",
     what: "Read-only pull of vehicles from a connected Fleetio account.",
@@ -697,6 +747,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "mechanic-session",
+    pages: ["/mechanic"],
     name: "Mechanic diagnostic session",
     domain: "Maintenance",
     what: "Guided breakdown triage session record.",
@@ -710,6 +761,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "roadside-recovery",
+    pages: ["/breakdown"],
     name: "Breakdown and recovery",
     domain: "Maintenance",
     what: "Breakdown intake and recovery coordination record.",
@@ -725,6 +777,7 @@ const CAPS: Cap[] = [
   /* ---------------- Driver wellbeing ---------------- */
   {
     id: "driver-health",
+    pages: ["/health"],
     name: "Driver health tracking",
     domain: "Health",
     what: "Driver-entered health signals and recovery plans.",
@@ -738,6 +791,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "medical-examiner-locator",
+    pages: ["/medical-cdl"],
     name: "Certified medical examiner locator",
     domain: "Health",
     what: "Deep-links a driver into the FMCSA National Registry search.",
@@ -752,6 +806,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "week-review",
+    pages: ["/week-review"],
     name: "Week in review",
     domain: "Health",
     what: "Weekly summary of a driver's own week, opt-in.",
@@ -767,6 +822,7 @@ const CAPS: Cap[] = [
   /* ---------------- Car / bike world ---------------- */
   {
     id: "ride-couriers",
+    pages: ["/ride-dashboard"],
     name: "Courier roster (car / bike)",
     domain: "Ride",
     what: "Non-truck courier records for the car and bike worlds.",
@@ -781,6 +837,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "ride-deliveries",
+    pages: ["/ride-dashboard"],
     name: "Delivery records (car / bike)",
     domain: "Ride",
     what: "Per-delivery records with pay and distance.",
@@ -794,6 +851,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "ride-expenses",
+    pages: ["/expenses"],
     name: "Courier expenses (car / bike)",
     domain: "Ride",
     what: "Expense and maintenance rows for a car or bike courier.",
@@ -809,6 +867,7 @@ const CAPS: Cap[] = [
   /* ---------------- Platform ---------------- */
   {
     id: "auth-accounts",
+    pages: ["/sign-in"],
     name: "Accounts and sign-in",
     domain: "Platform",
     what: "Email/password accounts with sessions, on Better Auth.",
@@ -837,6 +896,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "data-index",
+    pages: ["/entitled-index", "/startup-data-agent", "/data-agent"],
     name: "Live data index",
     domain: "Platform",
     what: "Live table, row, and column counts plus the named filing gaps.",
@@ -851,6 +911,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "function-index",
+    pages: ["/entitled"],
     name: "Function index (this index)",
     domain: "Platform",
     what: "Deduplicated index of every function, with computed evidence per row and a duplicate-collision count.",
@@ -865,6 +926,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "integrations-status",
+    pages: ["/integration-status", "/integrations"],
     name: "Integration status board",
     domain: "Platform",
     what: "Nineteen providers with key presence, live probe result and reason.",
@@ -879,6 +941,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "file-storage",
+    pages: ["/documents"],
     name: "Large file storage",
     domain: "Platform",
     what: "Presigned upload and download of documents and photos.",
@@ -906,6 +969,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "sms-messaging",
+    pages: ["/twilio-setup", "/a2p"],
     name: "SMS / A2P messaging",
     domain: "Platform",
     what: "Twilio A2P brand and domain verification records.",
@@ -920,6 +984,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "support-desk",
+    pages: ["/support-technical", "/support-billing"],
     name: "Support desk",
     domain: "Support",
     what: "Seven ticket categories with target response times, plus real ticket records.",
@@ -933,6 +998,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "weather-brief",
+    pages: ["/weather"],
     name: "Weather along route",
     domain: "Operations",
     what: "Forecast for a driver's coordinates.",
@@ -946,19 +1012,38 @@ const CAPS: Cap[] = [
   },
   {
     id: "fleet-branding",
+    pages: ["/branding"],
     name: "Fleet branding",
     domain: "Platform",
     what: "Per-carrier logo and colour settings.",
-    kind: "design",
+    kind: "human",
     disciplines: ["design", "webdev"],
     worlds: ["truck", "car", "bike"],
     endpoints: ["/api/branding"],
     tables: ["fleet_branding"],
     envKeys: [],
-    trust: "Empty today. It renders the TruckWithEase brand until a carrier sets its own.",
-  } as unknown as Cap,
+    trust:
+      "Empty today. It renders the TruckWithEase brand until a carrier sets its own. Performed by a human — a carrier admin uploads the mark and picks the colours; nothing is generated.",
+  },
+  {
+    id: "revenue-model-mirror",
+    pages: ["/forecast", "/revenue-forecast", "/index-forecast"],
+    name: "Revenue model mirror",
+    domain: "Platform",
+    what:
+      "Runs the 36-month subscription recurrence for three scenarios in the browser, priced off the live plan list from GET /api/signup, and shows it against the real signup and subscription counts.",
+    kind: "algorithm",
+    disciplines: ["programmer"],
+    worlds: ["truck"],
+    endpoints: ["/api/signup", "/api/subscriptions"],
+    tables: ["signups", "signups"].slice(0, 1),
+    envKeys: [],
+    trust:
+      "It is arithmetic over inputs a human chose, not a forecast. No market size, no adoption rate, no industry churn figure and no valuation is used anywhere in it. Actual revenue collected is $0 and no payment processor is connected.",
+  },
   {
     id: "design-system",
+    pages: ["/design"],
     name: "Design system",
     domain: "Design",
     what: "One gold-on-black token set and four loaded fonts shared by web and mobile.",
@@ -973,6 +1058,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "broker-reputation",
+    pages: ["/customer-book"],
     name: "Broker and shipper reputation",
     domain: "Loads",
     what: "Driver-reported ratings of brokers and shippers.",
@@ -987,6 +1073,7 @@ const CAPS: Cap[] = [
   },
   {
     id: "licensing",
+    pages: ["/load-board-licenses"],
     name: "Load board licensing records",
     domain: "Platform",
     what: "License records for load-board access.",
@@ -1009,6 +1096,41 @@ type Status = "live" | "built_empty" | "needs_key" | "not_built";
 function normPath(p: string): string {
   const s = p.startsWith("/") ? p : `/${p}`;
   return s.length > 1 && s.endsWith("/") ? s.slice(0, -1) : s;
+}
+
+/* ---------------------------------------------------------------------------
+ * SCREENS — the in-app route table, read off legacy/App.jsx, not typed here.
+ * Same rule as endpoints: if a screen route is not in the router, it is not
+ * claimed. If the source file cannot be read at runtime, this reports
+ * checked:false with the reason instead of pretending.
+ * ------------------------------------------------------------------------- */
+
+const APP_JSX_CANDIDATES = [
+  "packages/web/src/web/legacy/App.jsx",
+  "src/web/legacy/App.jsx",
+  "../web/legacy/App.jsx",
+];
+
+let screenCache: { paths: string[]; source: string | null; error: string | null } | null = null;
+
+function appScreens(): { paths: string[]; source: string | null; error: string | null } {
+  if (screenCache) return screenCache;
+  let lastErr = "no candidate path was readable";
+  for (const rel of APP_JSX_CANDIDATES) {
+    try {
+      const abs = join(process.cwd(), rel);
+      const src = readFileSync(abs, "utf-8");
+      const paths = [
+        ...new Set([...src.matchAll(/path === "([^"]+)"/g)].map((m) => normPath(m[1]))),
+      ].sort();
+      screenCache = { paths, source: rel, error: null };
+      return screenCache;
+    } catch (e) {
+      lastErr = e instanceof Error ? e.message : String(e);
+    }
+  }
+  screenCache = { paths: [], source: null, error: lastErr };
+  return screenCache;
 }
 
 const envPresent = (k: string) => {
@@ -1044,6 +1166,8 @@ export const functionsIndex = (getRoutes: () => { method: string; path: string }
       }
       endpoints.sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method));
 
+      const screens = appScreens();
+
       const routePaths = endpoints.map((e) => e.path);
       const routerExists = (prefix: string) =>
         routePaths.some((p) => p === normPath(prefix) || p.startsWith(`${normPath(prefix)}/`));
@@ -1076,6 +1200,10 @@ export const functionsIndex = (getRoutes: () => { method: string; path: string }
           rows: rowCounts[t],
         }));
         const envEvidence = cap.envKeys.map((k) => ({ key: k, present: envPresent(k) }));
+        const pageEvidence = (cap.pages ?? []).map((pg) => ({
+          path: normPath(pg),
+          routed: screens.paths.includes(normPath(pg)),
+        }));
 
         const declaresSurface = cap.endpoints.length > 0 || cap.tables.length > 0;
         const allMounted = endpointEvidence.every((e) => e.mounted);
@@ -1129,7 +1257,12 @@ export const functionsIndex = (getRoutes: () => { method: string; path: string }
           ...cap,
           status,
           statusReason,
-          evidence: { endpoints: endpointEvidence, tables: tableEvidence, envKeys: envEvidence },
+          evidence: {
+            endpoints: endpointEvidence,
+            tables: tableEvidence,
+            envKeys: envEvidence,
+            pages: pageEvidence,
+          },
         };
       });
 
@@ -1176,7 +1309,15 @@ export const functionsIndex = (getRoutes: () => { method: string; path: string }
         byKind: Object.fromEntries(
           KINDS.map((k) => [k, CAPS.filter((c) => c.kind === k).length]),
         ),
+        screens: screens.paths.length,
       };
+
+      /* 6. SCREENS — which routed pages an indexed function actually claims -- */
+      const claimedPages = new Set(
+        CAPS.flatMap((c) => (c.pages ?? []).map((pg) => normPath(pg))),
+      );
+      const declaredNotRouted = [...claimedPages].filter((pg) => !screens.paths.includes(pg)).sort();
+      const unclaimed = screens.paths.filter((pg) => !claimedPages.has(pg));
 
       return c.json(
         {
@@ -1200,6 +1341,17 @@ export const functionsIndex = (getRoutes: () => { method: string; path: string }
               "NOT SERVED HERE. The comparison against similar applications exists as a source-cited internal engineering document. No competitor price and no self-score is ever published inside the product.",
             eld: "TruckWithEase is NOT an FMCSA-registered ELD.",
             filing: "TruckWithEase files nothing with any agency — no IFTA, no 2290, no tax return.",
+          },
+          screens: {
+            checked: screens.error === null,
+            source: screens.source,
+            error: screens.error,
+            totalRouted: screens.paths.length,
+            claimedByAFunction: [...claimedPages].filter((pg) => screens.paths.includes(pg)).length,
+            declaredButNotRouted: declaredNotRouted,
+            unclaimed,
+            note:
+              "Screen routes are read out of the legacy route table at request time, the same way endpoints are read off the running Hono app. `unclaimed` are pages that resolve in the app but that no indexed function claims yet — most of them are legacy screens still waiting on a rewrite. They are listed, not hidden.",
           },
           measuredMs: Date.now() - t0,
           generatedAt: new Date().toISOString(),

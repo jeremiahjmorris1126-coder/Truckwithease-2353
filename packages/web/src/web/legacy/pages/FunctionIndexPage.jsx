@@ -42,6 +42,7 @@ import {
   ShieldCheck,
   Copy,
   Server,
+  Layers,
 } from "lucide-react";
 
 const GOLD = "#C9A84C";
@@ -295,6 +296,7 @@ export default function FunctionIndexPage() {
   const [world, setWorld] = useState("all");
   const [discipline, setDiscipline] = useState("all");
   const [kind, setKind] = useState("all");
+  const [showScreens, setShowScreens] = useState(false);
   const [status, setStatus] = useState("all");
   const [showEndpoints, setShowEndpoints] = useState(false);
 
@@ -801,6 +803,23 @@ export default function FunctionIndexPage() {
                               ))}
                             </div>
                           ) : null}
+                          {c.evidence.pages?.length ? (
+                            <div style={{ color: C.dim }}>
+                              SCREENS:{" "}
+                              {c.evidence.pages.map((pg) => (
+                                <span
+                                  key={pg.path}
+                                  style={{ color: pg.routed ? GOLD : WARN, marginRight: 10 }}
+                                >
+                                  {pg.path} {pg.routed ? "routed" : "NOT ROUTED"}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{ color: C.dim }}>
+                              SCREENS: <span style={{ color: C.muted }}>none claimed yet — this function is served by the API only.</span>
+                            </div>
+                          )}
                           {c.evidence.tables.length ? (
                             <div style={{ color: C.dim }}>
                               TABLES:{" "}
@@ -837,6 +856,74 @@ export default function FunctionIndexPage() {
                 </Panel>
               ))
             )}
+
+            {/* --------------------------- screens ---------------------------- */}
+            {data.screens ? (
+              data.screens.checked ? (
+                <Panel
+                  title="Screens routed in the app"
+                  icon={<Layers size={14} />}
+                  note={`${data.screens.totalRouted} page routes read out of ${data.screens.source} at request time. ${data.screens.claimedByAFunction} of them are claimed by an indexed function. The rest are listed below, not hidden.`}
+                  right={
+                    <button type="button" style={btn(showScreens)} onClick={() => setShowScreens((v) => !v)}>
+                      {showScreens ? "hide" : `show ${data.screens.unclaimed.length} unclaimed`}
+                    </button>
+                  }
+                >
+                  <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 12 }}>
+                    <Stat value={data.screens.totalRouted} label="screens routed" tone="bright" />
+                    <Stat value={data.screens.claimedByAFunction} label="claimed by a function" />
+                    <Stat value={data.screens.unclaimed.length} label="not claimed yet" />
+                    <Stat value={data.screens.declaredButNotRouted.length} label="declared but dead" />
+                  </div>
+                  {data.screens.declaredButNotRouted.length ? (
+                    <div style={{ color: WARN, fontFamily: FM, fontSize: 12, marginBottom: 10 }}>
+                      DECLARED BUT NOT ROUTED: {data.screens.declaredButNotRouted.join(", ")}
+                    </div>
+                  ) : null}
+                  {showScreens ? (
+                    <div
+                      style={{
+                        maxHeight: 420,
+                        overflowY: "auto",
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 6,
+                        padding: 10,
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 7,
+                      }}
+                    >
+                      {data.screens.unclaimed.map((pg) => (
+                        <span
+                          key={pg}
+                          style={{
+                            fontFamily: FM,
+                            fontSize: 11.5,
+                            color: C.muted,
+                            border: `1px solid ${C.border}`,
+                            borderRadius: 4,
+                            padding: "3px 7px",
+                          }}
+                        >
+                          {pg}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  <p style={{ color: C.dim, fontSize: 12.5, lineHeight: 1.7, margin: "12px 0 0" }}>
+                    {data.screens.note}
+                  </p>
+                </Panel>
+              ) : (
+                <Panel title="Screens routed in the app" icon={<Layers size={14} />}>
+                  <Missing
+                    label="SCREEN LIST NOT READ"
+                    reason={`The route table could not be read on the server: ${data.screens.error}`}
+                  />
+                </Panel>
+              )
+            ) : null}
 
             {/* ------------------------- endpoint list ------------------------ */}
             <Panel
