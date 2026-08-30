@@ -31,12 +31,27 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Hash, Link2, MessageSquare, Phone, Send, ShieldAlert, Wrench } from "lucide-react";
+import { Download, Hash, Link2, MessageSquare, Phone, Send, ShieldAlert, Wrench } from "lucide-react";
 import {
   C, GOLD, GOLDB, WARN, FB, FD, FH, FM,
   timedGet, Panel, Missing, Tag, Stat, Btn, GhostBtn, Err, Spin, Header, Reads, Disclaimer,
   page, wrap, grid, th, td, tdNum,
 } from "@/legacy/lib/twkit";
+
+const dl = {
+  display: "inline-block",
+  fontFamily: FM,
+  fontSize: 11.5,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  color: GOLDB,
+  textDecoration: "none",
+  border: `1px solid ${GOLD}`,
+  borderRadius: 3,
+  padding: "6px 10px",
+  background: "transparent",
+  whiteSpace: "nowrap",
+};
 
 const short = (h) => (typeof h === "string" && h.length > 16 ? `${h.slice(0, 10)}…${h.slice(-6)}` : h || "—");
 const num = (n) => (n === null || n === undefined ? "—" : Number(n).toLocaleString());
@@ -233,6 +248,71 @@ export default function SealedLinePage() {
           {chain?.verifiedNote ? (
             <p style={{ fontFamily: FB, fontSize: 12.5, color: C.dim, lineHeight: 1.9, marginTop: 14, marginBottom: 0 }}>{chain.verifiedNote}</p>
           ) : null}
+        </Panel>
+
+        <Panel
+          title="Hand-over transcript — the file you give the broker"
+          icon={<Download size={15} />}
+          note="Downloads the whole thread as a plain transcript with the duty clock attached to every line, plus the chain hash per line so a third party can recompute the links. Every clock number is recomputed as of that line's own timestamp, not today's numbers. Lines with no attributable driver say so on the line instead of being left blank."
+        >
+          {(sl?.recentConversations || []).length === 0 ? (
+            <Missing
+              label="NO CONVERSATIONS ON A FLEET NUMBER YET"
+              reason="There is nothing to export until a message exists on a fleet number. Send or receive one on the fleet line, then seal it."
+            />
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={th}>Thread</th>
+                    <th style={th}>Fleet number</th>
+                    <th style={th}>Other party</th>
+                    <th style={tdNum}>Messages</th>
+                    <th style={tdNum}>Sealed</th>
+                    <th style={th}>Last message</th>
+                    <th style={th}>Download</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sl.recentConversations.map((cv) => (
+                    <tr key={cv.id}>
+                      <td style={{ ...td, fontFamily: FM, fontSize: 11.5 }}>{cv.id}</td>
+                      <td style={{ ...td, fontFamily: FM }}>{cv.fleetNumber || "—"}</td>
+                      <td style={{ ...td, fontFamily: FM }}>{cv.peerNumber || "—"}{cv.peerName ? ` (${cv.peerName})` : ""}</td>
+                      <td style={tdNum}>{num(cv.messageCount)}</td>
+                      <td style={tdNum}>{num(cv.sealedInThread)}</td>
+                      <td style={td}>{when(cv.lastMessageAt)}</td>
+                      <td style={td}>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <a
+                            href={`/api/sealed-line/thread/${cv.id}/export?format=txt`}
+                            style={dl}
+                            download
+                          >
+                            Transcript .txt
+                          </a>
+                          <a
+                            href={`/api/sealed-line/thread/${cv.id}/export?format=csv`}
+                            style={dl}
+                            download
+                          >
+                            Spreadsheet .csv
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <p style={{ fontFamily: FB, fontSize: 12.5, color: C.dim, lineHeight: 1.9, marginTop: 14, marginBottom: 0 }}>
+            The document ends with how to check it and what it is not: tamper-evident, not notarization, not a legal
+            certification, not a third-party timestamp authority, and not proof the underlying hos_logs rows were correct
+            when they were captured.
+          </p>
         </Panel>
 
         <Panel

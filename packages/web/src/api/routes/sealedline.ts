@@ -407,6 +407,155 @@ export const sealedLine = new Hono()
   })
 
   /**
+   * THE EXPORT — the artifact a driver actually hands over when a broker disputes what was
+   * agreed to. Same data as /thread, rendered as a plain transcript with the duty clock attached
+   * to every line, plus the chain hashes so a third party can recompute the links themselves.
+   *
+   *   GET /api/sealed-line/thread/:conversationId/export?format=txt   (default)
+   *   GET /api/sealed-line/thread/:conversationId/export?format=csv
+   *
+   * Every clock number was recomputed as of that line's own timestamp. Lines that could not be
+   * attributed to a driver say so on the line instead of being silently left blank.
+   */
+  .get("/thread/:conversationId/export", async (c) => {
+    const conversationId = c.req.param("conversationId");
+    const format = (c.req.query("format") || "txt").toLowerCase();
+    if (format !== "txt" && format !== "csv") {
+      return c.json({ error: "bad_format", allowed: ["txt", "csv"] }, 400);
+    }
+
+    const [conv] = await db
+      .select()
+      .from(schema.smsConversations)
+      .where(eq(schema.smsConversations.id, conversationId))
+      .limit(1);
+    if (!conv) return c.json({ error: "unknown_conversation", conversationId }, 404);
+
+    const [messages, sealed] = await Promise.all([
+      db
+        .select()
+        .from(schema.smsMessages)
+        .where(eq(schema.smsMessages.conversationId, conversationId))
+        .orderBy(asc(schema.smsMessages.createdAt)),
+      db
+        .select()
+        .from(schema.sealedMessages)
+        .where(eq(schema.sealedMessages.conversationId, conversationId))
+        .orderBy(asc(schema.sealedMessages.seq)),
+    ]);
+
+    // Only the newest seal for each message is authoritative: a reseal APPENDS a corrected row
+    // rather than editing the old one, so the highest seq wins.
+    const sealByMsg = new Map<string, (typeof sealed)[number]>();
+    for (const s of sealed) {
+      const prev = sealByMsg.get(s.messageId);
+      if (!prev || (s.seq ?? 0) > (prev.seq ?? 0)) sealByMsg.set(s.messageId, s);
+    }
+
+    const hrs = (m: number | null | undefined) =>
+      m === null || m === undefined ? "" : (m / 60).toFixed(2);
+    const stamp = (d: unknown) => (d ? new Date(d as string | number | Date).toISOString() : "");
+
+    const rows = messages.map((m) => {
+      const s = sealByMsg.get(m.id) ?? null;
+      return {
+        occurredAt: stamp(m.createdAt),
+        direction: m.direction ?? "",
+        from: m.fromNumber ?? "",
+        to: m.toNumber ?? "",
+        body: m.body ?? "",
+        driver: s?.driverName ?? "",
+        dutyStatus: s?.dutyStatusAtMessage ?? "",
+        drivingLeftH: hrs(s?.drivingRemainingMin),
+        windowLeftH: hrs(s?.windowRemainingMin),
+        cycleLeftH: hrs(s?.cycleRemainingMin),
+        clockNote: s ? (s.clockResolved ? "" : s.clockUnresolvedReason ?? "clock unresolved") : "not sealed",
+        seq: s?.seq ?? "",
+        chainHash: s?.chainHash ?? "",
+        twilioSid: m.twilioSid ?? "",
+        twilioStatus: m.twilioStatus ?? "",
+      };
+    });
+
+    const head = sealed.length ? sealed[sealed.length - 1]?.chainHash ?? "" : GENESIS;
+    const filenameBase = `sealed-line-${conversationId}`;
+
+    if (format === "csv") {
+      const cell = (v: unknown) => {
+        const t = String(v ?? "");
+        return /[",\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+      };
+      const cols = [
+        "occurred_at_utc", "direction", "from", "to", "message",
+        "driver", "duty_status", "driving_hours_left", "window_hours_left", "cycle_hours_left",
+        "clock_note", "seal_seq", "chain_hash", "twilio_sid", "twilio_status",
+      ];
+      const lines = [cols.join(",")];
+      for (const r of rows) {
+        lines.push([
+          r.occurredAt, r.direction, r.from, r.to, r.body,
+          r.driver, r.dutyStatus, r.drivingLeftH, r.windowLeftH, r.cycleLeftH,
+          r.clockNote, r.seq, r.chainHash, r.twilioSid, r.twilioStatus,
+        ].map(cell).join(","));
+      }
+      const csv = lines.join("\r\n") + "\r\n";
+      c.header("content-type", "text/csv; charset=utf-8");
+      c.header("content-disposition", `attachment; filename="${filenameBase}.csv"`);
+      return c.body(csv, 200);
+    }
+
+    const L: string[] = [];
+    L.push("THE SEALED LINE — DISPATCH TRANSCRIPT WITH DUTY CLOCK");
+    L.push("");
+    L.push(`Conversation:      ${conv.id}`);
+    L.push(`Fleet number:      ${conv.fleetNumber ?? "—"}`);
+    L.push(`Other party:       ${conv.peerNumber ?? "—"}${conv.peerName ? ` (${conv.peerName})` : ""}`);
+    L.push(`Messages:          ${messages.length}`);
+    L.push(`Sealed lines:      ${sealByMsg.size}`);
+    L.push(`Chain head:        ${head}`);
+    L.push(`Exported at:       ${new Date().toISOString()} (UTC)`);
+    L.push("");
+    L.push("Each clock reading below was recomputed from that driver's hos_logs intervals as of that");
+    L.push("line's own timestamp — not from today's numbers. Hours are decimal hours remaining under");
+    L.push("49 CFR 395 property-carrying limits: 11 h driving, 14 h window, 60 h / 7-day cycle.");
+    L.push("");
+    L.push("─".repeat(92));
+    for (const r of rows) {
+      L.push("");
+      L.push(`${r.occurredAt}   ${(r.direction || "?").toUpperCase()}   ${r.from} -> ${r.to}`);
+      L.push(`  "${r.body}"`);
+      if (r.driver) {
+        L.push(
+          `  DRIVER ${r.driver}${r.dutyStatus ? ` · duty status ${r.dutyStatus}` : ""}` +
+            `${r.drivingLeftH ? ` · driving left ${r.drivingLeftH} h` : ""}` +
+            `${r.windowLeftH ? ` · window left ${r.windowLeftH} h` : ""}` +
+            `${r.cycleLeftH ? ` · cycle left ${r.cycleLeftH} h` : ""}`,
+        );
+      }
+      if (r.clockNote) L.push(`  NO CLOCK ON THIS LINE: ${r.clockNote}`);
+      if (r.seq !== "") L.push(`  seal #${r.seq}  chain ${r.chainHash}`);
+      if (r.twilioSid) L.push(`  carrier ${r.twilioSid}${r.twilioStatus ? ` · ${r.twilioStatus}` : ""}`);
+    }
+    L.push("");
+    L.push("─".repeat(92));
+    L.push("");
+    L.push("HOW TO CHECK THIS DOCUMENT");
+    L.push("  Each seal hash is sha256 over the previous hash plus that line's stored measurements and");
+    L.push("  message body. GET /api/sealed-line/chain recomputes every link and reports any break.");
+    L.push("");
+    L.push("WHAT THIS IS NOT");
+    L.push("  Tamper-EVIDENT, not notarization, not a legal certification, and not a third-party");
+    L.push("  timestamp authority. It shows the stored measurements and message bodies have not changed");
+    L.push("  since they were sealed. It does not prove the hos_logs rows were correct when captured.");
+    L.push("  TruckWithEase is not an ELD and is not FMCSA-registered.");
+    L.push("");
+
+    c.header("content-type", "text/plain; charset=utf-8");
+    c.header("content-disposition", `attachment; filename="${filenameBase}.txt"`);
+    return c.body(L.join("\n"), 200);
+  })
+
+  /**
    * THE ASK PARSER + VERDICT. Parses a broker's text and answers it from the
    * driver's real clock. Sends nothing unless send === true is passed explicitly.
    */

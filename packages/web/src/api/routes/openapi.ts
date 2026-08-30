@@ -82,6 +82,11 @@ const CURATED: Record<string, { summary: string; description: string }> = {
     description:
       "Every message in a conversation in order, each with the duty clock attached as of its own timestamp.",
   },
+  "GET /api/sealed-line/thread/:conversationId/export": {
+    summary: "Download a hand-over transcript",
+    description:
+      "Returns the whole thread as a downloadable document with the duty clock attached to every line and the chain hash per line so a third party can recompute the links. format=txt (default) returns a plain transcript ending in how to check it and what it is not; format=csv returns 15 columns (occurred_at_utc, direction, from, to, message, driver, duty_status, driving_hours_left, window_hours_left, cycle_hours_left, clock_note, seal_seq, chain_hash, twilio_sid, twilio_status). Only the newest seal per message is authoritative, because a reseal appends a corrected row instead of editing. Any other format value is a 400 bad_format; an unknown conversation is a 404.",
+  },
   "POST /api/sealed-line/answer": {
     summary: "Answer a dispatch ask",
     description:
