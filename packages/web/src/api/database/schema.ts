@@ -1277,3 +1277,97 @@ export const smsMessages = sqliteTable("sms_messages", {
   statusCheckedAt: integer("status_checked_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });
+
+/* ============================================================
+ * Duty-clock interval repairs — the audit trail for closing
+ * stale open hos_logs rows.
+ * ============================================================
+ * An open interval (ended_at NULL) older than STALE_OPEN_HOURS is excluded from
+ * every clock in the app, so its minutes are counted nowhere. Closing it is a
+ * data correction, and a correction to an hours-of-service record has to be
+ * auditable: who closed it, what it was closed to, and where that timestamp
+ * came from. Nothing here invents a duty time — the only accepted close source
+ * is another row's start time or a human-supplied time that is stored as such.
+ */
+export const hosIntervalRepairs = sqliteTable("hos_interval_repairs", {
+  id: text("id").primaryKey(),
+  hosLogId: text("hos_log_id").notNull(),
+  driverId: text("driver_id").notNull(),
+  status: text("status").notNull(),                        // duty status of the repaired row
+  startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
+  openForHours: real("open_for_hours").notNull(),          // how long it had been left open
+  closedAt: integer("closed_at", { mode: "timestamp" }).notNull(),
+  closeSource: text("close_source").notNull(),             // next_interval_start, supplied_time
+  minutesRecovered: real("minutes_recovered").notNull(),   // minutes the clock now counts again
+  actor: text("actor").notNull().default("server"),
+  note: text("note"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+/* ============================================================
+ * THE SEALED LINE — messages stamped with the duty clock and
+ * hash-chained.
+ * ============================================================
+ * Every message on a fleet number is sealed with the driver's duty clock AS OF
+ * THE SECOND THE MESSAGE EXISTED, recomputed from hos_logs intervals, and linked
+ * into an append-only sha256 chain. That makes a dispatch conversation replayable
+ * later with the clock proof attached to each line.
+ *
+ * WHAT IS CLAIMED: the seal is tamper-EVIDENT. Altering a stored measurement or a
+ * message body breaks the recomputed link and the break is reported.
+ * WHAT IS NOT CLAIMED: this is not a notarization, not a legal certification, not
+ * a third-party timestamp authority, and not proof the underlying hos_logs rows
+ * were correct when captured.
+ */
+export const sealedMessages = sqliteTable("sealed_messages", {
+  id: text("id").primaryKey(),
+  seq: integer("seq").notNull(),                           // monotonic, 1-based, global
+  messageId: text("message_id").notNull(),                 // sms_messages.id
+  conversationId: text("conversation_id").notNull(),
+  direction: text("direction").notNull(),                  // inbound, outbound
+  fromNumber: text("from_number").notNull(),
+  toNumber: text("to_number").notNull(),
+  bodyHash: text("body_hash").notNull(),                   // sha256 of the exact body text
+  bodyChars: integer("body_chars").notNull(),
+  occurredAt: integer("occurred_at", { mode: "timestamp" }).notNull(),
+  driverId: text("driver_id"),                             // resolved by phone number match
+  driverName: text("driver_name"),
+  dutyStatusAtMessage: text("duty_status_at_message"),
+  drivingRemainingMin: integer("driving_remaining_min"),
+  windowRemainingMin: integer("window_remaining_min"),
+  cycleRemainingMin: integer("cycle_remaining_min"),
+  atLimit: text("at_limit"),                               // JSON string[] of limits hit
+  clockSnapshotJson: text("clock_snapshot_json"),          // full snapshot, verbatim
+  clockResolved: integer("clock_resolved", { mode: "boolean" }).notNull().default(false),
+  clockUnresolvedReason: text("clock_unresolved_reason"),
+  payloadHash: text("payload_hash").notNull(),
+  prevHash: text("prev_hash").notNull(),
+  chainHash: text("chain_hash").notNull(),
+  sealedAt: integer("sealed_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+/**
+ * A broker ask parsed out of a message, and the legality verdict computed from
+ * the driver's clock at that moment. The verdict is arithmetic against 49 CFR 395
+ * using a declared average speed — it is not a prediction and carries no score.
+ */
+export const clockAnswers = sqliteTable("clock_answers", {
+  id: text("id").primaryKey(),
+  sealedMessageId: text("sealed_message_id"),
+  conversationId: text("conversation_id"),
+  driverId: text("driver_id"),
+  askText: text("ask_text").notNull(),
+  parsedMiles: real("parsed_miles"),
+  parsedDeadlineAt: integer("parsed_deadline_at", { mode: "timestamp" }),
+  parsedIntent: text("parsed_intent").notNull(),           // availability, miles_ask, deadline_ask, hours_ask, unparsed
+  verdict: text("verdict").notNull(),                      // fits, does_not_fit, needs_break, needs_reset, unparsed, no_clock
+  verdictReason: text("verdict_reason").notNull(),
+  clockHoursNeeded: real("clock_hours_needed"),
+  clockHoursAvailable: real("clock_hours_available"),
+  assumedMph: real("assumed_mph"),
+  draftReply: text("draft_reply").notNull(),
+  replySentMessageId: text("reply_sent_message_id"),       // sms_messages.id when actually sent
+  replyTwilioSid: text("reply_twilio_sid"),
+  autoSent: integer("auto_sent", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});

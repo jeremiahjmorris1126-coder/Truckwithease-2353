@@ -3,6 +3,7 @@ import { db } from "../database";
 import * as schema from "../database/schema";
 import { desc, eq, gte } from "drizzle-orm";
 import { ensureSeed } from "../lib/seed";
+import { LIMITS, OFF_CLOCK, readInterval } from "../lib/dutyclock";
 import { computeClocks, hosViolations } from "./hos";
 
 /**
@@ -89,11 +90,13 @@ type HosLog = typeof schema.hosLogs.$inferSelect;
 function hoursSinceQualifyingRest(logs: HosLog[]): number | null {
   const now = Date.now();
   const rests = logs
-    .filter((l) => (l.status === "off_duty" || l.status === "sleeper") && l.endedAt)
-    .filter((l) => (+l.endedAt! - +l.startedAt) / 3_600_000 >= 10)
-    .sort((a, b) => +b.endedAt! - +a.endedAt!);
+    .filter((l) => OFF_CLOCK.has(l.status))
+    .map((l) => readInterval(l, now))
+    .filter((v): v is Extract<typeof v, { usable: true }> => v.usable && !v.open)
+    .filter((v) => (v.endMs - v.startMs) / 3_600_000 >= LIMITS.qualifyingBreak / 60)
+    .sort((a, b) => b.endMs - a.endMs);
   if (rests.length === 0) return null;
-  return (now - +rests[0].endedAt!) / 3_600_000;
+  return (now - rests[0].endMs) / 3_600_000;
 }
 
 async function fatigueForDriver(driverId: string) {

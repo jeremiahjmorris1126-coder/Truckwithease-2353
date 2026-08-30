@@ -3,6 +3,7 @@ import { db } from "../database";
 import * as schema from "../database/schema";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { ensureSeed } from "../lib/seed";
+import { STALE_OPEN_HOURS, readInterval } from "../lib/dutyclock";
 import { scoreFatigue } from "./eld";
 
 /**
@@ -116,10 +117,20 @@ function hosComponent(logs: (typeof schema.hosLogs.$inferSelect)[]): Component {
   // days are excluded rather than flagged — an in-progress shift is not a
   // violation, and counting an open log up to "now" invents hours.
   const openDays = new Set<string>();
+  let staleOpen = 0;
+  const nowMs = Date.now();
   for (const l of logs) {
     const day = new Date(+l.startedAt).toISOString().slice(0, 10);
-    if (!l.endedAt) { openDays.add(day); continue; }
-    const hours = Math.max(0, (+l.endedAt - +l.startedAt) / 3_600_000);
+    // One rule for reading an interval, from lib/dutyclock. An open row is a
+    // day still in progress; an open row older than STALE_OPEN_HOURS is
+    // abandoned data and is counted separately so it is visible, not hidden.
+    const iv = readInterval(l, nowMs);
+    if (!iv.usable) {
+      if (iv.reason === "stale_open") { staleOpen++; openDays.add(day); }
+      continue;
+    }
+    if (iv.open) { openDays.add(day); continue; }
+    const hours = Math.max(0, (iv.endMs - iv.startMs) / 3_600_000);
     if (l.status === "driving") byDay.set(day, (byDay.get(day) ?? 0) + hours);
     if (l.status === "driving" || l.status === "on_duty") onDutyByDay.set(day, (onDutyByDay.get(day) ?? 0) + hours);
   }
@@ -143,7 +154,7 @@ function hosComponent(logs: (typeof schema.hosLogs.$inferSelect)[]): Component {
   return {
     score: clamp100((cleanDays / days.length) * 100),
     note: "Share of logged days with driving under 11 h and the on-duty window under 14 h. Coaching signal only — the ELD log of record governs.",
-    detail: { daysLogged: days.length, daysSkippedStillOpen: openDays.size, cleanDays, drivingOverages: overDriving, windowOverages: overWindow, limits: { drivingHours: 11, onDutyWindowHours: 14 } },
+    detail: { daysLogged: days.length, daysSkippedStillOpen: openDays.size, staleOpenRows: staleOpen, staleOpenHours: STALE_OPEN_HOURS, cleanDays, drivingOverages: overDriving, windowOverages: overWindow, limits: { drivingHours: 11, onDutyWindowHours: 14 } },
   };
 }
 

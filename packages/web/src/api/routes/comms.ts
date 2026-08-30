@@ -3,6 +3,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../database";
 import * as schema from "../database/schema";
 import { twilioCreds } from "./twilio";
+import { sealMessage } from "../lib/sealedline";
 
 /**
  * FLEET TELECOMMUNICATIONS — phone numbers + in-app messaging, on Twilio.
@@ -630,8 +631,9 @@ export const comms = new Hono()
     }
     const conv = await threadFor(to, from);
     const now = new Date();
+    const inboundId = rid("sms");
     await db.insert(schema.smsMessages).values({
-      id: rid("sms"),
+      id: inboundId,
       conversationId: conv.id,
       direction: "inbound",
       fromNumber: from,
@@ -660,7 +662,16 @@ export const comms = new Hono()
       })
       .where(eq(schema.smsConversations.id, conv.id));
 
-    // Empty TwiML: the message is stored, and no automatic reply is sent.
+    // THE SEALED LINE: seal the inbound line at arrival, stamped with the
+    // driver's duty clock as of this second. Sealing must never break receiving,
+    // so a failure is swallowed here — /api/sealed-line/seal re-seals pending.
+    try {
+      await sealMessage(inboundId);
+    } catch {
+      /* the message is stored either way; sealing is retryable and idempotent */
+    }
+
+    // Empty TwiML: the message is stored and sealed, and no automatic reply is sent.
     return c.text("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response/>", 200, { "Content-Type": "text/xml" });
   });
 

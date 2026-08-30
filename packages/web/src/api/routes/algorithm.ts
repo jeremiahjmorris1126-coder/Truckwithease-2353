@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "../database";
 import * as schema from "../database/schema";
+import { readInterval } from "../lib/dutyclock";
 
 /**
  * Driver Algorithm — the per-driver learning layer the agents read.
@@ -299,9 +300,13 @@ async function buildProfile(driverId: string) {
     ),
   );
 
+  // Interval reading goes through lib/dutyclock so every surface in the app
+  // obeys the same open/stale rule. Only completed stints are measured.
+  const stintNow = Date.now();
   const stintLengths = drivingStints
-    .filter((h) => h.endedAt)
-    .map((h) => (new Date(h.endedAt as Date).getTime() - new Date(h.startedAt).getTime()) / 1000)
+    .map((h) => readInterval(h, stintNow))
+    .filter((v) => v.usable && !v.open)
+    .map((v) => ((v as Extract<typeof v, { usable: true }>).endMs - (v as Extract<typeof v, { usable: true }>).startMs) / 1000)
     .filter((s) => s > 0);
   driving.push(
     pattern(

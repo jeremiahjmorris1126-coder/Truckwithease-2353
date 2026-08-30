@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { db } from "../database";
 import * as schema from "../database/schema";
+import { readInterval } from "../lib/dutyclock";
 
 /**
  * Week In Review — a driver's real week, aggregated from rows that exist.
@@ -85,8 +86,14 @@ export const weekReview = new Hono()
 
     // Drive hours — closed driving segments only. Open segments are excluded, not guessed.
     const drivingSegs = weekHos.filter((h) => h.status === "driving");
-    const closed = drivingSegs.filter((h) => h.endedAt);
-    const driveMs = closed.reduce((s, h) => s + (h.endedAt!.getTime() - h.startedAt.getTime()), 0);
+    // One rule for reading an interval: lib/dutyclock.readInterval. Open rows
+    // (in progress, or stale and abandoned) contribute no completed hours.
+    const nowMs = Date.now();
+    const closedIvs = drivingSegs
+      .map((h) => readInterval(h, nowMs))
+      .filter((v): v is Extract<typeof v, { usable: true }> => v.usable && !v.open);
+    const closed = closedIvs;
+    const driveMs = closedIvs.reduce((s, v) => s + (v.endMs - v.startMs), 0);
     const driveHours: Metric<number> = closed.length
       ? tracked(+(driveMs / 3_600_000).toFixed(1), "hos_logs (closed driving segments)")
       : notTracked("hos_logs", drivingSegs.length ? "Driving segments are still open — no completed hours to total." : "No HOS driving segments logged this week.");

@@ -4,6 +4,16 @@ import { asc, desc, eq } from "drizzle-orm";
 import { db } from "../database";
 import * as schema from "../database/schema";
 import { ensureSeed } from "../lib/seed";
+import {
+  LIMITS,
+  ON_CLOCK,
+  STALE_OPEN_HOURS,
+  clockSnapshotAt,
+  minutesByStatus,
+  readInterval,
+  scanOpenIntervals,
+  usableIntervals,
+} from "../lib/dutyclock";
 
 /**
  * THE CLOCK LEDGER — /api/clock-ledger
@@ -55,59 +65,12 @@ import { ensureSeed } from "../lib/seed";
  *   computation. TruckWithEase is not an ELD and files nothing with any agency.
  */
 
-// 49 CFR 395 property-carrying, 7-day cycle, in minutes
-const CYCLE_LIMIT_MIN = 60 * 60;
-const WINDOW_DAYS = 7;
-const STALE_OPEN_HOURS = 24;
+// 49 CFR 395 property-carrying, 7-day cycle, in minutes.
+// The interval reader, the stale-open guard and the limits now live in
+// api/lib/dutyclock.ts so every HOS surface in this app obeys the same rule.
+const CYCLE_LIMIT_MIN = LIMITS.cycle;
+const WINDOW_DAYS = LIMITS.cycleDays;
 const ASSUMED_AVG_MPH = 55;
-const ON_CLOCK = new Set(["driving", "on_duty"]);
-
-type Interval = { status: string; startMs: number; endMs: number };
-
-function usableIntervals(
-  logs: (typeof schema.hosLogs.$inferSelect)[],
-  windowStartMs: number,
-  nowMs: number,
-) {
-  const kept: Interval[] = [];
-  let excludedOpen = 0;
-  let excludedOutOfWindow = 0;
-  const staleBefore = nowMs - STALE_OPEN_HOURS * 3600_000;
-
-  for (const l of logs) {
-    const startMs = +l.startedAt;
-    let endMs: number;
-    if (l.endedAt) {
-      endMs = +l.endedAt;
-    } else if (startMs >= staleBefore) {
-      endMs = nowMs; // genuinely current interval
-    } else {
-      excludedOpen++;
-      continue;
-    }
-    if (endMs <= startMs) continue;
-    if (endMs <= windowStartMs) {
-      excludedOutOfWindow++;
-      continue;
-    }
-    kept.push({
-      status: l.status,
-      startMs: Math.max(startMs, windowStartMs),
-      endMs: Math.min(endMs, nowMs),
-    });
-  }
-  return { kept, excludedOpen, excludedOutOfWindow };
-}
-
-function minutesByStatus(intervals: Interval[]) {
-  const m: Record<string, number> = { driving: 0, on_duty: 0, sleeper: 0, off_duty: 0 };
-  for (const iv of intervals) {
-    const mins = (iv.endMs - iv.startMs) / 60000;
-    m[iv.status] = (m[iv.status] ?? 0) + mins;
-  }
-  for (const k of Object.keys(m)) m[k] = Math.round(m[k]);
-  return m;
-}
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -458,4 +421,226 @@ export const clockLedger = new Hono()
       .orderBy(desc(schema.clockLedgerEntries.seq));
     if (!entries.length) return c.json({ error: "no_sealed_rows", driverId }, 404);
     return c.json({ driverId, rows: entries.length, entries }, 200);
+  })
+
+  /**
+   * OPEN INTERVAL REPAIR — the other half of the stale-open guard.
+   *
+   * Excluding a stale open row keeps the clock honest but loses its minutes.
+   * This lists every open interval, how long it has been open, whether it is
+   * past STALE_OPEN_HOURS, what closing it would cost the clock, and the only
+   * defensible close time: the start of that driver's next interval.
+   */
+  .get("/open-intervals", async (c) => {
+    const t0 = Date.now();
+    const nowMs = Date.now();
+    const [allLogs, drivers, repairs] = await Promise.all([
+      db.select().from(schema.hosLogs),
+      db.select().from(schema.drivers),
+      db.select().from(schema.hosIntervalRepairs).orderBy(desc(schema.hosIntervalRepairs.createdAt)).limit(200),
+    ]);
+
+    const findings = scanOpenIntervals(allLogs, nowMs);
+    const nameOf = new Map(drivers.map((d) => [d.id, d.name] as const));
+
+    const rows = findings.map((f) => {
+      const minutesIfClosed =
+        f.suggestedEndIso !== null
+          ? Math.round((+new Date(f.suggestedEndIso) - +new Date(f.startedAtIso)) / 60_000)
+          : null;
+      return {
+        ...f,
+        driverName: nameOf.get(f.driverId) ?? null,
+        minutesRecoverableIfClosed: minutesIfClosed,
+        closable: f.suggestedEndSource === "next_interval_start",
+        closeNote:
+          f.suggestedEndSource === "next_interval_start"
+            ? "Closable now: the driver's next interval starts at suggestedEndIso, so the end time is taken from a row, not invented."
+            : "Not closable automatically. There is no later interval for this driver, so the only honest close time is one a human supplies.",
+      };
+    });
+
+    return c.json(
+      {
+        staleOpenHours: STALE_OPEN_HOURS,
+        openIntervals: rows.length,
+        staleOpenIntervals: rows.filter((r) => r.stale).length,
+        currentOpenIntervals: rows.filter((r) => !r.stale).length,
+        closableNow: rows.filter((r) => r.closable).length,
+        minutesRecoverable: rows
+          .filter((r) => r.stale && r.minutesRecoverableIfClosed !== null)
+          .reduce((s, r) => s + (r.minutesRecoverableIfClosed as number), 0),
+        rows,
+        repairsLogged: repairs.length,
+        repairs,
+        rule: `An open hos_logs row is treated as the driver's current duty status only while its start is newer than ${STALE_OPEN_HOURS} hours. Older open rows are excluded from every clock in this app until they are closed.`,
+        closePolicy:
+          "A row may only be closed at the start of the driver's next interval (close_source = next_interval_start) or at a timestamp a human supplies (close_source = supplied_time). The server never invents a duty time.",
+        endpoints: {
+          close: "POST /api/clock-ledger/open-intervals/close  { rowId, closedAt?, note?, actor? }",
+          closeAllStale: "POST /api/clock-ledger/open-intervals/close-all-stale  { confirm: true }",
+        },
+        notClaimed: [
+          "Closing a row does not verify the driver was on that duty status. It records that the interval ended at a time taken from another row or supplied by a person, and logs who did it.",
+        ],
+        measuredMs: Date.now() - t0,
+        generatedAt: new Date().toISOString(),
+      },
+      200,
+    );
+  })
+
+  /** Close ONE open interval. Writes hos_logs.ended_at and an audit row. */
+  .post("/open-intervals/close", async (c) => {
+    const body = await c.req.json().catch(() => ({}) as Record<string, unknown>);
+    const rowId = typeof body.rowId === "string" ? body.rowId : null;
+    if (!rowId) return c.json({ error: "rowId is required" }, 400);
+
+    const nowMs = Date.now();
+    const [row] = await db.select().from(schema.hosLogs).where(eq(schema.hosLogs.id, rowId)).limit(1);
+    if (!row) return c.json({ error: "unknown_row", rowId }, 404);
+    if (row.endedAt) return c.json({ error: "already_closed", rowId, endedAt: row.endedAt }, 409);
+
+    const driverLogs = await db.select().from(schema.hosLogs).where(eq(schema.hosLogs.driverId, row.driverId));
+    const before = clockSnapshotAt(driverLogs, nowMs);
+
+    const finding = scanOpenIntervals(driverLogs, nowMs).find((f) => f.rowId === rowId) ?? null;
+
+    let closeMs: number;
+    let closeSource: "next_interval_start" | "supplied_time";
+    if (typeof body.closedAt === "string" && body.closedAt.trim()) {
+      const supplied = +new Date(body.closedAt);
+      if (!Number.isFinite(supplied)) return c.json({ error: "closedAt is not a parseable timestamp" }, 400);
+      closeMs = supplied;
+      closeSource = "supplied_time";
+    } else if (finding?.suggestedEndIso) {
+      closeMs = +new Date(finding.suggestedEndIso);
+      closeSource = "next_interval_start";
+    } else {
+      return c.json(
+        {
+          error: "no_defensible_close_time",
+          rowId,
+          message:
+            "This driver has no later interval, so there is nothing to take an end time from. Supply closedAt explicitly — the server will not invent a duty time.",
+        },
+        422,
+      );
+    }
+
+    const startMs = +row.startedAt;
+    if (closeMs <= startMs)
+      return c.json({ error: "close_before_start", startedAt: row.startedAt, closedAt: new Date(closeMs).toISOString() }, 400);
+    if (closeMs > nowMs)
+      return c.json({ error: "close_in_future", closedAt: new Date(closeMs).toISOString() }, 400);
+
+    const minutesRecovered = r2((closeMs - startMs) / 60_000);
+    const openForHours = r2((nowMs - startMs) / 3_600_000);
+
+    await db.update(schema.hosLogs).set({ endedAt: new Date(closeMs) }).where(eq(schema.hosLogs.id, rowId));
+
+    const repair = {
+      id: `hir_${Date.now().toString(36)}_${rowId.slice(-6)}`,
+      hosLogId: rowId,
+      driverId: row.driverId,
+      status: row.status,
+      startedAt: row.startedAt,
+      openForHours,
+      closedAt: new Date(closeMs),
+      closeSource,
+      minutesRecovered,
+      actor: typeof body.actor === "string" && body.actor.trim() ? body.actor.trim() : "server",
+      note: typeof body.note === "string" ? body.note : null,
+    };
+    await db.insert(schema.hosIntervalRepairs).values(repair);
+
+    const afterLogs = await db.select().from(schema.hosLogs).where(eq(schema.hosLogs.driverId, row.driverId));
+    const after = clockSnapshotAt(afterLogs, nowMs);
+
+    return c.json(
+      {
+        closed: true,
+        rowId,
+        driverId: row.driverId,
+        status: row.status,
+        startedAt: row.startedAt,
+        closedAt: new Date(closeMs).toISOString(),
+        closeSource,
+        openForHours,
+        minutesRecovered,
+        wasStale: openForHours > STALE_OPEN_HOURS,
+        clockBefore: before,
+        clockAfter: after,
+        delta: {
+          drivingUsedMin: after.drivingUsedMin - before.drivingUsedMin,
+          cycleUsedMin: after.cycleUsedMin - before.cycleUsedMin,
+          intervalsUsed: after.intervalsUsed - before.intervalsUsed,
+          intervalsExcludedStaleOpen: after.intervalsExcludedStaleOpen - before.intervalsExcludedStaleOpen,
+        },
+        audit: { table: "hos_interval_repairs", id: repair.id },
+        note:
+          closeSource === "next_interval_start"
+            ? "The end time came from the start of this driver's next interval. No time was invented."
+            : "The end time was supplied by the caller and is recorded with the actor who supplied it.",
+      },
+      200,
+    );
+  })
+
+  /** Close every stale open interval that has a next-interval start. Requires confirm. */
+  .post("/open-intervals/close-all-stale", async (c) => {
+    const body = await c.req.json().catch(() => ({}) as Record<string, unknown>);
+    const nowMs = Date.now();
+    const allLogs = await db.select().from(schema.hosLogs);
+    const candidates = scanOpenIntervals(allLogs, nowMs).filter(
+      (f) => f.stale && f.suggestedEndSource === "next_interval_start" && f.suggestedEndIso,
+    );
+
+    if (body.confirm !== true)
+      return c.json(
+        {
+          confirmed: false,
+          candidates: candidates.length,
+          rows: candidates,
+          message:
+            "Nothing was written. This mutates hos_logs, so it requires { confirm: true }. Only stale rows with a next-interval start are eligible.",
+        },
+        400,
+      );
+
+    const closed: { rowId: string; driverId: string; minutesRecovered: number }[] = [];
+    for (const f of candidates) {
+      const closeMs = +new Date(f.suggestedEndIso as string);
+      const startMs = +new Date(f.startedAtIso);
+      if (closeMs <= startMs || closeMs > nowMs) continue;
+      const minutesRecovered = r2((closeMs - startMs) / 60_000);
+      await db.update(schema.hosLogs).set({ endedAt: new Date(closeMs) }).where(eq(schema.hosLogs.id, f.rowId));
+      await db.insert(schema.hosIntervalRepairs).values({
+        id: `hir_${Date.now().toString(36)}_${f.rowId.slice(-6)}`,
+        hosLogId: f.rowId,
+        driverId: f.driverId,
+        status: f.status,
+        startedAt: new Date(startMs),
+        openForHours: f.openForHours,
+        closedAt: new Date(closeMs),
+        closeSource: "next_interval_start",
+        minutesRecovered,
+        actor: typeof body.actor === "string" && body.actor.trim() ? body.actor.trim() : "server",
+        note: typeof body.note === "string" ? body.note : "Bulk repair of stale open intervals.",
+      });
+      closed.push({ rowId: f.rowId, driverId: f.driverId, minutesRecovered });
+    }
+
+    return c.json(
+      {
+        confirmed: true,
+        candidates: candidates.length,
+        closed: closed.length,
+        minutesRecovered: r2(closed.reduce((s, r) => s + r.minutesRecovered, 0)),
+        rows: closed,
+        remainingOpen: scanOpenIntervals(await db.select().from(schema.hosLogs), Date.now()).length,
+        note: "Every close used the start of the driver's next interval. Rows with no later interval were left alone and still need a human-supplied time.",
+      },
+      200,
+    );
   });

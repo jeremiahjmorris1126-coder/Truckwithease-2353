@@ -3,6 +3,7 @@ import { db } from "../database";
 import * as schema from "../database/schema";
 import { and, desc, gte } from "drizzle-orm";
 import { ensureSeed } from "../lib/seed";
+import { LIMITS as DUTY_LIMITS, clockSnapshotAt } from "../lib/dutyclock";
 import { scoreFatigue } from "./eld";
 
 /**
@@ -20,32 +21,30 @@ import { scoreFatigue } from "./eld";
  * response says so instead of generating a number.
  */
 
-// 49 CFR 395 property-carrying limits, same source of truth as routes/hos.ts
-const LIMITS = { driving: 11 * 60, onDutyWindow: 14 * 60, cycle: 60 * 60, breakAfter: 8 * 60 };
+// 49 CFR 395 property-carrying limits now come from lib/dutyclock — the single
+// source of truth. This file used to keep its own copy AND its own
+// `l.endedAt ? +l.endedAt : now`, which ran abandoned open rows to "now" and
+// produced impossible clocks. That bug is gone: stale open intervals are
+// excluded and counted by clockSnapshotAt.
+const LIMITS = {
+  driving: DUTY_LIMITS.driving,
+  onDutyWindow: DUTY_LIMITS.onDutyWindow,
+  cycle: DUTY_LIMITS.cycle,
+  breakAfter: DUTY_LIMITS.breakAfterDriving,
+};
 
 function computeClocks(logs: (typeof schema.hosLogs.$inferSelect)[]) {
-  const now = Date.now();
-  let drivingMin = 0;
-  let onDutyMin = 0;
-  const sorted = [...logs].sort((a, b) => +a.startedAt - +b.startedAt);
-  let windowStart: number | null = null;
-  for (const l of sorted) {
-    const end = l.endedAt ? +l.endedAt : now;
-    const dur = (end - +l.startedAt) / 60000;
-    if (l.status === "off_duty" || l.status === "sleeper") {
-      if (dur >= 10 * 60) { windowStart = null; drivingMin = 0; onDutyMin = 0; }
-    } else {
-      if (windowStart === null) windowStart = +l.startedAt;
-      onDutyMin += dur;
-      if (l.status === "driving") drivingMin += dur;
-    }
-  }
-  const windowUsed = windowStart ? (now - windowStart) / 60000 : 0;
+  const s = clockSnapshotAt(logs, Date.now());
   return {
-    drivingUsed: Math.round(drivingMin),
-    drivingRemaining: Math.max(0, LIMITS.driving - Math.round(drivingMin)),
-    onDutyWindowUsed: Math.round(windowUsed),
-    onDutyWindowRemaining: Math.max(0, LIMITS.onDutyWindow - Math.round(windowUsed)),
+    drivingUsed: s.drivingUsedMin,
+    drivingRemaining: s.drivingRemainingMin,
+    onDutyWindowUsed: s.windowUsedMin,
+    onDutyWindowRemaining: s.windowRemainingMin,
+    cycleUsed: s.cycleUsedMin,
+    cycleRemaining: s.cycleRemainingMin,
+    intervalsExcludedStaleOpen: s.intervalsExcludedStaleOpen,
+    staleOpenHours: s.staleOpenHours,
+    excludedNote: s.measurementNote,
     limits: LIMITS,
   };
 }

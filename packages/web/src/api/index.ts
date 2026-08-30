@@ -33,6 +33,7 @@ import { a2p } from "./routes/a2p";
 import { twilio } from "./routes/twilio";
 import { comms } from "./routes/comms";
 import { checkr } from "./routes/checkr";
+import { sealedLine } from "./routes/sealedline";
 import { storage } from "./routes/storage";
 import { captions } from "./routes/captions";
 import { gemini } from "./routes/gemini";
@@ -100,6 +101,7 @@ const app = new Hono()
   .route("/licensing", licensing).route("/twilio", twilio)
   .route("/comms", comms)
   .route("/checkr", checkr)
+  .route("/sealed-line", sealedLine)
   .route("/storage", storage)
   .route("/gemini", gemini)
   .route("/captions", captions)
