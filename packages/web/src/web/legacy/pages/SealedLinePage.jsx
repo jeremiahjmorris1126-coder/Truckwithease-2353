@@ -76,6 +76,7 @@ export default function SealedLinePage() {
   const [linkResult, setLinkResult] = useState(null);
   const [resealResult, setResealResult] = useState(null);
   const [ar, setAr] = useState(null);
+  const [retryResult, setRetryResult] = useState(null);
   const alive = useRef(false);
 
   const load = useCallback(async () => {
@@ -147,6 +148,15 @@ export default function SealedLinePage() {
     setBusy("reseal");
     const r = await post("/api/sealed-line/reseal-unresolved", {});
     setResealResult(r);
+    setReads((prev) => [...prev, r]);
+    setBusy(null);
+    await load();
+  };
+
+  const doRetry = async () => {
+    setBusy("retry");
+    const r = await post("/api/comms/auto-reply/retry", { limit: 10 });
+    setRetryResult(r);
     setReads((prev) => [...prev, r]);
     setBusy(null);
     await load();
@@ -457,6 +467,11 @@ export default function SealedLinePage() {
           title="Automatic clock answer on an inbound line"
           icon={<Send size={15} />}
           note={ar ? ar.howToDisable : undefined}
+          right={
+            <GhostBtn onClick={doRetry} disabled={busy === "retry"}>
+              {busy === "retry" ? "Retrying…" : "Retry refused sends"}
+            </GhostBtn>
+          }
         >
           {!ar ? (
             <Missing label="AUTO-REPLY READ DID NOT RETURN" reason="GET /api/comms/auto-reply was not answered on this load." />
@@ -517,6 +532,27 @@ export default function SealedLinePage() {
                 <ul style={{ margin: "16px 0 0", paddingLeft: 20, fontFamily: FB, fontSize: 12.5, color: C.dim, lineHeight: 1.9 }}>
                   {ar.rules.map((t, i) => <li key={i}>{t}</li>)}
                 </ul>
+              ) : null}
+
+              {retryResult ? (
+                <div style={{ marginTop: 16, padding: 14, border: `1px solid ${C.line}`, background: "#0f0f0f" }}>
+                  <div style={{ fontFamily: FM, fontSize: 10.5, letterSpacing: "0.14em", textTransform: "uppercase", color: GOLD }}>
+                    Retry — HTTP {retryResult.status} · {retryResult.ms} ms
+                  </div>
+                  <div style={{ fontFamily: FB, fontSize: 12.5, color: C.text, marginTop: 8, lineHeight: 1.8 }}>
+                    Queue {num(retryResult.body?.queueSize)} · attempted {num(retryResult.body?.attempted)} · sent {num(retryResult.body?.sent)}
+                    {Array.isArray(retryResult.body?.results) && retryResult.body.results.length
+                      ? retryResult.body.results.map((r, i) => (
+                          <div key={i} style={{ marginTop: 6, fontFamily: FM, fontSize: 11.5, color: r.decision === "sent_on_retry" ? GOLDB : WARN }}>
+                            {r.decision} — {r.twilioSid || r.error || r.reason || "—"}
+                          </div>
+                        ))
+                      : null}
+                  </div>
+                  {retryResult.body?.clockPolicy ? (
+                    <div style={{ marginTop: 10, fontFamily: FB, fontSize: 12, color: C.dim }}>{retryResult.body.clockPolicy}</div>
+                  ) : null}
+                </div>
               ) : null}
 
               {ar.notClaimed ? (

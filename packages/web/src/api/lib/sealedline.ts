@@ -796,11 +796,14 @@ export type InboundAnswer = {
  * Build the verdict for an inbound message using the clock as it stood at that
  * message's own timestamp — not the clock as of now.
  */
-export async function answerForInbound(messageId: string): Promise<InboundAnswer | null> {
+export async function answerForInbound(messageId: string, atMs?: number): Promise<InboundAnswer | null> {
   const [msg] = await db.select().from(schema.smsMessages).where(eq(schema.smsMessages.id, messageId)).limit(1);
   if (!msg) return null;
 
-  const atMessageMs = msg.createdAt instanceof Date ? msg.createdAt.getTime() : Date.now();
+  // Default: the clock as of the message's own timestamp. A retry passes "now"
+  // instead, because texting a broker hours that expired an hour ago is worse
+  // than telling them the clock as it actually stands at the moment of sending.
+  const atMessageMs = atMs ?? (msg.createdAt instanceof Date ? msg.createdAt.getTime() : Date.now());
   const drivers = await db.select().from(schema.drivers);
 
   // First precedence: one end of the message IS a driver's own phone number.

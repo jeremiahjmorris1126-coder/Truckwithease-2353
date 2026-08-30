@@ -947,6 +947,144 @@ export const comms = new Hono()
       },
       200,
     );
+  })
+
+  /**
+   * Retry the answers the provider refused. Every attempt RECOMPUTES the clock
+   * as of now rather than resending the original text, because the hours in an
+   * answer written an hour ago are no longer the driver's hours. The earlier
+   * clock_answers row is never edited — a retry is a new row pointing at it.
+   */
+  .post("/auto-reply/retry", async (c) => {
+    const creds = twilioCreds();
+    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    const limit = Math.min(Number(body.limit) || 10, 25);
+
+    const failed = (
+      await db
+        .select()
+        .from(schema.clockAnswers)
+        .orderBy(desc(schema.clockAnswers.createdAt))
+        .limit(200)
+    ).filter(
+      (r) =>
+        !r.autoSent &&
+        r.inboundMessageId &&
+        (r.autoReplyDecision === "send_failed" || r.autoReplyDecision === "skipped_no_creds"),
+    );
+
+    // A row that a later attempt already retried is not retried again.
+    const retried = new Set(
+      (await db.select().from(schema.clockAnswers)).map((r) => r.retryOfAnswerId).filter(Boolean) as string[],
+    );
+    const queue = failed.filter((r) => !retried.has(r.id)).slice(0, limit);
+
+    if (!creds)
+      return c.json(
+        {
+          retried: 0,
+          pending: queue.length,
+          blocked: true,
+          reason:
+            "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are not set, so nothing could be sent. The queue is unchanged and still retryable.",
+        },
+        400,
+      );
+
+    const nowMs = Date.now();
+    const results: Record<string, unknown>[] = [];
+
+    for (const row of queue) {
+      const ans = await answerForInbound(row.inboundMessageId as string, nowMs);
+      if (!ans || !ans.answerable) {
+        results.push({
+          answerId: row.id,
+          decision: "skipped_not_answerable_now",
+          reason:
+            ans?.notAnswerableReason ??
+            "The inbound message could not be read back, so nothing was sent on this retry.",
+        });
+        continue;
+      }
+      const [conv] = await db
+        .select()
+        .from(schema.smsConversations)
+        .where(eq(schema.smsConversations.id, row.conversationId ?? ""))
+        .limit(1);
+      if (!conv) {
+        results.push({ answerId: row.id, decision: "skipped_no_thread", reason: "The thread for this answer no longer exists." });
+        continue;
+      }
+
+      const v = ans.verdict;
+      const sent = await sendOutbound({
+        creds,
+        conv,
+        from: conv.fleetNumber?.startsWith("+") ? conv.fleetNumber : null,
+        to: conv.peerNumber,
+        text: v.draftReply,
+        sentByName: "TruckWithEase clock answer (retry)",
+      });
+      try {
+        await sealMessage(sent.row.id);
+      } catch {
+        /* the reply is stored either way; sealing is retryable and idempotent */
+      }
+
+      const newId = rid("cans");
+      await db.insert(schema.clockAnswers).values({
+        id: newId,
+        sealedMessageId: null,
+        conversationId: conv.id,
+        driverId: ans.driver?.id ?? null,
+        askText: row.askText,
+        parsedMiles: v.parsed.miles,
+        parsedDeadlineAt: v.parsed.deadlineAtMs ? new Date(v.parsed.deadlineAtMs) : null,
+        parsedIntent: v.parsed.intent,
+        verdict: v.verdict,
+        verdictReason: v.reason,
+        clockHoursNeeded: v.hoursNeeded,
+        clockHoursAvailable: v.hoursAvailable,
+        assumedMph: v.assumedMph,
+        draftReply: v.draftReply,
+        replySentMessageId: sent.row.id,
+        replyTwilioSid: sent.row.twilioSid,
+        autoSent: sent.ok,
+        inboundMessageId: row.inboundMessageId,
+        autoReplyDecision: sent.ok ? "sent_on_retry" : "retry_send_failed",
+        autoReplyError: sent.ok ? null : (sent.row.errorMessage ?? String(sent.body.message ?? "")),
+        retryOfAnswerId: row.id,
+      });
+
+      results.push({
+        answerId: newId,
+        retryOf: row.id,
+        decision: sent.ok ? "sent_on_retry" : "retry_send_failed",
+        verdict: v.verdict,
+        clockRecomputedAt: new Date(nowMs).toISOString(),
+        hoursNeeded: v.hoursNeeded,
+        hoursAvailable: v.hoursAvailable,
+        replyMessageId: sent.row.id,
+        twilioSid: sent.row.twilioSid,
+        twilioStatus: sent.row.twilioStatus,
+        error: sent.ok ? null : (sent.row.errorMessage ?? null),
+      });
+    }
+
+    const sentCount = results.filter((r) => r.decision === "sent_on_retry").length;
+    return c.json(
+      {
+        queueSize: failed.length,
+        attempted: queue.length,
+        sent: sentCount,
+        results,
+        clockPolicy:
+          "Each retry answers with the clock recomputed at the moment of sending, not the clock that was current when the ask arrived. Stale hours are never re-sent.",
+        appendOnly: "No earlier clock_answers row was edited. Each retry is a new row whose retry_of_answer_id points at the attempt it replaces.",
+        generatedAt: new Date().toISOString(),
+      },
+      200,
+    );
   });
 
 export default comms;
