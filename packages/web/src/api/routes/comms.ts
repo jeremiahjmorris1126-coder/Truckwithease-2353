@@ -89,6 +89,101 @@ const notConnected = {
 
 const messagingServiceSid = () => process.env.TWILIO_MESSAGING_SERVICE_SID?.trim() || null;
 
+/**
+ * What this app actually puts on the wire, read off the code paths that send.
+ * This is the list a 10DLC use case has to cover. It is written by hand because
+ * only a human can say what a message MEANS to a carrier — but each entry names
+ * the function that sends it, so it can be checked against the code.
+ */
+const APP_TRAFFIC = [
+  {
+    kind: "conversational_dispatch_reply",
+    sentBy: "routes/comms.ts autoReplyTo() — the sealed clock answer to a broker",
+    isTwoFactor: false,
+    example:
+      "Can't take it right now. Driving left 4.92 h, 14-hour window left 0 h, cycle left 53.92 h. My clock needs a 10-hour reset before I can move again.",
+  },
+  {
+    kind: "one_time_sign_in_code",
+    sentBy: "sign-in verification code",
+    isTwoFactor: true,
+    example: "TruckWithEase: your sign-in code is 481920. It expires in 10 minutes.",
+  },
+] as const;
+
+/**
+ * The filing that matches APP_TRAFFIC. LOW_VOLUME ("Low Volume Mixed") is the
+ * use case that explicitly permits any combination of message types, which is
+ * what this app sends — a 2FA campaign does not cover a conversational reply,
+ * and carriers can filter that traffic even after a 2FA campaign is approved.
+ */
+const RECOMMENDED_FILING = {
+  useCase: "LOW_VOLUME",
+  useCaseName: "Low Volume Mixed",
+  whyThisOne:
+    "This app sends two different kinds of message from the same fleet number: a conversational duty-clock reply to a broker, and a one-time sign-in code. Low Volume Mixed is the only use case that covers a combination like that at this volume. 2FA covers one-time passwords ONLY, so the dispatch replies are outside what was filed.",
+  description:
+    "TruckWithEase is fleet compliance software used by My Dads Trucking LLC. Messages go to two groups: our own drivers, and brokers and shippers who are already working a load with us. Two kinds of message are sent. First, when a broker texts our dispatch number asking a driver to take more miles, the platform replies with that driver's remaining legal hours under 49 CFR 395 so the broker gets an immediate, accurate answer. Second, one-time codes are sent to a driver signing in to their own account. No marketing or promotional messages are sent on this number.",
+  messageFlow:
+    "Two opt-in paths, both explicit. Drivers: a driver is set up by the fleet administrator inside TruckWithEase, and during setup the driver enters their own mobile number on the account screen at truckwithease.com and checks a box reading \"Text me sign-in codes and dispatch messages at this number. Message and data rates may apply. Reply STOP to opt out.\" The checkbox is unchecked by default and the number is not saved without it. Brokers and shippers: a broker texts our published dispatch number first, and the automatic reply answers that inbound text and includes opt-out language. We never message a broker who has not messaged us first.",
+  messageSamples: [
+    "TruckWithEase dispatch: can't take it right now. Driving left 4.92 h, 14-hour window left 0 h, cycle left 53.92 h. Clock needs a 10-hour reset first. Reply STOP to opt out.",
+    "TruckWithEase: your sign-in code is 481920. It expires in 10 minutes. Reply HELP for help, STOP to opt out.",
+  ],
+  hasEmbeddedLinks: false,
+  hasEmbeddedPhone: false,
+  optInKeywords: ["START"],
+  optOutKeywords: ["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "REVOKE", "OPTOUT"],
+  helpKeywords: ["HELP", "INFO"],
+  helpMessage:
+    "TruckWithEase fleet dispatch. Email jeremiahjmorris1126@gmail.com for help. Msg&data rates may apply. Reply STOP to opt out.",
+  fixesVersusWhatWasFiled: [
+    "Use case 2FA → LOW_VOLUME. The dispatch replies this app sends are not one-time passwords and are not covered by a 2FA filing.",
+    "The marketing sample (\"What is your biggest gripe as a driver? Truckwithease has arrived. The ALL IN ONE platform.\") is removed. It is promotional, it does not match any message this app actually sends, and it contradicts both 2FA and Low Volume Mixed.",
+    "Message flow rewritten. The filed flow, 'Question asked \" Can xxxxxx send you a message ? \"', names no website, no checkbox and no consent wording, which is the single most common 10DLC rejection reason.",
+    "Both samples now carry STOP language, matching what the app sends.",
+    "has_embedded_links and has_embedded_phone were filed as true. Neither sample contains a link or a phone number, so both should be false — filing them true invites extra scrutiny for no reason.",
+    "START is declared as the opt-in keyword and STOP is removed from the opt-in list. The filed campaign listed STOP as BOTH an opt-in and an opt-out keyword, which is contradictory.",
+  ],
+};
+
+/** Does the filed use case actually cover what this app sends? */
+function useCaseFit(filedUseCase: string | null, filedSamples: unknown[], optInKeywords: unknown[]) {
+  const code = String(filedUseCase ?? "").toUpperCase();
+  const sampleText = filedSamples.map((s) => String(s)).join(" ").toLowerCase();
+  const nonTwoFactor = APP_TRAFFIC.filter((t) => !t.isTwoFactor);
+  const problems: string[] = [];
+
+  if (code === "2FA" && nonTwoFactor.length > 0) {
+    problems.push(
+      `Use case filed is 2FA, which covers one-time passwords only. This app's main outbound traffic is a conversational reply carrying the driver's duty clock, sent by ${nonTwoFactor[0].sentBy}. That is not a one-time password, so it is outside the filed use case. Carriers can filter it even AFTER the campaign is approved, which means approval alone would not guarantee delivery.`,
+    );
+  }
+  const marketingWords = ["gripe", "has arrived", "all in one", "call or email"];
+  const hit = marketingWords.filter((w) => sampleText.includes(w));
+  if (hit.length > 0) {
+    problems.push(
+      `A filed message sample reads as marketing or promotion (matched: ${hit.join(", ")}). Carriers vet samples against the declared use case, and a promotional sample under a non-marketing use case is a common rejection reason. This app sends no promotional SMS, so the sample does not match real traffic either.`,
+    );
+  }
+  const optIn = optInKeywords.map((k) => String(k).toUpperCase());
+  if (optIn.includes("STOP")) {
+    problems.push(
+      "STOP is declared as an opt-IN keyword as well as an opt-out keyword on the filed campaign. That is contradictory and should be corrected to START.",
+    );
+  }
+
+  return {
+    filedUseCase,
+    fits: problems.length === 0,
+    problems,
+    appTraffic: APP_TRAFFIC,
+    recommended: problems.length === 0 ? null : RECOMMENDED_FILING,
+    howToChange:
+      "Twilio's Usa2p compliance resource exposes create and delete, not update, so the use case on a filed campaign cannot be edited in place — the pending campaign has to be deleted and re-filed. That costs a campaign vetting fee and restarts carrier review, so TruckWithEase never files, edits or deletes a campaign automatically. This endpoint is read-only.",
+  };
+}
+
 /** Live A2P 10DLC campaign state for the configured Messaging Service. */
 async function a2pState(creds: Creds) {
   const mg = messagingServiceSid();
@@ -1048,6 +1143,11 @@ export const comms = new Hono()
         rateLimits: row.rate_limits ?? null,
         approved,
         carrierWillFilter: !approved,
+        useCaseFit: useCaseFit(
+          (row.us_app_to_person_usecase ?? null) as string | null,
+          Array.isArray(row.message_samples) ? row.message_samples : [],
+          Array.isArray(row.opt_in_keywords) ? row.opt_in_keywords : [],
+        ),
         senders,
         sendingNumber: from,
         sendingNumberInPool,

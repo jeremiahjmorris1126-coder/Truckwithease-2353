@@ -657,6 +657,87 @@ export default function SealedLinePage() {
                 <Missing label="NO SENDERS" reason="This Messaging Service has no phone numbers in its pool, so it cannot send at all." />
               )}
 
+              {a2p.useCaseFit ? (
+                <div style={{ marginTop: 16, padding: 14, border: `1px solid ${a2p.useCaseFit.fits ? C.line : WARN}`, background: "#0f0f0f" }}>
+                  <div style={{ fontFamily: FM, fontSize: 10.5, letterSpacing: "0.14em", textTransform: "uppercase", color: a2p.useCaseFit.fits ? GOLD : WARN }}>
+                    Use case fit — filed as {a2p.useCaseFit.filedUseCase || "—"} · {a2p.useCaseFit.fits ? "covers this app's traffic" : "does NOT cover this app's traffic"}
+                  </div>
+
+                  {Array.isArray(a2p.useCaseFit.problems) && a2p.useCaseFit.problems.length ? (
+                    <ul style={{ margin: "10px 0 0", paddingLeft: 20, fontFamily: FB, fontSize: 12.5, color: C.text, lineHeight: 1.85 }}>
+                      {a2p.useCaseFit.problems.map((p, i) => <li key={i}>{p}</li>)}
+                    </ul>
+                  ) : null}
+
+                  {Array.isArray(a2p.useCaseFit.appTraffic) && a2p.useCaseFit.appTraffic.length ? (
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ fontFamily: FM, fontSize: 10.5, letterSpacing: "0.14em", textTransform: "uppercase", color: GOLD }}>
+                        What this app actually sends
+                      </div>
+                      {a2p.useCaseFit.appTraffic.map((t, i) => (
+                        <div key={i} style={{ marginTop: 8, fontFamily: FB, fontSize: 12.5, color: C.dim, lineHeight: 1.75 }}>
+                          <Tag tone={t.isTwoFactor ? "gold" : "warn"}>{t.isTwoFactor ? "is 2FA" : "not 2FA"}</Tag>{" "}
+                          <span style={{ fontFamily: FM, fontSize: 11.5, color: C.text }}>{t.kind}</span> — {t.sentBy}
+                          <div style={{ marginTop: 3, color: C.dim }}>“{t.example}”</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {a2p.useCaseFit.recommended ? (
+                    <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
+                      <div style={{ fontFamily: FM, fontSize: 10.5, letterSpacing: "0.14em", textTransform: "uppercase", color: GOLDB }}>
+                        File this instead — {a2p.useCaseFit.recommended.useCase} ({a2p.useCaseFit.recommended.useCaseName})
+                      </div>
+                      <div style={{ marginTop: 8, fontFamily: FB, fontSize: 12.5, color: C.text, lineHeight: 1.85 }}>
+                        {a2p.useCaseFit.recommended.whyThisOne}
+                      </div>
+
+                      {["description", "messageFlow", "helpMessage"].map((k) =>
+                        a2p.useCaseFit.recommended[k] ? (
+                          <div key={k} style={{ marginTop: 12 }}>
+                            <div style={{ fontFamily: FM, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.dim }}>{k}</div>
+                            <div style={{ marginTop: 4, fontFamily: FB, fontSize: 12.5, color: C.text, lineHeight: 1.8 }}>
+                              {a2p.useCaseFit.recommended[k]}
+                            </div>
+                          </div>
+                        ) : null,
+                      )}
+
+                      {Array.isArray(a2p.useCaseFit.recommended.messageSamples) ? (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{ fontFamily: FM, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.dim }}>
+                            Message samples to file
+                          </div>
+                          {a2p.useCaseFit.recommended.messageSamples.map((m, i) => (
+                            <div key={i} style={{ marginTop: 6, fontFamily: FB, fontSize: 12.5, color: C.text, lineHeight: 1.8 }}>
+                              {i + 1}. {m}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {Array.isArray(a2p.useCaseFit.recommended.fixesVersusWhatWasFiled) ? (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{ fontFamily: FM, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.dim }}>
+                            Every change versus what was filed
+                          </div>
+                          <ul style={{ margin: "6px 0 0", paddingLeft: 20, fontFamily: FB, fontSize: 12.5, color: C.dim, lineHeight: 1.85 }}>
+                            {a2p.useCaseFit.recommended.fixesVersusWhatWasFiled.map((f, i) => <li key={i}>{f}</li>)}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {a2p.useCaseFit.howToChange ? (
+                    <div style={{ marginTop: 14, fontFamily: FB, fontSize: 12, color: C.dim, lineHeight: 1.75 }}>
+                      {a2p.useCaseFit.howToChange}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               {Array.isArray(a2p.messageSamples) && a2p.messageSamples.length ? (
                 <div style={{ marginTop: 16 }}>
                   <div style={{ fontFamily: FM, fontSize: 10.5, letterSpacing: "0.14em", textTransform: "uppercase", color: GOLD }}>
