@@ -4,6 +4,8 @@
  * READS (live, every value on this page comes from these round trips)
  *   GET /api/clock-ledger   REQUIRED — fleet clock consumption, per-driver ledger rows,
  *                           load ranking by $/clock-hour, integrity counts, hash chain
+ *   GET /api/clock-ledger/chain  (optional) independent replay of the persisted chain from
+ *                           genesis — every link recomputed server-side and reported pass/fail
  *   GET /api/hos            optional — fleet duty clocks, for cross-reference
  *   GET /api/quantum        optional — the naming statement printed verbatim
  *
@@ -45,6 +47,7 @@ export default function ClockLedgerPage() {
   const [led, setLed] = useState(null);
   const [hos, setHos] = useState(null);
   const [quantum, setQuantum] = useState(null);
+  const [chain, setChain] = useState(null);
   const alive = useRef(false);
 
   const load = useCallback(async () => {
@@ -57,9 +60,14 @@ export default function ClockLedgerPage() {
       const collected = [ledR];
       setLed(ledR.body);
 
-      const opt = await Promise.allSettled([timedGet("/api/hos"), timedGet("/api/quantum")]);
+      const opt = await Promise.allSettled([
+        timedGet("/api/clock-ledger/chain"),
+        timedGet("/api/hos"),
+        timedGet("/api/quantum"),
+      ]);
       if (!alive.current) return;
-      const [hosR, qR] = opt;
+      const [chainR, hosR, qR] = opt;
+      if (chainR.status === "fulfilled") { collected.push(chainR.value); setChain(chainR.value.body); }
       if (hosR.status === "fulfilled") { collected.push(hosR.value); setHos(hosR.value.body); }
       if (qR.status === "fulfilled") { collected.push(qR.value); setQuantum(qR.value.body); }
 
@@ -254,7 +262,15 @@ export default function ClockLedgerPage() {
             >
               <div style={{ ...grid(200) }}>
                 <Stat label="Algorithm" value={led.chain.algorithm} />
-                <Stat label="Rows chained" value={led.chain.rowsChained} />
+                <Stat label="Rows sealed (total)" value={led.chain.rowsPersistedTotal} sub={`table ${led.chain.table}`} />
+                <Stat label="Appended this read" value={led.chain.rowsAppendedThisRequest} sub={led.chain.rowsAppendedThisRequest === 0 ? "nothing changed" : "new sealed rows"} />
+                <Stat label="Head seq" value={led.chain.headSeq} />
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <div style={{ color: C.muted, fontFamily: FM, fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase" }}>Construction</div>
+                <div style={{ color: C.white, fontFamily: FM, fontSize: 12, marginTop: 5, wordBreak: "break-all" }}>
+                  {led.chain.construction}
+                </div>
               </div>
               <div style={{ marginTop: 14 }}>
                 <div style={{ color: C.muted, fontFamily: FM, fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase" }}>Head hash</div>
@@ -263,12 +279,64 @@ export default function ClockLedgerPage() {
                 </div>
               </div>
               <p style={{ color: C.white, fontFamily: FB, fontSize: 13.5, lineHeight: 1.75, marginTop: 14, marginBottom: 0 }}>
-                {led.chain.persistedNote}
+                {led.chain.note}
               </p>
+              {chain && (
+                <div style={{ marginTop: 16, border: `1px solid ${C.border}`, background: C.black, padding: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div style={{ color: C.muted, fontFamily: FM, fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                      Independent replay — GET /api/clock-ledger/chain
+                    </div>
+                    <Tag tone={chain.verified ? "gold" : "warn"}>
+                      {chain.verified ? `${chain.rows} of ${chain.rows} links verified` : `${chain.breaks.length} broken link(s)`}
+                    </Tag>
+                  </div>
+                  <p style={{ color: C.white, fontFamily: FB, fontSize: 13, lineHeight: 1.7, marginTop: 10, marginBottom: 0 }}>
+                    {chain.verifiedNote}
+                  </p>
+                  {!chain.verified && (
+                    <ul style={{ color: WARN, fontFamily: FM, fontSize: 12, lineHeight: 1.8, marginTop: 10, marginBottom: 0, paddingLeft: 18 }}>
+                      {chain.breaks.map((b, i) => (
+                        <li key={i}>seq {b.seq} — {b.reason}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {chain.entries.length > 0 && (
+                    <div style={{ overflowX: "auto", marginTop: 12 }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr>
+                            <th style={th}>Seq</th>
+                            <th style={th}>Driver</th>
+                            <th style={th}>Clock h</th>
+                            <th style={th}>Drive h</th>
+                            <th style={th}>Burned h</th>
+                            <th style={th}>Chain hash</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {chain.entries.map((e) => (
+                            <tr key={e.seq}>
+                              <td style={tdNum}>{e.seq}</td>
+                              <td style={td}>{e.driverId}</td>
+                              <td style={tdNum}>{e.clockHoursConsumed}</td>
+                              <td style={tdNum}>{e.drivingHours}</td>
+                              <td style={tdNum}>{e.burnedHours}</td>
+                              <td style={{ ...td, fontFamily: FM, fontSize: 11, color: GOLDB }}>{e.chainHash.slice(0, 24)}…</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
               <p style={{ color: C.muted, fontFamily: FB, fontSize: 13, lineHeight: 1.75, marginTop: 10, marginBottom: 0 }}>
                 Why it matters: an ELD locks a driver&apos;s record to the carrier that bought the
                 device. A chained ledger the driver owns is the part that accrues — and the part
-                a competitor starting today has none of.
+                a competitor starting today has none of. Sealing is append-only and idempotent:
+                re-reading this page does not add rows, and a correction is written as a new row
+                rather than an edit, so the history cannot be quietly rewritten.
               </p>
             </Panel>
 

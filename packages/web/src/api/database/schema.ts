@@ -1166,3 +1166,36 @@ export const userRoles = sqliteTable("user_roles", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });
+
+/**
+ * THE CLOCK LEDGER — append-only, hash-chained record of duty-clock consumption.
+ *
+ * Why a table and not a recomputation: an ELD locks its record to the carrier that
+ * bought the device. This chain is written per driver and carries between carriers.
+ * The moat is the accrual, not the feature — and an accrual has to be durable.
+ *
+ * APPEND-ONLY. Rows are never updated or deleted. A new row is written for a driver
+ * only when that driver's measured window differs from their last sealed row, so
+ * calling the endpoint twice with unchanged data does not duplicate history.
+ *
+ * chainHash = sha256(payloadHash + prevHash). seq is global and monotonic, so the
+ * whole ledger is one chain across all drivers, verifiable head-to-genesis.
+ */
+export const clockLedgerEntries = sqliteTable("clock_ledger_entries", {
+  id: text("id").primaryKey(),
+  seq: integer("seq").notNull(),                          // monotonic, 1-based, global
+  driverId: text("driver_id").notNull(),
+  windowDays: integer("window_days").notNull(),
+  windowStartedAt: integer("window_started_at", { mode: "timestamp" }).notNull(),
+  windowEndedAt: integer("window_ended_at", { mode: "timestamp" }).notNull(),
+  clockHoursConsumed: real("clock_hours_consumed").notNull(),
+  drivingHours: real("driving_hours").notNull(),
+  burnedHours: real("burned_hours").notNull(),
+  revenueAttributed: real("revenue_attributed"),          // null when no load is attributed
+  intervalsUsed: integer("intervals_used").notNull(),
+  intervalsExcludedOpen: integer("intervals_excluded_open").notNull(),
+  payloadHash: text("payload_hash").notNull(),            // sha256 of the measured fields
+  prevHash: text("prev_hash").notNull(),
+  chainHash: text("chain_hash").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});

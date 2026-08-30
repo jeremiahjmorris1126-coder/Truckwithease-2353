@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { createHash } from "node:crypto";
+import { asc, desc, eq } from "drizzle-orm";
 import { db } from "../database";
 import * as schema from "../database/schema";
 import { ensureSeed } from "../lib/seed";
@@ -26,7 +27,8 @@ import { ensureSeed } from "../lib/seed";
  *   burnedHours          on-duty-not-driving hours — clock spent with the wheels stopped
  *   loadRanking          the same loads ranked by $/mile and by $/clock-hour, with the
  *                        rank delta between the two orderings
- *   chain                sha256 hash chain over the ledger rows (verifiable, not yet persisted)
+ *   chain                sha256 hash chain over the ledger rows, PERSISTED append-only into
+ *                        clock_ledger_entries. chainHash = sha256(payloadHash + prevHash).
  *
  * INTEGRITY GUARD
  *   hos_logs in this database contain open intervals (ended_at NULL) whose start is
@@ -40,6 +42,12 @@ import { ensureSeed } from "../lib/seed";
  *   would consume. It is returned in the payload as `assumptions` so no caller mistakes it
  *   for a measurement. Loading, unloading and detention time are NOT included because this
  *   database has no table recording them.
+ *
+ * PERSISTENCE (append-only)
+ *   A row is sealed for a driver only when that driver's measured window differs from
+ *   their last sealed row, so calling this endpoint twice does not duplicate history.
+ *   Rows are never updated or deleted. GET /api/clock-ledger/chain replays the whole
+ *   chain from genesis and reports whether every link verifies.
  *
  * WHAT THIS ENDPOINT DOES NOT CLAIM
  *   No prediction. No confidence score. No detention, deadhead or reset-stranding
@@ -102,6 +110,30 @@ function minutesByStatus(intervals: Interval[]) {
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
+
+const GENESIS = "0".repeat(64);
+const sha = (s: string) => createHash("sha256").update(s).digest("hex");
+
+/** Canonical, order-stable hash of exactly the measurements a sealed row stores. */
+function payloadHashFor(row: {
+  driverId: string;
+  clockHoursConsumed: number;
+  drivingHours: number;
+  burnedHours: number;
+  revenueAttributed: number | null;
+}) {
+  return sha(
+    JSON.stringify([
+      row.driverId,
+      row.clockHoursConsumed,
+      row.drivingHours,
+      row.burnedHours,
+      row.revenueAttributed,
+    ]),
+  );
+}
+
+const linkHash = (payloadHash: string, prevHash: string) => sha(payloadHash + prevHash);
 
 export const clockLedger = new Hono()
   .use("*", async (_c, next) => {
@@ -181,21 +213,53 @@ export const clockLedger = new Hono()
       };
     });
 
-    // hash chain over the ledger rows — verifiable, deterministic, ordered
-    let prev = "0".repeat(64);
-    const chain = rows.map((row) => {
-      const payload = JSON.stringify({
+    // ---- seal into the append-only chain -------------------------------------
+    const existing = await db
+      .select()
+      .from(schema.clockLedgerEntries)
+      .orderBy(asc(schema.clockLedgerEntries.seq));
+
+    let seq = existing.length ? existing[existing.length - 1].seq : 0;
+    let head = existing.length ? existing[existing.length - 1].chainHash : GENESIS;
+
+    const lastByDriver = new Map<string, (typeof schema.clockLedgerEntries.$inferSelect)>();
+    for (const e of existing) lastByDriver.set(e.driverId, e);
+
+    const appended: { driverId: string; seq: number; chainHash: string }[] = [];
+    const unchanged: string[] = [];
+
+    for (const row of rows) {
+      const payloadHash = payloadHashFor(row);
+      const prior = lastByDriver.get(row.driverId);
+      if (prior && prior.payloadHash === payloadHash) {
+        unchanged.push(row.driverId);
+        continue;
+      }
+      seq += 1;
+      const chainHash = linkHash(payloadHash, head);
+      const entry = {
+        id: `cle_${seq.toString().padStart(6, "0")}_${payloadHash.slice(0, 8)}`,
+        seq,
         driverId: row.driverId,
+        windowDays: WINDOW_DAYS,
+        windowStartedAt: new Date(windowStartMs),
+        windowEndedAt: new Date(nowMs),
         clockHoursConsumed: row.clockHoursConsumed,
         drivingHours: row.drivingHours,
         burnedHours: row.burnedHours,
         revenueAttributed: row.revenueAttributed,
-        prev,
-      });
-      const hash = createHash("sha256").update(payload).digest("hex");
-      prev = hash;
-      return { driverId: row.driverId, hash };
-    });
+        intervalsUsed: row.intervalsUsed,
+        intervalsExcludedOpen: row.intervalsExcludedOpen,
+        payloadHash,
+        prevHash: head,
+        chainHash,
+      };
+      await db.insert(schema.clockLedgerEntries).values(entry);
+      head = chainHash;
+      appended.push({ driverId: row.driverId, seq, chainHash });
+    }
+
+    const totalRows = existing.length + appended.length;
 
     // the reordering: $/mile vs $/clock-hour
     const priced = allLoads
@@ -284,11 +348,21 @@ export const clockLedger = new Hono()
           : "The $/mile ordering and the $/clock-hour ordering disagree. rankDelta shows how many places each load moves when it is judged on clock instead of miles.",
         chain: {
           algorithm: "sha256",
-          rowsChained: chain.length,
-          headHash: chain.length ? chain[chain.length - 1].hash : null,
-          persisted: false,
-          persistedNote:
-            "The chain is recomputed on every request. Persisting it requires a clock_ledger_entries table, which does not exist yet — so this is not yet a durable driver-owned record.",
+          construction: "chainHash = sha256(payloadHash + prevHash), genesis prevHash = 64 zeros",
+          persisted: true,
+          table: "clock_ledger_entries",
+          appendOnly: true,
+          rowsPersistedTotal: totalRows,
+          rowsAppendedThisRequest: appended.length,
+          driversUnchangedThisRequest: unchanged,
+          appended,
+          headHash: head,
+          headSeq: seq,
+          verifyAt: "/api/clock-ledger/chain",
+          note:
+            appended.length === 0
+              ? "Nothing was appended on this request: every driver's measured window is identical to their last sealed row. Sealing is idempotent by design — repeated reads do not inflate the ledger."
+              : `${appended.length} row(s) sealed. Sealed rows are never updated or deleted; a correction is a new row, not an edit.`,
         },
         notClaimed: [
           "No prediction of future clock consumption.",
@@ -302,4 +376,86 @@ export const clockLedger = new Hono()
       },
       200,
     );
+  })
+
+  /**
+   * Replay the persisted chain from genesis and report whether every link verifies.
+   * This is the whole point of persisting: the record can be checked by anyone
+   * holding the rows, including a driver who has left the carrier.
+   */
+  .get("/chain", async (c) => {
+    const t0 = Date.now();
+    const entries = await db
+      .select()
+      .from(schema.clockLedgerEntries)
+      .orderBy(asc(schema.clockLedgerEntries.seq));
+
+    let prev = GENESIS;
+    let expectedSeq = 0;
+    const breaks: { seq: number; reason: string }[] = [];
+
+    for (const e of entries) {
+      expectedSeq += 1;
+      if (e.seq !== expectedSeq) breaks.push({ seq: e.seq, reason: `sequence gap — expected ${expectedSeq}` });
+      if (e.prevHash !== prev) breaks.push({ seq: e.seq, reason: "prev_hash does not match the previous row's chain_hash" });
+      const recomputedPayload = payloadHashFor({
+        driverId: e.driverId,
+        clockHoursConsumed: e.clockHoursConsumed,
+        drivingHours: e.drivingHours,
+        burnedHours: e.burnedHours,
+        revenueAttributed: e.revenueAttributed,
+      });
+      if (recomputedPayload !== e.payloadHash)
+        breaks.push({ seq: e.seq, reason: "payload_hash does not match the stored measurements — the row was altered" });
+      if (linkHash(e.payloadHash, e.prevHash) !== e.chainHash)
+        breaks.push({ seq: e.seq, reason: "chain_hash does not match sha256(payload_hash + prev_hash)" });
+      prev = e.chainHash;
+    }
+
+    return c.json(
+      {
+        algorithm: "sha256",
+        construction: "chainHash = sha256(payloadHash + prevHash), genesis prevHash = 64 zeros",
+        rows: entries.length,
+        headHash: entries.length ? entries[entries.length - 1].chainHash : null,
+        headSeq: entries.length ? entries[entries.length - 1].seq : 0,
+        verified: breaks.length === 0,
+        breaks,
+        verifiedNote:
+          breaks.length === 0
+            ? "Every link was recomputed from the stored measurements and matched. This verifies the chain has not been altered since it was written; it does not verify the underlying hos_logs rows were correct when captured."
+            : "The chain does not verify. Every failing link is listed above rather than being suppressed.",
+        entries: entries.map((e) => ({
+          seq: e.seq,
+          driverId: e.driverId,
+          windowStartedAt: e.windowStartedAt,
+          windowEndedAt: e.windowEndedAt,
+          clockHoursConsumed: e.clockHoursConsumed,
+          drivingHours: e.drivingHours,
+          burnedHours: e.burnedHours,
+          revenueAttributed: e.revenueAttributed,
+          intervalsUsed: e.intervalsUsed,
+          intervalsExcludedOpen: e.intervalsExcludedOpen,
+          payloadHash: e.payloadHash,
+          prevHash: e.prevHash,
+          chainHash: e.chainHash,
+          createdAt: e.createdAt,
+        })),
+        measuredMs: Date.now() - t0,
+        generatedAt: new Date().toISOString(),
+      },
+      200,
+    );
+  })
+
+  /** One driver's sealed history — the record that travels with them. */
+  .get("/chain/:driverId", async (c) => {
+    const driverId = c.req.param("driverId");
+    const entries = await db
+      .select()
+      .from(schema.clockLedgerEntries)
+      .where(eq(schema.clockLedgerEntries.driverId, driverId))
+      .orderBy(desc(schema.clockLedgerEntries.seq));
+    if (!entries.length) return c.json({ error: "no_sealed_rows", driverId }, 404);
+    return c.json({ driverId, rows: entries.length, entries }, 200);
   });
