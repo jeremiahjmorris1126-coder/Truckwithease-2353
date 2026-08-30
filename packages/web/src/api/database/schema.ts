@@ -1199,3 +1199,81 @@ export const clockLedgerEntries = sqliteTable("clock_ledger_entries", {
   chainHash: text("chain_hash").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });
+
+/* ============================================================
+ * Fleet telecommunications — Twilio phone numbers + messaging
+ * ============================================================
+ *
+ * WHAT IS REAL HERE
+ *   A row in fleet_phone_numbers only exists after Twilio confirmed the number
+ *   is on the account (it stores Twilio's own IncomingPhoneNumber SID). Nothing
+ *   is written for a number this app did not read back from Twilio.
+ *
+ *   A row in sms_messages carries the Twilio Message SID and the status string
+ *   Twilio returned. Outbound rows with no SID are rows Twilio rejected, and the
+ *   provider's error code and message are stored verbatim.
+ *
+ * WHAT IS NOT CLAIMED
+ *   Delivery is not guaranteed and is not asserted anywhere. US A2P 10DLC
+ *   traffic is carrier-filtered unless an approved campaign is attached to the
+ *   Messaging Service; that state is reported, never hidden.
+ */
+
+/** A Twilio number on the account, assigned to a fleet, a driver, or a purpose. */
+export const fleetPhoneNumbers = sqliteTable("fleet_phone_numbers", {
+  id: text("id").primaryKey(),
+  phoneNumber: text("phone_number").notNull(),            // E.164, as Twilio reports it
+  twilioSid: text("twilio_sid").notNull(),                // PNxxxx — proof the number is real
+  friendlyName: text("friendly_name"),
+  label: text("label"),                                   // what the fleet calls it: "Dispatch line"
+  assignedToType: text("assigned_to_type").notNull().default("fleet"), // fleet, driver, dispatch, support
+  assignedToId: text("assigned_to_id"),                   // drivers.id when assignedToType = driver
+  assignedToName: text("assigned_to_name"),
+  smsCapable: integer("sms_capable", { mode: "boolean" }).notNull().default(false),
+  voiceCapable: integer("voice_capable", { mode: "boolean" }).notNull().default(false),
+  mmsCapable: integer("mms_capable", { mode: "boolean" }).notNull().default(false),
+  messagingServiceSid: text("messaging_service_sid"),     // MGxxxx when the number is in a service
+  status: text("status").notNull().default("active"),     // active, released
+  assignedAt: integer("assigned_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  releasedAt: integer("released_at", { mode: "timestamp" }),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+/** One thread between a fleet number and one outside number. */
+export const smsConversations = sqliteTable("sms_conversations", {
+  id: text("id").primaryKey(),
+  fleetNumberId: text("fleet_number_id"),                 // fleet_phone_numbers.id, null if number not assigned yet
+  fleetNumber: text("fleet_number").notNull(),            // E.164 of our side
+  peerNumber: text("peer_number").notNull(),              // E.164 of the other side
+  peerName: text("peer_name"),                            // resolved from drivers/hr_people when it matches
+  peerType: text("peer_type"),                            // driver, broker, unknown
+  lastMessageAt: integer("last_message_at", { mode: "timestamp" }),
+  lastMessagePreview: text("last_message_preview"),
+  lastDirection: text("last_direction"),                  // inbound, outbound
+  unreadInbound: integer("unread_inbound").notNull().default(0),
+  messageCount: integer("message_count").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+/** Every SMS this app sent or received, with Twilio's own SID and status. */
+export const smsMessages = sqliteTable("sms_messages", {
+  id: text("id").primaryKey(),
+  conversationId: text("conversation_id").notNull(),
+  direction: text("direction").notNull(),                 // inbound, outbound
+  fromNumber: text("from_number").notNull(),
+  toNumber: text("to_number").notNull(),
+  body: text("body").notNull(),
+  twilioSid: text("twilio_sid"),                          // SMxxxx, null when Twilio rejected the send
+  twilioStatus: text("twilio_status"),                    // queued, sent, delivered, undelivered, failed, received
+  errorCode: text("error_code"),                          // Twilio's code, verbatim
+  errorMessage: text("error_message"),                    // Twilio's text, verbatim
+  numSegments: integer("num_segments"),
+  priceUsd: real("price_usd"),                            // null until Twilio reports it
+  sentByUserId: text("sent_by_user_id"),
+  sentByName: text("sent_by_name"),
+  statusCheckedAt: integer("status_checked_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});

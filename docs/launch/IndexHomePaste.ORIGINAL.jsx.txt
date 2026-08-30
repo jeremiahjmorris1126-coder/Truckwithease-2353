@@ -1,0 +1,682 @@
+
+import PocketBase from "pocketbase";
+import SignupPage from "./SignupPage";
+import GrowthCommandPage from "./GrowthCommandPage";
+import LocationMemoryPage from "./LocationMemoryPage";
+import WeekInReviewPage from "./WeekInReviewPage";
+import TruckingNewsPage from "./TruckingNewsPage";
+import DriverChatPage from "./DriverChatPage";
+import TraxesPage from "./TraxesPage";
+import RigBucksPage from "./BigRigPointsPage";
+import LeaderboardPage from "./LeaderboardPage";
+import RoadAgentPage from "./RoadAgentPage";
+import LaunchChecklistPage from "./LaunchChecklistPage";
+import ReferralPage from "./ReferralPage";
+import FontPreviewPage from "./FontPreviewPage";
+import CinemaPage from "./CinemaPage";
+import CommandCenterPage from "./CommandCenterPage";
+import DriverProfilePage from "./DriverProfilePage";
+import TripPlannerPage from "./TripPlannerPage";
+import HOSLoggerPage from "./HOSLoggerPage";
+import DVIRPage from "./DVIRPage";
+import AICharactersPage from "./AICharactersPage";
+import ScanBillPage from "./ScanBillPage";
+import HumanAIPage from "./HumanAIPage";
+import MaintenancePage from "./MaintenancePage";
+import LoadProfitPage from "./LoadProfitPage";
+import FuelFinderPage from "./FuelFinderPage";
+import LoadBoardPage from "./LoadBoardPage";
+import ExpensesPage from "./ExpensesPage";
+import ReportsPage from "./ReportsPage";
+import TollsPage from "./TollsPage";
+import DispatchPage from "./DispatchPage";
+import WeatherPage from "./WeatherPage";
+import BreakdownPage from "./BreakdownPage";
+import ScorecardPage from "./ScorecardPage";
+import PermitBookPage from "./PermitBookPage";
+import FactoringPage from "./FactoringPage";
+import FuelCardPage from "./FuelCardPage";
+import ParkingPage from "./ParkingPage";
+import HealthPage from "./HealthPage";
+import StatePatrolPage from "./StatePatrolPage";
+import BypassPage from "./BypassPage";
+import DetentionPage from "./DetentionPage";
+import VoicePage from "./VoicePage";
+const pb = new PocketBase();
+const NAVY   = "#0B2A6B";
+const NAVY2  = "#081E4D";
+const RED    = "#DC2626";
+const DARK   = "#06090F";
+const ORANGE = "#FF6B00";
+const AMBER  = "#FFB400";
+const GREEN  = "#16A34A";
+
+// ─── Data ───────────────────────────────────────────────────────────────────
+const features = [
+  { icon: "⏱️", title: "HOS / ELD Compliance",           desc: "FMCSA-compliant hours-of-service logging. 11/14 rule, 34h restart, sleeper berth splits — all automated, zero paperwork." },
+  { icon: "🛰️", title: "Live GPS Fleet Tracking",        desc: "Real-time location pushed every 10 seconds. Background tracking even when the app is minimized. Full fleet map for admins." },
+  { icon: "🔍", title: "Pre-Trip DVIR",                   desc: "DOT-compliant vehicle inspections (49 CFR 396.11). Defect logging, photo upload, mechanic sign-off, PDF export." },
+  { icon: "🤖", title: "State DOT AI Watcher",            desc: "Alerts as you cross state lines — weight limits, weigh stations, seasonal bans, emissions rules — all 50 states, proactively." },
+  { icon: "🅿️", title: "Parking Finder + AI Guide",      desc: "Find safe truck parking anywhere. AI navigator gives turn-by-turn guidance, amenity details, and safety warnings in real time." },
+  { icon: "📦", title: "Load Board",                      desc: "Live loads for owner-operators. Filter by lane, weight, rate-per-mile. Post your truck, get matched instantly." },
+  { icon: "💰", title: "Load Profit Calculator",          desc: "See your real take-home before you accept a load. Fuel, tolls, detention, and taxes — all factored in automatically." },
+  { icon: "💬", title: "Dispatch Messaging",              desc: "Real-time driver ↔ dispatcher communication. Trip assignments, status updates, and emergency alerts in one thread." },
+  { icon: "📊", title: "IFTA Mileage Tracking",           desc: "Auto-track miles per state. Generate IFTA fuel tax reports quarterly. Export to PDF or spreadsheet in one tap." },
+  { icon: "🏦", title: "Factoring Integration",           desc: "Submit invoices and get paid faster with built-in factoring. No separate app, no extra fees, no delay on your money." },
+  { icon: "🧾", title: "Expense Tracker & Tax AI",        desc: "Log fuel, tolls, meals, and repairs on the go. Your personal accountant AI keeps your deductions clean come tax time." },
+  { icon: "⚡", title: "Weigh Station Bypass",            desc: "Integrated Drivewyze + PrePass network. Sail past weigh stations legally — saves hours every week and earns Rig Bucks every bypass." },
+  { icon: "⏳", title: "Detention Pay Tracker",           desc: "Smart timer starts the moment you arrive. Auto-calculates detention pay owed, logs it for invoicing, and alerts your dispatcher automatically." },
+  { icon: "🛣️", title: "Toll Route Optimizer",           desc: "Estimate, avoid, and track tolls on every route. Compare cheapest vs. fastest options. Pro plan includes PrePass transponder perk." },
+  { icon: "🗺️", title: "Trip Planner & Pre-Planner",    desc: "Full trip planning with drive-leg breakdown, ETA calculation, fuel stops, rest area planning, and weight/permit compliance built in." },
+  { icon: "🛡️", title: "State Patrol Intelligence",      desc: "Real-time state patrol activity, speed trap alerts, weigh station wait times, and road closure intel — crowdsourced from verified TruckWithEase drivers." },
+  { icon: "🏅", title: "Driver Safety Scorecard",         desc: "Your personal safety score tracked daily — HOS compliance, speed, DVIR completion, violations, and clean inspection history. Share with brokers to get better loads." },
+  { icon: "🔧", title: "Fleet Chief AI",                  desc: "Your AI mechanic on call 24/7. Enter a fault code (SPN/FMI) and Fleet Chief delivers instant diagnostics, repair priority, and nearest certified shop." },
+  { icon: "🩺", title: "Driver Health & DOT Medical",     desc: "Medical card reminders, DOT physical scheduling, vitals logging, and the AI Health Chief — all in one place. Never miss a med card renewal again." },
+  { icon: "📑", title: "Digital Permit Book",             desc: "Store, organize, and access all your permits, credentials, and compliance docs in one secure digital permit book — always current, never paper." },
+  { icon: "🆘", title: "Breakdown SOS",                   desc: "One tap sends your GPS location, truck details, and breakdown type to roadside assistance. Tracks your case until you're moving again." },
+  { icon: "🎤", title: "Voice Commands",                  desc: "Hands-free control of HOS logging, DVIR, dispatch messaging, and navigation — so your eyes stay on the road and your hands stay on the wheel." },
+  { icon: "📈", title: "Reports & Analytics",             desc: "Full fleet reports — HOS summaries, DVIR history, IFTA exports, expense breakdowns, safety scores — all downloadable in PDF or spreadsheet." },
+  { icon: "🔒", title: "No Contracts. Ever.",             desc: "Month-to-month. Cancel anytime. No setup fees. No lock-in. We earn your business every single month." },
+];
+
+const plans = [
+  {
+    id: "solo", name: "Solo", price: "$19.99", period: "/mo",
+    tag: "Owner-Operators", color: AMBER,
+    features: ["HOS/ELD Logger","GPS Tracking","Pre-Trip DVIR","State DOT AI Watcher","Live Fuel Finder","Parking Finder","Load Board","IFTA Tracking","Load Profit Calculator","Expense Tracker","Detention Pay Tracker","Trip Planner","Digital Permit Book","Driver Safety Scorecard","Breakdown SOS","Voice Commands"],
+    cta: "Start Free Trial",
+  },
+  {
+    id: "pro", name: "Pro", price: "$34.99", period: "/mo",
+    tag: "Most Popular", color: ORANGE,
+    features: ["Everything in Solo","💳 $100 Fuel Card included","Dispatch Messaging","Factoring Integration","⚡ Weigh Station Bypass (PrePass)","🛣️ Toll Route Optimizer","🔧 Fleet Chief AI","🩺 Health Chief AI","🎤 Voice Commands (Priority)","🎬 Moviease","TruckEase Cam Integration","Speed & Idle Tracking"],
+    cta: "Start Free Trial", highlight: true,
+  },
+  {
+    id: "fleet", name: "Fleet", price: "$24.99", period: "/seat/mo",
+    tag: "Fleet Managers", color: GREEN,
+    features: ["Everything in Pro","Unlimited Drivers","Multi-vehicle Admin Map","Fleet HOS Overview","Bulk DVIR Reports","Driver Safety Scorecards","State Patrol Intelligence","California AB5 Compliance Tools","Driver Coaching Alerts","Custom Integrations","Dedicated Support"],
+    cta: "Contact Sales",
+  },
+];
+
+const compareRows = [
+  { feature: "$100 Fuel Card Included",        us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Load Profitability Calculator",  us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Traxes Financial AI",            us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Detention Pay Tracker",          us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Weigh Station Bypass (PrePass)", us: true,     motive: "partial", trucker: false,     dat: false },
+  { feature: "Driver Safety Scorecard",        us: true,     motive: "partial", trucker: false,     dat: false },
+  { feature: "Fleet Chief AI (Diagnostics)",   us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Driver Health & DOT Medical",    us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Rig Bucks Rewards",         us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Moviease",           us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "State DOT AI Watcher",           us: true,     motive: "partial", trucker: false,     dat: false },
+  { feature: "HOS / ELD Compliance",           us: true,     motive: true,      trucker: false,     dat: false },
+  { feature: "Factoring Integration",          us: true,     motive: false,     trucker: false,     dat: false },
+  { feature: "Load Board Access",              us: true,     motive: false,     trucker: "partial", dat: true  },
+  { feature: "No Contracts, Cancel Anytime",   us: true,     motive: false,     trucker: true,      dat: true  },
+  { feature: "Price (Owner-Op / mo)",          us: "$19.99", motive: "$35–99+", trucker: "$35",     dat: "$59+"},
+];
+
+const screenshots = [
+  { src: "/static/01-dashboard.png",     label: "Driver Dashboard" },
+  { src: "/static/02-fleet-map.png",     label: "Live Fleet Map" },
+  { src: "/static/03-hos.png",           label: "HOS Logger" },
+  { src: "/static/04-dvir.png",          label: "Pre-Trip DVIR" },
+  { src: "/static/05-fuel.png",          label: "Fuel Finder" },
+  { src: "/static/06-dot-ai.png",        label: "DOT AI Watcher" },
+  { src: "/static/07-sos-breakdown.png", label: "Breakdown SOS" },
+  { src: "/static/08-fleet-chief.png",   label: "Fleet Chief AI" },
+  { src: "/static/09-tolls.png",         label: "Toll Tracker" },
+];
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+function CompareCell({ v }) {
+  if (v === true)      return <span style={{ color: GREEN,    fontSize: 18, fontWeight: 900 }}>✓</span>;
+  if (v === false)     return <span style={{ color: "#CBD5E1",fontSize: 18, fontWeight: 900 }}>✕</span>;
+  if (v === "partial") return <span style={{ color: "#F59E0B",fontSize: 12, fontWeight: 700 }}>~ limited</span>;
+  return <span style={{ color: "#0F172A", fontSize: 12, fontWeight: 700 }}>{v}</span>;
+}
+
+function useScrollY() {
+  const [y, setY] = useState(0);
+  useEffect(() => {
+    const fn = () => setY(window.scrollY);
+    window.addEventListener("scroll", fn, { passive: true });
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
+  return y;
+}
+
+function useInView(ref) {
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    if (!ref.current) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setSeen(true); }, { threshold: 0.15 });
+    obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+  return seen;
+}
+
+function FadeIn({ children, delay = 0, style = {} }) {
+  const ref = useRef(null);
+  const seen = useInView(ref);
+  return (
+    <div ref={ref} style={{
+      opacity: seen ? 1 : 0,
+      transform: seen ? "translateY(0)" : "translateY(28px)",
+      transition: `opacity 0.6s ease ${delay}ms, transform 0.6s ease ${delay}ms`,
+      ...style,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Router ──────────────────────────────────────────────────────────────────
+function useRoute() {
+  const [path, setPath] = useState(() => {
+    try { return window.location.pathname; } catch { return "/"; }
+  });
+  useEffect(() => {
+    const onPop = () => {
+      try { setPath(window.location.pathname); } catch {}
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  return path;
+}
+
+// ─── Main App ────────────────────────────────────────────────────────────────
+
+function LiveViolationCounter() {
+  const [count, setCount] = useState(103847);
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (Math.random() < 0.4) setCount(v => v + 1);
+    }, 3500);
+    return () => clearInterval(id);
+  }, []);
+  const stats = [
+    { value: '50', label: 'States Covered' },
+    { value: count.toLocaleString() + '+', label: 'Violations Prevented', live: true },
+    { value: '14', label: 'Day Free Trial' },
+    { value: '0', label: 'Contracts Required' },
+  ];
+  return (
+    <>
+      {stats.map(s => (
+        <div key={s.label} style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 'clamp(1.8rem,3vw,2.6rem)', fontWeight: 900, color: 'white', fontFamily: s.live ? "'DM Mono',monospace" : 'inherit' }}>
+            {s.value}
+            {s.live && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#16A34A', display: 'inline-block', marginLeft: 8, animation: 'pulse 2s infinite', verticalAlign: 'middle' }} />}
+          </div>
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 500, marginTop: 4 }}>{s.label}</div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+export default function App() {
+  const path = useRoute();
+  const scrollY = useScrollY();
+  const scrolled = scrollY > 60;
+  const sidebarVisible = scrollY > (typeof window !== "undefined" ? window.innerHeight : 800);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeShot, setActiveShot] = useState(0);
+  const [contactForm, setContactForm] = useState({ name: "", email: "", message: "" });
+  const [contactSent, setContactSent] = useState(false);
+
+  if (path === "/traxes") return <TraxesPage />;
+  if (path === "/rig-bucks") return <RigBucksPage />;
+  if (path === "/leaderboard") return <LeaderboardPage />;
+  if (path === "/road-agent") return <RoadAgentPage />;
+  if (path === "/launch") return <LaunchChecklistPage />;
+  if (path === "/refer") return <ReferralPage />;
+  if (path === "/design") return <FontPreviewPage />;
+  if (path === "/cinema") return <CinemaPage />;
+  if (path === "/command") return <CommandCenterPage />;
+  if (path === "/driver") return <DriverProfilePage />;
+  if (path === "/trip-planner") return <TripPlannerPage />;
+  if (path === "/hos") return <HOSLoggerPage />;
+  if (path === "/dvir") return <DVIRPage />;
+  if (path === "/ai-team") return <AICharactersPage />;
+  if (path === "/scan-bill") return <ScanBillPage />;
+  if (path === "/humanai") return <HumanAIPage />;
+  if (path === "/maintenance") return <MaintenancePage />;
+  if (path === "/load-profit") return <LoadProfitPage />;
+  if (path === "/fuel-finder" || path === "/fuel") return <FuelFinderPage />;
+  if (path === "/loads") return <LoadBoardPage />;
+  if (path === "/expenses") return <ExpensesPage />;
+  if (path === "/reports") return <ReportsPage />;
+  if (path === "/tolls") return <TollsPage />;
+  if (path === "/driver-chat") return <DriverChatPage />;
+  if (path === "/signup") return <SignupPage />;
+  if (path === "/growth") return <GrowthCommandPage />;
+  if (path === "/locations") return <LocationMemoryPage />;
+  if (path === "/week-review") return <WeekInReviewPage />;
+  if (path === "/news") return <TruckingNewsPage />;
+  if (path === "/dispatch") return <DispatchPage />;
+  if (path === "/weather") return <WeatherPage />;
+  if (path === "/breakdown") return <BreakdownPage />;
+  if (path === "/scorecard") return <ScorecardPage />;
+  if (path === "/permit-book") return <PermitBookPage />;
+  if (path === "/factoring") return <FactoringPage />;
+  if (path === "/fuel-card") return <FuelCardPage />;
+  if (path === "/parking" || path === "/parking-finder") return <ParkingPage />;
+  if (path === "/health") return <HealthPage />;
+  if (path === "/state-patrol") return <StatePatrolPage />;
+  if (path === "/bypass") return <BypassPage />;
+  if (path === "/detention") return <DetentionPage />;
+  if (path === "/voice") return <VoicePage />;
+  if (path === "/rewards") return <RigBucksPage />;
+  if (path === "/compliance") return <DVIRPage />;
+  if (path === "/dashboard") return <CommandCenterPage />;
+  if (path === "/fleet") return <CommandCenterPage />;
+  if (path === "/fleet-chief") return <AICharactersPage />;
+  if (path === "/fleet-tracking") return <CommandCenterPage />;
+  if (path === "/sign-in") return <TraxesPage />;
+
+  // Auto-cycle screenshots
+  useEffect(() => {
+    const t = setInterval(() => setActiveShot(s => (s + 1) % screenshots.length), 3000);
+    return () => clearInterval(t);
+  }, []);
+
+  const navLinks = [
+    { label: "Features", href: "#features" },
+    { label: "Traxes", href: "/traxes" },
+    { label: "Rig Bucks", href: "/rig-bucks" },
+    { label: "Refer a Driver", href: "/refer" },
+    { label: "🎬 Cinema", href: "/cinema" },
+    { label: "📡 Driver Chat", href: "/driver-chat" },
+    { label: "🎯 Command Center", href: "/command" },
+    { label: "🐺 The Watchdogs", href: "/ai-team" },
+    { label: "📄 Scan & Bill", href: "/scan-bill" },
+    { label: "🤝 HRease", href: "/humanai" },
+    { label: "App Preview", href: "#preview" },
+    { label: "📰 News", href: "/news" },
+    { label: "Pricing", href: "#pricing" },
+    { label: "Contact", href: "#contact" },
+  ];
+
+  return (
+    <div style={{ fontFamily: "'Poppins', sans-serif", color: "#0F172A", overflowX: "hidden" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #F8FAFC; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+        .nav-link:hover { color: ${AMBER} !important; }
+        .cta-pulse { animation: ctaPulse 2.5s ease-in-out infinite; }
+        @keyframes ctaPulse {
+          0%, 100% { box-shadow: 0 8px 24px rgba(255,107,0,0.4); }
+          50%       { box-shadow: 0 8px 40px rgba(255,107,0,0.65); }
+        }
+        .card-hover { transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; }
+        .card-hover:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(11,42,107,0.13); border-color: #BFDBFE !important; }
+        .plan-card { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+        .plan-card:hover { transform: translateY(-4px); }
+        .shot-thumb { transition: all 0.2s ease; cursor: pointer; opacity: 0.55; }
+        .shot-thumb:hover, .shot-thumb.active { opacity: 1; outline: 2px solid ${AMBER}; }
+        @media (max-width: 767px) {
+          .hero-grid { flex-direction: column !important; }
+          .hero-float { display: none !important; }
+          .two-col { grid-template-columns: 1fr !important; }
+          .hide-mobile { display: none !important; }
+          .nav-desktop { display: none !important; }
+          .compare-wrap { overflow-x: auto; }
+          .plans-grid { grid-template-columns: 1fr !important; }
+          .hero-btns { flex-direction: column !important; }
+        }
+        @media (min-width: 768px) {
+          .nav-mobile-btn { display: none !important; }
+          .mobile-menu { display: none !important; }
+        }
+        .sidebar-nav { position: fixed; left: 0; top: 70px; bottom: 0; width: 220px; background: #0B2A6B; z-index: 150; overflow-y: auto; display: flex; flex-direction: column; padding: 20px 0 32px; border-right: 1px solid rgba(255,255,255,0.08); }
+        .sidebar-link { display: flex; align-items: center; gap: 9px; padding: 7px 18px; color: rgba(255,255,255,0.65); font-size: 13px; font-weight: 500; text-decoration: none; border-radius: 0; transition: background 0.15s, color 0.15s; cursor: pointer; }
+        .sidebar-link:hover { background: rgba(255,255,255,0.08); color: white; }
+        .sidebar-section-label { font-size: 9px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 18px 6px; }
+        .sidebar-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 10px 0; }
+        @media (max-width: 1023px) {
+          .sidebar-nav { display: none !important; }
+          .sidebar-offset { padding-left: 0 !important; }
+        }
+      `}</style>
+
+      {/* ── NAV ──────────────────────────────────────────────────────────────── */}
+      <nav style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
+        background: scrolled ? "rgba(255,255,255,0.97)" : "transparent",
+        backdropFilter: scrolled ? "blur(14px)" : "none",
+        borderBottom: scrolled ? "1px solid #E2E8F0" : "none",
+        transition: "all 0.35s",
+        padding: "0 5%", display: "flex", alignItems: "center",
+        justifyContent: "space-between", height: 70,
+      }}>
+        {/* Logo */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <img src="/static/truckwithease-icon.png" alt="TruckWithEase" style={{ width: 38, height: 38, borderRadius: 9, objectFit: "cover" }} />
+          <span style={{ fontWeight: 900, fontSize: 18, color: scrolled ? NAVY : "white" }}>
+            TruckWith<span style={{ color: AMBER }}>Ease</span>
+          </span>
+        </div>
+
+        {/* Desktop Nav */}
+        <div className="nav-desktop" style={{ display: "flex", gap: 28, alignItems: "center" }}>
+          {navLinks.map(l => (
+            <a key={l.label} href={l.href} className="nav-link"
+              style={{ color: scrolled ? "#64748B" : "rgba(255,255,255,0.82)", fontWeight: 500, fontSize: 14, textDecoration: "none", transition: "color 0.2s" }}>
+              {l.label}
+            </a>
+          ))}
+          <a href="#pricing" style={{
+            background: ORANGE, color: "white",
+            padding: "10px 22px", borderRadius: 8, fontWeight: 700, fontSize: 14,
+            textDecoration: "none", transition: "opacity 0.2s",
+          }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+            Start Free Trial
+          </a>
+        </div>
+
+        {/* Mobile Hamburger */}
+        <button className="nav-mobile-btn" onClick={() => setMenuOpen(!menuOpen)}
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 8, color: scrolled ? NAVY : "white", fontSize: 22 }}>
+          {menuOpen ? "✕" : "☰"}
+        </button>
+      </nav>
+
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="mobile-menu" style={{
+          position: "fixed", top: 70, left: 0, right: 0, zIndex: 199,
+          background: "white", borderBottom: "1px solid #E2E8F0",
+          padding: "16px 5% 24px", display: "flex", flexDirection: "column", gap: 4,
+        }}>
+          {navLinks.map(l => (
+            <a key={l.label} href={l.href} onClick={() => setMenuOpen(false)}
+              style={{ color: "#0F172A", fontWeight: 600, fontSize: 16, textDecoration: "none", padding: "12px 0", borderBottom: "1px solid #F1F5F9" }}>
+              {l.label}
+            </a>
+          ))}
+          <a href="#pricing" onClick={() => setMenuOpen(false)} style={{
+            marginTop: 12, background: ORANGE, color: "white",
+            padding: "14px", borderRadius: 10, fontWeight: 700, fontSize: 16,
+            textDecoration: "none", textAlign: "center",
+          }}>
+            Start Free Trial
+          </a>
+        </div>
+      )}
+
+      {/* ── STICKY SIDEBAR ────────────────────────────────────────────────── */}
+      {sidebarVisible && (
+        <aside className="sidebar-nav">
+          <div style={{ padding: "0 18px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+            <img src="/static/truckwithease-icon.png" alt="TWE" style={{ width: 26, height: 26, borderRadius: 6, objectFit: "cover" }} />
+            <span style={{ fontWeight: 900, fontSize: 13, color: "white" }}>Truck<span style={{ color: "#FFB400" }}>WithEase</span></span>
+          </div>
+          <div className="sidebar-divider" />
+
+          <div className="sidebar-section-label">Explore</div>
+          {[
+            { label: "Features", href: "#features" },
+            { label: "App Preview", href: "#preview" },
+            { label: "Pricing", href: "#pricing" },
+            { label: "Contact", href: "#contact" },
+          ].map(l => (
+            <a key={l.label} href={l.href} className="sidebar-link">→ {l.label}</a>
+          ))}
+
+          <div className="sidebar-divider" />
+          {/* ── DRIVER TOOLS (most-used, always visible) ── */}
+          <div className="sidebar-section-label">Driver Tools</div>
+          {[
+            { label: "HOS / ELD Logger", href: "/hos",         icon: "⏱️" },
+            { label: "Pre-Trip DVIR",    href: "/dvir",        icon: "✅" },
+            { label: "Breakdown SOS",    href: "/breakdown",   icon: "🆘" },
+            { label: "Fuel Finder",      href: "/fuel-finder", icon: "⛽" },
+            { label: "Parking",          href: "/parking",     icon: "🅿️" },
+            { label: "Weather",          href: "/weather",     icon: "🌧️" },
+          ].map(l => (
+            <a key={l.label} href={l.href} className="sidebar-link"><span>{l.icon}</span>{l.label}</a>
+          ))}
+
+          <div className="sidebar-divider" />
+
+          {/* ── MONEY TOOLS ── */}
+          <div className="sidebar-section-label">Money</div>
+          {[
+            { label: "Load Profit",  href: "/load-profit", icon: "💰" },
+            { label: "Load Board",   href: "/loads",        icon: "📦" },
+            { label: "Scan & Bill",  href: "/scan-bill",    icon: "📄" },
+            { label: "Expenses",     href: "/expenses",     icon: "🧾" },
+            { label: "Detention",    href: "/detention",    icon: "⏳" },
+            { label: "Traxes",    href: "/traxes",       icon: "💎" },
+          ].map(l => (
+            <a key={l.label} href={l.href} className="sidebar-link"><span>{l.icon}</span>{l.label}</a>
+          ))}
+
+          <div className="sidebar-divider" />
+
+          {/* ── COMPLIANCE ── */}
+          <div className="sidebar-section-label">Compliance</div>
+          {[
+            { label: "Weigh Bypass",  href: "/bypass",       icon: "⚡" },
+            { label: "State Patrol",  href: "/state-patrol", icon: "🚔" },
+            { label: "Permit Book",   href: "/permit-book",  icon: "📑" },
+            { label: "Tolls",         href: "/tolls",        icon: "🛣️" },
+            { label: "Scorecard",     href: "/scorecard",    icon: "🏅" },
+            { label: "Maintenance",   href: "/maintenance",  icon: "🔧" },
+          ].map(l => (
+            <a key={l.label} href={l.href} className="sidebar-link"><span>{l.icon}</span>{l.label}</a>
+          ))}
+
+          <div className="sidebar-divider" />
+
+          {/* ── FLEET & EXTRAS ── */}
+          <div className="sidebar-section-label">Fleet & More</div>
+          {[
+            { label: "Command Center", href: "/command",      icon: "🎯" },
+            { label: "Trip Planner",   href: "/trip-planner", icon: "🗺️" },
+            { label: "Dispatch",       href: "/dispatch",     icon: "💬" },
+            { label: "Location Memory",href: "/locations",    icon: "📍" },
+            { label: "Driver Chat",    href: "/driver-chat",  icon: "📡" },
+            { label: "HRease",     href: "/humanai",      icon: "👩‍💼" },
+            { label: "Rig Bucks", href: "/rig-bucks",icon: "🏆" },
+            { label: "Cinema",         href: "/cinema",       icon: "🎬" },
+            { label: "The Watchdogs",   href: "/ai-team",      icon: "🤖" },
+            { label: "Trucking News",  href: "/news",         icon: "📰" },
+            { label: "Growth Command", href: "/growth",       icon: "⚡" },
+            { label: "Week in Review", href: "/week-review",  icon: "📊" },
+          ].map(l => (
+            <a key={l.label} href={l.href} className="sidebar-link"><span>{l.icon}</span>{l.label}</a>
+          ))}
+        </aside>
+      )}
+
+      {/* ── MAIN CONTENT WRAPPER ──────────────────────────────────────────── */}
+      <div className="sidebar-offset" style={{ paddingLeft: sidebarVisible ? 220 : 0, transition: "padding-left 0.3s ease" }}>
+
+      {/* ── HERO ─────────────────────────────────────────────────────────────── */}
+      <section style={{
+        minHeight: "100vh",
+        background: `linear-gradient(135deg, ${NAVY} 0%, ${NAVY2} 45%, #001229 100%)`,
+        display: "flex", alignItems: "center",
+        padding: "0 5%", paddingTop: 70,
+        position: "relative", overflow: "hidden",
+      }}>
+        {/* Decorative orbs */}
+        <div style={{ position: "absolute", top: -120, right: -120, width: 600, height: 600, borderRadius: "50%", background: "rgba(255,107,0,0.07)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -180, left: -180, width: 520, height: 520, borderRadius: "50%", background: "rgba(255,255,255,0.04)", pointerEvents: "none" }} />
+        {/* Road lines */}
+        {[0,1,2,3,4].map(i => (
+          <div key={i} style={{ position: "absolute", bottom: 50, left: `${i * 22}%`, width: "14%", height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2 }} />
+        ))}
+
+        <div className="hero-grid" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", gap: 48, maxWidth: 1300, margin: "0 auto" }}>
+          {/* Left */}
+          <div style={{ maxWidth: 620, zIndex: 2 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,107,0,0.18)", border: "1px solid rgba(255,107,0,0.4)", borderRadius: 20, padding: "6px 16px", marginBottom: 24 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: ORANGE, display: "inline-block" }} />
+              <span style={{ color: "#FFB366", fontSize: 12, fontWeight: 700 }}>FMCSA-Ready • All 50 States • No Contracts</span>
+            </div>
+            <h1 style={{ fontSize: "clamp(2.4rem, 5.5vw, 4.2rem)", fontWeight: 900, color: "white", lineHeight: 1.08, marginBottom: 22 }}>
+              Drive Smart.<br />
+              <span style={{ color: ORANGE }}>Stay Compliant.</span><br />
+              <span style={{ color: AMBER }}>Earn More.</span>
+            </h1>
+            <p style={{ color: "rgba(255,255,255,0.72)", fontSize: 18, lineHeight: 1.75, marginBottom: 40, maxWidth: 540 }}>
+              The all-in-one platform built for owner-operators and fleets — HOS/ELD, DOT AI, load board, fuel card, factoring, expense tracking, and dashcam, all in one app.
+            </p>
+            <div className="hero-btns" style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              <a href="/signup" className="cta-pulse" style={{
+                background: ORANGE, color: "white",
+                padding: "16px 36px", borderRadius: 12,
+                fontWeight: 800, fontSize: 16, textDecoration: "none",
+              }}>
+                Start 14-Day Free Trial
+              </a>
+              <a href="#preview" style={{
+                background: "rgba(255,255,255,0.1)", color: "white",
+                padding: "16px 36px", borderRadius: 12,
+                fontWeight: 600, fontSize: 16, textDecoration: "none",
+                border: "1px solid rgba(255,255,255,0.25)", backdropFilter: "blur(8px)",
+              }}>
+                See the App →
+              </a>
+            </div>
+            <div style={{ marginTop: 36, display: "flex", gap: 28, flexWrap: "wrap" }}>
+              {["✓ No contracts, cancel anytime", "✓ 14-day free trial", "✓ iOS & Android"].map(t => (
+                <span key={t} style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 500 }}>{t}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Right — Live Fleet Card */}
+          <div className="hero-float" style={{
+            width: 340, flexShrink: 0,
+            background: "rgba(255,255,255,0.07)", backdropFilter: "blur(20px)",
+            borderRadius: 20, border: "1px solid rgba(255,255,255,0.14)",
+            padding: 24, display: "flex", flexDirection: "column", gap: 14,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: "white", fontWeight: 700, fontSize: 15 }}>Live Fleet Status</span>
+              <span style={{ fontSize: 11, color: "#4ADE80", fontWeight: 700, background: "rgba(74,222,128,0.15)", padding: "3px 10px", borderRadius: 20 }}>● LIVE</span>
+            </div>
+            {[
+              { name: "J. Miller",    status: "Driving",  hrs: "8h 22m", state: "TX", color: "#4ADE80" },
+              { name: "R. Davis",     status: "On Break", hrs: "0h 28m", state: "OK", color: "#FBBF24" },
+              { name: "T. Williams",  status: "Sleeper",  hrs: "5h 10m", state: "MO", color: "#60A5FA" },
+              { name: "A. Johnson",   status: "Off Duty", hrs: "12h 00m",state: "IL", color: "#94A3B8" },
+            ].map(d => (
+              <div key={d.name} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                background: "rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: d.color }} />
+                  <span style={{ color: "white", fontSize: 13, fontWeight: 500 }}>{d.name}</span>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ color: d.color, fontSize: 11, fontWeight: 700 }}>{d.status}</div>
+                  <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>{d.hrs} · {d.state}</div>
+                </div>
+              </div>
+            ))}
+            <div style={{ background: "rgba(255,107,0,0.15)", border: "1px solid rgba(255,107,0,0.3)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 16 }}>⚠️</span>
+              <span style={{ color: "#FFB366", fontSize: 12, fontWeight: 500 }}>DOT AI: Entering TX — check weight limits</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── STATS BAR ────────────────────────────────────────────────────────── */}
+      <section style={{ background: NAVY, padding: "30px 5%" }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: "clamp(28px,6vw,80px)", flexWrap: "wrap", maxWidth: 1000, margin: "0 auto" }}>
+          <LiveViolationCounter />
+        </div>
+      </section>
+
+      {/* ── BRANDED TRUCK GRAPHIC ──────────────────────────────────────────────── */}
+      <section style={{ background: "#0F172A", padding: "0", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "relative", width: "100%", lineHeight: 0 }}>
+          <img src="/static/gen_truck-branded-hero-a44a85.webp" alt="TruckWithEase branded semi truck on the open road" style={{ width: "100%", display: "block", maxHeight: 460, objectFit: "cover", objectPosition: "center 60%" }} />
+          {/* Dark gradient top + bottom */}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(15,23,42,0.55) 0%, transparent 30%, transparent 55%, rgba(15,23,42,0.8) 100%)", pointerEvents: "none" }} />
+          {/* Trailer branding overlay — positioned on the trailer side */}
+          <div style={{ position: "absolute", top: "38%", left: "50%", transform: "translate(-50%, -50%)", display: "flex", alignItems: "center", gap: 0, pointerEvents: "none" }}>
+            {/* Trailer branding lettering */}
+            <div style={{
+              fontFamily: "'Poppins', 'Arial Black', sans-serif",
+              fontWeight: 900,
+              fontSize: "clamp(2.2rem, 5vw, 4.8rem)",
+              letterSpacing: "-0.02em",
+              color: "white",
+              textShadow: "0 2px 12px rgba(0,0,0,0.5), 0 0 40px rgba(11,42,107,0.6)",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.08em",
+              lineHeight: 1,
+            }}>
+              <span style={{ color: "white" }}>Truck</span>
+              <span style={{ color: "white" }}>With</span>
+              <span style={{ color: AMBER }}>Ease</span>
+            </div>
+          </div>
+          {/* Bottom tagline */}
+          <div style={{ position: "absolute", bottom: 28, left: 0, right: 0, textAlign: "center", pointerEvents: "none" }}>
+            <div style={{ color: "rgba(255,255,255,0.75)", fontSize: "clamp(0.75rem, 1.5vw, 1rem)", fontWeight: 600, letterSpacing: 3, textTransform: "uppercase", fontFamily: "'Poppins', sans-serif", textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}>
+              HOS · ELD · DOT AI · Traxes · Rig Bucks
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURES ─────────────────────────────────────────────────────────── */}
+      <section id="features" style={{ padding: "64px 5%", background: "#F8FAFC" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign: "center", marginBottom: 48 }}>
+              <div style={{ color: ORANGE, fontWeight: 700, fontSize: 12, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 12 }}>Everything You Need</div>
+              <h2 style={{ fontSize: "clamp(1.8rem,3.5vw,2.5rem)", fontWeight: 900, color: "#0F172A", lineHeight: 1.1 }}>Built for the Road. Built for the Driver.</h2>
+            </div>
+          </FadeIn>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 20 }}>
+            {[
+              { category: "⚖️ Compliance", color: NAVY, items: ["⏱️ HOS / ELD Logger", "🔍 Pre-Trip DVIR", "🤖 State DOT AI Watcher", "📑 Digital Permit Book", "📊 IFTA Mileage Tracking"] },
+              { category: "🗺️ Navigation & Routing", color: "#0369A1", items: ["🅿️ Parking Finder + AI", "🗺️ Trip Planner", "⚡ Weigh Station Bypass", "🛣️ Toll Route Optimizer", "🛡️ State Patrol Intel"] },
+              { category: "💰 Money & Loads", color: GREEN, items: ["📦 Load Board", "💰 Load Profit Calculator", "🏦 Factoring Integration", "⏳ Detention Pay Tracker", "🧾 Expense Tracker & Tax AI"] },
+              { category: "🚛 Fleet & Dispatch", color: ORANGE, items: ["🛰️ Live GPS Fleet Tracking", "💬 Dispatch Messaging", "🔧 Fleet Chief AI", "📈 Reports & Analytics", "🔒 No Contracts. Ever."] },
+              { category: "🛡️ Safety & Health", color: RED, items: ["🏅 Driver Safety Scorecard", "🆘 Breakdown SOS", "🩺 Driver Health & DOT Medical", "🎤 Voice Commands", "🏆 Rig Bucks Rewards"] },
+            ].map((group, gi) => (
+              <FadeIn key={group.category} delay={gi * 60}>
+                <div style={{ background: "white", borderRadius: 16, border: "1px solid #E2E8F0", overflow: "hidden" }}>
+                  <div style={{ background: `${group.color}12`, borderBottom: `1px solid ${group.color}20`, padding: "14px 20px", display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontWeight: 800, fontSize: 14, color: group.color }}>{group.category}</span>
+                  </div>
+                  <div style={{ padding: "6px 0" }}>
+                    {group.items.map(item => (
+                      <div key={item} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 20px", borderBottom: "1px solid #F8FAFC" }}>
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: group.color, flexShrink: 0 }} />
+                        <span style={{ color: "#475569", fontSize: 13.5, fontWeight: 500 }}>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+          <FadeIn delay={120}>
+            <div style={{ textAlign: "center", marginTop: 32 }}>
+              <a href="#pricing" style={{ display: "inline-block", background: NAVY, color: "white", padding: "12px 28px", borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: "none" }}>See All 23 Features →</a>
+            </div>

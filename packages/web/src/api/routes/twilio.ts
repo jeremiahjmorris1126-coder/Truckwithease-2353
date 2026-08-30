@@ -16,7 +16,7 @@ import * as schema from "../database/schema";
  *  - Domain verification is decided by Twilio after IT reads your DNS. This app
  *    can only look up the TXT record itself and report what public DNS returns.
  *    `verifiedAt` is set only when a real lookup finds the exact token.
- *  - Nothing here writes to your DNS. IONOS is where the record goes.
+ *  - Nothing here writes to your DNS. Cloudflare is where the record goes for truckwithease.com.
  */
 
 const rid = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -150,7 +150,7 @@ export const twilio = new Hono()
       domains: rows,
       total: rows.length,
       howItWorks:
-        "Twilio verifies domain ownership by reading a DNS TXT record. Add the record at your DNS host (IONOS), then run the check here. Twilio's own console still has to be clicked to finish — this only proves the record is live in public DNS.",
+        "Twilio verifies domain ownership by reading a DNS TXT record. Add the record at your DNS host (Cloudflare), then run the check here. Twilio's own console still has to be clicked to finish — this only proves the record is live in public DNS.",
     });
   })
 
@@ -185,10 +185,10 @@ export const twilio = new Hono()
           type: "TXT",
           host: row.recordName,
           value,
-          ttl: "1 hour (or the IONOS default)",
+          ttl: "1 hour (or Cloudflare's Auto)",
         },
         nextStep:
-          "Add that TXT record in IONOS → Domains → DNS. Then POST /api/twilio/domains/:id/check. DNS can take up to 72 hours to propagate, though IONOS is usually minutes.",
+          "Add that TXT record in Cloudflare → truckwithease.com → DNS → Records (type TXT, proxy status is not applicable to TXT). Then POST /api/twilio/domains/:id/check. DNS can take up to 72 hours to propagate, though Cloudflare is usually seconds.",
       },
       201,
     );

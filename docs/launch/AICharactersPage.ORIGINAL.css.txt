@@ -1,0 +1,726 @@
+
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.02);
+  }
+  .acp-chat-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acp-chat-meta-name {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .acp-chat-meta-status {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .acp-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #34D399;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .acp-chat-body {
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .acp-bubble {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    font-family: 'DM Mono', monospace;
+    animation: bubbleIn 0.35s ease both;
+  }
+  .acp-bubble.driver {
+    align-self: flex-end;
+    background: rgba(255,255,255,0.1);
+    border-bottom-right-radius: 4px;
+    color: rgba(255,255,255,0.85);
+  }
+  .acp-bubble.ai {
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+    color: #fff;
+  }
+  .acp-bubble-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    color: rgba(255,255,255,0.4);
+    font-family: 'Poppins', sans-serif;
+  }
+  @keyframes bubbleIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* VOICE INDICATOR */
+  .acp-voice-indicator {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .acp-voice-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 28px;
+  }
+  .acp-voice-bar {
+    width: 4px;
+    border-radius: 2px;
+    background: var(--accent);
+    animation: voiceBar 1.2s ease-in-out infinite;
+    opacity: 0.7;
+  }
+  .acp-voice-bar:nth-child(1) { animation-delay: 0s; height: 40%; }
+  .acp-voice-bar:nth-child(2) { animation-delay: 0.1s; height: 70%; }
+  .acp-voice-bar:nth-child(3) { animation-delay: 0.2s; height: 100%; }
+  .acp-voice-bar:nth-child(4) { animation-delay: 0.3s; height: 60%; }
+  .acp-voice-bar:nth-child(5) { animation-delay: 0.4s; height: 80%; }
+  .acp-voice-bar:nth-child(6) { animation-delay: 0.2s; height: 45%; }
+  @keyframes voiceBar {
+    0%, 100% { transform: scaleY(0.5); opacity: 0.4; }
+    50% { transform: scaleY(1); opacity: 1; }
+  }
+  .acp-voice-text {
+    flex: 1;
+  }
+  .acp-voice-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 2px;
+  }
+  .acp-voice-desc {
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.75);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* CTA BUTTON */
+  .acp-talk-btn {
+    font-family: 'Poppins', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 16px 28px;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    transition: all 0.22s ease;
+    letter-spacing: 0.01em;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+  }
+  .acp-talk-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    filter: brightness(1.1);
+  }
+
+  /* HOW IT WORKS */
+  .acp-how {
+    background: rgba(255,255,255,0.02);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 72px 32px;
+  }
+  .acp-how-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .acp-section-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: ${ORANGE};
+    margin-bottom: 14px;
+  }
+  .acp-section-title {
+    font-size: clamp(26px, 4vw, 40px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 48px;
+    color: #fff;
+  }
+  .acp-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  @media (max-width: 640px) {
+    .acp-steps { grid-template-columns: 1fr; }
+  }
+  .acp-step {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 32px 24px;
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+  }
+  .acp-step-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: ${ORANGE};
+    background: rgba(255,107,0,0.1);
+    border: 1px solid rgba(255,107,0,0.2);
+    border-radius: 8px;
+    padding: 4px 10px;
+    display: inline-block;
+    margin-bottom: 16px;
+    letter-spacing: 0.06em;
+  }
+  .acp-step-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .acp-step-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .acp-step-desc {
+    font-size: 14px;
+    color: rgba(255,255,255,0.5);
+    line-height: 1.6;
+  }
+
+  /* FULL CAST */
+  .acp-cast {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 72px 32px;
+  }
+  .acp-cast-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .acp-cast-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 900px) {
+    .acp-cast-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 500px) {
+    .acp-cast-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  }
+  .acp-cast-card {
+    border-radius: 20px;
+    padding: 24px 20px;
+    cursor: pointer;
+    border: 1.5px solid rgba(255,255,255,0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: all 0.22s ease;
+    position: relative;
+    overflow: hidden;
+    text-align: left;
+    font-family: 'Poppins', sans-serif;
+    background: rgba(255,255,255,0.03);
+  }
+  .acp-cast-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.12;
+    transition: opacity 0.22s;
+  }
+  .acp-cast-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 0 20px -6px var(--accent);
+  }
+  .acp-cast-card:hover::before { opacity: 0.2; }
+  .acp-cast-card-emoji { font-size: 32px; line-height: 1; }
+  .acp-cast-card-name { font-size: 14px; font-weight: 700; color: #fff; line-height: 1.2; }
+  .acp-cast-card-role { font-size: 11px; color: rgba(255,255,255,0.45); }
+  .acp-cast-card-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 100px;
+    border: 1px solid;
+    width: fit-content;
+    margin-top: 4px;
+  }
+
+  /* CTA */
+  .acp-cta {
+    background: linear-gradient(135deg, ${NAVY2} 0%, #0a1f50 100%);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 80px 32px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .acp-cta-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 100%, rgba(255,107,0,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .acp-cta-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+  .acp-emoji-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 32px;
+  }
+  .acp-emoji-row-item {
+    font-size: 36px;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: -8px;
+    transition: transform 0.2s;
+  }
+  .acp-emoji-row-item:first-child { margin-left: 0; }
+  .acp-emoji-row-item:hover { transform: translateY(-6px) scale(1.1); z-index: 2; }
+  .acp-cta-title {
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+    line-height: 1.1;
+  }
+  .acp-cta-sub {
+    font-size: 16px;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 36px;
+    line-height: 1.6;
+  }
+  .acp-cta-btn {
+    font-family: 'Poppins', sans-serif;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 18px 40px;
+    border-radius: 16px;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, ${ORANGE} 0%, #FF8C00 100%);
+    color: #fff;
+    text-decoration: none;
+    transition: all 0.22s ease;
+    box-shadow: 0 4px 24px rgba(255,107,0,0.35);
+    letter-spacing: 0.01em;
+  }
+  .acp-cta-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 40px rgba(255,107,0,0.5);
+    filter: brightness(1.08);
+  }
+
+  /* SCROLL TO TOP */
+  @media (max-width: 480px) {
+    .acp-nav { padding: 0 16px; }
+    .acp-hero { padding: 48px 16px 40px; }
+    .acp-detail-wrap { padding: 40px 16px; }
+    .acp-how { padding: 48px 16px; }
+    .acp-cast { padding: 48px 16px; }
+    .acp-cta { padding: 56px 16px; }
+  }
+`;
+
+export default function AICharactersPage() {
+  const [activeId, setActiveId] = useState("routing-robbie");
+  const [panelKey, setPanelKey] = useState(0);
+  const detailRef = useRef(null);
+  const topRef = useRef(null);
+
+  const activeChar = AI_CHARACTERS.find((c) => c.id === activeId);
+
+  function selectChar(id) {
+    setActiveId(id);
+    setPanelKey((k) => k + 1);
+  }
+
+  function selectAndScroll(id) {
+    selectChar(id);
+    if (topRef.current) {
+      topRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  useEffect(() => {
+    if (detailRef.current && panelKey > 0) {
+      detailRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [panelKey]);
+
+  return (
+    <div className="acp-root">
+      <style>{styles}</style>
+
+      {/* NAV */}
+      <nav className="acp-nav">
+        <div className="acp-nav-left">
+          <img
+            src="/static/truckwithease-icon.png"
+            alt="TruckWithEase"
+            className="acp-nav-logo"
+          />
+          <span className="acp-nav-label">🤖 The Watchdogs</span>
+        </div>
+        <div className="acp-nav-links">
+          <a href="/command" className="acp-nav-link">Command Center</a>
+          <a href="/#pricing" className="acp-nav-link">Pricing</a>
+          <a href="/" className="acp-nav-link back">← Back</a>
+        </div>
+      </nav>
+
+      {/* HERO */}
+      <section className="acp-hero" ref={topRef}>
+        <div className="acp-hero-grid-bg" />
+        <div className="acp-hero-glow" />
+        <div className="acp-hero-content">
+          <div className="acp-hero-eyebrow">
+            <span>🤖</span> Meet The Watchdogs
+          </div>
+          <h1 className="acp-hero-headline">
+            <span>Your AI</span> <em>Co-Pilot Cast.</em>
+          </h1>
+          <p className="acp-hero-sub">
+            Pick your co-pilot, switch anytime. Each one knows everything — but leans into what they're built for.
+          </p>
+
+          {/* SELECTOR GRID */}
+          <div className="acp-selector">
+            {AI_CHARACTERS.map((char) => (
+              <button
+                key={char.id}
+                className={`acp-sel-btn${activeId === char.id ? " active" : ""}`}
+                style={{ "--accent": char.accent }}
+                onClick={() => selectChar(char.id)}
+                aria-pressed={activeId === char.id}
+                aria-label={`Select ${char.name}`}
+              >
+                <span className="acp-sel-emoji">{char.emoji}</span>
+                <span className="acp-sel-name">{char.name}</span>
+                <span className="acp-sel-tagline">{char.tagline}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* DETAIL PANEL */}
+      <div className="acp-detail-wrap" ref={detailRef}>
+        <div
+          key={`${activeId}-${panelKey}`}
+          className="acp-detail-panel"
+          style={{ "--accent": activeChar.accent }}
+        >
+          {/* LEFT: CHARACTER CARD */}
+          <div
+            className="acp-char-card"
+            style={{ background: activeChar.gradient }}
+          >
+            <div className="acp-char-card-inner">
+              <div className="acp-char-top">
+                <span className="acp-char-emoji-wrap">{activeChar.emoji}</span>
+                <span
+                  className="acp-char-badge"
+                  style={{
+                    color: activeChar.badgeColor,
+                    borderColor: activeChar.badgeColor,
+                    background: `${activeChar.badgeColor}18`,
+                  }}
+                >
+                  {activeChar.badge}
+                </span>
+              </div>
+
+              <div>
+                <div className="acp-char-name">{activeChar.name}</div>
+                <div className="acp-char-role">{activeChar.role}</div>
+              </div>
+
+              <div className="acp-char-voice">
+                <span
+                  className="acp-char-voice-dot"
+                  style={{ background: activeChar.accent }}
+                />
+                Voice: {activeChar.voice}
+              </div>
+
+              <p className="acp-char-personality">"{activeChar.personality}"</p>
+
+              <p className="acp-char-desc">{activeChar.desc}</p>
+
+              <div>
+                <div className="acp-powers-title">Core Powers</div>
+                <ul className="acp-powers-list">
+                  {activeChar.powers.map((power, i) => (
+                    <li key={i}>
+                      <span className="acp-power-num">{i + 1}</span>
+                      {power}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="acp-bigrig">
+                <span className="acp-bigrig-icon">🏆</span>
+                <span>{activeChar.rigBucks}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: CHAT + VOICE + CTA */}
+          <div className="acp-right-col">
+            {/* CHAT */}
+            <div className="acp-chat-panel">
+              <div className="acp-chat-header">
+                <div
+                  className="acp-chat-avatar"
+                  style={{ background: activeChar.gradient }}
+                >
+                  {activeChar.emoji}
+                </div>
+                <div>
+                  <div className="acp-chat-meta-name">{activeChar.name}</div>
+                  <div className="acp-chat-meta-status">
+                    <span className="acp-status-dot" />
+                    Live · {activeChar.role}
+                  </div>
+                </div>
+              </div>
+
+              <div className="acp-chat-body">
+                {activeChar.chat.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`acp-bubble ${msg.from}`}
+                    style={{
+                      animationDelay: `${i * 0.12}s`,
+                      ...(msg.from === "ai"
+                        ? { background: `${activeChar.accent}18`, borderLeft: `3px solid ${activeChar.accent}` }
+                        : {}),
+                    }}
+                  >
+                    <div className="acp-bubble-label">
+                      {msg.from === "driver" ? "👤 Driver" : `🤖 ${activeChar.name}`}
+                    </div>
+                    {msg.text}
+                  </div>
+                ))}
+
+                {/* specialty line */}
+                <div
+                  className="acp-bubble ai"
+                  style={{
+                    animationDelay: `${activeChar.chat.length * 0.12}s`,
+                    background: `rgba(255,255,255,0.04)`,
+                    borderLeft: `3px solid rgba(255,255,255,0.15)`,
+                    fontStyle: "italic",
+                    color: "rgba(255,255,255,0.5)",
+                    fontSize: "12px",
+                  }}
+                >
+                  <div className="acp-bubble-label">💬 Specialty</div>
+                  {activeChar.specialty}
+                </div>
+              </div>
+            </div>
+
+            {/* VOICE INDICATOR */}
+            <div
+              className="acp-voice-indicator"
+              style={{ "--accent": activeChar.accent }}
+            >
+              <div className="acp-voice-bars">
+                {[1, 2, 3, 4, 5, 6].map((n) => (
+                  <div
+                    key={n}
+                    className="acp-voice-bar"
+                    style={{ background: activeChar.accent }}
+                  />
+                ))}
+              </div>
+              <div className="acp-voice-text">
+                <div className="acp-voice-label">Voice Style</div>
+                <div className="acp-voice-desc">{activeChar.voice} — ready to talk</div>
+              </div>
+              <span style={{ fontSize: "20px" }}>🎙️</span>
+            </div>
+
+            {/* TALK CTA */}
+            <a
+              href="/#pricing"
+              className="acp-talk-btn"
+              style={{
+                background: `linear-gradient(135deg, ${activeChar.accent}dd 0%, ${activeChar.accent} 100%)`,
+                color: activeChar.accent === "#A3E635" ? "#1a2e05" : "#fff",
+              }}
+            >
+              🚀 Talk to {activeChar.name}
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* HOW IT WORKS */}
+      <section className="acp-how">
+        <div className="acp-how-inner">
+          <div className="acp-section-eyebrow">How It Works</div>
+          <h2 className="acp-section-title">How the Co-Pilot Works</h2>
+          <div className="acp-steps">
+            <div className="acp-step">
+              <span className="acp-step-num">Step 01</span>
+              <span className="acp-step-icon">🎯</span>
+              <div className="acp-step-title">Pick your co-pilot</div>
+              <p className="acp-step-desc">
+                Choose the AI that fits your moment — routing, compliance, money, safety, dispatch, weather, or HR. Switch anytime.
+              </p>
+            </div>
+            <div className="acp-step">
+              <span className="acp-step-num">Step 02</span>
+              <span className="acp-step-icon">🎙️</span>
+              <div className="acp-step-title">Type or talk</div>
+              <p className="acp-step-desc">
+                Ask your question in plain language or tap the mic. No forms, no menus — just a conversation, rolling down the road.
+              </p>
+            </div>
+            <div className="acp-step">
+              <span className="acp-step-num">Step 03</span>
+              <span className="acp-step-icon">⚡</span>
+              <div className="acp-step-title">Get a real answer in full character</div>
+              <p className="acp-step-desc">
+                Your co-pilot responds in their voice, with real data — routes, rates, regs, weather. No fluff, no hedging. Just the answer.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FULL CAST OVERVIEW */}
+      <section className="acp-cast">
+        <div className="acp-cast-header">
+          <div className="acp-section-eyebrow">The Full Lineup</div>
+          <h2 className="acp-section-title">Full Cast Overview</h2>
+        </div>
+        <div className="acp-cast-grid">
+          {AI_CHARACTERS.map((char) => (
+            <div
+              key={char.id}
+              className="acp-cast-card"
+              style={{
+                "--accent": char.accent,
+                borderColor: activeId === char.id ? char.accent : undefined,
+                boxShadow: activeId === char.id ? `0 0 0 1px ${char.accent}, 0 8px 24px rgba(0,0,0,0.3)` : undefined,
+              }}
+              onClick={() => selectAndScroll(char.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && selectAndScroll(char.id)}
+              aria-label={`Select ${char.name}`}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: char.gradient,
+                  opacity: 0.15,
+                  borderRadius: "18px",
+                  pointerEvents: "none",
+                }}
+              />
+              <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div className="acp-cast-card-emoji">{char.emoji}</div>
+                <div className="acp-cast-card-name">{char.name}</div>
+                <div className="acp-cast-card-role">{char.role}</div>
+                <span
+                  className="acp-cast-card-badge"
+                  style={{
+                    color: char.badgeColor,
+                    borderColor: char.badgeColor,
+                    background: `${char.badgeColor}18`,
+                  }}
+                >
+                  {char.badge}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA SECTION */}
+      <section className="acp-cta">
+        <div className="acp-cta-glow" />
+        <div className="acp-cta-inner">
+          <div className="acp-emoji-row">
+            {AI_CHARACTERS.map((char) => (
+              <div key={char.id} className="acp-emoji-row-item" title={char.name}>
+                {char.emoji}
+              </div>
+            ))}
+          </div>
+          <h2 className="acp-cta-title">The Watchdogs are ready.</h2>
+          <p className="acp-cta-sub">
+            Seven specialists, one cockpit. Start your free trial and your whole co-pilot team comes with you on day one.
+          </p>
+          <a href="/#pricing" className="acp-cta-btn">
+            🚀 Start Free Trial
+          </a>
+        </div>
+      </section>
+    </div>
+  );
+}

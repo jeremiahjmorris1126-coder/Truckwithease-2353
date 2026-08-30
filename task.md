@@ -1,31 +1,19 @@
-# De-Quantum sweep — TruckWithEase
-
-Goal: zero occurrences of "quantum" in packages/web/src (product naming, routes, pages, functions).
+# TruckWithEase — build queue
 
 ## Done
-- api/routes/quantum.ts -> intelligence.ts, export `intelligence`, naming block removed,
-  surface ids/names/pages renamed, endpoints -> /api/intelligence/fatigue. Clean.
-- api/index.ts -> imports intelligence, mounts /intelligence. Clean.
-- Page files renamed (git mv):
-  QuantumIntegrationHub.jsx -> IntegrationHubPage.jsx
-  QuantumMindPage.jsx -> FleetMindPage.jsx
-  QuantumNervePage.jsx -> DriverNervePage.jsx
-  QuantumNexusPage.jsx -> DispatchNexusPage.jsx
-  pages/QuantumHOSAnalyticsDashboard.jsx -> pages/HOSAnalyticsDashboard.jsx
-  pages/QuantumFleetIntelligencePage.jsx -> pages/FleetIntelligencePage.jsx
-  pages/QuantumRoutingEngine.jsx -> pages/RoutingEnginePage.jsx
-  pages/QuantumDispatchCore.jsx -> pages/DispatchCorePage.jsx
-  pages/DriverAssistanceQuantumPage.jsx -> pages/DriverAssistancePage.jsx
-- legacy/App.jsx imports + routes updated. Clean.
-  New canonical routes: /routing-engine /dispatch-nexus|/nexus /hos-analytics|/fatigue-analysis
-  /integration-hub /dispatch-core /nerve /mind|/unified /fleet-intelligence|/industry-ai
+- De-Quantum sweep: 0 occurrences in packages/web/src. /api/quantum -> /api/intelligence. 9 pages renamed. Old /quantum-* URLs now 404 by design.
+- Clock Ledger hash-chain persistence (clock_ledger_entries), /api/clock-ledger/chain verifies from genesis.
+- Fleet telecommunications: /api/comms + /comms page. Tables fleet_phone_numbers, sms_conversations, sms_messages.
+- twilio.ts DNS instructions moved from IONOS to Cloudflare.
 
-## In progress
-- Rewrite page bodies: IntegrationHubPage, FleetMindPage, DriverNervePage, DispatchNexusPage,
-  ClockLedgerPage (remove "ON THE WORD QUANTUM" panels, read /api/intelligence).
-- Then sweep remaining ~380 text occurrences in legacy pages/libs/api.
+## Blocked on Jeremiah
+- TWILIO_ACCOUNT_SID in .env is a Google API key (AIzaSy...). Twilio returns 401 "Authentication Error - invalid username" (code 20003). Needs the real AC... SID from console.twilio.com.
+- No A2P 10DLC campaign attached to MG28e60cf43e25de692677cca0c6d9dedc. US SMS will be carrier-filtered. Do NOT auto-file — costs money, triggers vetting.
+- Checkr key pasted earlier returns 401. Needs the Live Secret Key.
+- Inbound SMS only works once the app is on a public https host (webhook -> /api/comms/inbound).
 
-## Then
-- bun run build, curl /api/intelligence, /api/intelligence/fatigue, /api/clock-ledger[/chain]
-- screenshot verify, commit+push
-- Next item after: Twilio fleet phone numbers + in-app messaging (A2P campaign blocker)
+## Next
+1. TruckWithEaseELDPage.jsx (/twe-eld, /eld, /eld-system, /hardware) — still claims FMCSA-REGISTERED, 12-layer engine, 2.4 trillion permutations, 72h violation prediction, Samsara/Motive comparison table. Full honest rewrite or removal. Same for ELDHardwareMarketingPage.jsx and MorrishiveELDRevolutionPage.jsx.
+2. TraxesPage.jsx — remove tax/IFTA filing and "IRS-compliant" claims.
+3. Port STALE_OPEN_HOURS guard from clockledger.ts into intelligence.ts computeClocks.
+4. Update capability index in functions.ts (add Clock Ledger, Fleet Comms, renamed surfaces).
