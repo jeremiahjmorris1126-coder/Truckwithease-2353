@@ -41,12 +41,45 @@
  * 1. No email provider is connected to this project, so TRAXES cannot email a broker. It
  *    creates a real signed link the driver sends. It never says "sent" when nothing sent.
  * 2. Gemini returns no confidence score, so confidence renders as MISSING, not a number.
+ *
+ * ── ADDED 2026-08-30: TRAXES AS THE PLATFORM AI (panels 0 and 7) ─────────────────────
+ *
+ * READS (live, every value in panels 0 and 7 comes from these round trips)
+ *   GET  /api/traxes/brain   REQUIRED for panel 7 — the platform measured server-side on
+ *                            every request: the live Hono route table, sqlite_master plus a
+ *                            real COUNT(*) per table, which credentials are present and
+ *                            whether they parse, the capability registry, the screen list,
+ *                            and the blockers computed from those measurements
+ *   POST /api/traxes/ai      panel 0 — one turn of conversation. TRAXES answers only from
+ *                            what its own read-only tools returned on that turn
+ *
+ * COMPUTES LOCALLY
+ *   The present-credential count (a filter over the booleans /brain returned) and the
+ *   router count (the length of the array it returned). Nothing else — no number in these
+ *   two panels is derived, estimated, averaged or typed into this source.
+ *
+ * REMOVED IN THIS REWRITE
+ *   Nothing. Panels 0 and 7 are additions; the scan pipeline (panels 1–6) is untouched.
+ *   The fabricated content that used to live on this page — TaxClock's Math.random()
+ *   counter and the RESPONSES object of invented financials — was deleted on 2026-08-27
+ *   and is not reintroduced by the AI surface: TRAXES is never handed a description of the
+ *   platform to recite, it reads the platform every turn.
+ *
+ * WHAT THESE PANELS DO NOT CLAIM
+ *   No uptime percentage — /brain returns uptime null with its reason, because nothing here
+ *   measures availability over time. No AI accuracy or confidence score; the model returns
+ *   none. TRAXES has no write tool by design, so it never claims to have fixed anything —
+ *   it names the endpoint and payload and a human applies it. Every answer prints the tools
+ *   that actually ran, and an answer produced with no tool call says so. Credential values
+ *   are never rendered, only presence and whether the shape parses. Support is the staffed
+ *   line at 636-706-8338, not 24/7. TruckWithEase is not an ELD, is not registered with
+ *   FMCSA, and files nothing with any agency.
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Receipt, AlertTriangle, Loader2, RefreshCw, Camera, Upload, Send, Link2,
-  FileSpreadsheet, Building2, CheckCircle2, Trash2, Inbox,
+  FileSpreadsheet, Building2, CheckCircle2, Trash2, Inbox, Cpu, Search,
 } from "lucide-react";
 
 const GOLD = "#C9A84C";
@@ -232,6 +265,55 @@ export default function TraxesPage() {
   const [saveMsg, setSaveMsg] = useState(null);
   const [sendState, setSendState] = useState({ id: null, busy: false, error: null, link: null, note: null });
   const fileRef = useRef(null);
+
+  /** The platform-AI surface. Nothing here is typed into the source: /brain is measured
+   *  server-side every request and /ai answers only from what its own read tools returned. */
+  const [brain, setBrain] = useState({ state: "loading", data: null, error: null });
+  const [chat, setChat] = useState({ messages: [], input: "", busy: false, error: null });
+
+  const loadBrain = useCallback(async () => {
+    setBrain((b) => ({ ...b, state: "loading" }));
+    try {
+      setBrain({ state: "ok", data: await getJSON("/api/traxes/brain"), error: null });
+    } catch (e) {
+      setBrain({ state: "error", data: null, error: e.message });
+    }
+  }, []);
+
+  useEffect(() => { loadBrain(); }, [loadBrain]);
+
+  const askTraxes = async (text) => {
+    const q = (text || "").trim();
+    if (!q || chat.busy) return;
+    const next = [...chat.messages, { role: "user", content: q }];
+    setChat({ messages: next, input: "", busy: true, error: null });
+    try {
+      const out = await postJSON("/api/traxes/ai", {
+        messages: next.map((m) => ({ role: m.role, content: m.content })),
+        driverId: driverId || undefined,
+      });
+      setChat({
+        messages: [
+          ...next,
+          {
+            role: "assistant",
+            content: out.text,
+            live: out.live,
+            reason: out.reason,
+            note: out.note,
+            model: out.model,
+            steps: out.steps,
+            toolCalls: out.toolCalls || [],
+          },
+        ],
+        input: "",
+        busy: false,
+        error: null,
+      });
+    } catch (e) {
+      setChat({ messages: next, input: "", busy: false, error: e.message });
+    }
+  };
 
   const loadStatus = useCallback(async () => {
     setStatus((s) => ({ ...s, state: "loading" }));
@@ -456,6 +538,102 @@ export default function TraxesPage() {
       </div>
 
       <div style={{ padding: "30px 5% 70px" }}>
+
+        {/* ---------- 0 · ask TRAXES ---------- */}
+        <Panel
+          title="0 · Ask TRAXES anything about this platform"
+          icon={Cpu}
+          note="POST /api/traxes/ai — TRAXES answers from its own read-only tools (platformMap, findCapability, readEndpoint, inspectTable, envCheck, diagnose, traxesRecords). It has no write tool: it names the fix, a human applies it."
+          right={
+            brain.state === "ok" ? (
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: brain.data.ai.live ? GOLD : WARN }}>
+                {brain.data.ai.live ? brain.data.ai.model : "AI OFFLINE"}
+              </span>
+            ) : null
+          }
+        >
+          {brain.state === "ok" && !brain.data.ai.live ? (
+            <div style={{ marginBottom: 16 }}>
+              <Missing label="No model is reachable from this server" reason={brain.data.ai.reason} />
+            </div>
+          ) : null}
+
+          {chat.messages.length === 0 ? (
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.65, margin: "0 0 12px" }}>
+                TRAXES is not told what this platform contains — it reads the live route table, the live database
+                tables and which credentials are present, on every question. Ask it where a feature lives, why
+                something is not working, or what is blocking a launch. Every answer lists the tools it actually ran.
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {[
+                  "What is blocking this platform right now?",
+                  "Is SMS working?",
+                  "Where does hours-of-service live — endpoints, tables, page?",
+                  "Which database tables are still empty?",
+                ].map((q) => (
+                  <button key={q} onClick={() => askTraxes(q)} disabled={chat.busy} style={{ ...btn(false), fontSize: 11, textTransform: "none", letterSpacing: "0.04em", fontFamily: "'Inter', sans-serif" }}>
+                    <Search size={12} /> {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {chat.messages.map((m, i) => (
+            <div
+              key={i}
+              style={{
+                border: `1px solid ${m.role === "user" ? BORDER : "#2a2618"}`,
+                background: m.role === "user" ? "#101010" : "#131210",
+                borderRadius: 8,
+                padding: 14,
+                marginBottom: 12,
+              }}
+            >
+              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 10.5, letterSpacing: "0.2em", color: m.role === "user" ? MUTED : GOLD, textTransform: "uppercase", marginBottom: 8 }}>
+                {m.role === "user" ? "You" : "TRAXES"}
+              </div>
+              <div style={{ color: "#e2e2e2", fontSize: 13.5, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{m.content}</div>
+              {m.role === "assistant" ? (
+                <div style={{ marginTop: 12, borderTop: `1px solid #1e1e1e`, paddingTop: 10 }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: DIM, lineHeight: 1.7 }}>
+                    evidence · {m.toolCalls && m.toolCalls.length ? m.toolCalls.join(" → ") : "no tool ran — this answer is unverified"}
+                  </div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: DIM, marginTop: 3 }}>
+                    {m.model} · {m.steps} step{m.steps === 1 ? "" : "s"}
+                    {m.live ? "" : ` · NOT LIVE: ${m.reason}`}
+                  </div>
+                  {m.note ? (
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: WARN, marginTop: 3 }}>{m.note}</div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ))}
+
+          {chat.busy ? (
+            <div style={{ color: GOLD, fontSize: 13, display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+              <Loader2 size={15} className="spin" /> TRAXES is reading the platform…
+            </div>
+          ) : null}
+          {chat.error ? <div style={{ marginBottom: 12 }}><Missing label="TRAXES did not answer" reason={chat.error} /></div> : null}
+
+          <form
+            onSubmit={(e) => { e.preventDefault(); askTraxes(chat.input); }}
+            style={{ display: "flex", gap: 10, flexWrap: "wrap" }}
+          >
+            <input
+              value={chat.input}
+              onChange={(e) => setChat((c) => ({ ...c, input: e.target.value }))}
+              placeholder="Ask TRAXES about any part of this platform…"
+              style={{ ...inputCls, flex: "1 1 320px", width: "auto" }}
+            />
+            <button type="submit" disabled={chat.busy || !chat.input.trim()} style={{ ...btn(true), opacity: chat.busy || !chat.input.trim() ? 0.5 : 1 }}>
+              <Send size={14} /> Ask
+            </button>
+          </form>
+        </Panel>
 
         {/* ---------- 1 · scan ---------- */}
         <Panel
@@ -789,6 +967,96 @@ export default function TraxesPage() {
               only accepting it when both agree would cut the number of rows a driver has to correct by hand.
             </li>
           </ol>
+        </Panel>
+
+        {/* ---------- 7 · what TRAXES can see ---------- */}
+        <Panel
+          title="7 · What TRAXES can see"
+          icon={Search}
+          note="GET /api/traxes/brain — measured server-side on every request from the live Hono route table, sqlite_master + COUNT(*), and which credentials are present. Published so you can audit what TRAXES knows before you trust an answer."
+          right={
+            <button onClick={loadBrain} style={btn(false)}>
+              <RefreshCw size={14} className={brain.state === "loading" ? "spin" : ""} /> Re-measure
+            </button>
+          }
+        >
+          {brain.state === "loading" ? (
+            <div style={{ color: MUTED, fontSize: 13, display: "flex", gap: 8, alignItems: "center" }}>
+              <Loader2 size={15} className="spin" /> Measuring the platform…
+            </div>
+          ) : brain.state === "error" ? (
+            <Missing label="/api/traxes/brain did not answer" reason={brain.error} />
+          ) : (
+            <>
+              <div style={{ display: "flex", gap: 40, flexWrap: "wrap", marginBottom: 22 }}>
+                <Stat value={brain.data.api.totalRoutes} label="Live API routes" />
+                <Stat value={brain.data.api.routers.length} label="Routers" />
+                <Stat value={brain.data.database.totalTables} label="Database tables" />
+                <Stat value={brain.data.capabilities.total} label="Capabilities indexed" />
+                <Stat value={brain.data.screens.total} label="Screens in the router" />
+                <Stat
+                  value={`${brain.data.credentials.filter((c) => c.present).length}/${brain.data.credentials.length}`}
+                  label="Credentials present"
+                />
+              </div>
+
+              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 12, letterSpacing: "0.2em", color: "#efefef", textTransform: "uppercase", marginBottom: 10 }}>
+                {brain.data.blockers.length === 0 ? "No blockers measured" : `${brain.data.blockers.length} blocker${brain.data.blockers.length === 1 ? "" : "s"} it found on its own`}
+              </div>
+
+              {brain.data.blockers.length === 0 ? (
+                <div style={{ color: MUTED, fontSize: 13, display: "flex", gap: 8, alignItems: "center" }}>
+                  <CheckCircle2 size={15} color={GOLD} /> Every credential parses, no core table is empty, and no read failed at the time of this measurement.
+                </div>
+              ) : (
+                brain.data.blockers.map((b) => (
+                  <div
+                    key={b.id}
+                    style={{
+                      border: `1px solid ${b.severity === "blocking" ? "#3a2a22" : BORDER}`,
+                      borderLeft: `3px solid ${b.severity === "blocking" ? WARN : b.severity === "degraded" ? GOLD : "#333"}`,
+                      borderRadius: 8,
+                      padding: 14,
+                      marginBottom: 10,
+                      background: "#121212",
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", marginBottom: 6 }}>
+                      <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: 10.5, letterSpacing: "0.2em", textTransform: "uppercase", color: b.severity === "blocking" ? WARN : GOLD }}>
+                        {b.severity}
+                      </span>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: DIM }}>{b.id}</span>
+                      <span style={{ marginLeft: "auto", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: DIM }}>owner · {b.owner}</span>
+                    </div>
+                    <div style={{ color: "#e2e2e2", fontSize: 13.5, lineHeight: 1.65 }}>{b.what}</div>
+                    <div style={{ color: MUTED, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}>
+                      <strong style={{ color: "#bbb" }}>Evidence:</strong> {b.evidence}
+                    </div>
+                    <div style={{ color: MUTED, fontSize: 12.5, lineHeight: 1.6, marginTop: 4 }}>
+                      <strong style={{ color: "#bbb" }}>Fix:</strong> {b.fix}
+                    </div>
+                  </div>
+                ))
+              )}
+
+              <div style={{ marginTop: 18 }}>
+                <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 12, letterSpacing: "0.2em", color: "#efefef", textTransform: "uppercase", marginBottom: 10 }}>
+                  Where the numbers above came from
+                </div>
+                {brain.data.reads.map((r) => (
+                  <Row key={r} k={r} v="" mono />
+                ))}
+                <Row k="Measured at" v={brain.data.builtAt} mono tone="gold" />
+              </div>
+
+              <p style={{ color: DIM, fontSize: 12, lineHeight: 1.6, marginTop: 18 }}>
+                TRAXES has no write tool. It can read the route table, run parameter-free GET endpoints, inspect table
+                shapes and row counts, and check whether a credential is present and correctly shaped — nothing more. When
+                the fix is a change, it names the endpoint and the payload and a human applies it. Credential values are
+                never read into an answer, only whether they exist and whether they parse.
+              </p>
+            </>
+          )}
         </Panel>
 
         <p style={{ color: DIM, fontSize: 12, lineHeight: 1.7, maxWidth: 940 }}>

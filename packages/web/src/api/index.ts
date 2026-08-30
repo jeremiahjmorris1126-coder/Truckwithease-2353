@@ -46,6 +46,7 @@ import { algorithm } from "./routes/algorithm";
 import { intelligence } from "./routes/intelligence";
 import { clockLedger } from "./routes/clockledger";
 import { traxes } from "./routes/traxes";
+import { traxesAI } from "./routes/traxes-ai";
 import { integrations } from "./routes/integrations";
 import { email } from "./routes/email";
 import { fleetio } from "./routes/fleetio";
@@ -122,7 +123,10 @@ const app = new Hono()
   .route("/haptic", hapticRoute)
   // The function index reads the app's OWN registered route table at request time. It cannot
   // import `app` (circular), so it takes a getter that is resolved lazily, after construction.
-  .route("/functions", functionsIndex(() => app.routes as { method: string; path: string }[]));
+  .route("/functions", functionsIndex(() => app.routes as { method: string; path: string }[]))
+  // TRAXES as the platform's AI. Same lazy-getter contract as the function index: it reads the
+  // app's own live route table so it can never describe an endpoint that is not mounted.
+  .route("/traxes", traxesAI(() => app.routes as { method: string; path: string }[]));
 
 export type AppType = typeof app;
 export default app;

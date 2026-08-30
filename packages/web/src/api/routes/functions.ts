@@ -65,7 +65,7 @@ type World = (typeof WORLDS)[number];
 type Discipline = (typeof DISCIPLINES)[number];
 type Kind = (typeof KINDS)[number];
 
-type Cap = {
+export type Cap = {
   id: string;
   name: string;
   domain: string;
@@ -98,7 +98,7 @@ type Cap = {
  * re-checked at request time in the `duplicates` block.
  * ------------------------------------------------------------------------- */
 
-const CAPS: Cap[] = [
+export const CAPS: Cap[] = [
   /* ---------------- Compliance (truck world, federal rules) ---------------- */
   {
     id: "hos-clocks",
@@ -400,6 +400,21 @@ const CAPS: Cap[] = [
     envKeys: ["AI_GATEWAY_API_KEY"],
     trust:
       "A language model answers over tool results, and the model returns no confidence value. Every number it quotes comes from a tool call against these tables; when a table is empty it must say so instead of estimating.",
+  },
+  {
+    id: "traxes-platform-ai",
+    pages: ["/traxes"],
+    name: "TRAXES platform intelligence",
+    domain: "AI",
+    what: "Answers any question about this platform by reading it live — the Hono route table, the database tables and their real row counts, which credentials are present and whether they parse, this capability index, and the screen list — then names the exact blocker and the exact fix.",
+    kind: "ai",
+    disciplines: ["programmer", "webdev"],
+    worlds: ["truck", "car", "bike"],
+    endpoints: ["/api/traxes"],
+    tables: ["traxes_records"],
+    envKeys: ["AI_GATEWAY_API_KEY", "AI_GATEWAY_BASE_URL", "GEMINI_API_KEY"],
+    trust:
+      "TRAXES is never handed a written description of the platform to recite; it re-measures the platform on every request, so it cannot describe a feature that no longer exists. The model returns no confidence score, so none is shown. It has no write tool by design — no INSERT, UPDATE or DELETE exists for it, and endpoint reads are limited to parameter-free GET routes taken from the live route table — so when the fix is a change it names the endpoint and payload for a human to apply. GET /api/traxes/brain publishes exactly what TRAXES can see, so any answer can be audited before it is trusted. Credential values are never read into an answer, only presence and shape.",
   },
   {
     id: "fuel-prices",
@@ -1113,7 +1128,7 @@ const APP_JSX_CANDIDATES = [
 
 let screenCache: { paths: string[]; source: string | null; error: string | null } | null = null;
 
-function appScreens(): { paths: string[]; source: string | null; error: string | null } {
+export function appScreens(): { paths: string[]; source: string | null; error: string | null } {
   if (screenCache) return screenCache;
   let lastErr = "no candidate path was readable";
   for (const rel of APP_JSX_CANDIDATES) {
@@ -1133,7 +1148,7 @@ function appScreens(): { paths: string[]; source: string | null; error: string |
   return screenCache;
 }
 
-const envPresent = (k: string) => {
+export const envPresent = (k: string) => {
   const v = process.env[k];
   return typeof v === "string" && v.replace(/"/g, "").trim().length > 0;
 };
