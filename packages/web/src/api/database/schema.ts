@@ -1343,6 +1343,11 @@ export const sealedMessages = sqliteTable("sealed_messages", {
   payloadHash: text("payload_hash").notNull(),
   prevHash: text("prev_hash").notNull(),
   chainHash: text("chain_hash").notNull(),
+  // A seal is never edited. When a message was sealed with a null clock and the
+  // driver's phone is linked later, a NEW row is appended that carries the clock
+  // and points back at the original. Both rows stay in the chain forever.
+  supersedesSealedId: text("supersedes_sealed_id"),
+  sealReason: text("seal_reason"),                          // first_seal, clock_resolved_after_phone_link
   sealedAt: integer("sealed_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });
 

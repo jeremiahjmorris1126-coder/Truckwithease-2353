@@ -13,6 +13,11 @@
  *                                          verdict from the driver's live clock. Sends nothing.
  *   POST /api/clock-ledger/open-intervals/close  on click — closes one stale row at the start of
  *                                          the driver's next interval and logs an audit row.
+ *   GET  /api/sealed-line/coverage        optional — per-driver phone/hos_logs coverage: whether a
+ *                                          clock can be attached to that driver's messages at all
+ *   POST /api/sealed-line/link-driver     on submit — writes a normalized +1XXXXXXXXXX to a driver
+ *   POST /api/sealed-line/reseal-unresolved  on click — APPENDS clock-carrying seals for messages
+ *                                          sealed earlier with a null clock. Edits nothing.
  *
  * COMPUTES LOCALLY
  *   Round-trip latency per read (timedGet), flagged at >= 3000 ms. Nothing else. Every hash,
@@ -26,7 +31,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Hash, Link2, MessageSquare, ShieldAlert, Wrench } from "lucide-react";
+import { Hash, Link2, MessageSquare, Phone, ShieldAlert, Wrench } from "lucide-react";
 import {
   C, GOLD, GOLDB, WARN, FB, FD, FH, FM,
   timedGet, Panel, Missing, Tag, Stat, Btn, GhostBtn, Err, Spin, Header, Reads, Disclaimer,
@@ -65,6 +70,11 @@ export default function SealedLinePage() {
   const [ask, setAsk] = useState("can you take 400 more miles and be there by 6?");
   const [driverId, setDriverId] = useState("drv-1");
   const [answer, setAnswer] = useState(null);
+  const [cov, setCov] = useState(null);
+  const [linkDriverId, setLinkDriverId] = useState("");
+  const [linkPhone, setLinkPhone] = useState("");
+  const [linkResult, setLinkResult] = useState(null);
+  const [resealResult, setResealResult] = useState(null);
   const alive = useRef(false);
 
   const load = useCallback(async () => {
@@ -80,11 +90,13 @@ export default function SealedLinePage() {
       const opt = await Promise.allSettled([
         timedGet("/api/sealed-line/chain"),
         timedGet("/api/clock-ledger/open-intervals"),
+        timedGet("/api/sealed-line/coverage"),
       ]);
       if (!alive.current) return;
-      const [chainR, openR] = opt;
+      const [chainR, openR, covR] = opt;
       if (chainR.status === "fulfilled") { collected.push(chainR.value); setChain(chainR.value.body); }
       if (openR.status === "fulfilled") { collected.push(openR.value); setOpen(openR.value.body); }
+      if (covR.status === "fulfilled") { collected.push(covR.value); setCov(covR.value.body); }
 
       setReads(collected);
       setState("ok");
@@ -114,6 +126,24 @@ export default function SealedLinePage() {
     setBusy(`close:${rowId}`);
     const r = await post("/api/clock-ledger/open-intervals/close", { rowId, actor: "web:/sealed-line" });
     setCloseResult(r);
+    setReads((prev) => [...prev, r]);
+    setBusy(null);
+    await load();
+  };
+
+  const doLink = async () => {
+    setBusy("link");
+    const r = await post("/api/sealed-line/link-driver", { driverId: linkDriverId.trim(), phone: linkPhone.trim() });
+    setLinkResult(r);
+    setReads((prev) => [...prev, r]);
+    setBusy(null);
+    await load();
+  };
+
+  const doReseal = async () => {
+    setBusy("reseal");
+    const r = await post("/api/sealed-line/reseal-unresolved", {});
+    setResealResult(r);
     setReads((prev) => [...prev, r]);
     setBusy(null);
     await load();
@@ -277,6 +307,7 @@ export default function SealedLinePage() {
                     <th style={th}>Duty status</th>
                     <th style={{ ...th, textAlign: "right" }}>Driving left</th>
                     <th style={{ ...th, textAlign: "right" }}>Window left</th>
+                    <th style={th}>Seal</th>
                     <th style={th}>Chain hash</th>
                   </tr>
                 </thead>
@@ -290,6 +321,11 @@ export default function SealedLinePage() {
                       <td style={td}>{e.dutyStatusAtMessage || "—"}</td>
                       <td style={tdNum}>{hrsOf(e.drivingRemainingMin)}</td>
                       <td style={tdNum}>{hrsOf(e.windowRemainingMin)}</td>
+                      <td style={{ ...td, fontFamily: FM, fontSize: 11 }}>
+                        {e.supersedesSealedId
+                          ? <span style={{ color: GOLDB }}>clock added later — supersedes {e.supersedesSealedId}</span>
+                          : <span style={{ color: C.muted }}>{e.sealReason || "first seal"}</span>}
+                      </td>
                       <td style={{ ...td, fontFamily: FM, fontSize: 11.5, color: C.muted }}>{short(e.chainHash)}</td>
                     </tr>
                   ))}
@@ -303,6 +339,115 @@ export default function SealedLinePage() {
               {chain.entries.filter((e) => !e.clockResolved)[0].clockUnresolvedReason}
             </div>
           ) : null}
+        </Panel>
+
+        <Panel
+          title="Driver ↔ fleet number coverage"
+          icon={<Phone size={15} />}
+          note={cov?.howMatchingWorks}
+          right={<GhostBtn onClick={doReseal}>{busy === "reseal" ? "Appending…" : "Append clocks to unresolved seals"}</GhostBtn>}
+        >
+          {!cov ? (
+            <Missing label="COVERAGE READ DID NOT RETURN" reason="GET /api/sealed-line/coverage was not answered on this load." />
+          ) : (
+            <>
+              <div style={grid(200)}>
+                <Stat label="Drivers a clock can be read for" value={`${num(cov.driversClockReadable)} / ${num(cov.drivers)}`} sub="needs a usable phone AND at least one hos_logs row" />
+                <Stat label="Without a usable phone" value={num(cov.driversWithoutUsablePhone)} tone={cov.driversWithoutUsablePhone ? "warn" : "gold"} sub="no phone match = sealed body, null clock" />
+                <Stat label="Messages matched to a driver" value={`${num(cov.messagesMatchedToADriver)} / ${num(cov.messages)}`} tone={cov.messagesMatchedToADriver < cov.messages ? "warn" : "gold"} sub="matched on the last 10 digits of either end" />
+                <Stat label="Sealed rows with no clock" value={num(cov.sealedRowsWithoutAClock)} tone={cov.sealedRowsWithoutAClock ? "warn" : "gold"} sub="fixable by linking the number, then appending" />
+              </div>
+
+              <div style={{ overflowX: "auto", marginTop: 16 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th style={th}>Driver</th>
+                      <th style={th}>Phone stored</th>
+                      <th style={th}>Normalized</th>
+                      <th style={{ ...th, textAlign: "right" }}>hos_logs rows</th>
+                      <th style={{ ...th, textAlign: "right" }}>Messages matched</th>
+                      <th style={th}>Clock readable</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(cov.rows || []).map((r) => (
+                      <tr key={r.driverId}>
+                        <td style={td}>{r.driverName} <span style={{ fontFamily: FM, fontSize: 11, color: C.dim }}>{r.driverId}</span></td>
+                        <td style={{ ...td, fontFamily: FM, fontSize: 12 }}>{r.phoneStored || <span style={{ color: WARN }}>none</span>}</td>
+                        <td style={{ ...td, fontFamily: FM, fontSize: 12 }}>{r.phoneNormalized || <span style={{ color: WARN }}>{r.phoneProblem}</span>}</td>
+                        <td style={tdNum}>{num(r.hosLogRows)}</td>
+                        <td style={tdNum}>{num(r.messagesMatched)}</td>
+                        <td style={td}>{r.clockReadable ? <Tag>yes</Tag> : <Tag tone="warn">{r.blocks[0] || "no"}</Tag>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {Array.isArray(cov.unmatchedNumbers) && cov.unmatchedNumbers.length > 0 ? (
+                <div style={{ marginTop: 18 }}>
+                  <div style={{ fontFamily: FM, fontSize: 10.5, letterSpacing: "0.14em", textTransform: "uppercase", color: C.muted, marginBottom: 10 }}>
+                    Numbers on messages that match no driver
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {cov.unmatchedNumbers.map((u) => (
+                      <button
+                        key={u.last10}
+                        type="button"
+                        onClick={() => setLinkPhone(u.number)}
+                        style={{ fontFamily: FM, fontSize: 12, color: C.white, background: C.black, border: `1px solid ${C.border}`, borderRadius: 3, padding: "8px 12px", cursor: "pointer" }}
+                      >
+                        {u.number} · {u.messages} msg · {u.directionsSeen.join("/")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div style={{ marginTop: 18, borderTop: `1px solid ${C.border}`, paddingTop: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <input
+                  value={linkDriverId}
+                  onChange={(e) => setLinkDriverId(e.target.value)}
+                  placeholder="driverId"
+                  style={{ fontFamily: FM, fontSize: 12.5, background: C.black, color: C.white, border: `1px solid ${C.border}`, borderRadius: 3, padding: "10px 12px", width: 130 }}
+                />
+                <input
+                  value={linkPhone}
+                  onChange={(e) => setLinkPhone(e.target.value)}
+                  placeholder="phone — 10 digits US"
+                  style={{ fontFamily: FM, fontSize: 12.5, background: C.black, color: C.white, border: `1px solid ${C.border}`, borderRadius: 3, padding: "10px 12px", width: 210 }}
+                />
+                <Btn onClick={doLink} disabled={busy === "link" || !linkDriverId.trim() || !linkPhone.trim()}>{busy === "link" ? "Linking…" : "Link number to driver"}</Btn>
+              </div>
+
+              {linkResult ? (
+                <div style={{ marginTop: 14, border: `1px solid ${linkResult.ok ? C.border : `${WARN}55`}`, borderRadius: 4, padding: 14, fontFamily: FM, fontSize: 12, color: C.muted, lineHeight: 1.8 }}>
+                  POST /link-driver → HTTP {linkResult.status} · {linkResult.ms} ms<br />
+                  {linkResult.ok
+                    ? <>{linkResult.body?.driverName}: {linkResult.body?.phoneBefore || "none"} → {linkResult.body?.phoneAfter} · {num(linkResult.body?.hosLogRows)} hos_logs rows<br />{linkResult.body?.note}</>
+                    : <span style={{ color: WARN }}>{linkResult.body?.reason}: {linkResult.body?.detail || ""}</span>}
+                </div>
+              ) : null}
+
+              {resealResult ? (
+                <div style={{ marginTop: 14, border: `1px solid ${C.border}`, borderRadius: 4, padding: 14, fontFamily: FM, fontSize: 12, color: C.muted, lineHeight: 1.8 }}>
+                  POST /reseal-unresolved → HTTP {resealResult.status} · {resealResult.ms} ms<br />
+                  appended {num(resealResult.body?.appendedCount)} · skipped {num(resealResult.body?.skippedCount)} · head seq {num(resealResult.body?.headSeq)}<br />
+                  {resealResult.body?.appendOnly}
+                  {Array.isArray(resealResult.body?.skipped) && resealResult.body.skipped.length > 0 ? (
+                    <><br />{resealResult.body.skipped.map((s2) => `${s2.messageId}: ${s2.reason}`).join(" · ")}</>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {Array.isArray(cov.notClaimed) ? (
+                <ul style={{ margin: "16px 0 0", paddingLeft: 20, fontFamily: FB, fontSize: 12.5, color: C.dim, lineHeight: 1.9 }}>
+                  {cov.notClaimed.map((t, i) => <li key={i}>{t}</li>)}
+                </ul>
+              ) : null}
+            </>
+          )}
         </Panel>
 
         <Panel

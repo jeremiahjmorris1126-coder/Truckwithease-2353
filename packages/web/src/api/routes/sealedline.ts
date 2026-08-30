@@ -7,8 +7,11 @@ import { clockSnapshotAt } from "../lib/dutyclock";
 import {
   ASSUMED_AVG_MPH,
   GENESIS,
+  linkDriverPhone,
   linkHash,
   payloadHashFor,
+  phoneCoverage,
+  resealResolvable,
   sealPending,
   sha256,
   verdictFor,
@@ -164,6 +167,62 @@ export const sealedLine = new Hono()
           out.sealed.length === 0
             ? "Nothing to seal — every message in the database is already sealed."
             : `${out.sealed.length} message(s) sealed. ${out.sealed.filter((s) => s.clockResolved).length} carried a resolved duty clock; the rest are sealed with null clock fields and a stated reason rather than a fabricated clock.`,
+        verifyAt: "/api/sealed-line/chain",
+        measuredMs: Date.now() - t0,
+      },
+      200,
+    );
+  })
+
+  /**
+   * Driver <-> fleet number coverage. A seal only carries clock proof when one
+   * end of the message matches drivers.phone, so the gap is measured here.
+   */
+  .get("/coverage", async (c) => {
+    const t0 = Date.now();
+    await ensureSeed();
+    const cov = await phoneCoverage();
+    return c.json({ ...cov, measuredMs: Date.now() - t0, generatedAt: new Date().toISOString() }, 200);
+  })
+
+  /** Write a normalized +1XXXXXXXXXX onto a driver record. */
+  .post("/link-driver", async (c) => {
+    const body = await c.req.json().catch(() => ({}) as Record<string, unknown>);
+    const driverId = typeof body.driverId === "string" ? body.driverId.trim() : "";
+    if (!driverId) return c.json({ error: "driverId is required" }, 400);
+
+    const out = await linkDriverPhone(driverId, body.phone);
+    if (!out.ok) {
+      const status = out.reason === "unknown_driver" ? 404 : out.reason === "number_already_linked" ? 409 : 422;
+      return c.json(out, status);
+    }
+    return c.json(
+      {
+        ...out,
+        nextStep: "POST /api/sealed-line/reseal-unresolved appends clock-carrying seals for this driver's already-sealed messages. No existing seal is edited.",
+      },
+      200,
+    );
+  })
+
+  /**
+   * Append-only correction pass: messages sealed with a null clock that now
+   * resolve to a driver get a NEW seal carrying the clock recomputed as of the
+   * original message timestamp. Earlier rows are never touched.
+   */
+  .post("/reseal-unresolved", async (c) => {
+    const t0 = Date.now();
+    const out = await resealResolvable();
+    return c.json(
+      {
+        appendedCount: out.appended.length,
+        skippedCount: out.skipped.length,
+        candidatesScanned: out.candidatesScanned,
+        headSeq: out.headSeq,
+        headHash: out.headHash,
+        appended: out.appended,
+        skipped: out.skipped,
+        appendOnly: out.appendOnly,
         verifyAt: "/api/sealed-line/chain",
         measuredMs: Date.now() - t0,
       },

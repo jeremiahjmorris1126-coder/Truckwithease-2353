@@ -35,7 +35,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 export const ASSUMED_AVG_MPH = 55;
 
 /** Last 10 digits — how a fleet number is matched to drivers.phone. */
-const digits10 = (raw: unknown) => {
+export const digits10 = (raw: unknown) => {
   const d = typeof raw === "string" ? raw.replace(/\D/g, "") : "";
   return d.length >= 10 ? d.slice(-10) : "";
 };
@@ -74,7 +74,7 @@ export function payloadHashFor(row: {
 export const linkHash = (payloadHash: string, prevHash: string) => sha256(payloadHash + prevHash);
 
 /** Which driver, if any, is on either end of this message. */
-function resolveDriver(
+export function resolveDriver(
   msg: typeof schema.smsMessages.$inferSelect,
   drivers: (typeof schema.drivers.$inferSelect)[],
 ) {
@@ -193,6 +193,7 @@ export async function sealPending(limit = 500): Promise<{
       payloadHash,
       prevHash: head,
       chainHash,
+      sealReason: "first_seal",
     });
 
     head = chainHash;
@@ -429,5 +430,329 @@ export function verdictFor(
     parsed,
     snapshot,
     assumptions,
+  };
+}
+
+/* ============================================================
+ * DRIVER  <->  FLEET NUMBER RESOLUTION
+ * ============================================================
+ * A seal only carries a duty clock when one end of the message matches a phone
+ * number on the drivers table. That match is the whole difference between a
+ * sealed body and a sealed body WITH clock proof, so the coverage gap is
+ * measured and reported instead of being left to guesswork.
+ */
+
+export type PhoneNormalizeResult =
+  | { ok: true; e164: string; last10: string; changed: boolean }
+  | { ok: false; reason: string };
+
+/**
+ * US/NANP normalization to E.164. Deliberately narrow: 10 digits, or 11 digits
+ * starting with 1. Anything else is refused rather than guessed at, because a
+ * wrong number silently attaches one driver's clock to another driver's message.
+ */
+export function normalizePhone(raw: unknown): PhoneNormalizeResult {
+  const input = typeof raw === "string" ? raw.trim() : "";
+  if (!input) return { ok: false, reason: "empty" };
+  const d = input.replace(/\D/g, "");
+  let ten = "";
+  if (d.length === 10) ten = d;
+  else if (d.length === 11 && d.startsWith("1")) ten = d.slice(1);
+  else
+    return {
+      ok: false,
+      reason: `"${input}" has ${d.length} digits. Only a 10-digit US number, or 11 digits starting with 1, is accepted — the number is never guessed at.`,
+    };
+  if (ten.startsWith("0") || ten.startsWith("1"))
+    return { ok: false, reason: `"${input}" is not a valid NANP number: the area code cannot start with 0 or 1.` };
+  return { ok: true, e164: `+1${ten}`, last10: ten, changed: input !== `+1${ten}` };
+}
+
+export type CoverageRow = {
+  driverId: string;
+  driverName: string;
+  phoneStored: string | null;
+  phoneNormalized: string | null;
+  phoneUsable: boolean;
+  phoneProblem: string | null;
+  hosLogRows: number;
+  messagesMatched: number;
+  clockReadable: boolean;
+  blocks: string[];
+};
+
+export type UnmatchedNumber = {
+  number: string;
+  last10: string;
+  messages: number;
+  directionsSeen: string[];
+  firstSeenIso: string | null;
+  lastSeenIso: string | null;
+};
+
+/**
+ * Measured, per-driver: is a duty clock attachable to this driver's messages at
+ * all, and if not, exactly which of the two preconditions is missing.
+ */
+export async function phoneCoverage() {
+  const [drivers, messages, hosLogs, sealed] = await Promise.all([
+    db.select().from(schema.drivers),
+    db.select().from(schema.smsMessages).orderBy(asc(schema.smsMessages.createdAt)),
+    db.select().from(schema.hosLogs),
+    db.select().from(schema.sealedMessages),
+  ]);
+
+  const logCount = new Map<string, number>();
+  for (const l of hosLogs) logCount.set(l.driverId, (logCount.get(l.driverId) ?? 0) + 1);
+
+  const byLast10 = new Map<string, string>(); // last10 -> driverId
+  for (const d of drivers) {
+    const p = digits10(d.phone);
+    if (p) byLast10.set(p, d.id);
+  }
+
+  const msgCountByDriver = new Map<string, number>();
+  const unmatched = new Map<string, UnmatchedNumber>();
+  for (const m of messages) {
+    const ends: Array<{ raw: string; last10: string }> = [
+      { raw: m.fromNumber, last10: digits10(m.fromNumber) },
+      { raw: m.toNumber, last10: digits10(m.toNumber) },
+    ];
+    let matchedDriver: string | null = null;
+    for (const e of ends) {
+      const hit = e.last10 ? byLast10.get(e.last10) : undefined;
+      if (hit) matchedDriver = hit;
+    }
+    if (matchedDriver) {
+      msgCountByDriver.set(matchedDriver, (msgCountByDriver.get(matchedDriver) ?? 0) + 1);
+      continue;
+    }
+    for (const e of ends) {
+      if (!e.last10) continue;
+      const cur = unmatched.get(e.last10) ?? {
+        number: e.raw,
+        last10: e.last10,
+        messages: 0,
+        directionsSeen: [] as string[],
+        firstSeenIso: null as string | null,
+        lastSeenIso: null as string | null,
+      };
+      cur.messages += 1;
+      if (!cur.directionsSeen.includes(m.direction)) cur.directionsSeen.push(m.direction);
+      const iso = new Date(+m.createdAt).toISOString();
+      cur.firstSeenIso = cur.firstSeenIso ?? iso;
+      cur.lastSeenIso = iso;
+      unmatched.set(e.last10, cur);
+    }
+  }
+
+  const rows: CoverageRow[] = drivers.map((d) => {
+    const norm = normalizePhone(d.phone);
+    const logs = logCount.get(d.id) ?? 0;
+    const blocks: string[] = [];
+    if (!norm.ok) blocks.push(`No usable phone number on the driver record: ${norm.reason}`);
+    if (logs === 0) blocks.push("Driver has 0 hos_logs rows, so there is no duty clock to read at any timestamp.");
+    return {
+      driverId: d.id,
+      driverName: d.name,
+      phoneStored: d.phone ?? null,
+      phoneNormalized: norm.ok ? norm.e164 : null,
+      phoneUsable: norm.ok,
+      phoneProblem: norm.ok ? null : norm.reason,
+      hosLogRows: logs,
+      messagesMatched: msgCountByDriver.get(d.id) ?? 0,
+      clockReadable: norm.ok && logs > 0,
+      blocks,
+    };
+  });
+
+  const sealedUnresolved = sealed.filter((s) => !s.clockResolved).length;
+  return {
+    drivers: rows.length,
+    driversClockReadable: rows.filter((r) => r.clockReadable).length,
+    driversWithoutUsablePhone: rows.filter((r) => !r.phoneUsable).length,
+    driversWithoutHosLogs: rows.filter((r) => r.hosLogRows === 0).length,
+    messages: messages.length,
+    messagesMatchedToADriver: rows.reduce((a, r) => a + r.messagesMatched, 0),
+    sealedRowsWithoutAClock: sealedUnresolved,
+    rows,
+    unmatchedNumbers: [...unmatched.values()].sort((a, b) => b.messages - a.messages),
+    howMatchingWorks:
+      "A message is matched to a driver when the last 10 digits of either end equal the last 10 digits of drivers.phone. Nothing else is used — no name matching, no fuzzy matching.",
+    fix: "POST /api/sealed-line/link-driver { driverId, phone } writes a normalized +1XXXXXXXXXX to the driver record, then POST /api/sealed-line/reseal-unresolved appends clock-carrying seals for messages that can now resolve.",
+    notClaimed: [
+      "A phone match is an identity assumption, not proof of who physically held the phone.",
+      "Linking a number does not alter any existing seal. Earlier clock-less seals stay in the chain exactly as they were written.",
+    ],
+  };
+}
+
+/** Write a normalized phone number onto a driver record. */
+export async function linkDriverPhone(driverId: string, phone: unknown) {
+  const [driver] = await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).limit(1);
+  if (!driver) return { ok: false as const, reason: "unknown_driver", driverId };
+
+  const norm = normalizePhone(phone);
+  if (!norm.ok) return { ok: false as const, reason: "bad_phone", detail: norm.reason };
+
+  const all = await db.select().from(schema.drivers);
+  const clash = all.find((d) => d.id !== driverId && digits10(d.phone) === norm.last10);
+  if (clash)
+    return {
+      ok: false as const,
+      reason: "number_already_linked",
+      detail: `${norm.e164} is already on driver ${clash.id} (${clash.name}). One number cannot resolve to two drivers — the clock stamp would be ambiguous.`,
+    };
+
+  const before = driver.phone ?? null;
+  await db.update(schema.drivers).set({ phone: norm.e164 }).where(eq(schema.drivers.id, driverId));
+  const logs = await db.select().from(schema.hosLogs).where(eq(schema.hosLogs.driverId, driverId));
+  return {
+    ok: true as const,
+    driverId,
+    driverName: driver.name,
+    phoneBefore: before,
+    phoneAfter: norm.e164,
+    hosLogRows: logs.length,
+    clockReadable: logs.length > 0,
+    note:
+      logs.length > 0
+        ? "This driver's messages can now carry a duty clock. Existing clock-less seals are untouched; POST /reseal-unresolved appends new clock-carrying seals for them."
+        : "The number is linked, but this driver has 0 hos_logs rows, so there is still no duty clock to read.",
+  };
+}
+
+/**
+ * APPEND-ONLY correction. For every sealed row that was written with a null clock
+ * and whose message now resolves to a driver with hos_logs, append a NEW sealed
+ * row carrying the clock recomputed AS OF THE ORIGINAL MESSAGE TIMESTAMP, linked
+ * to the chain head and pointing back at the row it supersedes. Nothing is ever
+ * updated or deleted: both rows remain verifiable forever.
+ */
+export async function resealResolvable(limit = 500) {
+  const [sealed, messages, drivers, hosLogs] = await Promise.all([
+    db.select().from(schema.sealedMessages).orderBy(asc(schema.sealedMessages.seq)),
+    db.select().from(schema.smsMessages),
+    db.select().from(schema.drivers),
+    db.select().from(schema.hosLogs),
+  ]);
+
+  const msgById = new Map(messages.map((m) => [m.id, m]));
+  const logsByDriver = new Map<string, (typeof schema.hosLogs.$inferSelect)[]>();
+  for (const l of hosLogs) {
+    const arr = logsByDriver.get(l.driverId) ?? [];
+    arr.push(l);
+    logsByDriver.set(l.driverId, arr);
+  }
+
+  const superseded = new Set(sealed.map((s) => s.supersedesSealedId).filter(Boolean) as string[]);
+  let seq = sealed.length ? sealed[sealed.length - 1].seq : 0;
+  let head = sealed.length ? sealed[sealed.length - 1].chainHash : GENESIS;
+
+  const appended: Array<{
+    supersedesSealedId: string;
+    messageId: string;
+    seq: number;
+    chainHash: string;
+    driverId: string;
+    driverName: string;
+    dutyStatusAtMessage: string | null;
+    drivingRemainingMin: number | null;
+    windowRemainingMin: number | null;
+    cycleRemainingMin: number | null;
+  }> = [];
+  const skipped: Array<{ sealedId: string; messageId: string; reason: string }> = [];
+
+  for (const row of sealed) {
+    if (row.clockResolved) continue;
+    if (superseded.has(row.id)) continue;
+    if (appended.length >= limit) break;
+
+    const msg = msgById.get(row.messageId);
+    if (!msg) {
+      skipped.push({ sealedId: row.id, messageId: row.messageId, reason: "the sms_messages row no longer exists" });
+      continue;
+    }
+    const driver = resolveDriver(msg, drivers);
+    if (!driver) {
+      skipped.push({ sealedId: row.id, messageId: row.messageId, reason: "still no driver phone matches either end of this message" });
+      continue;
+    }
+    const rows = logsByDriver.get(driver.id) ?? [];
+    if (rows.length === 0) {
+      skipped.push({ sealedId: row.id, messageId: row.messageId, reason: `driver ${driver.id} has 0 hos_logs rows, so there is no clock to read` });
+      continue;
+    }
+
+    const occurredAtMs = +row.occurredAt;
+    const snapshot = clockSnapshotAt(rows, occurredAtMs);
+    const base = {
+      messageId: row.messageId,
+      direction: row.direction,
+      fromNumber: row.fromNumber,
+      toNumber: row.toNumber,
+      bodyHash: row.bodyHash,
+      occurredAtMs,
+      driverId: driver.id,
+      dutyStatusAtMessage: snapshot.dutyStatus,
+      drivingRemainingMin: snapshot.drivingRemainingMin,
+      windowRemainingMin: snapshot.windowRemainingMin,
+      cycleRemainingMin: snapshot.cycleRemainingMin,
+    };
+    const payloadHash = payloadHashFor(base);
+    seq += 1;
+    const chainHash = linkHash(payloadHash, head);
+
+    await db.insert(schema.sealedMessages).values({
+      id: `slm_${seq.toString().padStart(6, "0")}_${payloadHash.slice(0, 8)}`,
+      seq,
+      messageId: row.messageId,
+      conversationId: row.conversationId,
+      direction: row.direction,
+      fromNumber: row.fromNumber,
+      toNumber: row.toNumber,
+      bodyHash: row.bodyHash,
+      bodyChars: row.bodyChars,
+      occurredAt: row.occurredAt,
+      driverId: driver.id,
+      driverName: driver.name,
+      dutyStatusAtMessage: base.dutyStatusAtMessage,
+      drivingRemainingMin: base.drivingRemainingMin,
+      windowRemainingMin: base.windowRemainingMin,
+      cycleRemainingMin: base.cycleRemainingMin,
+      atLimit: JSON.stringify(snapshot.atLimit),
+      clockSnapshotJson: JSON.stringify(snapshot),
+      clockResolved: true,
+      clockUnresolvedReason: null,
+      payloadHash,
+      prevHash: head,
+      chainHash,
+      supersedesSealedId: row.id,
+      sealReason: "clock_resolved_after_phone_link",
+    });
+
+    head = chainHash;
+    appended.push({
+      supersedesSealedId: row.id,
+      messageId: row.messageId,
+      seq,
+      chainHash,
+      driverId: driver.id,
+      driverName: driver.name,
+      dutyStatusAtMessage: base.dutyStatusAtMessage,
+      drivingRemainingMin: base.drivingRemainingMin,
+      windowRemainingMin: base.windowRemainingMin,
+      cycleRemainingMin: base.cycleRemainingMin,
+    });
+  }
+
+  return {
+    candidatesScanned: sealed.filter((s) => !s.clockResolved && !superseded.has(s.id)).length,
+    appended,
+    skipped,
+    headSeq: seq,
+    headHash: head,
+    appendOnly:
+      "No existing seal was modified. Each correction is a new row carrying the clock recomputed as of the original message timestamp, with supersedes_sealed_id pointing at the earlier row.",
   };
 }
