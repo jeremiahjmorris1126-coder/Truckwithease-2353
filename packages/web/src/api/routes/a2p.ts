@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { desc, eq, sql } from "drizzle-orm";
 import { db } from "../database";
 import * as schema from "../database/schema";
+import { twilioCreds as sharedTwilioCreds } from "./twilio";
 
 /**
  * A2P 10DLC registration staging — server side.
@@ -36,16 +37,9 @@ export const USE_CASE_CATEGORIES = [
 export const A2P_STATUSES = ["draft", "ready", "submitted", "approved", "rejected"] as const;
 
 /** Twilio credentials. Present == this file can talk to Twilio for real. */
-type TwilioCreds = { accountSid: string; authToken: string; from: string | null };
-const twilioCreds = (): TwilioCreds | null => {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
-  const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
-  if (!accountSid || !authToken) return null;
-  const raw = process.env.TWILIO_PHONE_NUMBER?.trim() ?? "";
-  const digits = raw.replace(/\D/g, "");
-  const from = digits ? (raw.startsWith("+") ? raw : `+${digits.length === 10 ? "1" + digits : digits}`) : null;
-  return { accountSid, authToken, from };
-};
+type TwilioCreds = NonNullable<ReturnType<typeof sharedTwilioCreds>>;
+/** One credential reader for the whole app: Account SID + Auth Token, or API Key SID + Secret. */
+const twilioCreds = (): TwilioCreds | null => sharedTwilioCreds();
 
 const TWILIO_MESSAGING = "https://messaging.twilio.com/v1";
 
@@ -56,7 +50,7 @@ async function twilioFetch(
   url: string,
   init?: { method?: string; form?: Record<string, string> },
 ): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
-  const auth = Buffer.from(`${creds.accountSid}:${creds.authToken}`).toString("base64");
+  const auth = Buffer.from(`${creds.authUser}:${creds.authPass}`).toString("base64");
   const res = await fetch(url, {
     method: init?.method ?? "GET",
     headers: {

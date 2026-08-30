@@ -23,20 +23,91 @@ const rid = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toStr
 
 const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
 
-type TwilioCreds = { accountSid: string; authToken: string; from: string | null };
+type TwilioCreds = {
+  accountSid: string;
+  authToken: string;
+  /** Basic-auth username actually sent to Twilio: API Key SID when one is configured, else the Account SID. */
+  authUser: string;
+  /** Basic-auth password actually sent: API Key Secret when a key is configured, else the Auth Token. */
+  authPass: string;
+  authMode: "auth_token" | "api_key";
+  from: string | null;
+};
 
+const AC_SID = /^AC[0-9a-f]{32}$/i;
+const SK_SID = /^SK[0-9a-f]{32}$/i;
+
+/**
+ * Twilio accepts two basic-auth shapes and this app supports both:
+ *   Account SID + Auth Token, or API Key SID (SK...) + API Key Secret.
+ * The Account SID always stays in the URL path either way.
+ *
+ * A very common paste error is putting an API Key SID into TWILIO_AUTH_TOKEN.
+ * That is detected here and treated as an API key, so the only thing still
+ * needed is TWILIO_API_KEY_SECRET. Nothing is guessed beyond that.
+ */
 export const twilioCreds = (): TwilioCreds | null => {
   const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
   const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
-  if (!accountSid || !authToken) return null;
+  if (!accountSid) return null;
+
+  const keySecret = process.env.TWILIO_API_KEY_SECRET?.trim() || null;
+  const explicitKeySid = process.env.TWILIO_API_KEY_SID?.trim() || null;
+  const misplacedKeySid = authToken && SK_SID.test(authToken) ? authToken : null;
+  const keySid = explicitKeySid && SK_SID.test(explicitKeySid) ? explicitKeySid : misplacedKeySid;
+
   const raw = process.env.TWILIO_PHONE_NUMBER?.trim() ?? "";
   const digits = raw.replace(/\D/g, "");
   const from = digits ? (raw.startsWith("+") ? raw : `+${digits.length === 10 ? "1" + digits : digits}`) : null;
-  return { accountSid, authToken, from };
+
+  if (keySid && keySecret) {
+    return { accountSid, authToken: keySecret, authUser: keySid, authPass: keySecret, authMode: "api_key", from };
+  }
+  if (!authToken || SK_SID.test(authToken)) return null;
+  return { accountSid, authToken, authUser: accountSid, authPass: authToken, authMode: "auth_token", from };
+};
+
+/**
+ * What is wrong with the credentials, by shape alone, without ever returning a
+ * secret. Reported so a 401 names the actual paste error instead of just failing.
+ */
+export const credentialShape = () => {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim() || null;
+  const authToken = process.env.TWILIO_AUTH_TOKEN?.trim() || null;
+  const keySid = process.env.TWILIO_API_KEY_SID?.trim() || null;
+  const keySecret = process.env.TWILIO_API_KEY_SECRET?.trim() || null;
+  const problems: string[] = [];
+
+  if (!accountSid) problems.push("TWILIO_ACCOUNT_SID is not set in .env.");
+  else if (!AC_SID.test(accountSid))
+    problems.push(
+      `TWILIO_ACCOUNT_SID is ${accountSid.length} characters starting "${accountSid.slice(0, 2)}". A Twilio Account SID is exactly 34 characters starting "AC". Copy it from Twilio Console dashboard home, Account Info.`,
+    );
+
+  const tokenIsKeySid = !!authToken && SK_SID.test(authToken);
+  if (tokenIsKeySid && !keySecret)
+    problems.push(
+      'TWILIO_AUTH_TOKEN holds an API Key SID (34 characters starting "SK"), not an Auth Token. Either paste the Auth Token from Account Info, or keep the key and add TWILIO_API_KEY_SECRET — the secret Twilio showed once when the key was created.',
+    );
+  if (!authToken && !keySecret) problems.push("Neither TWILIO_AUTH_TOKEN nor TWILIO_API_KEY_SECRET is set, so nothing can authenticate.");
+  if (keySid && !SK_SID.test(keySid)) problems.push('TWILIO_API_KEY_SID is not a Twilio API Key SID (34 characters starting "SK").');
+  if (keySecret && !keySid && !tokenIsKeySid) problems.push("TWILIO_API_KEY_SECRET is set but no API Key SID is, so the secret cannot be used.");
+
+  const creds = twilioCreds();
+  return {
+    accountSidPresent: !!accountSid,
+    accountSidWellFormed: !!accountSid && AC_SID.test(accountSid),
+    accountSidLength: accountSid?.length ?? 0,
+    accountSidPrefix: accountSid?.slice(0, 2) ?? null,
+    authMode: creds?.authMode ?? null,
+    usable: !!creds,
+    problems,
+    note: "Shape only. Twilio decides whether the values are real; a well-formed pair can still be revoked or from another account.",
+  };
 };
 
 async function twilioGet(creds: TwilioCreds, url: string) {
-  const auth = Buffer.from(`${creds.accountSid}:${creds.authToken}`).toString("base64");
+  const auth = Buffer.from(`${creds.authUser}:${creds.authPass}`).toString("base64");
   const res = await fetch(url, { headers: { Authorization: `Basic ${auth}` } });
   const text = await res.text();
   let body: Record<string, unknown> = {};

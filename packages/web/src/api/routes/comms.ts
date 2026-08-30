@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../database";
 import * as schema from "../database/schema";
-import { twilioCreds } from "./twilio";
+import { credentialShape, twilioCreds } from "./twilio";
 import { answerForInbound, sealMessage } from "../lib/sealedline";
 
 /**
@@ -58,7 +58,7 @@ async function tw(
   url: string,
   init?: { method?: string; form?: Record<string, string> },
 ): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
-  const auth = Buffer.from(`${creds.accountSid}:${creds.authToken}`).toString("base64");
+  const auth = Buffer.from(`${creds.authUser}:${creds.authPass}`).toString("base64");
   const headers: Record<string, string> = { Authorization: `Basic ${auth}` };
   let bodyInit: string | undefined;
   if (init?.form) {
@@ -915,6 +915,7 @@ export const comms = new Hono()
         envVar: "SEALED_LINE_AUTO_REPLY",
         howToDisable: "Set SEALED_LINE_AUTO_REPLY=off in .env and restart. No reply is sent while it is off.",
         twilioConfigured: Boolean(twilioCreds()),
+        credentials: credentialShape(),
         decisionsRecorded: decided.length,
         sent: tally.sent ?? 0,
         tally,
