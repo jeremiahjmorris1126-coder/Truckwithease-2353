@@ -114,6 +114,111 @@ export function scoreFatigue(rows: TelemetryRow[]) {
 }
 
 export const eld = new Hono()
+  /**
+   * Index. Everything here is a count of rows that exist, or an explicit
+   * `null` with a reason. No coverage percentage is reported when the
+   * denominator is zero, and no device is described as "connected" on the
+   * strength of being registered — only telemetry inside its own sync window
+   * counts as connected.
+   */
+  .get("/", async (c) => {
+    const [devices, driverRows] = await Promise.all([
+      db.select().from(schema.eldDevices),
+      db.select().from(schema.drivers),
+    ]);
+
+    const now = Date.now();
+    const live = devices.map((d) => {
+      const ageMs = d.lastSync ? now - +d.lastSync : null;
+      const online = ageMs !== null && ageMs < d.syncIntervalSeconds * 1000 * 10;
+      return {
+        id: d.id,
+        driverId: d.driverId,
+        truckId: d.truckId,
+        deviceType: d.deviceType,
+        deviceSerial: d.deviceSerial,
+        firmwareVersion: d.firmwareVersion,
+        status: d.status,
+        syncIntervalSeconds: d.syncIntervalSeconds,
+        lastSync: d.lastSync ? new Date(+d.lastSync).toISOString() : null,
+        secondsSinceSync: ageMs === null ? null : Math.round(ageMs / 1000),
+        online,
+        neverReported: d.lastSync === null,
+      };
+    });
+
+    const byType: Record<string, number> = {};
+    for (const t of DEVICE_TYPE_VALUES) byType[t] = 0;
+    for (const d of devices) byType[d.deviceType] = (byType[d.deviceType] ?? 0) + 1;
+
+    const byStatus: Record<string, number> = {};
+    for (const d of devices) byStatus[d.status] = (byStatus[d.status] ?? 0) + 1;
+
+    const since = new Date(now - 24 * 3600_000);
+    const telemetry24h = await db.select().from(schema.eldTelemetry)
+      .where(gte(schema.eldTelemetry.recordedAt, since));
+    const [latest] = await db.select().from(schema.eldTelemetry)
+      .orderBy(desc(schema.eldTelemetry.recordedAt)).limit(1);
+
+    const driversWithDevice = new Set(devices.map((d) => d.driverId));
+    const driverIds = new Set(driverRows.map((d) => d.id));
+    const orphanDevices = live.filter((d) => !driverIds.has(d.driverId));
+
+    return c.json({
+      whatThisIs:
+        "TruckWithEase is not an ELD. It is compliance and fleet software that runs alongside the ELD a driver already has. This endpoint reports the auxiliary hardware the platform itself has on file — trackers, OBD-II readers, cameras, modems, haptics — and the telemetry those units actually posted. It does not read, replace or certify a driver's ELD log of record.",
+      fmcsa: {
+        registered: false,
+        note: "TruckWithEase does not appear on eld.fmcsa.dot.gov/List and no self-certification has been filed. The driver's registered ELD remains the log of record for hours of service.",
+      },
+      devices: {
+        total: devices.length,
+        online: live.filter((d) => d.online).length,
+        neverReported: live.filter((d) => d.neverReported).length,
+        byType,
+        byStatus,
+        rows: live,
+      },
+      coverage: {
+        driversTotal: driverRows.length,
+        driversWithDevice: driversWithDevice.size,
+        percent:
+          driverRows.length === 0
+            ? null
+            : Math.round((driversWithDevice.size / driverRows.length) * 1000) / 10,
+        percentUnavailableReason:
+          driverRows.length === 0 ? "No driver rows exist, so there is no denominator to divide by." : null,
+      },
+      telemetry: {
+        rowsLast24h: telemetry24h.length,
+        latestRecordedAt: latest ? new Date(+latest.recordedAt).toISOString() : null,
+        latestUnavailableReason: latest ? null : "No telemetry row has ever been written to eld_telemetry.",
+        minSamplesForFatigueScore: MIN_SAMPLES,
+        fatigueScorable: telemetry24h.length >= MIN_SAMPLES,
+      },
+      integrity: {
+        orphanDeviceCount: orphanDevices.length,
+        orphanDeviceIds: orphanDevices.map((d) => d.id),
+        orphanNote:
+          orphanDevices.length === 0
+            ? "Every registered device points at a driver row that exists."
+            : "These devices reference a driver_id with no matching row in drivers. They are counted here rather than hidden.",
+      },
+      deviceTypes: DEVICE_TYPE_VALUES,
+      fatigueBands: FATIGUE_BANDS,
+      endpoints: [
+        "GET  /api/eld",
+        "GET  /api/eld/device-types",
+        "POST /api/eld/devices",
+        "GET  /api/eld/devices/:driverId",
+        "POST /api/eld/telemetry",
+        "GET  /api/eld/status/:driverId",
+        "POST /api/eld/devices/:id/sync",
+        "POST /api/eld/devices/:id/retire",
+      ],
+    });
+  })
+
   .get("/device-types", (c) => c.json({ types: ELD_DEVICE_TYPES, values: DEVICE_TYPE_VALUES }))
 
   .post("/devices", async (c) => {

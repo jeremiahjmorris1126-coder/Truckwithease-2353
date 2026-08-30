@@ -3,9 +3,7 @@ import PocketBase from "pocketbase";
 const BrandingCenter = lazy(() => import("./pages/BrandingCenter"));
 const BrandIdentity = lazy(() => import("./pages/BrandIdentity"));
 const FMCSAELDIntegration = lazy(() => import("./pages/FMCSAELDIntegration"));
-const MorrishiveELDRevolutionPage = lazy(() => import("./pages/MorrishiveELDRevolutionPage"));
 const HOSAnalyticsDashboard = lazy(() => import("./pages/HOSAnalyticsDashboard"));
-const ELDHardwareMarketingPage = lazy(() => import("./pages/ELDHardwareMarketingPage"));
 const TruckWithEaseELDPage = lazy(() => import("./pages/TruckWithEaseELDPage"));
 const FMCSARegistrationPage = lazy(() => import("./pages/FMCSARegistrationPage"));
 const SignupPage = lazy(() => import("./SignupPage"));
@@ -497,10 +495,15 @@ export default function App() {
   if (path === "/branding") return <BrandingCenter />;
   if (path === "/brand") return <BrandIdentity />;
   if (path === "/fmcsa-eld") return <FMCSAELDIntegration />;
-  if (path === "/morrishive-eld" || path === "/eld-revolution" || path === "/eld-hardware") return <MorrishiveELDRevolutionPage />;
   if (path === "/hos-analytics" || path === "/fatigue-analysis") return <HOSAnalyticsDashboard />;
-  if (path === "/eld-hardware" || path === "/eld-marketing" || path === "/hardware-bundle") return <ELDHardwareMarketingPage />;
-  if (path === "/twe-eld" || path === "/eld" || path === "/eld-system" || path === "/hardware") return <TruckWithEaseELDPage />;
+  // One honest ELD page. The two marketing pages that used to own six of these
+  // paths were deleted in the same change; every URL still lands here so no
+  // bookmark dies. Originals preserved at docs/launch/*.ORIGINAL.jsx.txt.
+  if (
+    path === "/twe-eld" || path === "/eld" || path === "/eld-system" || path === "/hardware" ||
+    path === "/eld-hardware" || path === "/eld-marketing" || path === "/hardware-bundle" ||
+    path === "/morrishive-eld" || path === "/eld-revolution"
+  ) return <TruckWithEaseELDPage />;
   if (path === "/fmcsa-registration") return <FMCSARegistrationPage />;
   if (path === "/hardware-bundle") return <HardwareSoftwareBundle />;
   if (path === "/pricing-strategy") return <PricingStrategy />;
