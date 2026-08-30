@@ -34,6 +34,7 @@ import { Hono } from "hono";
 import { sql, eq, desc } from "drizzle-orm";
 import { db } from "../database";
 import * as schema from "../database/schema";
+import { googleKeyFor } from "../lib/googlekeys";
 import { computeClocks, hosViolations } from "./hos";
 import { computeSafetyScore } from "./safety";
 
@@ -115,7 +116,7 @@ function decodePolyline(str: string): { lat: number; lng: number }[] {
 }
 
 function mapsKey(): string {
-  return (process.env.GOOGLE_MAPS_KEY || process.env.VITE_GOOGLE_MAPS_KEY || "").replace(/^"|"$/g, "").trim();
+  return googleKeyFor("directions");
 }
 
 /** Deterministic JSON: keys sorted at every level. Two identical decisions hash identically. */

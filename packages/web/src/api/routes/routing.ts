@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { googleKeyFor, googleKeyReport } from "../lib/googlekeys";
 
 /**
  * Route planning — server-side, real Google Directions API.
@@ -28,13 +29,14 @@ const routing = new Hono();
 
 const DIRECTIONS = "https://maps.googleapis.com/maps/api/directions/json";
 
-/** The Maps key. Currently stored as VITE_GOOGLE_MAPS_KEY — read server-side
- *  only here. It is a browser-restrictable Maps key, not a secret provider
- *  key, but it should still be renamed to GOOGLE_MAPS_KEY and given an HTTP
- *  referrer restriction. Flagged, not silently changed. */
+/** Directions key, picked per-API because the project's two keys have
+ *  different API restrictions and neither covers everything. See
+ *  lib/googlekeys.ts for the measured capability table. */
 function mapsKey(): string {
-  return (process.env.GOOGLE_MAPS_KEY || process.env.VITE_GOOGLE_MAPS_KEY || "").replace(/^"|"$/g, "").trim();
+  return googleKeyFor("directions");
 }
+
+const GEOCODE = "https://maps.googleapis.com/maps/api/geocode/json";
 
 const METERS_PER_MILE = 1609.344;
 
@@ -50,9 +52,14 @@ routing.get("/status", (c) => {
   return c.json({
     provider: "google-directions",
     keyPresent: key.length > 0,
-    // Verified by live probe on 2026-08-27. Not a guess.
-    apisEnabled: ["Directions", "Static Maps", "Street View Static", "Maps Embed", "Maps JavaScript"],
-    apisNotEnabled: ["Geocoding", "Distance Matrix", "Elevation", "Places", "Time Zone", "Roads"],
+    keys: googleKeyReport(),
+    // Verified by live probe on 2026-08-30, per key. The project's two keys do
+    // NOT have the same API restrictions, so "enabled" is a property of the
+    // key being used, not of the project.
+    apisEnabled: ["Directions", "Geocoding", "Places (New)", "Static Maps", "Street View Static", "Maps Embed", "Maps JavaScript"],
+    apisNotEnabled: ["Distance Matrix", "Elevation", "Time Zone", "Roads"],
+    keyRestrictionSplit:
+      "Directions answers on VITE_GOOGLE_MAPS_KEY only. Geocoding and Places (New) answer on GOOGLE_PLACES_API_KEY only. Each call is sent the key that its API restrictions allow; see keys.perApi.",
     truckRouting: false,
     truckRoutingNote:
       "Google Directions has no truck profile. Distance and drive time are car-based. Bridge heights, weight limits, hazmat corridors and low clearances are NOT applied.",
