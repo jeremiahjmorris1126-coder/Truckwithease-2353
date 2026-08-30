@@ -75,7 +75,7 @@ export const sealedLine = new Hono()
         key: "a2p_10dlc_campaign",
         blocked: true,
         detail:
-          "No approved A2P 10DLC campaign is attached to the Messaging Service, so US carriers may filter outbound traffic. Filing costs money and triggers vetting, so this app never files it automatically.",
+          "US carrier 10DLC registration is not confirmed approved from this endpoint, so outbound SMS may be filtered by the carrier even after Twilio accepts it and returns a real message SID. This endpoint does not call Twilio — read GET /api/comms/a2p-status for the live campaign status, campaign ID and sender pool. Filing costs money and triggers vetting, so this app never files it automatically.",
       },
       {
         key: "driver_phone_coverage",

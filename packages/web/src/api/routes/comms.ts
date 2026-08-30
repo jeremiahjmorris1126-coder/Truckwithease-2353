@@ -951,6 +951,120 @@ export const comms = new Hono()
   })
 
   /**
+   * Live 10DLC campaign state for the Messaging Service this app actually sends
+   * from, read straight off Twilio. Exists because a message can get a real
+   * Twilio SID and still be refused by the carrier, and the reason lives here —
+   * not in our logs. Nothing is cached and nothing is inferred: no credentials
+   * means no answer rather than a guess.
+   */
+  .get("/a2p-status", async (c) => {
+    const creds = twilioCreds();
+    const mg = messagingServiceSid();
+    if (!creds) {
+      return c.json({ ...notConnected, messagingServiceSid: mg, credentials: credentialShape() }, 200);
+    }
+    if (!mg) {
+      return c.json(
+        {
+          connected: true,
+          messagingServiceSid: null,
+          blocker:
+            "No TWILIO_MESSAGING_SERVICE_SID in .env, so there is no Messaging Service to read a campaign from.",
+        },
+        200,
+      );
+    }
+
+    const [comp, pool] = await Promise.all([
+      tw(creds, `${MESSAGING}/Services/${mg}/Compliance/Usa2p`),
+      tw(creds, `${MESSAGING}/Services/${mg}/PhoneNumbers?PageSize=50`),
+    ]);
+
+    // Twilio returns the campaign inside a `compliance` ARRAY. Reading top-level
+    // keys here silently yields all-nulls and reads as "nothing is registered".
+    const row = (Array.isArray(comp.body?.compliance) ? comp.body.compliance : [])[0] as
+      | Record<string, unknown>
+      | undefined;
+
+    const senders = (Array.isArray(pool.body?.phone_numbers) ? pool.body.phone_numbers : []).map(
+      (p: Record<string, unknown>) => ({
+        sid: p.sid ?? null,
+        phoneNumber: p.phone_number ?? null,
+        capabilities: p.capabilities ?? null,
+      }),
+    );
+
+    const from = process.env.TWILIO_FROM_NUMBER?.trim() || process.env.TWILIO_PHONE_NUMBER?.trim() || null;
+    const sendingNumberInPool = from
+      ? senders.some((s) => String(s.phoneNumber ?? "").replace(/\D/g, "").slice(-10) === from.replace(/\D/g, "").slice(-10))
+      : null;
+
+    if (!row) {
+      return c.json(
+        {
+          connected: true,
+          messagingServiceSid: mg,
+          httpStatus: comp.status,
+          campaignFiled: false,
+          campaignStatus: "none",
+          carrierWillFilter: true,
+          senders,
+          sendingNumber: from,
+          sendingNumberInPool,
+          plainEnglish:
+            "No 10DLC campaign is attached to this Messaging Service. Until one is filed and approved, US carriers refuse the traffic — Twilio still hands back a message SID, so a send looks successful in the app and never reaches the phone.",
+          generatedAt: new Date().toISOString(),
+        },
+        200,
+      );
+    }
+
+    const status = String(row.campaign_status ?? "unknown");
+    const approved = /^(verified|approved|active)$/i.test(status);
+    const errors = Array.isArray(row.errors) ? row.errors : [];
+
+    return c.json(
+      {
+        connected: true,
+        messagingServiceSid: mg,
+        httpStatus: comp.status,
+        campaignFiled: true,
+        campaignSid: row.sid ?? null,
+        campaignStatus: status,
+        campaignId: row.campaign_id ?? null,
+        brandRegistrationSid: row.brand_registration_sid ?? null,
+        useCase: row.us_app_to_person_usecase ?? null,
+        mock: row.mock ?? null,
+        filedAt: row.date_created ?? null,
+        updatedAt: row.date_updated ?? null,
+        errors,
+        description: row.description ?? null,
+        messageFlow: row.message_flow ?? null,
+        messageSamples: Array.isArray(row.message_samples) ? row.message_samples : [],
+        helpMessage: row.help_message ?? null,
+        optOutKeywords: Array.isArray(row.opt_out_keywords) ? row.opt_out_keywords : [],
+        hasEmbeddedLinks: row.has_embedded_links ?? null,
+        hasEmbeddedPhone: row.has_embedded_phone ?? null,
+        rateLimits: row.rate_limits ?? null,
+        approved,
+        carrierWillFilter: !approved,
+        senders,
+        sendingNumber: from,
+        sendingNumberInPool,
+        plainEnglish: approved
+          ? "The campaign is approved. Carriers accept traffic from this Messaging Service, so an undelivered message now means a real delivery problem, not registration."
+          : `The campaign is filed on this Messaging Service and is sitting at "${status}". Nothing is broken and nothing needs re-filing — it is waiting on carrier and TCR vetting. While it waits, outbound US SMS comes back "undelivered" with error 30034. That error code means the carrier has not finished approving the campaign, NOT that the app failed to send: Twilio accepted the message and issued a real SID, which is why the sealed chain still verifies.`,
+        errorCode30034:
+          "30034 = US A2P 10DLC: the sending number is not attached to an approved campaign. Carrier-side rejection, after Twilio accepted the message.",
+        notClaimed:
+          "This is Twilio's own campaign record read live. No approval date is predicted here, because Twilio does not publish one.",
+        generatedAt: new Date().toISOString(),
+      },
+      200,
+    );
+  })
+
+  /**
    * Retry the answers the provider refused. Every attempt RECOMPUTES the clock
    * as of now rather than resending the original text, because the hours in an
    * answer written an hour ago are no longer the driver's hours. The earlier

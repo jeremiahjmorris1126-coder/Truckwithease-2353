@@ -77,6 +77,7 @@ export default function SealedLinePage() {
   const [resealResult, setResealResult] = useState(null);
   const [ar, setAr] = useState(null);
   const [retryResult, setRetryResult] = useState(null);
+  const [a2p, setA2p] = useState(null);
   const alive = useRef(false);
 
   const load = useCallback(async () => {
@@ -94,9 +95,11 @@ export default function SealedLinePage() {
         timedGet("/api/clock-ledger/open-intervals"),
         timedGet("/api/sealed-line/coverage"),
         timedGet("/api/comms/auto-reply"),
+        timedGet("/api/comms/a2p-status"),
       ]);
       if (!alive.current) return;
-      const [chainR, openR, covR, arR] = opt;
+      const [chainR, openR, covR, arR, a2pR] = opt;
+      if (a2pR.status === "fulfilled") { collected.push(a2pR.value); setA2p(a2pR.value.body); }
       if (chainR.status === "fulfilled") { collected.push(chainR.value); setChain(chainR.value.body); }
       if (openR.status === "fulfilled") { collected.push(openR.value); setOpen(openR.value.body); }
       if (covR.status === "fulfilled") { collected.push(covR.value); setCov(covR.value.body); }
@@ -557,6 +560,118 @@ export default function SealedLinePage() {
 
               {ar.notClaimed ? (
                 <div style={{ marginTop: 14, fontFamily: FB, fontSize: 12, color: C.dim }}>{ar.notClaimed}</div>
+              ) : null}
+            </>
+          )}
+        </Panel>
+
+        {/* Why a real Twilio SID can still never reach the phone. Read live from
+            Twilio's own campaign record — nothing here is stored or guessed. */}
+        <Panel
+          title="Carrier registration for the fleet number (US 10DLC)"
+          icon={<ShieldAlert size={15} />}
+          note={a2p?.messagingServiceSid ? `Messaging Service ${a2p.messagingServiceSid}` : null}
+        >
+          {!a2p ? (
+            <Missing label="NOT READ" reason="GET /api/comms/a2p-status did not answer on this load." />
+          ) : a2p.connected === false ? (
+            <Missing label="TWILIO NOT CONNECTED" reason={a2p.reason} />
+          ) : (
+            <>
+              <div style={grid(200)}>
+                <Stat
+                  label="Campaign status"
+                  value={a2p.campaignStatus || "—"}
+                  tone={a2p.approved ? "gold" : "warn"}
+                />
+                <Stat label="Campaign SID" value={short(a2p.campaignSid)} />
+                <Stat label="Campaign ID (carrier)" value={a2p.campaignId || "not issued yet"} tone={a2p.campaignId ? "gold" : "warn"} />
+                <Stat label="Brand" value={short(a2p.brandRegistrationSid)} />
+                <Stat label="Use case filed" value={a2p.useCase || "—"} />
+                <Stat label="Filed at" value={when(a2p.filedAt)} />
+                <Stat
+                  label="Sending number in pool"
+                  value={a2p.sendingNumberInPool === null ? "—" : a2p.sendingNumberInPool ? "yes" : "NO"}
+                  tone={a2p.sendingNumberInPool ? "gold" : "warn"}
+                />
+                <Stat
+                  label="Carriers filtering now"
+                  value={a2p.carrierWillFilter ? "yes" : "no"}
+                  tone={a2p.carrierWillFilter ? "warn" : "gold"}
+                />
+              </div>
+
+              {a2p.plainEnglish ? (
+                <div style={{ marginTop: 16, padding: 14, border: `1px solid ${a2p.approved ? C.line : WARN}`, background: "#0f0f0f" }}>
+                  <div style={{ fontFamily: FM, fontSize: 10.5, letterSpacing: "0.14em", textTransform: "uppercase", color: a2p.approved ? GOLD : WARN }}>
+                    What this means
+                  </div>
+                  <div style={{ fontFamily: FB, fontSize: 12.5, color: C.text, marginTop: 8, lineHeight: 1.85 }}>
+                    {a2p.plainEnglish}
+                  </div>
+                  {a2p.errorCode30034 ? (
+                    <div style={{ marginTop: 10, fontFamily: FM, fontSize: 11.5, color: C.dim, lineHeight: 1.7 }}>
+                      {a2p.errorCode30034}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {Array.isArray(a2p.errors) && a2p.errors.length ? (
+                <div style={{ marginTop: 14, padding: 14, border: `1px solid ${WARN}`, background: "#0f0f0f" }}>
+                  <div style={{ fontFamily: FM, fontSize: 10.5, letterSpacing: "0.14em", textTransform: "uppercase", color: WARN }}>
+                    Carrier rejected — {a2p.errors.length}
+                  </div>
+                  {a2p.errors.map((e, i) => (
+                    <div key={i} style={{ marginTop: 8, fontFamily: FB, fontSize: 12.5, color: C.text }}>
+                      {typeof e === "string" ? e : JSON.stringify(e)}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {Array.isArray(a2p.senders) && a2p.senders.length ? (
+                <div style={{ overflowX: "auto", marginTop: 16 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <th style={th}>Number in this service</th>
+                        <th style={th}>Capabilities</th>
+                        <th style={th}>Sender SID</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {a2p.senders.map((s) => (
+                        <tr key={s.sid}>
+                          <td style={{ ...td, fontFamily: FM, fontSize: 12 }}>{s.phoneNumber || "—"}</td>
+                          <td style={{ ...td, color: C.dim }}>
+                            {Array.isArray(s.capabilities) ? s.capabilities.join(" · ") : "—"}
+                          </td>
+                          <td style={{ ...td, fontFamily: FM, fontSize: 11, color: C.dim }}>{s.sid || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <Missing label="NO SENDERS" reason="This Messaging Service has no phone numbers in its pool, so it cannot send at all." />
+              )}
+
+              {Array.isArray(a2p.messageSamples) && a2p.messageSamples.length ? (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ fontFamily: FM, fontSize: 10.5, letterSpacing: "0.14em", textTransform: "uppercase", color: GOLD }}>
+                    Message samples filed — carriers vet these against the use case
+                  </div>
+                  {a2p.messageSamples.map((m, i) => (
+                    <div key={i} style={{ marginTop: 8, fontFamily: FB, fontSize: 12.5, color: C.dim, lineHeight: 1.8 }}>
+                      {i + 1}. {m}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {a2p.notClaimed ? (
+                <div style={{ marginTop: 14, fontFamily: FB, fontSize: 12, color: C.dim }}>{a2p.notClaimed}</div>
               ) : null}
             </>
           )}
