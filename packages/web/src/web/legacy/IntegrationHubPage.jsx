@@ -1,39 +1,34 @@
 /**
- * QUANTUM INTEGRATION HUB — rewritten to read the real integration registry.
+ * INTEGRATION HUB - rewritten to read the real integration registry.
  *
  * READS
- *   GET /api/integrations/status  (required) — the 19-provider registry: id, name, category,
+ *   GET /api/integrations/status  (required) - the 19-provider registry: id, name, category,
  *       purpose, envKeys[], usedBy[], state, probed, probeAt, reason, docsUrl, probeable,
  *       plus counts{total,connected,keyPresentUnverified,rejected,notConnected} and rules[].
- *   GET /api/quantum              (required) — the naming statement, the seven Quantum surfaces
- *       and the live input row counts.
+ *   GET /api/intelligence         (required) - the intelligence surface index and the live
+ *       input row counts behind it.
  *
  * COMPUTES / MEASURES LOCALLY
  *   Nothing but grouping and counting the rows the server returned, plus the real HTTP status,
  *   byte count and elapsed milliseconds of each round trip.
  *
  * REMOVED IN THIS REWRITE (all of it was invented in the browser)
- *   - `pb.collection('integrations').getList(1, 50)` and `pb.collection('integrations').create(...)`
- *     — there is no `integrations` collection and no PocketBase server. Both calls always failed
+ *   - pb.collection('integrations').getList(1, 50) and pb.collection('integrations').create(...)
+ *     - there is no `integrations` collection and no PocketBase server. Both calls always failed
  *     into a console.error, so the page rendered an empty list and then a fabricated one.
- *   - The whole `quantumMetrics` object: `parallelLayers: 12`, `processingSpeed: '2.3ms'`,
- *     `accuracy: '99.2%'`, `activeOptimizations: 47`, and
- *     `dataStreams: ['Samsara', 'Motive', 'TruckWithEase']`. There are no parallel layers, nothing
+ *   - The whole invented metrics object: parallelLayers: 12, processingSpeed: '2.3ms',
+ *     accuracy: '99.2%', activeOptimizations: 47, and
+ *     dataStreams: ['Samsara', 'Motive', 'TruckWithEase']. There are no parallel layers, nothing
  *     was measured at 2.3ms, no accuracy figure was ever produced by anything, no optimization was
- *     ever counted, and there is no Samsara or Motive connection — neither vendor has credentials.
- *   - The entire `dataFlows` array: `source: 'Samsara Telemetry'` / `'Motive Telematics'` /
- *     `'TruckWithEase AI'`, `destination: 'Quantum Processor'` / `'Recommendation Engine'`,
- *     `status: 'live'` on all three, `latency: '230ms'` / `'245ms'` / `'89ms'`, and
- *     `records: 12847` / `8924` / `34201`. Not one of those rows, latencies or record counts
- *     corresponded to anything in this database.
- *   - The marketing line "Connect Samsara, Motive, and TruckWithEase. 12 parallel optimization
- *     layers calculate one master decision."
- *   - The 12 emoji-iconed `layers` cards (📡 👤 🔧 🗺️ 📋 💰 ⛽ 🅿️ 🌦️ …) presented as running
- *     processing layers. They were a feature wish list, not code that runs.
+ *     ever counted, and there is no Samsara or Motive connection - neither vendor has credentials.
+ *   - The entire dataFlows array: invented sources and destinations, status: 'live' on all three,
+ *     latency: '230ms' / '245ms' / '89ms', and records: 12847 / 8924 / 34201. Not one of those
+ *     rows, latencies or record counts corresponded to anything in this database.
+ *   - The marketing line about "12 parallel optimization layers calculating one master decision".
+ *   - The 12 emoji-iconed `layers` cards presented as running processing layers. They were a
+ *     feature wish list, not code that runs.
  *
  * WHAT THIS PAGE DOES NOT CLAIM
- *   - No quantum computation, quantum hardware or quantum algorithm. "Quantum" is a product name;
- *     the server says so itself and this page prints that statement verbatim.
  *   - No accuracy percentage, no throughput figure, no uptime percentage, no latency claim.
  *   - No provider is shown as connected unless the server's registry says so, and a key the vendor
  *     rejected is shown as rejected.
@@ -61,11 +56,11 @@ const STATE_TONE = {
 };
 const STATE_ORDER = ["connected", "unknown", "rejected", "not_connected"];
 
-export default function QuantumIntegrationHub() {
+export default function IntegrationHubPage() {
   const [state, setState] = useState("loading");
   const [error, setError] = useState(null);
   const [integrations, setIntegrations] = useState(null);
-  const [quantum, setQuantum] = useState(null);
+  const [intel, setIntel] = useState(null);
   const [reads, setReads] = useState([]);
   const alive = useRef(false);
 
@@ -76,11 +71,11 @@ export default function QuantumIntegrationHub() {
     try {
       const [i, q] = await Promise.all([
         timedGet("/api/integrations/status"),
-        timedGet("/api/quantum"),
+        timedGet("/api/intelligence"),
       ]);
       if (!alive.current) return;
       setIntegrations(i.body);
-      setQuantum(q.body);
+      setIntel(q.body);
       setReads([i, q].map((r) => ({ url: r.url, status: r.status, bytes: r.bytes, ms: r.ms })));
       setState("ok");
     } catch (e) {
@@ -111,21 +106,11 @@ export default function QuantumIntegrationHub() {
       />
 
       <main style={wrap}>
-        {state === "loading" ? <Spin label="Reading /api/integrations/status and /api/quantum…" /> : null}
+        {state === "loading" ? <Spin label="Reading /api/integrations/status and /api/intelligence…" /> : null}
         {state === "error" ? <Err error={error} onRetry={load} /> : null}
 
         {state === "ok" ? (
           <>
-            <Panel
-              title="On the word Quantum"
-              note="Returned verbatim by GET /api/quantum → naming.statement."
-              icon={<Layers size={15} />}
-            >
-              <p style={{ fontFamily: FB, fontSize: 14.5, color: C.white, lineHeight: 1.9, margin: 0 }}>
-                {quantum.naming.statement}
-              </p>
-            </Panel>
-
             <Panel
               title="Registry counts"
               note="GET /api/integrations/status → counts. These are row counts over the registry, not a score."
@@ -202,8 +187,8 @@ export default function QuantumIntegrationHub() {
             })}
 
             <Panel
-              title="Quantum surfaces on this platform"
-              note="GET /api/quantum → surfaces[]. Each row names what it actually computes and the endpoint that computes it."
+              title="Intelligence surfaces on this platform"
+              note="GET /api/intelligence → surfaces[]. Each row names what it actually computes and the endpoint that computes it."
               icon={<Layers size={15} />}
             >
               <div style={{ overflowX: "auto" }}>
@@ -217,7 +202,7 @@ export default function QuantumIntegrationHub() {
                     </tr>
                   </thead>
                   <tbody>
-                    {quantum.surfaces.map((s) => (
+                    {intel.surfaces.map((s) => (
                       <tr key={s.id}>
                         <td style={td}>
                           <div style={{ fontFamily: FH, fontSize: 14, color: C.white }}>{s.name}</div>
@@ -236,25 +221,25 @@ export default function QuantumIntegrationHub() {
             </Panel>
 
             <Panel
-              title="What the Quantum surfaces read from"
-              note="GET /api/quantum → inputs. Live row counts in this database at the moment of the request."
+              title="What those surfaces read from"
+              note="GET /api/intelligence → inputs. Live row counts in this database at the moment of the request."
               icon={<Database size={15} />}
             >
               <div style={grid(180)}>
-                {Object.entries(quantum.inputs).map(([k, v]) => (
+                {Object.entries(intel.inputs).map(([k, v]) => (
                   <Stat key={k} label={k.replace(/([A-Z])/g, " $1")} value={v} tone={v === 0 ? "warn" : undefined} />
                 ))}
               </div>
-              {Object.values(quantum.inputs).some((v) => v === 0) ? (
+              {Object.values(intel.inputs).some((v) => v === 0) ? (
                 <div style={{ marginTop: 16 }}>
-                  <Missing label="EMPTY INPUT TABLE" reason="A count of zero means that table has no rows yet, so any Quantum surface depending on it will report insufficient data rather than a number." />
+                  <Missing label="EMPTY INPUT TABLE" reason="A count of zero means that table has no rows yet, so any surface depending on it will report insufficient data rather than a number." />
                 </div>
               ) : null}
             </Panel>
 
-            <Panel title="Not claimed by anything under Quantum" note="GET /api/quantum → notClaimed[].">
+            <Panel title="Not claimed by any intelligence surface" note="GET /api/intelligence → notClaimed[].">
               <ul style={{ margin: 0, paddingLeft: 20, fontFamily: FB, fontSize: 13.5, color: C.muted, lineHeight: 2 }}>
-                {quantum.notClaimed.map((n, i) => <li key={i}>{n}</li>)}
+                {intel.notClaimed.map((n, i) => <li key={i}>{n}</li>)}
               </ul>
             </Panel>
 
@@ -271,7 +256,7 @@ export default function QuantumIntegrationHub() {
             />
 
             <p style={{ fontFamily: FM, fontSize: 11, color: C.dim, textAlign: "center", marginTop: 26 }}>
-              Registry generated {new Date(integrations.generatedAt).toLocaleString()} · server measured {quantum.measuredMs} ms
+              Registry generated {new Date(integrations.generatedAt).toLocaleString()} · server measured {intel.measuredMs} ms
             </p>
           </>
         ) : null}

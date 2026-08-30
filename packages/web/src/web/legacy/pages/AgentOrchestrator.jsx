@@ -50,7 +50,7 @@ const JOBS = {
   PAYROLL: "Pay and settlement questions against the HR payroll tables.",
   MAINTENANCE: "Platform and page questions. It answers; it does not repair anything.",
   MECHANIC: "Symptom-to-cause diagnosis conversation for a truck fault.",
-  QUANTUM: "Trend and pattern questions, including the per-driver learned profile from /api/algorithm.",
+  INTELLIGENCE: "Trend and pattern questions, including the per-driver learned profile from /api/algorithm.",
   BILLIE: "Invoice and billing document handling.",
   SIGNAL: "Telecom and SMS monitoring.",
   TRAINING: "Driver training and CDL coaching modules.",

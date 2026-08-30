@@ -105,7 +105,7 @@ const TRANSLATION_TECH = [
   },
 ];
 
-export default function DriverAssistanceQuantumPage() {
+export default function DriverAssistanceIntelligencePage() {
   const [selectedLang, setSelectedLang] = useState('en');
   const [expandedTech, setExpandedTech] = useState(null);
 

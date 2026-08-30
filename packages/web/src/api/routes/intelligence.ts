@@ -6,23 +6,20 @@ import { ensureSeed } from "../lib/seed";
 import { computeClocks, hosViolations } from "./hos";
 
 /**
- * QUANTUM — the honest server behind every page in this app branded "Quantum".
+ * FLEET INTELLIGENCE — the server behind the fatigue index and the surface index.
  *
- * WHAT "QUANTUM" MEANS HERE
- *   It is a product name. Nothing in this file runs on quantum hardware, uses a
- *   quantum algorithm, or performs quantum computation. Every number below is
- *   ordinary arithmetic on rows that exist in this database. That statement is
- *   returned by GET /api/quantum so the pages cannot quietly imply otherwise.
+ * Every number below is ordinary arithmetic on rows that exist in this database.
+ * There is no model, no forecast and no published accuracy figure.
  *
  * WHAT THIS REPLACES
- *   docs/launch/QuantumBackendServer.ORIGINAL.js.txt — an Express server that
- *   was pasted in as the backend for these pages. It could not run here and
- *   would not have been honest if it had. Specifically removed:
+ *   The pasted Express backend preserved under docs/launch/ as the backend for
+ *   these pages. It could not run here and would not have been honest if it had.
+ *   Specifically removed:
  *     - express / cors / dotenv / pg (Postgres Pool) — this stack is Bun + Hono
  *       + Drizzle on Turso (SQLite). There is no Postgres.
  *     - aws-sdk, AWS.Polly, AWS.SageMaker, and s3.amazonaws.com media URLs —
  *       AWS is not used on this project. Storage is Tigris via presigned URLs.
- *     - POST /api/quantum-hos/predict built a "128D feature vector" where 124
+ *     - POST /api/hos/predict built a "128D feature vector" where 124
  *       of the 128 dimensions were literally `Math.random()`, then returned
  *       `vectorDimensions: 128` as if a model had consumed them.
  *     - `prediction24h: fatigueScore + 5` — a forecast produced by adding five.
@@ -222,10 +219,10 @@ async function fatigueForDriver(driverId: string) {
   };
 }
 
-export const quantum = new Hono()
+export const intelligence = new Hono()
   .use("*", async (_c, next) => { await ensureSeed(); await next(); })
 
-  /** What every "Quantum" surface in this app actually is. */
+  /** What every intelligence surface in this app actually is. */
   .get("/", async (c) => {
     const started = Date.now();
     const [driverRows, hosRows, telRows, spRows, loadRows, bridgeRows, decisionRows] = await Promise.all([
@@ -239,65 +236,59 @@ export const quantum = new Hono()
     ]);
 
     return c.json({
-      naming: {
-        word: "Quantum",
-        isBranding: true,
-        statement:
-          "\"Quantum\" is a product name on this platform. No page under it runs on quantum hardware, uses a quantum algorithm, or performs quantum computation. Everything is ordinary arithmetic over rows in this database.",
-      },
       surfaces: [
         {
-          id: "quantum-hos",
-          name: "Quantum HOS Analytics",
-          pages: ["/quantum-hos", "/hos-analytics", "/fatigue-analysis"],
+          id: "hos-analytics",
+          name: "HOS Analytics",
+          pages: ["/hos-analytics", "/fatigue-analysis"],
           computes: "A fatigue index per driver from HOS clocks, rest recency, ELD telemetry events and speeding events.",
-          endpoint: "/api/quantum/fatigue",
+          endpoint: "/api/intelligence/fatigue",
           live: hosRows.length > 0,
         },
         {
-          id: "quantum-nexus",
-          name: "Quantum Nexus (dispatch)",
-          pages: ["/quantum-nexus", "/nexus", "/dispatch-nexus"],
+          id: "dispatch-nexus",
+          name: "Dispatch Nexus",
+          pages: ["/dispatch-nexus", "/nexus"],
           computes: "Load-to-driver matching by revenue per remaining clock hour.",
           endpoint: "/api/dispatch-zero/status",
           live: loadRows.length > 0 && driverRows.length > 0,
         },
         {
-          id: "quantum-routing",
-          name: "Quantum Routing Engine",
-          pages: ["/quantum-routing", "/routing-engine"],
+          id: "routing-engine",
+          name: "Routing Engine",
+          pages: ["/routing-engine"],
           computes: "Truck routing legs and low-bridge clearance checks against FHWA NBI item 54B.",
           endpoint: "/api/routing/plan",
           live: bridgeRows.length > 0,
         },
         {
-          id: "quantum-fleet",
-          name: "Quantum Fleet Intelligence",
-          pages: ["/quantum-fleet", "/quantum-intelligence", "/industry-ai"],
+          id: "fleet-intelligence",
+          name: "Fleet Intelligence",
+          pages: ["/fleet-intelligence", "/industry-ai"],
           computes: "Fleet-wide roll-up of the same per-driver components. No industry benchmark is used, because none is licensed.",
-          endpoint: "/api/quantum/fatigue",
+          endpoint: "/api/intelligence/fatigue",
           live: driverRows.length > 0,
         },
         {
-          id: "quantum-mind",
-          name: "Quantum Mind",
-          pages: ["/quantum-mind", "/mind", "/unified", "/qmind"],
+          id: "fleet-mind",
+          name: "Fleet Mind",
+          pages: ["/mind", "/unified"],
           computes: "Gemini-backed assistant over fleet context. It is a language model, not an inference engine over the fleet.",
           endpoint: "/api/gemini",
           live: Boolean(process.env.GEMINI_API_KEY),
         },
         {
-          id: "quantum-nerve",
-          name: "Quantum Nerve",
-          pages: ["/quantum-nerve", "/ghost-nerve", "/nerve"],
+          id: "driver-nerve",
+          name: "Driver Nerve",
+          pages: ["/nerve"],
           computes: "Signal fan-out to a driver: haptic patterns and duty alerts. Delivery is only confirmed when a device confirms it.",
           endpoint: "/api/haptic",
           live: true,
         },
         {
-          id: "quantum-integration",
-          name: "Quantum Integration Hub",
-          pages: ["/quantum-integration"],
+          id: "integration-hub",
+          name: "Integration Hub",
+          pages: ["/integration-hub"],
           computes: "Credential state for the 19 tracked providers. Boolean only — no key value ever leaves the server.",
           endpoint: "/api/integrations/status",
           live: true,
@@ -319,7 +310,7 @@ export const quantum = new Hono()
           "Component weights are product judgement informed by the 49 CFR 395 limits. They are not a validated clinical fatigue model and are not published as one.",
       },
       notClaimed: [
-        "No quantum computation, quantum hardware or quantum algorithm.",
+        "No machine-learning model, no training data, no inference engine — the index is a weighted sum.",
         "No fatigue prediction hours ahead.",
         "No accuracy or confidence percentage for any output.",
         "No sign-language video generation — that feature is not built.",

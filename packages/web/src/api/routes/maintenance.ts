@@ -195,7 +195,7 @@ export const maintenance = new Hono()
         dtcCodes: j(b.dtcCodes ?? []),
         eldFlags: j(b.eldFlags ?? []),
         scanData: b.scanData ? JSON.stringify(b.scanData) : null,
-        quantumDiagnosis: b.quantumDiagnosis ?? null,
+        aiDiagnosis: b.aiDiagnosis ?? null,
         photoNotes: b.photoNotes ?? null,
         photoUrls: j(b.photoUrls ?? []),
         odometer: b.odometer ?? null,
@@ -225,7 +225,7 @@ export const maintenance = new Hono()
     const b = await c.req.json();
     const patch: Partial<typeof schema.maintenanceRecords.$inferInsert> = { updatedAt: new Date() };
     for (const k of [
-      "status", "priority", "category", "title", "description", "quantumDiagnosis", "photoNotes",
+      "status", "priority", "category", "title", "description", "aiDiagnosis", "photoNotes",
       "odometer", "engineHours", "vendor", "vendorPhone", "invoiceNumber", "partsCost", "laborCost",
       "laborHours", "totalCost", "warrantyClaimNumber", "downtimeHours", "pmInterval", "nextDueMiles",
       "nextDueDate", "performedOn", "performedBy", "notes",

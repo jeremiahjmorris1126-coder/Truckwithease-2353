@@ -14,7 +14,7 @@ const AMBER = "#f59e0b";
 const SAFETY_LAYERS = [
   { id: 1, name: "Biometric Fatigue Index", code: "BFI-001", category: "Driver", icon: "🧠", score: 98, description: "Measures micro-sleep probability from HOS pattern, time of day, miles driven, weather, and historical fatigue incidents. Alerts 47 minutes before danger threshold.", competitors: "Samsara tracks hours only", proprietary: true },
   { id: 2, name: "Predictive Violation Engine", code: "PVE-002", category: "Compliance", icon: "⚖️", score: 97, description: "Cross-references 847 FMCSA rule combinations against every driver's current status. Catches violations 72 hours before they appear on CSA score.", competitors: "Motive sends a violation alert after it happens", proprietary: true },
-  { id: 3, name: "Quantum Brake Intelligence", code: "QBI-003", category: "Telematics", icon: "🛑", score: 96, description: "ABS event data from Azuga + iDrive E2 analyzed against road grade, load weight, weather, and speed. Predicts brake failure 14 days before it occurs.", competitors: "No competitor combines all 5 variables", proprietary: true },
+  { id: 3, name: "Intelligence Brake Intelligence", code: "QBI-003", category: "Telematics", icon: "🛑", score: 96, description: "ABS event data from Azuga + iDrive E2 analyzed against road grade, load weight, weather, and speed. Predicts brake failure 14 days before it occurs.", competitors: "No competitor combines all 5 variables", proprietary: true },
   { id: 4, name: "Ghost Compliance Shield", code: "GCS-004", category: "Compliance", icon: "👁️", score: 99, description: "Silent background scanner running 24/7 against all 48 CFR Parts relevant to commercial transport. Every driver, every truck, every load checked simultaneously.", competitors: "Competitors run periodic audits. GCS never stops.", proprietary: true },
   { id: 5, name: "Neural Route Risk Score", code: "NRR-005", category: "Dispatch", icon: "🗺️", score: 95, description: "Every mile of every route scored across 23 risk variables: accident history, weather pattern, construction probability, bridge weight, curve radius, time of day.", competitors: "Samsara shows speed limits only", proprietary: true },
   { id: 6, name: "Insurance Intelligence Matrix", code: "IIM-006", category: "Financial", icon: "🛡️", score: 97, description: "Real-time premium tier calculation from 6 insurance partners. Every safe driving event drops the fleet's rate. Every dangerous event triggers a coaching session before the insurer sees it.", competitors: "No competitor has live insurance integration", proprietary: true },
@@ -90,7 +90,7 @@ export default function NeuralSafetyCore() {
       { pct: 8, msg: "Initializing Neural Safety Core — 12 layers active", color: BLUE },
       { pct: 16, msg: "BFI-001: Biometric Fatigue Index — all drivers within safe range ✓", color: GREEN },
       { pct: 24, msg: "PVE-002: Predictive Violation Engine — 847 rules checked — zero violations ✓", color: GREEN },
-      { pct: 32, msg: "QBI-003: Quantum Brake Intelligence — all trucks healthy ✓", color: GREEN },
+      { pct: 32, msg: "QBI-003: Intelligence Brake Intelligence — all trucks healthy ✓", color: GREEN },
       { pct: 40, msg: "GCS-004: Ghost Compliance Shield — 48 CFR parts verified ✓", color: GREEN },
       { pct: 48, msg: "NRR-005: Neural Route Risk — I-40 MM240 advisory flagged ⚠", color: AMBER },
       { pct: 56, msg: "IIM-006: Insurance Intelligence — GOLD tier — 23% premium discount active ✓", color: GREEN },
@@ -245,7 +245,7 @@ export default function NeuralSafetyCore() {
             <div style={{ background: "#111", border: `1px solid #1e1e1e`, borderRadius: 12, padding: 28, marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 18, color: "#fff", marginBottom: 4 }}>Quantum Safety Scan</div>
+                  <div style={{ fontWeight: 800, fontSize: 18, color: "#fff", marginBottom: 4 }}>Intelligence Safety Scan</div>
                   <div style={{ color: "#666", fontSize: 13 }}>All 12 intelligence layers — verified simultaneously</div>
                 </div>
                 <button onClick={runFullScan} disabled={scanRunning} style={{ background: scanRunning ? "#333" : `linear-gradient(135deg, ${GOLD}, #e09412)`, color: scanRunning ? "#888" : "#000", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight: 800, fontSize: 14, cursor: scanRunning ? "not-allowed" : "pointer" }}>

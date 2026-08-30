@@ -6,7 +6,7 @@ const LaunchLandingPage = () => {
 
   const coreFeatures = [
     { icon: '📍', title: 'Real-Time Dispatch', desc: 'Load assignments with broker alerts and fatigue predictions' },
-    { icon: '📖', title: 'HOS Logger', desc: 'Quantum fatigue tracking—predicts accidents 24 hours ahead' },
+    { icon: '📖', title: 'HOS Logger', desc: 'Intelligence fatigue tracking—predicts accidents 24 hours ahead' },
     { icon: '💬', title: 'Captions (HUH)', desc: 'Real-time captions at 99.8% accuracy for hearing-impaired drivers' },
     { icon: '🤟', title: 'Sign Language AI', desc: '7 languages, real-time video translation with professional interpreters' },
     { icon: '📳', title: 'Haptic Language', desc: 'Feel messages through vibration—deaf drivers communicate by touch' },
@@ -154,16 +154,16 @@ const LaunchLandingPage = () => {
           </div>
         </section>
 
-        {/* Quantum HOS Highlight */}
+        {/* HOS Analytics Highlight */}
         <section className="py-20 px-4">
           <div className="max-w-4xl mx-auto">
             <div className="bg-gradient-to-r from-orange-500/20 via-cyan-500/20 to-gold-500/20 border border-orange-500/50 p-12 rounded-lg">
-              <h3 className="text-3xl font-bold mb-4">The Secret Weapon: Quantum HOS</h3>
+              <h3 className="text-3xl font-bold mb-4">The Secret Weapon: HOS Analytics</h3>
               <p className="text-lg text-gray-300 mb-6">
                 128-dimensional AI fatigue analysis that predicts accidents 24 hours ahead. Learns every driver's sleep patterns, caffeine habits, lane variance, reaction time, speed consistency. Automatically suggests breaks 30 minutes early. Pauses load assignments if risk spikes. Adjusts pricing by fatigue level. No other platform sees what we see.
               </p>
               <button className="px-6 py-3 bg-orange-500 hover:bg-orange-600 font-bold rounded-lg transition-colors">
-                See Quantum HOS in Action →
+                See HOS Analytics in Action →
               </button>
             </div>
           </div>

@@ -68,9 +68,9 @@ export const agentRoutes = new Hono()
     const text = await runAgent("ghost-nerve", messages, await profileNote(driverId), { profile: profile ?? null });
     return c.json({ text, live: hasAI() }, 200);
   })
-  .post("/quantum-mind", async (c) => {
+  .post("/mind", async (c) => {
     const { messages, profile , driverId } = await c.req.json();
-    const text = await runAgent("quantum-mind", messages, await profileNote(driverId), { profile: profile ?? null });
+    const text = await runAgent("intelligence-mind", messages, await profileNote(driverId), { profile: profile ?? null });
     return c.json({ text, live: hasAI() }, 200);
   })
   .post("/neural-safety", async (c) => {

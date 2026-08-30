@@ -22,7 +22,7 @@
  *   - "99.8% Caption Accuracy" (printed twice) — nothing measures caption accuracy. Gemini
  *     returns no ASR confidence score at all, so no accuracy figure can exist here.
  *   - "34% fewer accidents industry-wide" — an invented industry-wide outcome claim.
- *   - "$8K+ Annual income gain per driver" / "Owner-ops using quantum pricing earn $8K-$25K
+ *   - "$8K+ Annual income gain per driver" / "Owner-ops using intelligence pricing earn $8K-$25K
  *     more per year" / "Fleets cut insurance by 34%" / "Medical costs drop 23%" /
  *     "Immediate ROI on day one" — invented financial outcomes.
  *   - "7 Sign Languages" presented as shipped capability, "AI Sign Language Generator",

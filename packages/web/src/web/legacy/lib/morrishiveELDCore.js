@@ -3,7 +3,7 @@
  * Revolutionary Hours of Service tracking: app-first + hardware-agnostic
  * 
  * This is the foundation for selling Morrishive as a complete ELD solution.
- * - Quantum HOS tracking (AI learns driver patterns, predicts fatigue)
+ * - HOS Analytics tracking (AI learns driver patterns, predicts fatigue)
  * - Device-agnostic (works with any GPS/logging hardware)
  * - FMCSA 395.8 compliant logging
  * - Real-time sync across phone + hardware devices
@@ -12,12 +12,12 @@
 
 import { pb } from './pb.js';
 
-// ===== QUANTUM HOS ENGINE =====
+// ===== INTELLIGENCE HOS ENGINE =====
 // AI-powered hours tracking that learns driver behavior
 
-export async function initializeQuantumHOS(driverId, deviceId = null) {
+export async function initializeHOSAnalytics(driverId, deviceId = null) {
   try {
-    const record = await pb.collection('quantum_hos_profiles').create({
+    const record = await pb.collection('hos_profiles').create({
       driver_id: driverId,
       device_id: deviceId,
       status: 'off_duty',
@@ -26,13 +26,13 @@ export async function initializeQuantumHOS(driverId, deviceId = null) {
       daily_hours: 0,
       cycle_start: new Date().toISOString(),
       ai_fatigue_score: 0, // 0-100, learns from pattern
-      quantum_state: generateQuantumState(),
+      engine_state: generateEngineState(),
       last_sync: new Date().toISOString(),
       created_at: new Date().toISOString()
     });
     return record;
   } catch (e) {
-    console.error('Quantum HOS init failed:', e);
+    console.error('HOS Analytics init failed:', e);
     throw e;
   }
 }
@@ -68,7 +68,7 @@ export async function getHOSStatus(driverId) {
    * Returns current HOS status, remaining hours, cycle progress, AI warnings
    */
   try {
-    const profile = await pb.collection('quantum_hos_profiles').getFirstListItem(`driver_id = "${driverId}"`);
+    const profile = await pb.collection('hos_profiles').getFirstListItem(`driver_id = "${driverId}"`);
     const recentEvents = await pb.collection('hos_events').getList(1, 50, {
       filter: `driver_id = "${driverId}"`,
       sort: '-timestamp'
@@ -351,7 +351,7 @@ export async function purchaseMorrishiveDevice(driverId, deviceSKU, quantity = 1
 
 // ===== HELPER FUNCTIONS =====
 
-function generateQuantumState() {
+function generateEngineState() {
   return Array(128).fill(0).map(() => Math.random());
 }
 

@@ -266,7 +266,7 @@ export default function AssetEasePage() {
   const [editVId, setEditVId]       = useState(null);
   const [editTId, setEditTId]       = useState(null);
 
-  // Quantum analysis
+  // Intelligence analysis
   const [analysis, setAnalysis] = useState(null);
 
   useEffect(() => { loadAll(); }, []);
@@ -433,7 +433,7 @@ export default function AssetEasePage() {
           <button onClick={runIndex} disabled={indexing}
             style={{ background: indexed ? `linear-gradient(135deg, ${GOLD}, #7a5a1a)` : "transparent", border: `2px solid ${GOLD}`, color: indexed ? BLACK : GOLD, padding: "10px 22px", borderRadius: 8, cursor: indexing ? "wait" : "pointer", fontWeight: 700, fontSize: 13, letterSpacing: 1, display: "flex", alignItems: "center", gap: 8, transition: "all 0.3s", fontFamily: "Oswald, sans-serif" }}>
             <span style={indexing ? { animation: "spin 0.8s linear infinite", display: "inline-block" } : {}}>⚡</span>
-            {indexing ? "Indexing All Records…" : indexed ? "Re-Index Fleet" : "Quantum Index"}
+            {indexing ? "Indexing All Records…" : indexed ? "Re-Index Fleet" : "Intelligence Index"}
           </button>
           <button onClick={() => { window.history.pushState({}, "", "/live-gps"); window.dispatchEvent(new PopStateEvent("popstate")); }}
             style={{ background: `${GREEN}18`, border: `1px solid ${GREEN}55`, color: GREEN, padding: "10px 18px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "Oswald, sans-serif", letterSpacing: 1, display: "flex", alignItems: "center", gap: 6 }}>
@@ -445,12 +445,12 @@ export default function AssetEasePage() {
         </div>
       </div>
 
-      {/* Quantum Analysis Banner */}
+      {/* Intelligence Analysis Banner */}
       {analysis && (
         <div style={{ background: "linear-gradient(135deg, #1c1200 0%, #0a0a0a 100%)", borderBottom: `1px solid ${GOLD}44`, padding: "20px 24px" }}>
           <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ flex: 1, minWidth: 240 }}>
-              <div style={{ fontSize: 10, color: GOLD, letterSpacing: 2, fontWeight: 700, marginBottom: 6 }}>⚡ QUANTUM INDEX COMPLETE — ALL RECORDS MEMORIZED</div>
+              <div style={{ fontSize: 10, color: GOLD, letterSpacing: 2, fontWeight: 700, marginBottom: 6 }}>⚡ INTELLIGENCE INDEX COMPLETE — ALL RECORDS MEMORIZED</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", lineHeight: 1.5 }}>{analysis.rec}</div>
             </div>
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
@@ -509,7 +509,7 @@ export default function AssetEasePage() {
                   onClick={runIndex}>
                   <div style={{ textAlign: "center" }}>
                     <div style={{ fontSize: 22, marginBottom: 4 }}>⚡</div>
-                    <div style={{ fontSize: 12, color: GOLD, fontWeight: 700, letterSpacing: 1 }}>RUN QUANTUM INDEX</div>
+                    <div style={{ fontSize: 12, color: GOLD, fontWeight: 700, letterSpacing: 1 }}>RUN INTELLIGENCE INDEX</div>
                     <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Collect · Store · Memorize</div>
                   </div>
                 </div>
@@ -528,9 +528,9 @@ export default function AssetEasePage() {
               </button>
             </div>
 
-            {/* Quantum Options Grid */}
+            {/* Intelligence Options Grid */}
             <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 12, color: "#555", letterSpacing: 2, marginBottom: 14, textTransform: "uppercase" }}>Quantum Intelligence Options</div>
+              <div style={{ fontSize: 12, color: "#555", letterSpacing: 2, marginBottom: 14, textTransform: "uppercase" }}>Fleet Intelligence Options</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
                 {[
                   { icon: "⚡", title: "Instant Index",       plain: "Every asset catalogued the moment it's added", q: "Real-time O(1) lookup across all asset records" },
@@ -830,9 +830,9 @@ export default function AssetEasePage() {
               </div>
             </div>
 
-            {/* Quantum Actions */}
+            {/* Intelligence Actions */}
             <div style={{ background: `linear-gradient(135deg, #1a1200, #0d0d0d)`, border: `1px solid ${GOLD}44`, borderRadius: 12, padding: 24 }}>
-              <div style={{ color: GOLD, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 18 }}>⚡ QUANTUM ACTIONS</div>
+              <div style={{ color: GOLD, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 18 }}>⚡ INTELLIGENCE ACTIONS</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {[
                   { icon: "⚡", label: "Re-Index All Records", action: () => { runIndex(); setTab("bank"); } },

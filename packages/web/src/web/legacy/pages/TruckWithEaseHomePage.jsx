@@ -34,7 +34,7 @@
  *   - "Real-time captions at 99.8% accuracy." — the 99.8% figure was invented. It is
  *     the same fake number already stripped from RevolutionPage. Caption accuracy is
  *     not measured, so no number is published.
- *   - "We predict if you're getting tired" and "Quantum AI predicts fatigue 24 hours
+ *   - "We predict if you're getting tired" and "Fleet AI predicts fatigue 24 hours
  *     ahead. Prevent accidents." — no fatigue prediction model exists. Fatigue is one
  *     10%-weighted input to the safety score, and it is scored from logged events
  *     after the fact, not predicted forward.

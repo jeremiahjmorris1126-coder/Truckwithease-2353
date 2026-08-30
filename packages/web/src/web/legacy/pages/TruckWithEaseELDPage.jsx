@@ -1,6 +1,6 @@
 /**
- * TruckWithEase ELD — Quantum-Integrated Hardware + Intelligence System
- * FMCSA-registered · 12-layer Quantum engine wired live into every device
+ * TruckWithEase ELD — Intelligence-Integrated Hardware + Intelligence System
+ * FMCSA-registered · 12-layer Intelligence engine wired live into every device
  * No Samsara. No Motive. No contracts. No hardware games.
  * Proprietary & Confidential — morrishive.com
  */
@@ -24,10 +24,10 @@ const WHITE = '#ffffff';
 const DIM   = 'rgba(255,255,255,0.45)';
 const DIM2  = 'rgba(255,255,255,0.12)';
 
-// ─── QUANTUM LAYERS — wired into ELD telemetry ───────────────────────────────
-const QUANTUM_LAYERS = [
+// ─── INTELLIGENCE LAYERS — wired into ELD telemetry ───────────────────────────────
+const ENGINE_LAYERS = [
   { id: 1,  name: 'Ghost Index',          icon: '👁️',  color: PURPLE, ms: 3,   desc: 'Pre-stages optimal load-driver matches 6 hours before shift start using ELD drive patterns', eldLink: 'HOS data → load pre-match' },
-  { id: 2,  name: 'Quantum Route Engine', icon: '⚛️',  color: CYAN,   ms: 0,   desc: '2.4 trillion route permutations solved per dispatch — ELD position feeds live re-routing', eldLink: 'GPS position → live reroute' },
+  { id: 2,  name: 'Route Engine', icon: '⚛️',  color: CYAN,   ms: 0,   desc: '2.4 trillion route permutations solved per dispatch — ELD position feeds live re-routing', eldLink: 'GPS position → live reroute' },
   { id: 3,  name: 'Phantom Compliance',   icon: '🛡️',  color: GREEN,  ms: 72,  desc: 'Catches HOS, CSA, FMCSA violations 72 hours before they appear on record', eldLink: 'HOS log → violation prediction' },
   { id: 4,  name: 'Revenue Nerve',        icon: '💰',  color: G,      ms: 0,   desc: '47 profit variables per mile, per load, per driver — updated every ELD ping', eldLink: 'Speed + route → profit/mile' },
   { id: 5,  name: 'Neural Load Match',    icon: '🧠',  color: BLUE,   ms: 0,   desc: 'Matches driver behavior patterns from ELD to every available load in real time', eldLink: 'Drive style → load personality match' },
@@ -43,9 +43,9 @@ const QUANTUM_LAYERS = [
 // ─── ELD PLANS ────────────────────────────────────────────────────────────────
 const PLANS = [
   { id: 'owner-op',   name: 'Owner-Operator', price: 29, hw: 99,  color: GREEN,  badge: 'MOST POPULAR',
-    features: ['FMCSA-Registered ELD Hardware','Plug & Play OBD-II (< 5 min)','Auto HOS Logging','DVIR Pre/Post Trip','Live GPS','DOT Inspection Mode','All 12 Quantum Layers','Full Platform Access','No Contract — Cancel Anytime'] },
+    features: ['FMCSA-Registered ELD Hardware','Plug & Play OBD-II (< 5 min)','Auto HOS Logging','DVIR Pre/Post Trip','Live GPS','DOT Inspection Mode','All 12 Intelligence Layers','Full Platform Access','No Contract — Cancel Anytime'] },
   { id: 'fleet-pro',  name: 'Fleet Pro',       price: 19, hw: 89,  color: G,      badge: 'FLEET FAVORITE',
-    features: ['Everything in Owner-Operator','Fleet Dashboard — All Trucks Live','Driver Scorecard from Real ELD Data','Violation Alerts (Instant Push)','DOT Audit Trail Auto-Generated','Quantum Dispatch Integration','Load Board + ELD Data Combined','ELD-Verified Payroll Engine'] },
+    features: ['Everything in Owner-Operator','Fleet Dashboard — All Trucks Live','Driver Scorecard from Real ELD Data','Violation Alerts (Instant Push)','DOT Audit Trail Auto-Generated','Dispatch Integration','Load Board + ELD Data Combined','ELD-Verified Payroll Engine'] },
   { id: 'enterprise', name: 'Enterprise',      price: 14, hw: 79,  color: PURPLE, badge: 'ENTERPRISE',
     features: ['Everything in Fleet Pro','White-Label Option (Your Brand)','DOT Portal Integration','Random Drug Pool Auto-Select','Medical Card Renewal Alerts','Dedicated Account Manager','Custom REST API Access','Priority 24/7 Support'] },
 ];
@@ -59,8 +59,8 @@ const COMPARE = [
   { feature: 'Driver Scorecard',                   twe: true,  sam: true,  mot: true  },
   { feature: 'Violation Alerts',                   twe: true,  sam: true,  mot: true  },
   { feature: 'DOT Audit Trail',                    twe: true,  sam: true,  mot: true  },
-  { feature: '── Quantum Intelligence ──',          twe: null,  sam: null,  mot: null  },
-  { feature: '12-Layer Quantum Engine',            twe: true,  sam: false, mot: false },
+  { feature: '── Fleet Intelligence ──',          twe: null,  sam: null,  mot: null  },
+  { feature: '12-Layer Intelligence Engine',            twe: true,  sam: false, mot: false },
   { feature: 'Predictive Violation Alert (72hr)',  twe: true,  sam: false, mot: false },
   { feature: 'Autonomous Load Assignment',         twe: true,  sam: false, mot: false },
   { feature: 'ELD → Load Match (AI)',              twe: true,  sam: false, mot: false },
@@ -83,19 +83,19 @@ const COMPARE = [
 
 // ─── MOCK LIVE DEVICES ────────────────────────────────────────────────────────
 const MOCK_DEVICES = [
-  { id: 'TWE-001', driver: 'Marcus Johnson',  truck: 'Unit 101', location: 'Memphis, TN → Nashville, TN', speed: 67, hours: 7.2,  remaining: 3.8, status: 'driving',  score: 94, violations: 0, miles: 312, quantum: 'Revenue Nerve: +$28 via reroute', profit: 3.42 },
-  { id: 'TWE-002', driver: 'Sarah Mitchell',  truck: 'Unit 204', location: 'Dallas, TX — Parked / Rest',  speed: 0,  hours: 4.1,  remaining: 6.9, status: 'sleeper',  score: 88, violations: 1, miles: 198, quantum: 'Ghost Index: pre-staged LD-9021 for 06:00', profit: 0 },
-  { id: 'TWE-003', driver: 'James Rodriguez', truck: 'Unit 317', location: 'Chicago, IL → St. Louis, MO', speed: 59, hours: 9.5,  remaining: 1.5, status: 'driving',  score: 71, violations: 3, miles: 441, quantum: 'Phantom Compliance: HOS alert — 1.5h left', profit: 2.18 },
-  { id: 'TWE-004', driver: 'Linda Okafor',    truck: 'Unit 422', location: 'Atlanta, GA — On Duty / Loading', speed: 0, hours: 2.8, remaining: 8.2, status: 'on-duty', score: 97, violations: 0, miles: 87, quantum: 'Neural Match: LD-9024 queued — 99.1% fit', profit: 0 },
+  { id: 'TWE-001', driver: 'Marcus Johnson',  truck: 'Unit 101', location: 'Memphis, TN → Nashville, TN', speed: 67, hours: 7.2,  remaining: 3.8, status: 'driving',  score: 94, violations: 0, miles: 312, intelligence: 'Revenue Nerve: +$28 via reroute', profit: 3.42 },
+  { id: 'TWE-002', driver: 'Sarah Mitchell',  truck: 'Unit 204', location: 'Dallas, TX — Parked / Rest',  speed: 0,  hours: 4.1,  remaining: 6.9, status: 'sleeper',  score: 88, violations: 1, miles: 198, intelligence: 'Ghost Index: pre-staged LD-9021 for 06:00', profit: 0 },
+  { id: 'TWE-003', driver: 'James Rodriguez', truck: 'Unit 317', location: 'Chicago, IL → St. Louis, MO', speed: 59, hours: 9.5,  remaining: 1.5, status: 'driving',  score: 71, violations: 3, miles: 441, intelligence: 'Phantom Compliance: HOS alert — 1.5h left', profit: 2.18 },
+  { id: 'TWE-004', driver: 'Linda Okafor',    truck: 'Unit 422', location: 'Atlanta, GA — On Duty / Loading', speed: 0, hours: 2.8, remaining: 8.2, status: 'on-duty', score: 97, violations: 0, miles: 87, intelligence: 'Neural Match: LD-9024 queued — 99.1% fit', profit: 0 },
 ];
 
 const STATUS_COLOR = { driving: GREEN, sleeper: BLUE, 'on-duty': AMBER, 'off-duty': DIM };
 const STATUS_LABEL = { driving: '🟢 Driving', sleeper: '🔵 Sleeper Berth', 'on-duty': '🟡 On Duty', 'off-duty': '⚫ Off Duty' };
 
-// ─── LIVE QUANTUM FEED ────────────────────────────────────────────────────────
-const QUANTUM_FEED_POOL = [
+// ─── LIVE INTELLIGENCE FEED ────────────────────────────────────────────────────────
+const ENGINE_FEED_POOL = [
   { layer: 'Ghost Index',          msg: 'Pre-staged LD-9031 for Marcus Johnson — 06:00 shift', color: PURPLE },
-  { layer: 'Quantum Route Engine', msg: 'Rerouted Unit 317 — saves 34 min, avoids I-57 closure', color: CYAN },
+  { layer: 'Route Engine', msg: 'Rerouted Unit 317 — saves 34 min, avoids I-57 closure', color: CYAN },
   { layer: 'Phantom Compliance',   msg: 'James Rodriguez: HOS critical in 94 min — load shortened', color: GREEN },
   { layer: 'Revenue Nerve',        msg: 'Unit 101: +$28.40 profit via Memphis bypass reroute', color: G },
   { layer: 'Neural Load Match',    msg: 'Linda Okafor → HAZMAT LD-9022: 99.1% driver fit', color: BLUE },
@@ -153,7 +153,7 @@ function HOSBar({ hours, remaining }) {
 export default function TruckWithEaseELDPage() {
   const [tab, setTab]             = useState('overview');
   const [liveDevices, setLiveDevices] = useState(MOCK_DEVICES);
-  const [quantumFeed, setQuantumFeed] = useState([]);
+  const [engineFeed, setEngineFeed] = useState([]);
   const [selectedDev, setSelectedDev] = useState(null);
   const [layerActive, setLayerActive] = useState(null);
   const [ticker, setTicker]       = useState(0);
@@ -180,24 +180,24 @@ export default function TruckWithEaseELDPage() {
     return () => clearInterval(t);
   }, []);
 
-  // Quantum feed
+  // Intelligence feed
   useEffect(() => {
-    const seed = QUANTUM_FEED_POOL.map((item, i) => ({ ...item, id: i, ts: new Date(Date.now() - i * 8000) }));
-    setQuantumFeed(seed);
+    const seed = ENGINE_FEED_POOL.map((item, i) => ({ ...item, id: i, ts: new Date(Date.now() - i * 8000) }));
+    setEngineFeed(seed);
     const t = setInterval(() => {
-      const pick = QUANTUM_FEED_POOL[Math.floor(Math.random() * QUANTUM_FEED_POOL.length)];
-      setQuantumFeed(prev => [{ ...pick, id: Date.now(), ts: new Date() }, ...prev.slice(0, 39)]);
+      const pick = ENGINE_FEED_POOL[Math.floor(Math.random() * ENGINE_FEED_POOL.length)];
+      setEngineFeed(prev => [{ ...pick, id: Date.now(), ts: new Date() }, ...prev.slice(0, 39)]);
     }, 3500);
     return () => clearInterval(t);
   }, []);
 
-  const runQuantumScan = () => {
+  const runEngineScan = () => {
     setScanRunning(true); setScanDone(false); setScanStep(0);
     let step = 0;
     const t = setInterval(() => {
       step++;
       setScanStep(step);
-      if (step >= QUANTUM_LAYERS.length) { clearInterval(t); setScanRunning(false); setScanDone(true); }
+      if (step >= ENGINE_LAYERS.length) { clearInterval(t); setScanRunning(false); setScanDone(true); }
     }, 380);
   };
 
@@ -218,7 +218,7 @@ export default function TruckWithEaseELDPage() {
 
   const TABS = [
     { id: 'overview',  label: '🏠 Overview' },
-    { id: 'quantum',   label: '⚛️ Quantum Engine' },
+    { id: 'intelligence',   label: '⚛️ Intelligence Engine' },
     { id: 'live',      label: '📡 Live Fleet' },
     { id: 'order',     label: '📦 Order Hardware' },
     { id: 'activate',  label: '⚡ Activate' },
@@ -238,21 +238,21 @@ export default function TruckWithEaseELDPage() {
         <div style={{ position: 'relative' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#00d68f12', border: `1px solid ${GREEN}40`, borderRadius: 30, padding: '6px 18px', marginBottom: 20 }}>
             <Pulse color={GREEN} />
-            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 3, color: GREEN }}>FMCSA-REGISTERED · 12-LAYER QUANTUM ELD SYSTEM</span>
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 3, color: GREEN }}>FMCSA-REGISTERED · 12-LAYER INTELLIGENCE ELD SYSTEM</span>
           </div>
           <h1 style={{ fontSize: 'clamp(26px,5vw,54px)', fontWeight: 900, margin: '0 0 10px', lineHeight: 1.05 }}>
             <span style={{ color: WHITE }}>TruckWithEase</span>{' '}
             <span style={{ background: `linear-gradient(135deg,${G},${G2})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>ELD</span>
           </h1>
           <p style={{ fontSize: 'clamp(14px,2.2vw,18px)', color: DIM, maxWidth: 620, margin: '0 auto 10px', lineHeight: 1.65 }}>
-            The only ELD in the world with a 12-layer Quantum Intelligence engine wired directly into every device. Samsara stops at the cab door. We don't.
+            The only ELD in the world with a 12-layer Fleet Intelligence engine wired directly into every device. Samsara stops at the cab door. We don't.
           </p>
           <p style={{ fontSize: 13, color: G, fontWeight: 700, marginBottom: 30 }}>$19/truck/mo · No contract · Ships in 2 business days · Call 636-706-8338</p>
           <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
             {[
               { v: '2,847', l: 'Devices Live' },
               { v: '99.97%', l: 'Uptime' },
-              { v: '12', l: 'Quantum Layers' },
+              { v: '12', l: 'Intelligence Layers' },
               { v: '< 5 min', l: 'Install' },
               { v: '$0', l: 'Lock-In' },
             ].map(s => (
@@ -305,13 +305,13 @@ export default function TruckWithEaseELDPage() {
                 </div>
               </div>
 
-              {/* Quantum highlight */}
+              {/* Intelligence highlight */}
               <div style={{ background: CARD2, border: `1px solid ${CYAN}30`, borderRadius: 16, padding: 28, position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg,${PURPLE},${CYAN},${PURPLE})` }} />
-                <div style={{ fontSize: 11, fontWeight: 800, color: CYAN, letterSpacing: 3, marginBottom: 12 }}>⚛️ QUANTUM ENGINE — WIRED IN</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: WHITE, marginBottom: 14, lineHeight: 1.5 }}>Every TWE-ELD device is connected to all 12 Quantum layers from the moment it powers on.</div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: CYAN, letterSpacing: 3, marginBottom: 12 }}>⚛️ INTELLIGENCE ENGINE — WIRED IN</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: WHITE, marginBottom: 14, lineHeight: 1.5 }}>Every TWE-ELD device is connected to all 12 intelligence layers from the moment it powers on.</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {QUANTUM_LAYERS.slice(0, 6).map(l => (
+                  {ENGINE_LAYERS.slice(0, 6).map(l => (
                     <div key={l.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                       <span style={{ fontSize: 14, flexShrink: 0 }}>{l.icon}</span>
                       <div>
@@ -320,7 +320,7 @@ export default function TruckWithEaseELDPage() {
                       </div>
                     </div>
                   ))}
-                  <button onClick={() => setTab('quantum')} style={{ marginTop: 6, background: CYAN + '20', border: `1px solid ${CYAN}40`, borderRadius: 8, padding: '8px 14px', color: CYAN, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>See all 12 layers →</button>
+                  <button onClick={() => setTab('intelligence')} style={{ marginTop: 6, background: CYAN + '20', border: `1px solid ${CYAN}40`, borderRadius: 8, padding: '8px 14px', color: CYAN, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>See all 12 layers →</button>
                 </div>
               </div>
 
@@ -332,7 +332,7 @@ export default function TruckWithEaseELDPage() {
                   { icon: '🔌', title: 'OBD-II Connector', desc: 'Plug into the port under your dash. No tools.' },
                   { icon: '📱', title: 'TruckWithEase App', desc: 'Download free. Device connects instantly on login.' },
                   { icon: '🛡️', title: 'FMCSA Registration', desc: 'Pre-registered. DOT inspection ready day one.' },
-                  { icon: '⚛️', title: '12 Quantum Layers', desc: 'Active from first power-on. Zero setup.' },
+                  { icon: '⚛️', title: '12 Intelligence Layers', desc: 'Active from first power-on. Zero setup.' },
                   { icon: '📞', title: '24/7 Phone Support', desc: '636-706-8338 — real person, real answers.' },
                 ].map(i => (
                   <div key={i.title} style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 10, padding: '12px 14px', display: 'flex', gap: 12 }}>
@@ -350,7 +350,7 @@ export default function TruckWithEaseELDPage() {
             <div style={{ marginBottom: 28 }}>
               <div style={{ textAlign: 'center', marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', color: WHITE }}>Choose Your Plan</div>
-                <div style={{ fontSize: 11, color: DIM, marginTop: 4 }}>All plans include all 12 Quantum layers — no upsell</div>
+                <div style={{ fontSize: 11, color: DIM, marginTop: 4 }}>All plans include all 12 intelligence layers — no upsell</div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(270px,1fr))', gap: 16 }}>
                 {PLANS.map(plan => (
@@ -382,7 +382,7 @@ export default function TruckWithEaseELDPage() {
                 {[
                   { n: '01', icon: '📦', t: 'Order & Receive', d: 'Order today. Device arrives in 2 business days with a printed plain-English guide.' },
                   { n: '02', icon: '🔌', t: 'Plug In (< 5 min)', d: 'OBD-II port under your dash. Plug in. Done. No tools, no electrician.' },
-                  { n: '03', icon: '⚛️', t: 'Quantum Goes Live', d: 'App → Activate Device → enter serial. All 12 Quantum layers fire instantly.' },
+                  { n: '03', icon: '⚛️', t: 'Intelligence Goes Live', d: 'App → Activate Device → enter serial. All 12 intelligence layers fire instantly.' },
                 ].map(s => (
                   <div key={s.n} style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 11, fontWeight: 900, color: G, letterSpacing: 3, marginBottom: 6 }}>{s.n}</div>
@@ -396,30 +396,30 @@ export default function TruckWithEaseELDPage() {
           </div>
         )}
 
-        {/* ─── QUANTUM ENGINE TAB ────────────────────────────────────────── */}
-        {tab === 'quantum' && (
+        {/* ─── INTELLIGENCE ENGINE TAB ────────────────────────────────────────── */}
+        {tab === 'intelligence' && (
           <div>
             <div style={{ textAlign: 'center', marginBottom: 28 }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: CYAN + '12', border: `1px solid ${CYAN}40`, borderRadius: 30, padding: '6px 18px', marginBottom: 14 }}>
                 <Pulse color={CYAN} />
-                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 3, color: CYAN }}>12-LAYER QUANTUM ENGINE · LIVE</span>
+                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 3, color: CYAN }}>12-LAYER INTELLIGENCE ENGINE · LIVE</span>
               </div>
               <div style={{ fontSize: 20, fontWeight: 900, color: WHITE, marginBottom: 6 }}>Every ELD Device. Every Layer. Always On.</div>
               <div style={{ fontSize: 12, color: DIM, maxWidth: 580, margin: '0 auto' }}>
-                No other ELD in the world has this. The moment you plug in a TWE-ELD device, all 12 Quantum layers connect to it — predicting violations, matching loads, sealing logs, and calculating profit per mile, continuously.
+                No other ELD in the world has this. The moment you plug in a TWE-ELD device, all 12 intelligence layers connect to it — predicting violations, matching loads, sealing logs, and calculating profit per mile, continuously.
               </div>
             </div>
 
             {/* Run scan button */}
             <div style={{ textAlign: 'center', marginBottom: 28 }}>
               {!scanRunning && !scanDone && (
-                <button onClick={runQuantumScan} style={{ background: `linear-gradient(135deg,${CYAN},${PURPLE})`, color: '#000', padding: '14px 36px', borderRadius: 12, border: 'none', fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>
-                  ⚛️ Run Live Quantum Scan
+                <button onClick={runEngineScan} style={{ background: `linear-gradient(135deg,${CYAN},${PURPLE})`, color: '#000', padding: '14px 36px', borderRadius: 12, border: 'none', fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>
+                  ⚛️ Run Live Intelligence Scan
                 </button>
               )}
               {scanRunning && (
                 <div style={{ color: CYAN, fontSize: 13, fontWeight: 700 }}>
-                  <Pulse color={CYAN} /> Scanning layer {scanStep} of {QUANTUM_LAYERS.length}…
+                  <Pulse color={CYAN} /> Scanning layer {scanStep} of {ENGINE_LAYERS.length}…
                 </div>
               )}
               {scanDone && (
@@ -432,7 +432,7 @@ export default function TruckWithEaseELDPage() {
 
             {/* 12 layers grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 14, marginBottom: 28 }}>
-              {QUANTUM_LAYERS.map((layer, i) => {
+              {ENGINE_LAYERS.map((layer, i) => {
                 const isScanned = scanDone || (scanRunning && scanStep > i);
                 return (
                   <div key={layer.id} onClick={() => setLayerActive(layerActive === layer.id ? null : layer.id)}
@@ -460,7 +460,7 @@ export default function TruckWithEaseELDPage() {
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${BORD}` }}>
                         <div style={{ fontSize: 10, color: layer.color, fontWeight: 800, marginBottom: 6 }}>HOW IT WORKS WITH YOUR ELD</div>
                         <div style={{ fontSize: 11, color: DIM, lineHeight: 1.6 }}>
-                          The TWE-ELD device streams {layer.eldLink.toLowerCase()} directly to this layer every {layer.ms > 0 ? layer.ms + 'ms' : 'ping'}. The Quantum engine processes it and either acts autonomously or surfaces an alert — zero manual steps required.
+                          The TWE-ELD device streams {layer.eldLink.toLowerCase()} directly to this layer every {layer.ms > 0 ? layer.ms + 'ms' : 'ping'}. The Intelligence engine processes it and either acts autonomously or surfaces an alert — zero manual steps required.
                         </div>
                       </div>
                     )}
@@ -469,14 +469,14 @@ export default function TruckWithEaseELDPage() {
               })}
             </div>
 
-            {/* Live quantum feed */}
+            {/* Live intelligence feed */}
             <div style={{ background: CARD2, border: `1px solid ${BORD}`, borderRadius: 14, padding: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                 <Pulse color={CYAN} />
-                <span style={{ fontSize: 12, fontWeight: 800, color: CYAN, letterSpacing: 2 }}>QUANTUM INTELLIGENCE FEED — LIVE</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: CYAN, letterSpacing: 2 }}>FLEET INTELLIGENCE FEED — LIVE</span>
               </div>
               <div style={{ maxHeight: 320, overflowY: 'auto' }} ref={feedRef}>
-                {quantumFeed.slice(0, 20).map(item => (
+                {engineFeed.slice(0, 20).map(item => (
                   <div key={item.id} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: `1px solid ${BORD}` }}>
                     <span style={{ fontSize: 9, color: DIM, minWidth: 64, flexShrink: 0, paddingTop: 2 }}>
                       {item.ts.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -544,9 +544,9 @@ export default function TruckWithEaseELDPage() {
                     <div style={{ fontSize: 9, color: DIM, marginBottom: 4 }}>DRIVER SCORE</div>
                     <ScoreBar score={dev.score} />
                   </div>
-                  {/* Quantum layer active */}
+                  {/* Intelligence layer active */}
                   <div style={{ background: CYAN + '08', border: `1px solid ${CYAN}20`, borderRadius: 7, padding: '7px 10px', fontSize: 10, color: CYAN }}>
-                    ⚛️ {dev.quantum}
+                    ⚛️ {dev.intelligence}
                   </div>
                   {dev.violations > 0 && (
                     <div style={{ marginTop: 8, background: RED + '12', border: `1px solid ${RED}25`, borderRadius: 6, padding: '6px 10px', fontSize: 11, color: RED }}>
@@ -557,7 +557,7 @@ export default function TruckWithEaseELDPage() {
                     <div style={{ marginTop: 14, borderTop: `1px solid ${BORD}`, paddingTop: 14 }}>
                       <div style={{ fontSize: 10, fontWeight: 800, color: G, letterSpacing: 2, marginBottom: 8 }}>QUICK ACTIONS</div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {['📋 View DVIR','⏱️ Full HOS Log','🗺️ Route History','📞 Call Driver','🚨 Send Alert','⚛️ Quantum Detail'].map(a => (
+                        {['📋 View DVIR','⏱️ Full HOS Log','🗺️ Route History','📞 Call Driver','🚨 Send Alert','⚛️ Intelligence Detail'].map(a => (
                           <button key={a} style={{ background: CARD, border: `1px solid ${BORD}`, borderRadius: 8, padding: '7px 12px', fontSize: 10, color: WHITE, cursor: 'pointer', fontWeight: 600 }}>{a}</button>
                         ))}
                       </div>
@@ -575,7 +575,7 @@ export default function TruckWithEaseELDPage() {
                 { t: '10:31 AM', m: 'Linda Okafor — Pre-trip DVIR completed. No defects. Identity Fortress: verified.', c: GREEN },
                 { t: '09:58 AM', m: 'James Rodriguez — 1.5h HOS remaining. Phantom Compliance alert sent.', c: AMBER },
                 { t: '09:15 AM', m: 'Sarah Mitchell — Entered sleeper berth. Ghost Index: pre-staging next load.', c: DIM },
-                { t: '08:00 AM', m: 'All 4 devices online. 12 Quantum layers active. Fleet status: OPTIMAL.', c: GREEN },
+                { t: '08:00 AM', m: 'All 4 devices online. 12 intelligence layers active. Fleet status: OPTIMAL.', c: GREEN },
               ].map((log, i) => (
                 <div key={i} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: i < 4 ? `1px solid ${BORD}` : 'none' }}>
                   <span style={{ fontSize: 10, color: DIM, minWidth: 70, flexShrink: 0 }}>{log.t}</span>
@@ -670,7 +670,7 @@ export default function TruckWithEaseELDPage() {
               <div style={{ background: GREEN + '12', border: `1px solid ${GREEN}40`, borderRadius: 16, padding: 40, textAlign: 'center' }}>
                 <div style={{ fontSize: 48, marginBottom: 14 }}>📡</div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: GREEN, marginBottom: 8 }}>Device Activated!</div>
-                <div style={{ fontSize: 13, color: DIM, lineHeight: 1.6 }}>{activateForm.driver_name} is now live. All 12 Quantum layers are active. Plug the device into the OBD-II port and telemetry starts within 60 seconds.</div>
+                <div style={{ fontSize: 13, color: DIM, lineHeight: 1.6 }}>{activateForm.driver_name} is now live. All 12 intelligence layers are active. Plug the device into the OBD-II port and telemetry starts within 60 seconds.</div>
                 <button onClick={() => setTab('live')} style={{ marginTop: 18, background: GREEN, color: '#000', padding: '12px 28px', borderRadius: 10, border: 'none', fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>View Live Fleet →</button>
               </div>
             ) : (
@@ -697,7 +697,7 @@ export default function TruckWithEaseELDPage() {
                   ))}
                 </div>
                 {activateStatus === 'error' && <div style={{ color: RED, fontSize: 12, marginBottom: 10 }}>⚠️ Serial number and driver name are required.</div>}
-                <button onClick={submitActivation} style={{ width: '100%', padding: '15px', borderRadius: 12, border: 'none', cursor: 'pointer', background: `linear-gradient(135deg,${GREEN},#00a86b)`, color: '#000', fontWeight: 900, fontSize: 14 }}>⚡ Activate — All 12 Quantum Layers Go Live</button>
+                <button onClick={submitActivation} style={{ width: '100%', padding: '15px', borderRadius: 12, border: 'none', cursor: 'pointer', background: `linear-gradient(135deg,${GREEN},#00a86b)`, color: '#000', fontWeight: 900, fontSize: 14 }}>⚡ Activate — All 12 Intelligence Layers Go Live</button>
                 <div style={{ textAlign: 'center', marginTop: 14 }}>
                   <a href="tel:16367068338" style={{ color: G, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>Need help? 636-706-8338</a>
                 </div>
@@ -711,7 +711,7 @@ export default function TruckWithEaseELDPage() {
           <div>
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
               <div style={{ fontSize: 20, fontWeight: 900, color: WHITE, marginBottom: 6 }}>TruckWithEase vs. The Competition</div>
-              <div style={{ fontSize: 12, color: DIM }}>Same ELD. 12 Quantum layers they can't touch. Everything else they never built.</div>
+              <div style={{ fontSize: 12, color: DIM }}>Same ELD. 12 intelligence layers they can't touch. Everything else they never built.</div>
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 500 }}>
@@ -763,7 +763,7 @@ export default function TruckWithEaseELDPage() {
               { title: '📡 Connectivity', specs: [['Network','4G LTE Cat-M1 + WiFi 802.11 b/g/n'],['GPS','u-blox M8 · 2.5m accuracy · 1Hz'],['Bluetooth','BLE 5.0 (driver pairing)'],['Data Plan','Included — no SIM fee']] },
               { title: '⚙️ Hardware', specs: [['Connector','J1939/J1708 + OBD-II universal'],['Processor','ARM Cortex-M7 @ 216 MHz'],['Memory','512MB flash + 128MB RAM'],['Battery Backup','4 hours capacitor-based'],['Enclosure','IP67 waterproof/dustproof'],['Temp Range','-40°F to +185°F']] },
               { title: '🛡️ Compliance', specs: [['FMCSA','49 CFR Part 395 registered'],['Data Retention','6 months on-device + cloud'],['DOT Inspection','One-tap roadside display'],['Tamper Detection','Alert if unplugged mid-trip'],['Certifications','FCC · IC · CE · RoHS']] },
-              { title: '⚛️ Quantum Engine', specs: [['Layers','12 active from first power-on'],['Route Compute','2.4 trillion permutations/dispatch'],['Violation Prediction','72 hours ahead'],['Log Security','SHA-256 cryptographic seal'],['Query Speed','< 80ms · 3yr data window'],['Auto-Assign','Zero dispatcher clicks']] },
+              { title: '⚛️ Intelligence Engine', specs: [['Layers','12 active from first power-on'],['Route Compute','2.4 trillion permutations/dispatch'],['Violation Prediction','72 hours ahead'],['Log Security','SHA-256 cryptographic seal'],['Query Speed','< 80ms · 3yr data window'],['Auto-Assign','Zero dispatcher clicks']] },
               { title: '📊 Platform', specs: [['HOS Rules','Property · Passenger · Alaska · CA'],['DVIR','Pre-trip · Post-trip · Trailer · Roadside'],['Driver Score','8-point real-drive scoring'],['Violation Alerts','Push · SMS · In-app'],['Audit Trail','Auto-generated DOT-ready PDF'],['API','REST — Enterprise plan']] },
               { title: '💰 Pricing', specs: [['Hardware','$79–$99 one-time'],['Owner-Operator','$29/truck/mo'],['Fleet Pro (5+)','$19/truck/mo'],['Enterprise (20+)','$14/truck/mo'],['Contract','Month-to-month · cancel anytime'],['Platform','Full TruckWithEase — included']] },
             ].map(section => (

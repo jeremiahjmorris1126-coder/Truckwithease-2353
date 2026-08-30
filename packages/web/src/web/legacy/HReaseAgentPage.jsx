@@ -24,7 +24,7 @@ function navTo(p) { window.history.pushState({}, '', p); window.dispatchEvent(ne
 const fmt  = n => '$' + Math.round(n).toLocaleString();
 const pct  = n => parseFloat(n).toFixed(1) + '%';
 
-// ── Quantum Payroll Engine ────────────────────────────────────────────────
+// ── Intelligence Payroll Engine ────────────────────────────────────────────────
 function calcDriverPayroll(d) {
   const grossMiles  = d.weeklyMiles || 0;
   const ratePerMile = d.payRatePerMile || 0.55;
@@ -78,7 +78,7 @@ function calcHireScore(a) {
   return Math.min(100, Math.max(0, s));
 }
 
-// Quantum value projection — what a driver will bring to the fleet
+// Intelligence value projection — what a driver will bring to the fleet
 function calcDriverValue(a) {
   const avgMilesPerWeek = 2500 + (a.yearsExp || 0) * 50;
   const ratePerMile     = 0.55 + (a.yearsExp >= 10 ? 0.07 : a.yearsExp >= 5 ? 0.04 : 0);
@@ -185,7 +185,7 @@ const TABS = [
   { id:'documents',   label:'📁 Document Center' },
   { id:'payroll',     label:'💰 Payroll Engine' },
   { id:'drivers',     label:'👥 Driver Files' },
-  { id:'quantum',     label:'⚡ Quantum HR' },
+  { id:'intelligence',     label:'⚡ Intelligence HR' },
   { id:'reports',     label:'📈 Reports' },
 ];
 
@@ -195,9 +195,9 @@ export default function HReaseAgentPage() {
   const [applicants, setApplicants] = useState(MOCK_APPLICANTS);
   const [expanded, setExpanded]     = useState(null);
   const [payPeriod, setPayPeriod]   = useState('weekly');
-  const [quantumRunning, setQR]     = useState(false);
-  const [quantumLog, setQL]         = useState([]);
-  const [quantumScore, setQS]       = useState(null);
+  const [engineRunning, setQR]     = useState(false);
+  const [engineLog, setQL]         = useState([]);
+  const [engineScore, setQS]       = useState(null);
   const [drugSearch, setDS]         = useState('');
   const [roadScores, setRS]         = useState({});
   const [roadApplicant, setRA]      = useState('');
@@ -244,25 +244,25 @@ export default function HReaseAgentPage() {
     }
   };
 
-  const runQuantumScan = useCallback(async () => {
+  const runEngineScan = useCallback(async () => {
     setQR(true); setQL([]); setQS(null);
     const lines = [
-      '⚡ Initializing Quantum HR Engine v3.0...',
+      '⚡ Initializing Intelligence HR Engine v3.0...',
       `🔍 Scanning ${drivers.length} active driver files — CDL, medical, DOT, insurance, drug test, road test...`,
       `📊 Payroll engine running — calculating gross, taxes, net, and profit per driver...`,
-      `🤖 Quantum hire-score algorithm processing ${applicants.length} applicants...`,
+      `🤖 Intelligence hire-score algorithm processing ${applicants.length} applicants...`,
       `🛞 Road test grade analysis — reviewing all road test scores for fleet readiness...`,
       `💊 Drug test status sweep — flagging pending results and expired clearances...`,
       `🌐 Candidate pipeline scan — ${connectedPlatforms.length} hiring platforms connected · ${totalCandidatePool.toLocaleString()} active candidates...`,
       `📁 Compliance document audit — checking all required FMCSA files...`,
       `⚠️ Risk analysis — flagging compliance gaps, hiring risks, retention threats...`,
       `💰 Fleet profitability model — revenue vs. cost per driver, lifetime value projections...`,
-      `🧬 Quantum optimization complete — workforce recommendations generated.`,
+      `🧬 Intelligence optimization complete — workforce recommendations generated.`,
     ];
     for (let i=0; i<lines.length; i++) { await new Promise(r=>setTimeout(r,420)); setQL(prev=>[...prev,lines[i]]); }
     const score = Math.round((avgCompliance*0.35) + (fleetPayroll.profit>0?30:10) + (applicants.filter(a=>calcHireScore(a)>=70).length/applicants.length*20) + (connectedPlatforms.length/HIRING_PLATFORMS.length*15));
     setQS(score); setQR(false);
-    try { await pb.collection('mechanic_sessions').create({ session_mode:'quantum_hr_scan', diagnosis:`Score:${score}`, resolution_status:'completed' }); } catch {}
+    try { await pb.collection('mechanic_sessions').create({ session_mode:'hr_scan', diagnosis:`Score:${score}`, resolution_status:'completed' }); } catch {}
   }, [drivers, applicants, avgCompliance, fleetPayroll.profit, connectedPlatforms.length, totalCandidatePool]);
 
   const addDriver = async () => {
@@ -292,7 +292,7 @@ export default function HReaseAgentPage() {
           <div>
             <div style={{ fontFamily:FD, fontSize:11, letterSpacing:'0.2em', color:GOLD }}>TRUCKWITHEASE</div>
             <div style={{ fontFamily:FD, fontSize:42, letterSpacing:'0.06em', lineHeight:1.1 }}>HRease Agent</div>
-            <div style={{ fontSize:13, color:DIM, marginTop:4 }}>Calculate · Report · Automate · Quantum · Hire</div>
+            <div style={{ fontSize:13, color:DIM, marginTop:4 }}>Calculate · Report · Automate · Intelligence · Hire</div>
           </div>
           <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
             {[
@@ -453,7 +453,7 @@ export default function HReaseAgentPage() {
         {/* ── APPLICANTS ── */}
         {tab==='applicants' && (
           <div>
-            <div style={{ fontFamily:FD, fontSize:26, letterSpacing:'0.08em', marginBottom:24 }}>AI APPLICANT SCORING & QUANTUM VALUE</div>
+            <div style={{ fontFamily:FD, fontSize:26, letterSpacing:'0.08em', marginBottom:24 }}>AI APPLICANT SCORING & INTELLIGENCE VALUE</div>
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
               {applicants.map(a => {
                 const score = calcHireScore(a);
@@ -494,9 +494,9 @@ export default function HReaseAgentPage() {
                               </div>
                             ))}
                           </div>
-                          {/* Quantum value */}
+                          {/* Intelligence value */}
                           <div style={{ background:CARD2, borderRadius:10, padding:16 }}>
-                            <div style={{ fontFamily:FD, fontSize:13, color:PURPLE, marginBottom:10 }}>⚡ QUANTUM VALUE PROJECTION</div>
+                            <div style={{ fontFamily:FD, fontSize:13, color:PURPLE, marginBottom:10 }}>⚡ INTELLIGENCE VALUE PROJECTION</div>
                             {[['Weekly Revenue',fmt(val.weeklyRevenue),GREEN],['Weekly Profit',fmt(val.weeklyProfit),val.weeklyProfit>0?GREEN:RED],['Annual Profit',fmt(val.annualProfit),GOLD],['Lifetime Value',fmt(val.lifetimeValue),GOLD],['Retention Est.',`${val.retentionYears}yr`,BLUE],['Safety Risk',val.safetyRisk,val.safetyRisk==='LOW'?GREEN:val.safetyRisk==='MEDIUM'?AMBER:RED]].map(([l,v,c])=>(
                               <div key={l} style={{ display:'flex', justifyContent:'space-between', fontSize:12, padding:'4px 0', borderBottom:`1px solid ${BORDER}` }}>
                                 <span style={{ color:DIM }}>{l}</span><span style={{ color:c, fontWeight:700 }}>{v}</span>
@@ -841,33 +841,33 @@ export default function HReaseAgentPage() {
           </div>
         )}
 
-        {/* ── QUANTUM HR ── */}
-        {tab==='quantum' && (
+        {/* ── INTELLIGENCE HR ── */}
+        {tab==='intelligence' && (
           <div>
-            <div style={{ fontFamily:FD, fontSize:26, letterSpacing:'0.08em', marginBottom:8 }}>⚡ QUANTUM HR ENGINE</div>
+            <div style={{ fontFamily:FD, fontSize:26, letterSpacing:'0.08em', marginBottom:8 }}>⚡ INTELLIGENCE HR ENGINE</div>
             <div style={{ fontSize:14, color:DIM, marginBottom:24 }}>One scan. Every driver. Every applicant. Every platform. Every dollar. Instantly.</div>
-            <button onClick={runQuantumScan} disabled={quantumRunning} style={{ background:quantumRunning?DIM2:GOLD, border:'none', borderRadius:10, padding:'14px 36px', color:quantumRunning?DIM:DARK, fontSize:16, fontWeight:800, cursor:quantumRunning?'not-allowed':'pointer', fontFamily:FD, letterSpacing:'0.1em', marginBottom:24 }}>
-              {quantumRunning?'⚡ SCANNING...':'⚡ RUN QUANTUM SCAN'}
+            <button onClick={runEngineScan} disabled={engineRunning} style={{ background:engineRunning?DIM2:GOLD, border:'none', borderRadius:10, padding:'14px 36px', color:engineRunning?DIM:DARK, fontSize:16, fontWeight:800, cursor:engineRunning?'not-allowed':'pointer', fontFamily:FD, letterSpacing:'0.1em', marginBottom:24 }}>
+              {engineRunning?'⚡ SCANNING...':'⚡ RUN INTELLIGENCE SCAN'}
             </button>
-            {quantumLog.length>0 && (
+            {engineLog.length>0 && (
               <div style={{ background:CARD, border:`1px solid ${GOLD}44`, borderRadius:12, padding:20, marginBottom:24 }}>
-                <div style={{ fontFamily:FD, fontSize:14, color:GOLD, marginBottom:12 }}>QUANTUM SCAN LOG</div>
-                {quantumLog.map((l,i)=>(
-                  <div key={i} style={{ fontSize:12, color:i===quantumLog.length-1?WHITE:DIM, padding:'4px 0', borderBottom:`1px solid ${BORDER}` }}>{l}</div>
+                <div style={{ fontFamily:FD, fontSize:14, color:GOLD, marginBottom:12 }}>INTELLIGENCE SCAN LOG</div>
+                {engineLog.map((l,i)=>(
+                  <div key={i} style={{ fontSize:12, color:i===engineLog.length-1?WHITE:DIM, padding:'4px 0', borderBottom:`1px solid ${BORDER}` }}>{l}</div>
                 ))}
               </div>
             )}
-            {quantumScore!==null && (
+            {engineScore!==null && (
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:16 }}>
-                <div style={{ background:CARD, border:`2px solid ${quantumScore>=80?GREEN:quantumScore>=60?AMBER:RED}`, borderRadius:12, padding:24, textAlign:'center' }}>
-                  <div style={{ fontFamily:FD, fontSize:13, color:GOLD, marginBottom:8 }}>QUANTUM HR SCORE</div>
-                  <div style={{ fontFamily:FD, fontSize:72, color:quantumScore>=80?GREEN:quantumScore>=60?AMBER:RED }}>{quantumScore}</div>
-                  <div style={{ fontSize:13, color:quantumScore>=80?GREEN:AMBER, fontWeight:700, marginTop:8 }}>
-                    {quantumScore>=80?'🟢 Fleet HR Performing Well':quantumScore>=60?'🟡 Attention Required':'🔴 Critical Action Needed'}
+                <div style={{ background:CARD, border:`2px solid ${engineScore>=80?GREEN:engineScore>=60?AMBER:RED}`, borderRadius:12, padding:24, textAlign:'center' }}>
+                  <div style={{ fontFamily:FD, fontSize:13, color:GOLD, marginBottom:8 }}>INTELLIGENCE HR SCORE</div>
+                  <div style={{ fontFamily:FD, fontSize:72, color:engineScore>=80?GREEN:engineScore>=60?AMBER:RED }}>{engineScore}</div>
+                  <div style={{ fontSize:13, color:engineScore>=80?GREEN:AMBER, fontWeight:700, marginTop:8 }}>
+                    {engineScore>=80?'🟢 Fleet HR Performing Well':engineScore>=60?'🟡 Attention Required':'🔴 Critical Action Needed'}
                   </div>
                 </div>
                 <div style={{ background:CARD, border:`1px solid ${BORDER}`, borderRadius:12, padding:24, gridColumn:'span 2' }}>
-                  <div style={{ fontFamily:FD, fontSize:14, color:GOLD, marginBottom:14 }}>QUANTUM RECOMMENDATIONS</div>
+                  <div style={{ fontFamily:FD, fontSize:14, color:GOLD, marginBottom:14 }}>INTELLIGENCE RECOMMENDATIONS</div>
                   {[
                     urgentItems.length>0?`⚠️ ${urgentItems.length} driver(s) need compliance action within 90 days.`:'✅ All driver certifications current.',
                     fleetPayroll.profit>0?`💰 Fleet profitable at ${fmt(fleetPayroll.profit)}/week. Maintain current load rates.`:'🔴 Fleet operating at a loss. Review route pricing immediately.',

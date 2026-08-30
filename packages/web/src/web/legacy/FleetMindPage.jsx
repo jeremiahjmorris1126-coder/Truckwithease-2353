@@ -1,5 +1,5 @@
 /**
- * QUANTUM MIND — rewritten to read the real AI provider status and the real learning engine.
+ * FLEET MIND — rewritten to read the real AI provider status and the real learning engine.
  *
  * READS
  *   GET /api/gemini           (required) — connected, provider, models{vision,visionFallback,tts},
@@ -7,7 +7,7 @@
  *   GET /api/algorithm/status (required) — engine, live, windowDays, minSamples,
  *       learnsFrom{driver_signals,speeding_events,dvir_inspections,hos_logs,
  *       loads_booked_by_a_driver,trips}, canLearnNow{driving,customer,load,route}, note.
- *   GET /api/quantum          (required) — naming statement, surfaces[], inputs{}, notClaimed[].
+ *   GET /api/intelligence     (required) — surfaces[], inputs{}, notClaimed[].
  *
  * COMPUTES / MEASURES LOCALLY
  *   Nothing. It prints the rows the server returned and the real HTTP status, byte count and
@@ -22,13 +22,13 @@
  *     "Sealing HOS logs cryptographically" (nothing seals or signs an HOS log).
  *   - `INTENT_PREDICTIONS` — a hardcoded list of "predicted" driver intents. Nothing on this
  *     platform predicts intent.
- *   - `QUANTUM_FEED` — a scripted activity feed presented as live system output.
+ *   - The scripted activity feed presented as live system output.
  *   - The three `setInterval` random walkers (`scoreInterval`, `intervalRef`, `intentInterval`)
  *     that drifted the on-screen numbers every second so the page looked alive. The numbers they
  *     moved were never read from anything.
  *
  * WHAT THIS PAGE DOES NOT CLAIM
- *   - No quantum computation, quantum hardware or quantum algorithm.
+ *   - No machine-learning model of our own, no training run, no inference engine.
  *   - No accuracy or confidence percentage for any AI output. The provider returns none, so none
  *     is shown.
  *   - No prediction of anything. The learning engine reports observed patterns only, and returns
@@ -50,12 +50,12 @@ const DIMENSION_SOURCE = {
   route: "trips + route_stop_feedback",
 };
 
-export default function QuantumMindPage() {
+export default function FleetMindPage() {
   const [state, setState] = useState("loading");
   const [error, setError] = useState(null);
   const [gemini, setGemini] = useState(null);
   const [algo, setAlgo] = useState(null);
-  const [quantum, setQuantum] = useState(null);
+  const [intel, setIntel] = useState(null);
   const [reads, setReads] = useState([]);
   const alive = useRef(false);
 
@@ -67,12 +67,12 @@ export default function QuantumMindPage() {
       const [g, a, q] = await Promise.all([
         timedGet("/api/gemini"),
         timedGet("/api/algorithm/status"),
-        timedGet("/api/quantum"),
+        timedGet("/api/intelligence"),
       ]);
       if (!alive.current) return;
       setGemini(g.body);
       setAlgo(a.body);
-      setQuantum(q.body);
+      setIntel(q.body);
       setReads([g, a, q].map((r) => ({ url: r.url, status: r.status, bytes: r.bytes, ms: r.ms })));
       setState("ok");
     } catch (e) {
@@ -94,23 +94,17 @@ export default function QuantumMindPage() {
       <Header
         icon={<Brain size={13} />}
         eyebrow="AI + learning engine"
-        title="QUANTUM"
+        title="FLEET"
         accent="MIND"
         lead="What the AI layer on this platform actually is: one connected model provider, one learning engine that reads only rows a driver generated, and a hard floor below which it returns nothing at all. No number on this page moves on a timer."
       />
 
       <main style={wrap}>
-        {state === "loading" ? <Spin label="Reading /api/gemini, /api/algorithm/status and /api/quantum…" /> : null}
+        {state === "loading" ? <Spin label="Reading /api/gemini, /api/algorithm/status and /api/intelligence…" /> : null}
         {state === "error" ? <Err error={error} onRetry={load} /> : null}
 
         {state === "ok" ? (
           <>
-            <Panel title="On the word Quantum" note="Returned verbatim by GET /api/quantum → naming.statement.">
-              <p style={{ fontFamily: FB, fontSize: 14.5, color: C.white, lineHeight: 1.9, margin: 0 }}>
-                {quantum.naming.statement}
-              </p>
-            </Panel>
-
             <Panel
               title="Model provider"
               note="GET /api/gemini. One provider is connected. The key is loaded server-side and never reaches this page."
@@ -218,8 +212,8 @@ export default function QuantumMindPage() {
             </Panel>
 
             <Panel
-              title="Quantum surfaces this connects to"
-              note="GET /api/quantum → surfaces[]. Each row names what it computes and where."
+              title="Intelligence surfaces this connects to"
+              note="GET /api/intelligence → surfaces[]. Each row names what it computes and where."
             >
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -232,7 +226,7 @@ export default function QuantumMindPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {quantum.surfaces.map((s) => (
+                    {intel.surfaces.map((s) => (
                       <tr key={s.id}>
                         <td style={td}>
                           <div style={{ fontFamily: FH, fontSize: 14, color: C.white }}>{s.name}</div>
@@ -248,9 +242,9 @@ export default function QuantumMindPage() {
               </div>
             </Panel>
 
-            <Panel title="Not claimed by anything under Quantum" note="GET /api/quantum → notClaimed[].">
+            <Panel title="Not claimed by any intelligence surface" note="GET /api/intelligence → notClaimed[].">
               <ul style={{ margin: 0, paddingLeft: 20, fontFamily: FB, fontSize: 13.5, color: C.muted, lineHeight: 2 }}>
-                {quantum.notClaimed.map((n, i) => <li key={i}>{n}</li>)}
+                {intel.notClaimed.map((n, i) => <li key={i}>{n}</li>)}
               </ul>
             </Panel>
 
@@ -268,7 +262,7 @@ export default function QuantumMindPage() {
             />
 
             <p style={{ fontFamily: FM, fontSize: 11, color: C.dim, textAlign: "center", marginTop: 26 }}>
-              server measured {quantum.measuredMs} ms
+              server measured {intel.measuredMs} ms
             </p>
           </>
         ) : null}

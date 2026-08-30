@@ -79,7 +79,7 @@ const NAV = [
   ]},
   { header: "FLEET", items: [
     { icon: "💬", label: "Dispatch",        path: "/dispatch" },
-    { icon: "⚛️", label: "Quantum Nexus",   path: "/quantum-nexus" },
+    { icon: "⚛️", label: "Dispatch Nexus",   path: "/dispatch-nexus" },
     { icon: "📦", label: "Fleet Load Board",path: "/fleet-load-board" },
     { icon: "📡", label: "Driver Chat",     path: "/driver-chat" },
     { icon: "👥", label: "HRease",          path: "/humanai" },
@@ -102,8 +102,8 @@ const NAV = [
   { header: "INTELLIGENCE", items: [
     { icon: "🐐", label: "THE GOAT",        path: "/ai-team" },
     { icon: "👻", label: "Ghost Nerve",     path: "/ghost-nerve" },
-    { icon: "⚛️", label: "Quantum Nexus",   path: "/quantum-nexus" },
-    { icon: "⚛", label: "Quantum Mind",    path: "/quantum-mind" },
+    { icon: "⚛️", label: "Dispatch Nexus",   path: "/dispatch-nexus" },
+    { icon: "⚛", label: "Fleet Mind",    path: "/mind" },
     { icon: "🧠", label: "Dream Team",      path: "/ai-team" },
     { icon: "🛡", label: "Neural Safety",   path: "/neural-safety" },
     { icon: "📊", label: "Operations",      path: "/operations-health" },
@@ -532,8 +532,8 @@ export default function CommandCenterPage() {
               {[
                 { icon: "⚖️", label: "SCALES", path: "/catscales", tag: "ALLOCATION" },
                 { icon: "🛠", label: "THE KNOW IT ALL", path: "/mechanic", tag: "ALL BRANDS" },
-                { icon: "⚛️", label: "Quantum Nexus", path: "/quantum-nexus", tag: "NEW" },
-                { icon: "⚛", label: "Quantum Dispatch", path: "/dispatch", tag: "LIVE" },
+                { icon: "⚛️", label: "Dispatch Nexus", path: "/dispatch-nexus", tag: "NEW" },
+                { icon: "⚛", label: "Dispatch", path: "/dispatch", tag: "LIVE" },
                 { icon: "🚛", label: "Asset Bank", path: "/asset-ease", tag: "GOAT" },
                 { icon: "📍", label: "Live GPS", path: "/live-gps", tag: "REAL-TIME" },
                 { icon: "📦", label: "Fleet Load Board", path: "/fleet-load-board", tag: "12 SOURCES" },

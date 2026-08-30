@@ -3,7 +3,7 @@
  *
  * Every rewritten page in this app was carrying its own identical copies of
  * Panel / Missing / Tag / Stat / timedGet / Wordmark. This is that same code in
- * one place so the Quantum family cannot drift apart visually. It is presentation
+ * one place so the Intelligence family cannot drift apart visually. It is presentation
  * only. It fetches nothing on its own and invents no value: `timedGet` reports the
  * real HTTP status, the real byte count and the real elapsed milliseconds, and
  * throws a decorated Error on anything that is not 2xx.

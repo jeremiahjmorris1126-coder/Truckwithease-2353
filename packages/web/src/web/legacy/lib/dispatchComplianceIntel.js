@@ -6,7 +6,7 @@
 // Original preserved at docs/launch/dispatchComplianceIntel.ORIGINAL.js.txt.
 //
 // Now: 45 states server-side, checks persisted, exports unchanged so
-// QuantumDispatchCore.jsx needs no edits.
+// DispatchCorePage.jsx needs no edits.
 
 async function api(path, options) {
   const res = await fetch(`/api/dispatch${path}`, {

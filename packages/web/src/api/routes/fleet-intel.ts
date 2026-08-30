@@ -6,9 +6,9 @@ import { ensureSeed } from "../lib/seed";
 import { scoreFatigue } from "./eld";
 
 /**
- * Fleet intelligence — real aggregates for the "quantum" analytics pages.
+ * Fleet intelligence — real aggregates for the "intelligence" analytics pages.
  *
- * These pages (QuantumHOSAnalyticsDashboard, QuantumFleetIntelligencePage,
+ * These pages (HOSAnalyticsDashboard, FleetIntelligencePage,
  * RoadContextPage) were built as demo shells. Between them they called
  * Math.random() 27 times to produce fatigue scores, accident-risk percentages,
  * 128-dimension "neural vectors", cargo values, and market demand — and
@@ -76,7 +76,7 @@ const NO_MODEL_NOTE =
 export const fleetIntel = new Hono()
   .use("*", async (_c, next) => { await ensureSeed(); await next(); })
 
-  /** Per-driver HOS exposure + real ELD fatigue, for the Quantum HOS dashboard. */
+  /** Per-driver HOS exposure + real ELD fatigue, for the HOS Analytics dashboard. */
   .get("/hos", async (c) => {
     const since = new Date(Date.now() - 8 * 3600_000);
     const logWindow = new Date(Date.now() - 8 * 86400_000);
@@ -134,7 +134,7 @@ export const fleetIntel = new Hono()
     });
   })
 
-  /** Fleet-wide operating picture for the Quantum Fleet Intelligence page. */
+  /** Fleet-wide operating picture for the Fleet Intelligence page. */
   .get("/fleet", async (c) => {
     const [drivers, trucks, loads] = await Promise.all([
       db.select().from(schema.drivers),

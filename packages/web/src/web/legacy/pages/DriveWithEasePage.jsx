@@ -70,7 +70,7 @@ const FUEL = [
 const SAFETY_ZONES = [
   { zone: 'I-90 Chicago Night Corridor', level: 'SAFE', score: 88, tip: 'Well-lit, frequent patrol. Exit 33 rest area staffed 24/7' },
   { zone: 'South Side Chicago — Last Mile', level: 'CAUTION', score: 69, tip: 'Daytime delivery recommended. Notify customers before arrival.' },
-  { zone: 'NYC Midtown Loading Zones', level: 'CAUTION', score: 74, tip: 'Meter enforcement 8am–7pm. Use quantum routing to pre-clear loading windows.' },
+  { zone: 'NYC Midtown Loading Zones', level: 'CAUTION', score: 74, tip: 'Meter enforcement 8am–7pm. Use intelligence routing to pre-clear loading windows.' },
   { zone: 'I-10 LA Overnight', level: 'SAFE', score: 91, tip: 'CHP-patrolled. Rest areas mile 22 and 47 have 24/7 cameras.' },
   { zone: 'Tenderloin SF — Deliveries', level: 'WARNING', score: 52, tip: 'Two-person delivery after 8pm. Photo-proof required all drops.' },
 ];
@@ -242,7 +242,7 @@ export default function DriveWithEasePage() {
         {/* ── ROUTE AI ── */}
         {tab === 1 && (
           <div>
-            <div style={{ ...s.label, marginBottom: 4 }}>Quantum Route Intelligence</div>
+            <div style={{ ...s.label, marginBottom: 4 }}>Intelligence Route Intelligence</div>
             <p style={{ color: C.text, fontSize: 14, marginBottom: 20 }}>Every route profit-analyzed before you leave. Net earnings after fuel shown on every card — stop sequencing AI saves an average of 31 minutes per shift.</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {ROUTES.map(r => (

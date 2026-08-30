@@ -12,9 +12,9 @@ const OWNER = { name: 'Jeremiah Morris', id: 'jeremiah.morris', initials: 'JM' }
 const VAULT_SECTIONS = [
   { id: 'agents', icon: '👑', title: 'Dream Team Agent Logic', desc: 'All 12 agent personalities, routing logic, and AI model assignments. THE GOAT orchestration layer.', sensitivity: 'CRITICAL', files: 14 },
   { id: 'ghost', icon: '⚡', title: 'Ghost Nerve Intelligence', desc: '8-layer proprietary intelligence system. Revenue Nerve 47-variable engine. Sovereign ELD seal.', sensitivity: 'CRITICAL', files: 8 },
-  { id: 'dispatch', icon: '🗺️', title: 'Quantum Dispatch Engine', desc: '12-layer load optimization. Silent dispatch pre-staging. Category routing and profit maximization.', sensitivity: 'CRITICAL', files: 11 },
+  { id: 'dispatch', icon: '🗺️', title: 'Dispatch Engine', desc: '12-layer load optimization. Silent dispatch pre-staging. Category routing and profit maximization.', sensitivity: 'CRITICAL', files: 11 },
   { id: 'payroll', icon: '💰', title: 'Payroll & ELD Integration', desc: 'Geotab API wiring, verified mileage calculation, CPM/hourly engine, Twilio REST notifications.', sensitivity: 'HIGH', files: 6 },
-  { id: 'billing', icon: '📄', title: 'Scan & Bill Quantum Engine', desc: 'OCR pipeline, AP agent wiring, multi-party dispatch logic, automated billing flow.', sensitivity: 'HIGH', files: 5 },
+  { id: 'billing', icon: '📄', title: 'Scan & Bill Intelligence Engine', desc: 'OCR pipeline, AP agent wiring, multi-party dispatch logic, automated billing flow.', sensitivity: 'HIGH', files: 5 },
   { id: 'safety', icon: '🛡️', title: 'Safety & Insurance AI', desc: 'CSA score engine, insurance partner integration, Phantom Compliance 72-hour prediction layer.', sensitivity: 'HIGH', files: 9 },
   { id: 'hr', icon: '🧑‍💼', title: 'HRease Hiring System', desc: 'Background check pipeline, FMCSA screening, applicant scoring, offer letter generation.', sensitivity: 'HIGH', files: 7 },
   { id: 'routes', icon: '🚛', title: 'App Routing & Architecture', desc: '137 destination routes, component registry, build validation system, 131 imports.', sensitivity: 'MEDIUM', files: 3 },
@@ -150,7 +150,7 @@ export default function CodeVaultPage() {
                 '137 React components — full source',
                 '3 AI service integrations (OpenAI, Gemini, Ghost Nerve)',
                 'All API wiring and authentication logic',
-                'Quantum dispatch engine — 12-layer architecture',
+                'Intelligence dispatch engine — 12-layer architecture',
                 'Complete build and deployment configuration',
               ].map(item => (
                 <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>

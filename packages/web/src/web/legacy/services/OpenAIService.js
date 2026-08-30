@@ -34,7 +34,7 @@ const AGENT_ENDPOINTS = {
   'Health Chief': 'health-chief',
   'Neural Safety': 'neural-safety',
   'Finance Alert': 'finance-alert',
-  'Quantum Mind': 'quantum-mind',
+  'Fleet Mind': 'intelligence-mind',
   'Memory Management': 'memory-agent',
   'Page Guardian': 'page-guardian',
 };

@@ -4,7 +4,7 @@ import { TrendingUp, AlertTriangle, Zap, Brain, Radio, Target, Eye, Cpu } from '
 /**
  * Fleet Intelligence — rewired to real data.
  *
- * The original page called Math.random() 17 times inside a generateQuantumProfile()
+ * The original page called Math.random() 17 times inside a generateDriverProfile()
  * helper: fake driver IDs, four separate 128-element "neural vectors", cargo value,
  * fuel price, market demand, accident risk, breakdown risk, optimal price and
  * compliance-violation risk. It also printed an "Expected profit margin" pulled
@@ -88,7 +88,7 @@ function Stat({ label, value, color, sub }) {
   );
 }
 
-export default function QuantumFleetIntelligencePage() {
+export default function FleetIntelligencePage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 

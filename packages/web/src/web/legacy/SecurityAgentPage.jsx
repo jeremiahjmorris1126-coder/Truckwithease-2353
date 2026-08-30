@@ -352,7 +352,7 @@ export default function SecurityAgentPage() {
             <div style={{ marginTop: 24, background: `${PURPLE}15`, border: `1px solid ${PURPLE}40`, borderRadius: 12, padding: 20 }}>
               <h3 style={{ color: PURPLE, fontWeight: 800, marginBottom: 12 }}>🔗 Wired Into Every Corner of TruckWithEase</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
-                {['👑 THE GOAT Master Agent', '🔐 Code Vault — Owner Access', '👻 Ghost Nerve Intelligence', '📋 FMCSA Compliance Engine', '🚛 Quantum Dispatch', '💰 Payroll from ELD Miles', '🎮 Game Up Training', '📡 All 22 APIs', '🛡️ Driver Data Privacy', '⚙️ Kubernetes Scale Layer', '🌍 World News Feed', '🔍 Broker Reputation Checks'].map((item, i) => (
+                {['👑 THE GOAT Master Agent', '🔐 Code Vault — Owner Access', '👻 Ghost Nerve Intelligence', '📋 FMCSA Compliance Engine', '🚛 Dispatch', '💰 Payroll from ELD Miles', '🎮 Game Up Training', '📡 All 22 APIs', '🛡️ Driver Data Privacy', '⚙️ Kubernetes Scale Layer', '🌍 World News Feed', '🔍 Broker Reputation Checks'].map((item, i) => (
                   <div key={i} style={{ background: '#0d1320', border: `1px solid ${PURPLE}30`, borderRadius: 8, padding: '8px 12px', color: '#ccc', fontSize: 13, fontWeight: 600 }}>{item}</div>
                 ))}
               </div>

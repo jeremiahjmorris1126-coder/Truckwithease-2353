@@ -281,7 +281,7 @@ export const maintenanceRecords = sqliteTable("maintenance_records", {
   dtcCodes: text("dtc_codes"), // JSON string[]
   eldFlags: text("eld_flags"), // JSON string[]
   scanData: text("scan_data"), // JSON blob from photo scan / ELD scan
-  quantumDiagnosis: text("quantum_diagnosis"), // predictive engine output
+  aiDiagnosis: text("ai_diagnosis"), // predictive engine output
   photoNotes: text("photo_notes"),
   photoUrls: text("photo_urls"), // JSON string[]
   odometer: integer("odometer"),

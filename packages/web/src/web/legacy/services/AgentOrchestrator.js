@@ -42,7 +42,7 @@ export const AGENTS = {
   PAYROLL:     { name: 'Finance Alert',  endpoint: 'finance-alert', model: 'anthropic/claude-sonnet-4.6', built: true,  emoji: '💰', specialty: 'payroll' },
   MAINTENANCE: { name: 'Page Guardian',  endpoint: 'page-guardian', model: 'anthropic/claude-sonnet-4.6', built: true,  emoji: '🔄', specialty: 'maintenance' },
   MECHANIC:    { name: 'Fleet Chief',    endpoint: 'fleet-chief',   model: 'anthropic/claude-sonnet-4.6', built: true,  emoji: '🔧', specialty: 'diagnosis' },
-  QUANTUM:     { name: 'Quantum Mind',   endpoint: 'quantum-mind',  model: 'anthropic/claude-sonnet-4.6', built: true,  emoji: '🧠', specialty: 'trend-analysis' },
+  INTELLIGENCE:     { name: 'Fleet Mind',   endpoint: 'intelligence-mind',  model: 'anthropic/claude-sonnet-4.6', built: true,  emoji: '🧠', specialty: 'trend-analysis' },
   // No server-side persona behind these. Do not route them somewhere else and pretend.
   BILLIE:      { name: 'Billie Scan',    endpoint: null, model: null, built: false, emoji: '📄', specialty: 'billing' },
   SIGNAL:      { name: 'Signal Sam',     endpoint: null, model: null, built: false, emoji: '📡', specialty: 'telecom' },

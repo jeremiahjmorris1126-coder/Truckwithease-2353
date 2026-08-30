@@ -54,7 +54,7 @@ export default function AgentDashboardPage() {
         name: '🛡️ Safety Advocate',
         status: 'active',
         description: 'Real-time fatigue monitoring with predictive accident prevention',
-        features: ['128D quantum fatigue analysis', 'Accident risk prediction (24h & 7d)', 'Automatic break suggestions', 'Critical alert system'],
+        features: ['128D intelligence fatigue analysis', 'Accident risk prediction (24h & 7d)', 'Automatic break suggestions', 'Critical alert system'],
         current_status: {
           critical_alerts: 0,
           high_alerts: 2,
@@ -268,7 +268,7 @@ export default function AgentDashboardPage() {
               <div>
                 <h2 className="text-2xl font-bold mb-4">🛡️ Safety Advocate</h2>
                 <p className="text-slate-300 mb-6">
-                  Real-time quantum fatigue monitoring with predictive accident prevention.
+                  Real-time intelligence fatigue monitoring with predictive accident prevention.
                 </p>
                 <div className="bg-green-500/10 border border-green-500/30 rounded p-4 mb-4">
                   <div className="font-semibold text-green-300 mb-3">This Week's Wins</div>

@@ -4,9 +4,9 @@ import { AlertTriangle, Zap, Shield, Activity, Gauge, Brain } from 'lucide-react
 /**
  * HOS Analytics — rewired to real data.
  *
- * The original version of this page random-walked a "Quantum Fatigue Score",
+ * The original version of this page random-walked a "Intelligence Fatigue Score",
  * an "Accident Risk (24h)" and an "Accident Risk (7d)" every two seconds with
- * Math.random(), and drew a "Live Quantum Vector (128D)" out of more random
+ * Math.random(), and drew a "Live Intelligence Vector (128D)" out of more random
  * numbers. Those are safety numbers. They are gone.
  *
  * Everything below comes from GET /api/fleet-intel/hos, which computes HOS
@@ -25,7 +25,7 @@ function fmtMin(m) {
   return `${h}h ${String(r).padStart(2, '0')}m`;
 }
 
-export default function QuantumHOSAnalyticsDashboard() {
+export default function HOSAnalyticsDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);

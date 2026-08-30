@@ -95,7 +95,7 @@ const CITIES = [
   { name:"Detroit",x:68,y:28},{name:"Seattle",x:10,y:18},{name:"Portland",x:10,y:22},
 ];
 
-const QUANTUM_STATS = [
+const ENGINE_STATS = [
   { label:"Optimization Score", value:"99.4%", delta:"+0.2%", color:C.green },
   { label:"Active Routes",      value:"14",    delta:"+3",    color:C.blue  },
   { label:"Loads Available",    value:"6",     delta:"-1",    color:C.amber },
@@ -128,8 +128,8 @@ const PROTOCOL_STEPS = [
   "⚖️ POST-INCIDENT — Preserve dashcam footage. Cooperate fully with safety investigation",
 ];
 
-// ─── QUANTUM MAP ─────────────────────────────────────────────────────────────
-function QuantumMap({ trucks, selected, onSelect, tick, accidentDriverId }) {
+// ─── INTELLIGENCE MAP ─────────────────────────────────────────────────────────────
+function EngineMap({ trucks, selected, onSelect, tick, accidentDriverId }) {
   return (
     <div style={{ position:"relative", width:"100%", height:"100%", background:"#060e14", overflow:"hidden" }}>
       <svg width="100%" height="100%" style={{ position:"absolute", inset:0, opacity:0.12 }}>
@@ -181,12 +181,12 @@ function QuantumMap({ trucks, selected, onSelect, tick, accidentDriverId }) {
         );
       })}
       <div style={{ position:"absolute", top:12, left:12, fontFamily:"monospace", fontSize:10, color:C.teal, opacity:0.8 }}>
-        <div>QUANTUM MAP v4.2</div>
+        <div>INTELLIGENCE MAP v4.2</div>
         <div style={{color:C.dim}}>LIVE · {new Date().toLocaleTimeString()}</div>
         <div style={{color:C.green,marginTop:4}}>● {trucks.filter(t=>t.status==="driving").length} UNITS ACTIVE</div>
       </div>
       <div style={{ position:"absolute", top:12, right:12, fontFamily:"monospace", fontSize:10, color:C.dim, textAlign:"right" }}>
-        <div>SAT LOCK ●</div><div>GPS 99.97%</div><div>QUANTUM ●</div>
+        <div>SAT LOCK ●</div><div>GPS 99.97%</div><div>INTELLIGENCE ●</div>
       </div>
       <style>{`
         @keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(200%)}}
@@ -531,7 +531,7 @@ export default function DispatchPage() {
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px", height:52, background:C.panel, borderBottom:`1px solid ${C.border}`, flexShrink:0, flexWrap:"wrap", gap:8 }}>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <a href="/" style={{ color:C.dim, textDecoration:"none", fontSize:11 }}>← HOME</a>
-          <div style={{ color:C.green, fontWeight:700, fontSize:13, letterSpacing:3 }}>QUANTUM DISPATCH</div>
+          <div style={{ color:C.green, fontWeight:700, fontSize:13, letterSpacing:3 }}>INTELLIGENCE DISPATCH</div>
           <div style={{ width:6, height:6, borderRadius:"50%", background:C.green, animation:"ping2 2s ease-out infinite" }}/>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -545,7 +545,7 @@ export default function DispatchPage() {
         </div>
         {/* Tab Nav */}
         <div style={{ display:"flex", gap:2, flexWrap:"wrap" }}>
-          {[["map","🗺️ MAP"],["loads","📦 LOADS"],["drivers","🚛 DRIVERS"],["quantum","⚛️ QUANTUM"],["alerts","🚨 ROAD ALERTS"]].map(([t,l])=>(
+          {[["map","🗺️ MAP"],["loads","📦 LOADS"],["drivers","🚛 DRIVERS"],["intelligence","⚛️ INTELLIGENCE"],["alerts","🚨 ROAD ALERTS"]].map(([t,l])=>(
             <button key={t} onClick={()=>setTab(t)} style={{ background:tab===t?C.green:"transparent", color:tab===t?C.bg:C.dim, border:"none", borderRadius:4, padding:"6px 12px", fontSize:11, fontWeight:700, cursor:"pointer", letterSpacing:1, transition:"all 0.15s" }}>{l}</button>
           ))}
         </div>
@@ -558,7 +558,7 @@ export default function DispatchPage() {
         {tab==="map" && (
           <>
             <div style={{ flex:"0 0 55%", position:"relative", borderRight:`1px solid ${C.border}` }}>
-              <QuantumMap trucks={MAP_TRUCKS} selected={selectedTruck} onSelect={handleTruckSelect} tick={tick} accidentDriverId={accident?.driver?.id} />
+              <EngineMap trucks={MAP_TRUCKS} selected={selectedTruck} onSelect={handleTruckSelect} tick={tick} accidentDriverId={accident?.driver?.id} />
             </div>
             {/* Right: Driver Intel */}
             <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
@@ -692,12 +692,12 @@ export default function DispatchPage() {
           </div>
         )}
 
-        {/* ════ QUANTUM TAB ════ */}
-        {tab==="quantum" && (
+        {/* ════ INTELLIGENCE TAB ════ */}
+        {tab==="intelligence" && (
           <div style={{ flex:1, overflowY:"auto", padding:24 }}>
-            <div style={{ color:C.green, fontSize:11, letterSpacing:3, marginBottom:24 }}>⚛️ QUANTUM OPTIMIZATION ENGINE — LIVE</div>
+            <div style={{ color:C.green, fontSize:11, letterSpacing:3, marginBottom:24 }}>⚛️ INTELLIGENCE OPTIMIZATION ENGINE — LIVE</div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:12, marginBottom:28 }}>
-              {QUANTUM_STATS.map(s=>(
+              {ENGINE_STATS.map(s=>(
                 <div key={s.label} style={{ background:C.card, border:`1px solid ${s.color}33`, borderRadius:8, padding:16, borderTop:`3px solid ${s.color}` }}>
                   <div style={{ color:C.dim, fontSize:9, letterSpacing:2, marginBottom:6 }}>{s.label.toUpperCase()}</div>
                   <div style={{ color:s.color, fontWeight:700, fontSize:24 }}>{s.value}</div>
@@ -705,7 +705,7 @@ export default function DispatchPage() {
                 </div>
               ))}
             </div>
-            <div style={{ color:C.dim, fontSize:10, letterSpacing:2, marginBottom:12 }}>QUANTUM RECOMMENDATIONS</div>
+            <div style={{ color:C.dim, fontSize:10, letterSpacing:2, marginBottom:12 }}>INTELLIGENCE RECOMMENDATIONS</div>
             <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:28 }}>
               {[
                 { priority:"CRITICAL", icon:"⚡", text:"Assign LD-4824 (Hazmat, $5,200) to Marcus Lee (TRK-335) · Phoenix pickup · 11h HOS · 99% match" },
@@ -724,7 +724,7 @@ export default function DispatchPage() {
               ))}
             </div>
             <div style={{ height:320, borderRadius:10, overflow:"hidden", border:`1px solid ${C.border}` }}>
-              <QuantumMap trucks={MAP_TRUCKS} selected={selectedTruck} onSelect={handleTruckSelect} tick={tick} accidentDriverId={null} />
+              <EngineMap trucks={MAP_TRUCKS} selected={selectedTruck} onSelect={handleTruckSelect} tick={tick} accidentDriverId={null} />
             </div>
           </div>
         )}

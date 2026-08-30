@@ -1,13 +1,13 @@
 /**
- * QuantumDispatchCore — REBUILT 2026-08-27
- * Routes: /quantum-core, /dispatch-core, /vs-autocab  (App.jsx L668)
+ * DispatchCorePage — REBUILT 2026-08-27
+ * Routes: /dispatch-core, /dispatch-core, /vs-autocab  (App.jsx L668)
  *
  * WHAT WAS DELETED FROM THE ORIGINAL AND WHY
- * (original preserved verbatim at docs/launch/QuantumDispatchCore.ORIGINAL.jsx.txt)
+ * (original preserved verbatim at docs/launch/DispatchCorePage.ORIGINAL.jsx.txt)
  *
  * 1. LAYERS — 12 invented "proprietary intelligence layers" carrying patent claims ("Each layer is
- *    independently patentable"), including "Quantum Route Engine — solves 2.4 trillion route
- *    permutations per dispatch decision using parallel quantum logic" and "Phantom Compliance —
+ *    independently patentable"), including "Route Engine — solves 2.4 trillion route
+ *    permutations per dispatch decision using parallel intelligence logic" and "Phantom Compliance —
  *    catches HOS, CSA and FMCSA violations 72 hours before they appear on record". None of these
  *    existed as code. Nothing solved anything and nothing predicted anything.
  *
@@ -16,7 +16,7 @@
  *    expiring CDLs". No auto-assignment code exists, no CDL expiry scan exists, and Ray Davis is a
  *    fabricated driver already deleted from the Week In Review page.
  *
- * 3. FEED_ITEMS — 12 invented events cycled every 4 seconds off Math.random(): "Quantum Route
+ * 3. FEED_ITEMS — 12 invented events cycled every 4 seconds off Math.random(): "Intelligence Route
  *    solved Dallas→Memphis in 0.003s", "Phantom Compliance blocked CSA violation — 68hr early",
  *    "Memory Pulse: 2.4M data points indexed — 79ms query time". Random numbers presented as
  *    telemetry.
@@ -24,7 +24,7 @@
  * 4. The hardcoded score tiles — { iq: 99.7, layers: 12, assignments: 847, violations: 0,
  *    profit: 2.4 } rendered as if measured. We have never dispatched a load.
  *
- * 5. runQuantumScan() — a setTimeout loop that printed "✓ ALL 12 LAYERS ACTIVE · IQ Score: 99.7% ·
+ * 5. runEngineScan() — a setTimeout loop that printed "✓ ALL 12 LAYERS ACTIVE · IQ Score: 99.7% ·
  *    Zero errors · No competitor match". It computed nothing and always ended green.
  *
  * 6. The entire "vs Autocab" tab — a 13-row comparison table quoting a competitor's price
@@ -114,7 +114,7 @@ const money = (n) => (n == null ? "—" : `$${Number(n).toLocaleString("en-US")}
 
 /* ------------------------------------------------------------------- page */
 
-export default function QuantumDispatchCore() {
+export default function DispatchCorePage() {
   const [loads, setLoads] = useState({ state: "loading", data: [], err: "" });
   const [drivers, setDrivers] = useState({ state: "loading", data: [], err: "" });
   const [hos, setHos] = useState({ state: "loading", data: [], err: "" });
@@ -369,7 +369,7 @@ export default function QuantumDispatchCore() {
         </Panel>
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <a href="/quantum-routing" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "#C9A84C", textDecoration: "none", border: "1px solid #222", borderRadius: 8, padding: "8px 12px" }}>
+          <a href="/routing-engine" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "#C9A84C", textDecoration: "none", border: "1px solid #222", borderRadius: 8, padding: "8px 12px" }}>
             <Package size={13} /> Routing engine
           </a>
           <a href="/app/hos" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "#C9A84C", textDecoration: "none", border: "1px solid #222", borderRadius: 8, padding: "8px 12px" }}>

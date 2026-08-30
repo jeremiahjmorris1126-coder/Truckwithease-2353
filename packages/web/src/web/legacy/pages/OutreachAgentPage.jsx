@@ -40,7 +40,7 @@ const TEMPLATES = {
 
 I wanted to reach out personally because I believe TruckWithEase can save {company} significant time and money starting this month.
 
-We've built the only platform that covers everything your fleet needs in one screen — quantum dispatch that eliminates guesswork on every load, HOS logging that works for CDL and local drivers alike, automated payroll directly from verified ELD miles, AI-powered driver hiring with instant background checks, and a safety intelligence system that qualifies your fleet for insurance discounts of up to 25%.
+We've built the only platform that covers everything your fleet needs in one screen — intelligence dispatch that eliminates guesswork on every load, HOS logging that works for CDL and local drivers alike, automated payroll directly from verified ELD miles, AI-powered driver hiring with instant background checks, and a safety intelligence system that qualifies your fleet for insurance discounts of up to 25%.
 
 Compare that to Samsara at $800+/month for ELD alone — TruckWithEase starts at $29.99 and covers everything.
 
@@ -71,7 +71,7 @@ TruckWithEase / Morrishive`,
 
 My name is Jeremiah Morris, founder of TruckWithEase — a comprehensive fleet management platform currently live at morrishive.com serving drivers and fleets across the US.
 
-We're integrating best-in-class APIs to power our quantum dispatch, safety intelligence, and driver analytics layers. I believe {company} would be a strong fit for our platform and I'd love to explore a technology partnership.
+We're integrating best-in-class APIs to power our intelligence dispatch, safety intelligence, and driver analytics layers. I believe {company} would be a strong fit for our platform and I'd love to explore a technology partnership.
 
 We bring access to 13 million drivers across CDL, local, van, and courier segments — a significant distribution opportunity for the right partner.
 
@@ -90,7 +90,7 @@ TruckWithEase is a live fleet management platform at morrishive.com and we're ex
 
 We currently integrate DAT, Truckstop, Convoy, Uber Freight, and several others — and we'd love to add {company} to give our fleets and drivers direct access to your network from inside our platform.
 
-Every booking made through TruckWithEase is tracked, profit-analyzed, and auto-assigned to the right driver through our quantum dispatch engine. That's a level of load intelligence your shippers and carriers have never seen before.
+Every booking made through TruckWithEase is tracked, profit-analyzed, and auto-assigned to the right driver through our intelligence dispatch engine. That's a level of load intelligence your shippers and carriers have never seen before.
 
 Happy to connect on API access and integration terms at your convenience.
 
@@ -99,12 +99,12 @@ Jeremiah Morris
 Founder, TruckWithEase / Morrishive`,
   },
   investor: {
-    subject: 'TruckWithEase — Investment Opportunity in Trucking\'s First Quantum Platform',
+    subject: 'TruckWithEase — Investment Opportunity in Trucking\'s First Intelligence Platform',
     message: `Hi {name},
 
 I'm reaching out because TruckWithEase represents a category-defining opportunity in the $800B US trucking industry.
 
-We've built the first platform to combine quantum dispatch, FMCSA-compliant HOS logging, automated payroll from ELD miles, AI driver hiring, fleet safety intelligence, and a three-mode experience covering 13 million drivers across CDL, van, and bike courier segments.
+We've built the first platform to combine intelligence dispatch, FMCSA-compliant HOS logging, automated payroll from ELD miles, AI driver hiring, fleet safety intelligence, and a three-mode experience covering 13 million drivers across CDL, van, and bike courier segments.
 
 Our competitive position: Samsara charges $800+/month for ELD alone. We charge $29.99–$59.99 for everything — and we serve driver segments Samsara has never touched.
 
@@ -120,7 +120,7 @@ Founder & CEO, TruckWithEase / Morrishive`,
     subject: 'TruckWithEase — Direct Carrier Access for Your Freight Network',
     message: `Hi {name},
 
-TruckWithEase gives your brokerage direct access to verified, compliant carriers through our integrated load board and quantum dispatch engine.
+TruckWithEase gives your brokerage direct access to verified, compliant carriers through our integrated load board and intelligence dispatch engine.
 
 Every carrier on our platform has verified CDL records, clean DOT safety scores, and real-time HOS availability — so you always know a driver can legally take your load before you offer it.
 

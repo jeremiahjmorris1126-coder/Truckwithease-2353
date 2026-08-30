@@ -33,7 +33,7 @@
  *     NOTHING dials 911. There is no SOS endpoint and no state patrol dispatch
  *     integration. Labelling it LIVE was the single worst line in the product.
  *   - The FEATURES array: 12 cards, most of them not built. Specifically
- *     "Ghost Nerve Intelligence", "Quantum Dispatch Mission Control",
+ *     "Ghost Nerve Intelligence", "Dispatch Mission Control",
  *     "HREase — full hiring to paycheck" ("Post a job, hire the driver, pay them" —
  *     there is no job posting and no payroll run), "ELD-to-payroll — zero manual
  *     entry" ("Miles verified by the ELD"), "Lane profit intelligence",
@@ -42,7 +42,7 @@
  *     driver training" ("FMCSA-aligned modules. Real scores. Rig Bucks on every
  *     pass."), "Fleet Voice — hands-free through cab speakers" ("Real numbers, real
  *     calls"), "Rig Bucks — loyalty that actually retains", and
- *     "Quantum Scan & Bill — one invoice, four recipients".
+ *     "Intelligence Scan & Bill — one invoice, four recipients".
  *   - **"Sovereign ELD — FMCSA registration in progress"** with the note
  *     "Registration is filed and pending. Not yet on the FMCSA registered list."
  *     NOTHING WAS EVER FILED. TruckWithEase does not ship a device, does not
@@ -57,7 +57,7 @@
  *   - The section headings "Every feature a competitor can't copy" and
  *     "12 REASONS NOTHING COMPETES", the closing "Nothing comes close" /
  *     "YOUR FLEET. YOUR ADVANTAGE. OUR PLATFORM.", and the whole TAGS filter
- *     (ALL / PROPRIETARY / EXCLUSIVE / REAL TIME / UNIQUE / LIFE SAFETY / QUANTUM)
+ *     (ALL / PROPRIETARY / EXCLUSIVE / REAL TIME / UNIQUE / LIFE SAFETY / INTELLIGENCE)
  *     which existed only to sort those invented cards. Comparison and competitor
  *     framing is banned inside the product.
  *   - The "Live demo" button pointing at /app. A scripted demo is never labelled

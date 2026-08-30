@@ -29,7 +29,7 @@ export default function AccessibilityBlindPage() {
             👁️ Blind & Visually Impaired Accessibility
           </h1>
           <p style={{ fontSize: 15, color: C.white60, lineHeight: 1.6 }}>
-            Complete audio-first platform for blind drivers, cyclists, and couriers. Quantum spatial audio describes the entire road in 3D, full screen reader support, voice commands for every function, haptic feedback for alerts. TruckWithEase works for every driver.
+            Complete audio-first platform for blind drivers, cyclists, and couriers. Intelligence spatial audio describes the entire road in 3D, full screen reader support, voice commands for every function, haptic feedback for alerts. TruckWithEase works for every driver.
           </p>
         </div>
 
@@ -37,7 +37,7 @@ export default function AccessibilityBlindPage() {
         <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', borderBottom: `1px solid ${C.white30}`, flexWrap: 'wrap' }}>
           {[
             { id: 'features', label: '✨ Features' },
-            { id: 'spatial-audio', label: '🔊 Quantum Spatial Audio' },
+            { id: 'spatial-audio', label: '🔊 Intelligence Spatial Audio' },
             { id: 'voice', label: '🎤 Voice Commands' },
             { id: 'screen-reader', label: '📖 Screen Reader' },
             { id: 'settings', label: '⚙️ Settings' },
@@ -67,7 +67,7 @@ export default function AccessibilityBlindPage() {
             {[
               {
                 icon: '🔊',
-                title: 'Quantum Spatial Audio',
+                title: 'Intelligence Spatial Audio',
                 desc: 'Real-time 3D audio description of your surroundings. Hear traffic, road hazards, landmarks, and turns in 360-degree spatial sound.',
                 features: ['3D audio landscape', 'Vehicle positioning', 'Road hazards in stereo', 'Turn-by-turn in 3D space'],
               },
@@ -91,7 +91,7 @@ export default function AccessibilityBlindPage() {
               },
               {
                 icon: '⚡',
-                title: 'Quantum AI Awareness',
+                title: 'Fleet AI Awareness',
                 desc: 'AI continuously scans the environment and predicts what you need to know before you ask. Proactive safety.',
                 features: ['Predictive alerts', 'Road condition forecast', 'Weather warnings', 'Truck stop recommendations'],
               },
@@ -132,10 +132,10 @@ export default function AccessibilityBlindPage() {
               marginBottom: '24px',
             }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: '16px', color: C.gold }}>
-                🔊 Quantum Spatial Audio Engine
+                🔊 Intelligence Spatial Audio Engine
               </h2>
               <p style={{ fontSize: 13, color: C.white60, marginBottom: '16px', lineHeight: 1.8 }}>
-                Real-time 3D soundscape describing your complete environment. Quantum mechanics (128-dimensional audio vectors) ensure every sound is positioned exactly where the object is.
+                Real-time 3D soundscape describing your complete environment. Intelligence mechanics (128-dimensional audio vectors) ensure every sound is positioned exactly where the object is.
               </p>
 
               <div style={{
@@ -164,32 +164,32 @@ export default function AccessibilityBlindPage() {
                   {
                     feature: 'Vehicle Positioning',
                     desc: 'Hear exactly where every vehicle is relative to you. Left speaker = left, right = right. Close = loud, far = quiet.',
-                    quantum: '3D vector positioning updated every 200ms',
+                    intelligence: '3D vector positioning updated every 200ms',
                   },
                   {
                     feature: 'Road Hazards',
                     desc: 'Potholes, debris, accident scenes — all described in spatial audio with urgency level.',
-                    quantum: 'Hazard severity encoded in audio frequency',
+                    intelligence: 'Hazard severity encoded in audio frequency',
                   },
                   {
                     feature: 'Turn Instructions',
                     desc: 'Hear "Turn left ahead" come from the left speaker, pan smoothly as you approach the turn.',
-                    quantum: '4D trajectory prediction (3D space + time)',
+                    intelligence: '4D trajectory prediction (3D space + time)',
                   },
                   {
                     feature: 'Speed Changes',
                     desc: 'Hear the road ahead change pitch as you approach different speed zones. High pitch = slow down.',
-                    quantum: 'Frequency modulation tied to road conditions',
+                    intelligence: 'Frequency modulation tied to road conditions',
                   },
                   {
                     feature: 'Traffic Density',
                     desc: 'Busy highway sounds different from empty road. Crowded intersection has different acoustic signature.',
-                    quantum: 'Ambient sound synthesis from real-time data',
+                    intelligence: 'Ambient sound synthesis from real-time data',
                   },
                   {
                     feature: 'Weather Impact',
                     desc: 'Rain, wind, snow — all conveyed through audio texture. Helps you understand road conditions.',
-                    quantum: 'Environmental audio filtering in real-time',
+                    intelligence: 'Environmental audio filtering in real-time',
                   },
                 ].map((item, idx) => (
                   <div key={idx} style={{
@@ -200,7 +200,7 @@ export default function AccessibilityBlindPage() {
                   }}>
                     <div style={{ fontWeight: 700, color: C.gold, marginBottom: '6px' }}>{item.feature}</div>
                     <div style={{ fontSize: 11, color: C.white60, marginBottom: '8px' }}>{item.desc}</div>
-                    <div style={{ fontSize: 10, color: C.purple, fontStyle: 'italic' }}>🔬 {item.quantum}</div>
+                    <div style={{ fontSize: 10, color: C.purple, fontStyle: 'italic' }}>🔬 {item.intelligence}</div>
                   </div>
                 ))}
               </div>
@@ -416,7 +416,7 @@ export default function AccessibilityBlindPage() {
               {/* Spatial Audio */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <div style={{ fontWeight: 700, color: C.white }}>🔊 Quantum Spatial Audio</div>
+                  <div style={{ fontWeight: 700, color: C.white }}>🔊 Intelligence Spatial Audio</div>
                   <button
                     onClick={() => setSpatialAudioEnabled(!spatialAudioEnabled)}
                     style={{

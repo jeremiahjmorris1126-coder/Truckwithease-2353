@@ -4,12 +4,12 @@
  * Rewritten from the original browser-only module. What changed and why:
  *
  *  1. The original wrote to five PocketBase collections that never existed
- *     (eld_devices, eld_sync_channels, eld_telemetry, quantum_fatigue_states,
+ *     (eld_devices, eld_sync_channels, eld_telemetry, fatigue_states,
  *     fatigue_alerts). Every write silently failed. Real Turso tables now exist
  *     and the server owns them.
  *  2. The original scored driver fatigue with Math.random() in four places
  *     (calculateLaneVariance, calculateSpeedConsistency, estimateReactionTime,
- *     and the 128-dimension "quantum" vector). On a safety feature that is
+ *     and the 128-dimension "intelligence" vector). On a safety feature that is
  *     worse than nothing. Scoring is now server-side and derived only from
  *     recorded telemetry; under 10 samples it returns insufficientData instead
  *     of guessing.
@@ -96,11 +96,11 @@ export async function processTelemetryForFatigue(deviceId, telemetryRecord = nul
 export const processTelemtryForFatigue = processTelemetryForFatigue;
 
 /**
- * The original built a 128-dimension "quantum" vector out of Math.random().
+ * The original built a 128-dimension "intelligence" vector out of Math.random().
  * That is removed. This returns the server's fatigue state for the driver,
  * computed from real telemetry only.
  */
-export async function updateQuantumFatigueState(driverId, _fatigueFeatures, _timestamp) {
+export async function updateFatigueState(driverId, _fatigueFeatures, _timestamp) {
   const status = await getELDStatus(driverId);
   return {
     driverId,
@@ -190,7 +190,7 @@ export default {
   ingestELDTelemetry,
   processTelemetryForFatigue,
   processTelemtryForFatigue,
-  updateQuantumFatigueState,
+  updateFatigueState,
   triggerFatigueCriticalAlert,
   pauseLoadAssignments,
   recommendRestStop,

@@ -8,7 +8,7 @@ const BORDER = "#1e1e1e";
 const ALL_FEATURES = {
   solo: [
     { emoji: "🎯", title: "Command Center", path: "/command", desc: "Your operations dashboard — everything at a glance" },
-    { emoji: "⚡", title: "Quantum Dispatch", path: "/dispatch", desc: "AI-matched loads, zero guesswork on profit" },
+    { emoji: "⚡", title: "Dispatch", path: "/dispatch", desc: "AI-matched loads, zero guesswork on profit" },
     { emoji: "📋", title: "HOS Logger", path: "/hos-logger", desc: "Log your hours — local, short-haul, or long-haul" },
     { emoji: "🔍", title: "Load Board", path: "/loads", desc: "12 sources — DAT, Truckstop, Uber Freight & more" },
     { emoji: "💰", title: "Profitable Lanes", path: "/profitable-lanes", desc: "See exactly which lanes make you the most money" },
@@ -27,13 +27,13 @@ const ALL_FEATURES = {
   ],
   pro: [
     { emoji: "🎯", title: "Command Center", path: "/command", desc: "Full operations dashboard with live agent status" },
-    { emoji: "⚡", title: "Quantum Dispatch", path: "/dispatch", desc: "12-layer AI dispatch — loads pre-solved before your shift" },
+    { emoji: "⚡", title: "Dispatch", path: "/dispatch", desc: "12-layer AI dispatch — loads pre-solved before your shift" },
     { emoji: "📋", title: "HOS Logger", path: "/hos-logger", desc: "All driver types — ELD, short-haul, local exempt" },
     { emoji: "🔍", title: "Load Board", path: "/loads", desc: "12 sources with live broker reputation checks" },
     { emoji: "💰", title: "Profitable Lanes", path: "/profitable-lanes", desc: "Lane, truck, and commodity profitability — one click populate" },
     { emoji: "🧾", title: "Payroll", path: "/payroll", desc: "Driver pay calculated from verified ELD miles automatically" },
     { emoji: "👥", title: "HRease", path: "/humanai", desc: "Hire, onboard, and retain drivers — fully automated" },
-    { emoji: "📸", title: "Scan & Bill", path: "/scan-bill", desc: "One photo — quantum billing to all four parties instantly" },
+    { emoji: "📸", title: "Scan & Bill", path: "/scan-bill", desc: "One photo — intelligence billing to all four parties instantly" },
     { emoji: "🛡️", title: "DOT Compliance", path: "/dot-compliance-vault", desc: "State-specific records, audit-ready exports" },
     { emoji: "🔒", title: "Safety Meetings", path: "/safety-meetings", desc: "Automated meetings, digital signatures, permanent records" },
     { emoji: "📊", title: "Driver Scorecard", path: "/driver-scorecard", desc: "Live performance score for every driver" },
@@ -48,7 +48,7 @@ const ALL_FEATURES = {
   ],
   fleet_rental: [
     { emoji: "🎯", title: "Command Center", path: "/command", desc: "Fleet-wide operations dashboard" },
-    { emoji: "⚡", title: "Quantum Dispatch", path: "/dispatch", desc: "Autonomous load assignment for your whole fleet" },
+    { emoji: "⚡", title: "Dispatch", path: "/dispatch", desc: "Autonomous load assignment for your whole fleet" },
     { emoji: "👥", title: "HRease — Hire & Retain", path: "/humanai", desc: "Post jobs, screen applicants, onboard in 60 seconds" },
     { emoji: "🧾", title: "Payroll from ELD", path: "/payroll", desc: "Every driver paid from verified miles — no timesheets" },
     { emoji: "📊", title: "Fleet Customer Book", path: "/customer-book", desc: "Full directory, load history, revenue, driver reviews" },
@@ -68,7 +68,7 @@ const ALL_FEATURES = {
   ],
   fleet_owned: [
     { emoji: "🎯", title: "Command Center", path: "/command", desc: "Enterprise operations — every fleet, every driver, one screen" },
-    { emoji: "⚡", title: "Quantum Dispatch", path: "/dispatch", desc: "12-layer autonomous dispatch — zero human guesswork" },
+    { emoji: "⚡", title: "Dispatch", path: "/dispatch", desc: "12-layer autonomous dispatch — zero human guesswork" },
     { emoji: "👥", title: "HRease — Full Suite", path: "/humanai", desc: "Hiring ads posted 6 weeks before you need the driver" },
     { emoji: "🧾", title: "Payroll Automation", path: "/payroll", desc: "Verified ELD miles → paycheck, automatically every cycle" },
     { emoji: "📊", title: "Fleet Customer Book", path: "/customer-book", desc: "Complete customer directory with revenue and reviews" },
@@ -78,7 +78,7 @@ const ALL_FEATURES = {
     { emoji: "🔒", title: "Safety Meetings", path: "/safety-meetings", desc: "Custom agendas, digital signatures, permanent legal record" },
     { emoji: "🚛", title: "Predictive Maintenance", path: "/predictive-maintenance", desc: "Brake wear, fault codes, tire pressure — caught before DOT" },
     { emoji: "🧠", title: "Ghost Nerve", path: "/ghost-nerve", desc: "8 proprietary intelligence layers — cannot be duplicated" },
-    { emoji: "⚛️", title: "Quantum Mind", path: "/quantum-mind", desc: "All 12 systems connected — reads intent before you act" },
+    { emoji: "⚛️", title: "Fleet Mind", path: "/mind", desc: "All 12 systems connected — reads intent before you act" },
     { emoji: "🔐", title: "Neural Safety Core", path: "/neural-safety", desc: "72-hour incident predictor, Phantom Compliance Shield" },
     { emoji: "📸", title: "Scan & Bill", path: "/scan-bill", desc: "One photo — all four parties billed simultaneously" },
     { emoji: "📞", title: "Fleet Voice + SMS", path: "/fleet-voice", desc: "Unlimited lines, broadcast, Signal Sam monitoring 24/7" },
@@ -231,7 +231,7 @@ export default function PersonalIndexPage() {
           <div style={{ marginTop: 24, padding: 24, background: `${GOLD}11`, borderRadius: 16, border: `1px solid ${GOLD}33`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: 15, color: GOLD }}>Want access to everything?</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Fleet Owned gives you all {ALL_FEATURES.fleet_owned.length} features — Ghost Nerve, Quantum Mind, Neural Safety Core, and more.</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Fleet Owned gives you all {ALL_FEATURES.fleet_owned.length} features — Ghost Nerve, Fleet Mind, Neural Safety Core, and more.</div>
             </div>
             <a href="/checkout" style={{ padding: "10px 24px", borderRadius: 10, background: GOLD, color: BLACK, fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Upgrade Now →</a>
           </div>

@@ -77,7 +77,7 @@ export default function VoiceClonePage() {
           authenticity: 88,
           adaptability: 81,
         },
-        quantumProfile: {
+        driverProfile: {
           voiceVector: Array(128).fill(0).map(() => Math.random()), // 128-dimensional voice embedding
           emotionalQuanta: {
             empathy: 0.87,
@@ -87,7 +87,7 @@ export default function VoiceClonePage() {
             authenticity: 0.89,
           },
           communicationFrequency: 'coherent', // coherent, entangled, superposed
-          adaptationRate: 'fast', // slow, moderate, fast, quantum-coherent
+          adaptationRate: 'fast', // slow, moderate, fast, coherent
         },
       };
       setVoiceProfile(profile);
@@ -167,7 +167,7 @@ export default function VoiceClonePage() {
               Give Your Agent Your Voice
             </h2>
             <p style={{ fontSize: 15, color: C.white60, marginBottom: '32px', lineHeight: 1.8 }}>
-              Upload a voice sample (30–60 seconds of natural speech). TruckWithEase's Quantum Voice Engine learns your:
+              Upload a voice sample (30–60 seconds of natural speech). TruckWithEase's Intelligence Voice Engine learns your:
             </p>
             <div style={{
               display: 'grid',
@@ -181,7 +181,7 @@ export default function VoiceClonePage() {
                 { icon: '💭', title: 'Communication Style', desc: 'Formality, verbosity, humor, directness' },
                 { icon: '🧠', title: 'Tendencies', desc: 'How you open, use data, ask questions' },
                 { icon: '❤️', title: 'Emotional Signature', desc: 'Your confidence, warmth, authenticity' },
-                { icon: '⚛️', title: 'Quantum Profile', desc: '128D voice embedding + emotion quanta' },
+                { icon: '⚛️', title: 'Intelligence Profile', desc: '128D voice embedding + emotion quanta' },
                 { icon: '🔄', title: 'Adaptation Rate', desc: 'How fast your agent learns new contexts' },
               ].map((item, idx) => (
                 <div key={idx} style={{

@@ -69,7 +69,7 @@ const SimplifiedDashboardPage = () => {
       id: 'safety-check',
       title: 'Safety Check',
       action: 'Know before it happens',
-      description: 'Quantum AI predicts fatigue 24 hours ahead. Prevent accidents.',
+      description: 'Fleet AI predicts fatigue 24 hours ahead. Prevent accidents.',
       color: 'bg-slate-800',
       border: 'border-slate-600'
     },

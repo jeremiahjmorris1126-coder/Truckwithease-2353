@@ -56,7 +56,7 @@ export async function getOnboardingAgent(userId, userType, step = 0) {
           step: 4,
           title: 'Safety Features Ready',
           message: 'Your truck now has real-time fatigue detection. Accidents predicted 24 hours ahead.',
-          features: ['Quantum fatigue monitoring', 'Automatic break suggestions', 'Critical rest alerts'],
+          features: ['Intelligence fatigue monitoring', 'Automatic break suggestions', 'Critical rest alerts'],
           cta: 'View Safety Dashboard'
         },
         {
@@ -178,7 +178,7 @@ export async function getOperationsOptimization(fleetId) {
     }
 
     // Metric 3: Fatigue & Safety
-    const highFatigueLoads = await pb.collection('quantum_fatigue_state').getFullList({
+    const highFatigueLoads = await pb.collection('fatigue_state').getFullList({
       filter: `driver_id IN (${drivers.map(d => `"${d.id}"`).join(',')}) && fatigue_score > 70`
     });
     if (highFatigueLoads.length > 0) {

@@ -29,7 +29,7 @@ const POSTS = [
   // Week 1
   {
     day: 1, week: 1, platform: "facebook", title: "The Price Punch",
-    caption: `🚛 Samsara charges $800/month for ELD alone.\n\nTruckWithEase gives you ELD + Quantum Dispatch + Driver Hiring + Payroll + Background Checks + Load Board + Big Rig Bucks rewards...\n\nFor $29.99/month.\n\nNo contracts. No hardware required. Free trial today.\n\n👉 morrishive.com`,
+    caption: `🚛 Samsara charges $800/month for ELD alone.\n\nTruckWithEase gives you ELD + Dispatch + Driver Hiring + Payroll + Background Checks + Load Board + Big Rig Bucks rewards...\n\nFor $29.99/month.\n\nNo contracts. No hardware required. Free trial today.\n\n👉 morrishive.com`,
     type: "Price Comparison", audience: "Fleet Managers", time: "6:00 AM", reach: "High",
     tip: "Post in Owner Operator Nation (180K), CDL Drivers Network (210K), Trucking USA groups"
   },
@@ -37,11 +37,11 @@ const POSTS = [
     day: 2, week: 1, platform: "tiktok", title: "Ghost Nerve Demo",
     caption: `Ghost Nerve is doing things no trucking app has EVER done 🤯 Watch it route 12 loads simultaneously in real time #TruckTok #Trucking #FleetManagement #ELD #OwnerOperator`,
     type: "Screen Recording", audience: "All Drivers", time: "7:00 AM", reach: "Viral Potential",
-    tip: "Record 60 seconds of Ghost Nerve pulsing + Quantum Dispatch running. No voiceover needed — the visuals sell it."
+    tip: "Record 60 seconds of Ghost Nerve pulsing + Dispatch running. No voiceover needed — the visuals sell it."
   },
   {
     day: 3, week: 1, platform: "linkedin", title: "Platform Comparison",
-    caption: `Fleet managers: I built a comparison you need to see.\n\nTruckWithEase vs Samsara vs Motive — 15 features, side by side.\n\nThe result? We win 12 out of 15 on features. And we're less than half the price.\n\nHiring, payroll from ELD miles, quantum dispatch, driver background checks — all in one platform.\n\nFree trial at morrishive.com`,
+    caption: `Fleet managers: I built a comparison you need to see.\n\nTruckWithEase vs Samsara vs Motive — 15 features, side by side.\n\nThe result? We win 12 out of 15 on features. And we're less than half the price.\n\nHiring, payroll from ELD miles, intelligence dispatch, driver background checks — all in one platform.\n\nFree trial at morrishive.com`,
     type: "Comparison Post", audience: "Fleet Managers, Logistics Directors", time: "8:00 AM", reach: "High",
     tip: "Tag fleet management companies, logistics directors, and owner-operator associations"
   },
@@ -59,13 +59,13 @@ const POSTS = [
   },
   {
     day: 6, week: 1, platform: "youtube", title: "Full Platform Demo",
-    caption: `TruckWithEase Full Demo — Quantum Dispatch, Ghost Nerve, HOS Logger, Driver Hiring & More\n\nIn this video I walk through every major feature of TruckWithEase — the only platform that handles ELD compliance, driver hiring, payroll from verified miles, quantum dispatch, and Big Rig Bucks rewards all in one place.\n\n#TruckWithEase #TruckingApp #ELD #FleetManagement #QuatumDispatch`,
+    caption: `TruckWithEase Full Demo — Dispatch, Ghost Nerve, HOS Logger, Driver Hiring & More\n\nIn this video I walk through every major feature of TruckWithEase — the only platform that handles ELD compliance, driver hiring, payroll from verified miles, intelligence dispatch, and Big Rig Bucks rewards all in one place.\n\n#TruckWithEase #TruckingApp #ELD #FleetManagement #QuatumDispatch`,
     type: "Demo Video", audience: "All", time: "10:00 AM", reach: "Long-term SEO",
     tip: "Target keywords: 'Samsara alternative', 'best ELD app 2025', 'trucking fleet management app'"
   },
   {
     day: 7, week: 1, platform: "instagram", title: "Logo + Price Drop",
-    caption: `The trucking app that does everything.\n\nSolo drivers from $29.99/month.\nFleets from $49.99/seat.\n\nQuantum Dispatch. ELD Compliance. Driver Hiring. Payroll. Load Board. Big Rig Bucks.\n\nAll of it. One platform. morrishive.com\n\n#Trucking #ELD #FleetManagement #OwnerOperator #CDL #TruckDriver #Dispatch`,
+    caption: `The trucking app that does everything.\n\nSolo drivers from $29.99/month.\nFleets from $49.99/seat.\n\nDispatch. ELD Compliance. Driver Hiring. Payroll. Load Board. Big Rig Bucks.\n\nAll of it. One platform. morrishive.com\n\n#Trucking #ELD #FleetManagement #OwnerOperator #CDL #TruckDriver #Dispatch`,
     type: "Brand Post", audience: "All Drivers", time: "8:00 AM", reach: "Medium",
     tip: "Use your TruckWithEase logo as the image. Clean, bold, premium."
   },
@@ -84,7 +84,7 @@ const POSTS = [
   },
   {
     day: 10, week: 2, platform: "linkedin", title: "ROI Case Study",
-    caption: `A 10-truck fleet switching from Samsara to TruckWithEase saves $4,800/year on subscription costs alone.\n\nAdd the time saved on:\n• Manual payroll calculation → automated from ELD miles\n• Phone screening applicants → automated background checks\n• Spreadsheet dispatch → quantum AI optimization\n\nThe real ROI is closer to $18,000/year for a 10-truck operation.\n\nCalculate yours at morrishive.com/roi-calculator`,
+    caption: `A 10-truck fleet switching from Samsara to TruckWithEase saves $4,800/year on subscription costs alone.\n\nAdd the time saved on:\n• Manual payroll calculation → automated from ELD miles\n• Phone screening applicants → automated background checks\n• Spreadsheet dispatch → intelligence AI optimization\n\nThe real ROI is closer to $18,000/year for a 10-truck operation.\n\nCalculate yours at morrishive.com/roi-calculator`,
     type: "ROI Analysis", audience: "Fleet Owners, CFOs", time: "8:00 AM", reach: "High",
     tip: "Share in Fleet Management, Logistics, and Supply Chain LinkedIn groups"
   },
@@ -108,7 +108,7 @@ const POSTS = [
   },
   {
     day: 14, week: 2, platform: "instagram", title: "Bike + Car + Truck",
-    caption: `One platform. Every vehicle.\n\n🚛 Tractor-trailers\n🚗 Sprinters & delivery vans\n🚲 Bike couriers\n\nQuantum routing. Real-time safety. Earnings tracking. Rewards.\n\nAll of it at morrishive.com\n\n#Trucking #Delivery #BikeLife #CourierLife #Dispatch #FleetManagement`,
+    caption: `One platform. Every vehicle.\n\n🚛 Tractor-trailers\n🚗 Sprinters & delivery vans\n🚲 Bike couriers\n\nIntelligence routing. Real-time safety. Earnings tracking. Rewards.\n\nAll of it at morrishive.com\n\n#Trucking #Delivery #BikeLife #CourierLife #Dispatch #FleetManagement`,
     type: "Brand Story", audience: "All Vehicle Types", time: "9:00 AM", reach: "Medium",
     tip: "Use a split graphic — truck, car, bike side by side in gold on black"
   },
@@ -120,8 +120,8 @@ const POSTS = [
     tip: "Run this as a paid boost for $10 — target owner operators 25-55 within 100 miles of major freight hubs"
   },
   {
-    day: 16, week: 3, platform: "tiktok", title: "Quantum Dispatch Speed",
-    caption: `Watch 12 loads get optimized simultaneously in under 7 seconds 🤯 This is quantum dispatching #TruckTok #Dispatch #Trucking #FleetManagement`,
+    day: 16, week: 3, platform: "tiktok", title: "Dispatch Speed",
+    caption: `Watch 12 loads get optimized simultaneously in under 7 seconds 🤯 This is intelligence dispatching #TruckTok #Dispatch #Trucking #FleetManagement`,
     type: "Speed Demo", audience: "All", time: "7:00 AM", reach: "Viral Potential",
     tip: "Add trending trucking audio. Speed up the video slightly for maximum impact."
   },
@@ -176,13 +176,13 @@ const POSTS = [
   },
   {
     day: 25, week: 4, platform: "reddit", title: "Van/Sprinter Drivers",
-    caption: `For all the Sprinter van drivers, Amazon DSP fleets, and FedEx Ground contractors: TruckWithEase now has a full mode built specifically for you\n\nCross-state compliance updates automatically. Cold chain temperature logs for pharmaceutical routes. Two-person team delivery mode. Quantum route optimization that saves 28 minutes per shift.\n\nFree trial: morrishive.com/drive-with-ease\n\nNot for CDL holders only — built for every commercial vehicle.`,
+    caption: `For all the Sprinter van drivers, Amazon DSP fleets, and FedEx Ground contractors: TruckWithEase now has a full mode built specifically for you\n\nCross-state compliance updates automatically. Cold chain temperature logs for pharmaceutical routes. Two-person team delivery mode. Intelligence route optimization that saves 28 minutes per shift.\n\nFree trial: morrishive.com/drive-with-ease\n\nNot for CDL holders only — built for every commercial vehicle.`,
     type: "Audience Expansion", audience: "Van/Sprinter Drivers", time: "5:00 PM", reach: "High",
     tip: "Post in r/AmazonDSP, r/FedEx, r/UPS subreddits — massive untapped audience"
   },
   {
     day: 26, week: 4, platform: "twitter", title: "Geotab Partnership",
-    caption: `Big news coming for TruckWithEase users.\n\nGeotab ELD integration in progress — live GPS, verified odometer miles, engine data, and safety events all flowing directly into quantum dispatch and payroll.\n\nNo manual entry. No double systems. One platform.\n\nmorrishive.com`,
+    caption: `Big news coming for TruckWithEase users.\n\nGeotab ELD integration in progress — live GPS, verified odometer miles, engine data, and safety events all flowing directly into intelligence dispatch and payroll.\n\nNo manual entry. No double systems. One platform.\n\nmorrishive.com`,
     type: "Partnership Tease", audience: "Industry", time: "10:00 AM", reach: "Medium",
     tip: "Tag @Geotab in the post — they often retweet partner mentions"
   },
@@ -194,7 +194,7 @@ const POSTS = [
   },
   {
     day: 28, week: 4, platform: "instagram", title: "Month 1 Milestone",
-    caption: `Month 1. Platform live. Real drivers. Real fleets.\n\nThank you to everyone who tried TruckWithEase. We're just getting started.\n\n🚛 Quantum Dispatch\n📱 Fleet Voice\n🎮 Game Up Training\n⚡ Ghost Nerve Intelligence\n💰 Big Rig Bucks\n\nmorrishive.com\n\n#TruckWithEase #Trucking #FleetManagement #Milestone`,
+    caption: `Month 1. Platform live. Real drivers. Real fleets.\n\nThank you to everyone who tried TruckWithEase. We're just getting started.\n\n🚛 Dispatch\n📱 Fleet Voice\n🎮 Game Up Training\n⚡ Ghost Nerve Intelligence\n💰 Big Rig Bucks\n\nmorrishive.com\n\n#TruckWithEase #Trucking #FleetManagement #Milestone`,
     type: "Milestone Post", audience: "All", time: "9:00 AM", reach: "High",
     tip: "Authenticity wins on Instagram. Real milestone posts get saved and shared."
   },
@@ -206,7 +206,7 @@ const POSTS = [
   },
   {
     day: 30, week: 5, platform: "tiktok", title: "30-Day Recap",
-    caption: `30 days. Real drivers. Real fleets. Real quantum dispatching. We're just getting started 🚛⚡ #TruckWithEase #TruckTok #Trucking #FleetManagement #Dispatch`,
+    caption: `30 days. Real drivers. Real fleets. Real intelligence dispatching. We're just getting started 🚛⚡ #TruckWithEase #TruckTok #Trucking #FleetManagement #Dispatch`,
     type: "Recap Reel", audience: "All", time: "7:00 AM", reach: "Viral Potential",
     tip: "Montage of all the best screen recordings from the month. Use trending audio."
   },

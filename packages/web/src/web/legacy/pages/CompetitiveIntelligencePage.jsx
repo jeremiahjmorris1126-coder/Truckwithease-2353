@@ -101,7 +101,7 @@ const WIN_REASONS = [
     desc: "Samsara is built for OTR long-haul. We serve Amazon van drivers, local delivery, short-haul, LTL, flatbed, reefer, and owner-operators — all with the correct rules for their actual job.",
     proof: "3.5 million local and van drivers in the US have no good option. We are that option." },
   { num: "05", icon: "⚡", title: "Dispatch That Thinks", color: ORANGE,
-    desc: "Our quantum dispatch calculates 12 variables simultaneously — HOS time, fuel, tolls, live traffic, load weight, driver preference, detention risk — to recommend the optimal move.",
+    desc: "Our intelligence dispatch calculates 12 variables simultaneously — HOS time, fuel, tolls, live traffic, load weight, driver preference, detention risk — to recommend the optimal move.",
     proof: "One dispatcher using TruckWithEase manages 40 trucks with the efficiency of a 5-person team." },
   { num: "06", icon: "🤝", title: "No Contracts. No Hardware.", color: AMBER,
     desc: "Every competitor requires annual contracts and hardware purchases. We don't. Month-to-month, software only, cancel any time. Fleets sign up at 9pm on a Sunday without a sales call.",
@@ -127,7 +127,7 @@ const FEAT_TABLE = {
     ]},
     { label: "Dispatch & Operations", rows: [
       ["Real-Time GPS Tracking",         "✓", "✓", "✓", "✓", "—"],
-      ["AI / Quantum Dispatch",          "✓", "partial", "—", "—", "—"],
+      ["AI / Dispatch",          "✓", "partial", "—", "—", "—"],
       ["Integrated Load Board",          "✓", "—", "—", "—", "✓"],
       ["Multi-Source Satellite Mapping", "✓", "partial", "partial", "partial", "—"],
       ["Weigh Station Bypass",           "✓", "✓", "✓", "partial", "—"],
@@ -240,7 +240,7 @@ export default function CompetitiveIntelligencePage() {
         </p>
         <div style={{ display: "inline-block", background: `linear-gradient(135deg, rgba(255,98,0,0.12), rgba(255,180,0,0.06))`, border: `1px solid rgba(255,98,0,0.25)`, borderRadius: 16, padding: "24px 32px", maxWidth: 660, textAlign: "left" }}>
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, fontWeight: 800, letterSpacing: 3, color: ORANGE, marginBottom: 10 }}>THE SHORT ANSWER</div>
-          <p style={{ fontSize: 17, fontWeight: 500, lineHeight: 1.7 }}>Yes — not by doing what they do <em>cheaper</em>, but by doing things they <strong style={{ color: ORANGE }}>can't do at all</strong>. TruckWithEase is the only platform combining ELD compliance, AI dispatch, HR & hiring, payroll, driver community, and quantum routing — in a single app a solo driver can afford and a 500-truck fleet can trust.</p>
+          <p style={{ fontSize: 17, fontWeight: 500, lineHeight: 1.7 }}>Yes — not by doing what they do <em>cheaper</em>, but by doing things they <strong style={{ color: ORANGE }}>can't do at all</strong>. TruckWithEase is the only platform combining ELD compliance, AI dispatch, HR & hiring, payroll, driver community, and intelligence routing — in a single app a solo driver can afford and a 500-truck fleet can trust.</p>
         </div>
       </div>
 

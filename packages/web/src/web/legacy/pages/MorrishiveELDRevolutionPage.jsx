@@ -54,7 +54,7 @@ export default function MorrishiveELDRevolutionPage() {
           </h1>
 
           <p className="text-xl text-slate-300 max-w-2xl mx-auto mb-8">
-            App-first Hours of Service tracking. Quantum AI that learns your fatigue. Hardware-agnostic. FMCSA compliant. White-label devices you sell under your own brand.
+            App-first Hours of Service tracking. Fleet AI that learns your fatigue. Hardware-agnostic. FMCSA compliant. White-label devices you sell under your own brand.
           </p>
 
           <div className="flex gap-4 justify-center flex-wrap">
@@ -99,7 +99,7 @@ export default function MorrishiveELDRevolutionPage() {
               {[
                 {
                   icon: <Zap className="w-8 h-8 text-orange-400" />,
-                  title: 'Quantum AI',
+                  title: 'Fleet AI',
                   desc: 'Learns driver patterns, predicts fatigue before it becomes dangerous'
                 },
                 {
@@ -130,7 +130,7 @@ export default function MorrishiveELDRevolutionPage() {
                 </li>
                 <li className="flex gap-3">
                   <span className="text-orange-400 font-bold">→</span>
-                  <span><strong>Quantum fatigue AI:</strong> Not just logging—predicting exhaustion and preventing accidents</span>
+                  <span><strong>Intelligence fatigue AI:</strong> Not just logging—predicting exhaustion and preventing accidents</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="text-orange-400 font-bold">→</span>
@@ -152,7 +152,7 @@ export default function MorrishiveELDRevolutionPage() {
         {/* CORE TAB */}
         {activeTab === 'core' && (
           <div className="space-y-12 pb-20">
-            <h2 className="text-3xl font-bold">The Quantum HOS Engine</h2>
+            <h2 className="text-3xl font-bold">The HOS Analytics Engine</h2>
 
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-6">
@@ -181,7 +181,7 @@ export default function MorrishiveELDRevolutionPage() {
                 <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-lg">
                   <div className="flex gap-3 mb-4">
                     <Zap className="w-6 h-6 text-cyan-400" />
-                    <h3 className="text-lg font-bold">Quantum Fatigue AI</h3>
+                    <h3 className="text-lg font-bold">Intelligence Fatigue AI</h3>
                   </div>
                   <p className="text-slate-400 mb-4">Analyzes 128-dimensional patterns: late-night drives, back-to-back long days, acceleration/braking patterns, voice changes.</p>
                   <div className="space-y-2 text-sm">

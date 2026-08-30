@@ -7,7 +7,7 @@ import {
   THE_GOAT,
   ROAD_AGENT,
   GHOST_NERVE,
-  QUANTUM_MIND,
+  FLEET_MIND,
   NEURAL_SAFETY,
   FINANCE_ALERT,
   MEMORY_AGENT,
@@ -93,7 +93,7 @@ function demoReply(agent: string, prompt: string) {
     "the-goat": `As the final authority here, I rank by exposure: out-of-service risk first, then DOT-recordable exposure, then cost. Give me the section to scan — incidents, drivers, maintenance, loads, or money — and upload your fleet procedure document and I'll enforce it clause by clause against 49 CFR.`,
     "road-agent": `I don't have live traffic or weather feeds in demo mode, and I won't call a road clear on my own authority. Check 511 and the state DOT for the corridor, then give me origin, destination, trailer type and your height/weight and I'll build the brief around it.`,
     "ghost-nerve": `No fleet telemetry connected in demo mode, so there's nothing real to flag. Wire up fuel, DEF, DVIR and inspection history and I'll baseline each unit against itself and surface drift before it becomes a breakdown.`,
-    "quantum-mind": `Every answer I give normalizes per mile, per truck, per week — raw totals lie when your miles change. Send revenue, fuel, maintenance and pay data and I'll show the trend, the driver behind it, and what it's worth in dollars per mile.`,
+    "intelligence-mind": `Every answer I give normalizes per mile, per truck, per week — raw totals lie when your miles change. Send revenue, fuel, maintenance and pay data and I'll show the trend, the driver behind it, and what it's worth in dollars per mile.`,
     "neural-safety": `Highest-risk item first, always. In demo mode I have no logs to score. Connect HOS, inspections and speed events and I'll give you a composite 0-100 with speeding normalized per 100 miles and violations as a weekly rate — not raw counts that punish your hardest-running driver.`,
     "finance-alert": `Priority order is cash runway, receivables aging, revenue dip, then cost spike. One rule I never break: I don't recommend deferring a safety-critical repair to protect cash — you park the truck instead. Connect your invoices and expenses and I'll date the day it gets tight.`,
     "memory-agent": `I hold durable facts, fleet history and your preferences so every other agent stops asking twice. I don't store card numbers, SSNs, medical detail beyond DOT cert status, or keys. Tell me what to remember and I'll restate it as one durable fact.`,
@@ -123,7 +123,7 @@ export type AgentId =
   | "the-goat"
   | "road-agent"
   | "ghost-nerve"
-  | "quantum-mind"
+  | "intelligence-mind"
   | "neural-safety"
   | "finance-alert"
   | "memory-agent"
@@ -139,7 +139,7 @@ const SYSTEMS: Record<AgentId, string> = {
   "the-goat": `${PLATFORM_GUARDRAILS}\n\n${THE_GOAT}`,
   "road-agent": `${PLATFORM_GUARDRAILS}\n\n${ROAD_AGENT}`,
   "ghost-nerve": `${PLATFORM_GUARDRAILS}\n\n${GHOST_NERVE}`,
-  "quantum-mind": `${PLATFORM_GUARDRAILS}\n\n${QUANTUM_MIND}`,
+  "intelligence-mind": `${PLATFORM_GUARDRAILS}\n\n${FLEET_MIND}`,
   "neural-safety": `${PLATFORM_GUARDRAILS}\n\n${NEURAL_SAFETY}`,
   "finance-alert": `${PLATFORM_GUARDRAILS}\n\n${FINANCE_ALERT}`,
   "memory-agent": `${PLATFORM_GUARDRAILS}\n\n${MEMORY_AGENT}`,
@@ -164,7 +164,7 @@ export const AGENT_ROSTER: { id: AgentId; name: string; role: string }[] = [
   { id: "health-chief", name: "Health Chief", role: "DOT physical standards and road-life wellness coaching" },
   { id: "humanai", name: "HumanAI", role: "HR manager — driver qualification files, hiring, discipline, payroll" },
   { id: "finance-alert", name: "Finance Alert", role: "Cash runway, slow-pay brokers, revenue dips and cost spikes" },
-  { id: "quantum-mind", name: "Quantum Mind", role: "Deep trend analysis across revenue, performance, cost and exposure" },
+  { id: "intelligence-mind", name: "Fleet Mind", role: "Deep trend analysis across revenue, performance, cost and exposure" },
   { id: "ghost-nerve", name: "Ghost Nerve", role: "Predictive anomaly layer — catches drift before it becomes a breakdown" },
   { id: "memory-agent", name: "Memory Management", role: "The platform's memory — keeps every agent on your fleet's real history" },
   { id: "page-guardian", name: "Page Guardian", role: "Background monitor — catches broken pages before a driver hits one" },

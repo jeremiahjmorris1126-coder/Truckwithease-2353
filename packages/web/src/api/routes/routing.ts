@@ -8,7 +8,7 @@ import { Hono } from "hono";
  * Elevation, Places, Time Zone and Roads are NOT enabled on the same key and
  * return REQUEST_DENIED — so nothing here uses them.
  *
- * What was deleted from the page this feeds (QuantumRoutingEngine):
+ * What was deleted from the page this feeds (RoutingEnginePage):
  *   - VEHICLE_MODES: 30 invented "optimization layers" with invented
  *     per-layer solve times ("0.3s", "0.1s") that measured nothing.
  *   - Invented outcome stats presented as fact: "Avg Miles Saved 47/load",

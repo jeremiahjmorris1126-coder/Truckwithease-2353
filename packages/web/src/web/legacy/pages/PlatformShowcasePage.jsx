@@ -7,17 +7,17 @@ const FEATURES = [
     icon: '⚡',
     name: 'Ghost Nerve Intelligence',
     tagline: 'The platform thinks 6 hours ahead of every driver',
-    detail: 'Ghost Nerve runs 12 simultaneous intelligence layers under every feature — silently pre-staging loads, sealing HOS logs with quantum cryptography, scanning broker history in real time, eliminating DOT violations 72 hours before they occur, and computing 47 profit variables per mile per load. No other platform computes more than 4. Ghost Nerve never sleeps, never stops, and is architecturally impossible to replicate without rebuilding the entire platform from scratch.',
+    detail: 'Ghost Nerve runs 12 simultaneous intelligence layers under every feature — silently pre-staging loads, sealing HOS logs with intelligence cryptography, scanning broker history in real time, eliminating DOT violations 72 hours before they occur, and computing 47 profit variables per mile per load. No other platform computes more than 4. Ghost Nerve never sleeps, never stops, and is architecturally impossible to replicate without rebuilding the entire platform from scratch.',
     competitors: { Samsara: false, Motive: false, DAT: false, 'Trucker Path': false },
     link: '/ghost-nerve',
     color: '#00D68F',
     glow: 'rgba(0,214,143,0.3)',
   },
   {
-    id: 'quantum-dispatch',
+    id: 'intelligence-dispatch',
     tier: 'EXCLUSIVE',
     icon: '🛰️',
-    name: 'Quantum Dispatch Mission Control',
+    name: 'Dispatch Mission Control',
     tagline: 'Live map, 12-layer optimization, zero clicks to dispatch',
     detail: 'The only dispatch screen in trucking that runs 12 parallel optimization layers simultaneously — fuel corridor, HOS hours, weight restrictions, broker reputation, lane profit, weather reroute, detention risk, driver safety score, ELD sync, toll optimization, rest stop sequencing, and cargo compatibility — all in under 7 seconds. Silent Dispatch pre-solves every load 4–6 hours before a driver\'s shift begins. Dispatchers open the screen and the work is already done.',
     competitors: { Samsara: false, Motive: false, DAT: false, 'Trucker Path': false },
@@ -79,7 +79,7 @@ const FEATURES = [
     icon: '🌍',
     name: 'Three Vehicle Worlds — One Platform',
     tagline: 'Trucks. Cars. Bikes. 13 million drivers, zero other options.',
-    detail: 'TruckWithEase is the only platform serving CDL truck drivers, non-CDL delivery van and sprinter drivers, AND bike couriers — all with full quantum routing, earnings intelligence, safety zones, and Rig Bucks rewards. The bike courier world alone covers safe routes, local races, food spots, bike parking, e-bike charging, and city-specific laws for NYC, Chicago, SF, LA, Miami, and Seattle. 13 million drivers had zero platform options before today.',
+    detail: 'TruckWithEase is the only platform serving CDL truck drivers, non-CDL delivery van and sprinter drivers, AND bike couriers — all with full intelligence routing, earnings intelligence, safety zones, and Rig Bucks rewards. The bike courier world alone covers safe routes, local races, food spots, bike parking, e-bike charging, and city-specific laws for NYC, Chicago, SF, LA, Miami, and Seattle. 13 million drivers had zero platform options before today.',
     competitors: { Samsara: '🚛 Trucks only', Motive: '🚛 Trucks only', DAT: '🚛 Trucks only', 'Trucker Path': '🚛 Trucks only' },
     link: '/vehicle-select',
     color: '#FB923C',
@@ -127,7 +127,7 @@ const FEATURES = [
     icon: '🏆',
     name: 'Rig Bucks — Driver Loyalty That Retains',
     tagline: 'Points earned on every action. Drivers stay because it pays.',
-    detail: 'Every clean HOS day earns 75 points automatically. Every DVIR submitted earns 50. Every DOT inspection passed earns 150. Every load dispatched via quantum earns 50. Driver referrals earn 500. Points redeem for fuel cards, account credits, free month upgrades, priority dispatch, and merch. The leaderboard shows real driver names and live balances. No manual administration — every point logs itself with a permanent timestamp. Driver retention increases measurably within 30 days.',
+    detail: 'Every clean HOS day earns 75 points automatically. Every DVIR submitted earns 50. Every DOT inspection passed earns 150. Every load dispatched via intelligence earns 50. Driver referrals earn 500. Points redeem for fuel cards, account credits, free month upgrades, priority dispatch, and merch. The leaderboard shows real driver names and live balances. No manual administration — every point logs itself with a permanent timestamp. Driver retention increases measurably within 30 days.',
     competitors: { Samsara: false, Motive: false, DAT: false, 'Trucker Path': false },
     link: '/rig-bucks',
     color: '#FBBF24',
@@ -135,11 +135,11 @@ const FEATURES = [
   },
   {
     id: 'scan-bill',
-    tier: 'QUANTUM',
+    tier: 'INTELLIGENCE',
     icon: '📸',
-    name: 'Quantum Scan & Bill — One Photo, Four Recipients',
+    name: 'Intelligence Scan & Bill — One Photo, Four Recipients',
     tagline: 'Snap the BOL. Bill fires to customer, broker, fleet, and AP instantly.',
-    detail: 'One photo of any load document — BOL, receipt, proof of delivery, invoice. The quantum agent reads the image, parses every field, cross-references the driver and truck records, calculates the total, and dispatches bills to all four parties simultaneously: customer, broker, fleet, and AP. Every field is editable before sending. The agent logs the load and pay event in HR automatically. No manual data entry. No separate billing software. Nothing to remember.',
+    detail: 'One photo of any load document — BOL, receipt, proof of delivery, invoice. The intelligence agent reads the image, parses every field, cross-references the driver and truck records, calculates the total, and dispatches bills to all four parties simultaneously: customer, broker, fleet, and AP. Every field is editable before sending. The agent logs the load and pay event in HR automatically. No manual data entry. No separate billing software. Nothing to remember.',
     competitors: { Samsara: false, Motive: false, DAT: false, 'Trucker Path': false },
     link: '/scan-bill',
     color: '#10B981',
@@ -147,7 +147,7 @@ const FEATURES = [
   },
 ];
 
-const TIERS = ['ALL', 'PROPRIETARY', 'EXCLUSIVE', 'REAL TIME', 'UNIQUE', 'LIFE SAFETY', 'QUANTUM'];
+const TIERS = ['ALL', 'PROPRIETARY', 'EXCLUSIVE', 'REAL TIME', 'UNIQUE', 'LIFE SAFETY', 'INTELLIGENCE'];
 
 const PRICE_COMPARISON = [
   { platform: 'Samsara', price: '$800+/mo', scope: 'ELD only', drivers: '10 trucks' },

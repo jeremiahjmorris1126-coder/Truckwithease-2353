@@ -82,7 +82,7 @@ const CAPABILITIES = [
       'Sleep quality, caffeine and meal timing — none of it is collected.',
     ],
     noNumbers:
-      'The 128-dimension "quantum" fatigue vector this page used to advertise was deleted from the codebase. Seventy-seven of its 128 dimensions were random numbers. The safety score that replaced it is derived only from rows in the database.',
+      'The 128-dimension "intelligence" fatigue vector this page used to advertise was deleted from the codebase. Seventy-seven of its 128 dimensions were random numbers. The safety score that replaced it is derived only from rows in the database.',
   },
   {
     key: 'voice',

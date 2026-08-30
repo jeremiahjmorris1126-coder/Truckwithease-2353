@@ -16,7 +16,7 @@ export default function ELDHardwareMarketingPage() {
             Morrishive ELD Hardware
           </h1>
           <p className="text-xl text-slate-300 mb-8">
-            Plug quantum safety into your truck. Real-time data + AI fatigue detection = fewer accidents.
+            Plug intelligence safety into your truck. Real-time data + AI fatigue detection = fewer accidents.
           </p>
           <div className="flex gap-4 flex-wrap justify-center">
             <button className="px-8 py-3 bg-orange-600 hover:bg-orange-700 rounded-lg font-semibold transition">
@@ -105,7 +105,7 @@ export default function ELDHardwareMarketingPage() {
               <ul className="space-y-3">
                 <li className="flex gap-2">
                   <span className="text-orange-400 font-bold">→</span>
-                  <span>Not just tracking. Quantum fatigue prediction 24 hours ahead.</span>
+                  <span>Not just tracking. Intelligence fatigue prediction 24 hours ahead.</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="text-orange-400 font-bold">→</span>
@@ -121,7 +121,7 @@ export default function ELDHardwareMarketingPage() {
                 </li>
                 <li className="flex gap-2">
                   <span className="text-orange-400 font-bold">→</span>
-                  <span>All 128D quantum fatigue dimensions feed real-time to platform.</span>
+                  <span>All 128D intelligence fatigue dimensions feed real-time to platform.</span>
                 </li>
               </ul>
             </div>
@@ -132,7 +132,7 @@ export default function ELDHardwareMarketingPage() {
           <div className="space-y-8">
             <h2 className="text-3xl font-bold mb-8 flex items-center gap-2">
               <TrendingUp className="w-8 h-8 text-cyan-400" />
-              Hardware Data → Quantum Platform
+              Hardware Data → Intelligence Platform
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -162,9 +162,9 @@ export default function ELDHardwareMarketingPage() {
 
               <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
                 <h3 className="text-lg font-bold mb-4 text-orange-400">Step 4: Fatigue Analysis</h3>
-                <p className="text-slate-300 text-sm mb-3">Each data point updates 128D quantum fatigue vector in real-time.</p>
+                <p className="text-slate-300 text-sm mb-3">Each data point updates 128D intelligence fatigue vector in real-time.</p>
                 <div className="bg-slate-900 rounded p-3 text-xs font-mono text-green-400">
-                  updateQuantumFatigueState(driverId, features, timestamp)
+                  updateFatigueState(driverId, features, timestamp)
                 </div>
               </div>
 
@@ -180,7 +180,7 @@ export default function ELDHardwareMarketingPage() {
             <div className="bg-gradient-to-r from-orange-600/20 to-cyan-600/20 border border-orange-500/30 rounded-lg p-8">
               <h3 className="text-xl font-bold mb-4 text-orange-300">No Data is Siloed</h3>
               <p className="text-slate-300 mb-4">
-                Hardware telemetry feeds directly into load pricing, HOS compliance, fatigue prediction, dispatch intelligence, and driver accessibility. A deaf driver gets captions of the exact road hazard the sensors detected. A blind driver hears spatial audio describing lane position. An elderly driver gets medication reminders timed to their circadian pattern in the quantum model.
+                Hardware telemetry feeds directly into load pricing, HOS compliance, fatigue prediction, dispatch intelligence, and driver accessibility. A deaf driver gets captions of the exact road hazard the sensors detected. A blind driver hears spatial audio describing lane position. An elderly driver gets medication reminders timed to their circadian pattern in the intelligence model.
               </p>
               <p className="text-slate-400 text-sm">
                 Other ELDs report data to a database. Morrishive hardware transforms raw data into intelligent, personalized safety actions across every modality.
@@ -248,7 +248,7 @@ export default function ELDHardwareMarketingPage() {
                 {
                   audience: 'Owner-Operators',
                   headline: 'Your Truck Just Got Smarter',
-                  copy: 'Quantum fatigue detection predicts crashes 24 hours ahead. Fewer accidents = lower insurance = more profit.',
+                  copy: 'Intelligence fatigue detection predicts crashes 24 hours ahead. Fewer accidents = lower insurance = more profit.',
                   cta: 'See How Much You Save',
                   image: 'truck-icon'
                 },
@@ -288,7 +288,7 @@ export default function ELDHardwareMarketingPage() {
             <div className="bg-gradient-to-r from-green-600/20 to-cyan-600/20 border border-green-500/30 rounded-lg p-8">
               <h3 className="text-xl font-bold mb-4 text-green-300">Ad Copy Framework</h3>
               <p className="text-slate-300 mb-4">
-                Every campaign leads with the outcome, not the tech. "Fewer accidents" not "128D quantum analysis." "Your truck just got smarter" not "OBD-II integration."
+                Every campaign leads with the outcome, not the tech. "Fewer accidents" not "128D intelligence analysis." "Your truck just got smarter" not "OBD-II integration."
               </p>
               <div className="bg-slate-900 rounded p-4 text-sm">
                 <div className="text-green-400 font-mono mb-2">HEADLINE (benefit):</div>

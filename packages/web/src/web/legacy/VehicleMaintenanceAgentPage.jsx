@@ -16,7 +16,7 @@ const DEFAULT_BRAND = {
 const ALL_MODULES = [
   { id: "scan",       icon: "📷", label: "Photo & Scan Intake",     desc: "Camera/image capture for instant AI diagnosis" },
   { id: "dtc",        icon: "🔌", label: "DTC Code Reader",          desc: "OBD-II fault code index and repair guide" },
-  { id: "eld",        icon: "📡", label: "ELD Quantum Monitor",       desc: "Live telematics → predictive fault detection" },
+  { id: "eld",        icon: "📡", label: "ELD Intelligence Monitor",       desc: "Live telematics → predictive fault detection" },
   { id: "parts",      icon: "⚙️", label: "Parts & Labor Estimator",  desc: "Cost estimate before any wrench turns" },
   { id: "history",    icon: "📋", label: "Service History",           desc: "Full lifetime record per asset" },
   { id: "schedule",   icon: "📅", label: "PM Scheduler",             desc: "Preventive maintenance calendar" },
@@ -24,7 +24,7 @@ const ALL_MODULES = [
   { id: "tires",      icon: "⭕", label: "Tire Management",           desc: "Rotation, pressure, wear, swap schedule" },
   { id: "fluids",     icon: "🧪", label: "Fluid Analysis",           desc: "Oil, coolant, DEF, brake fluid tracking" },
   { id: "brakes",     icon: "🔴", label: "Brake System Monitor",     desc: "Pad life, rotor condition, Bendix ABS" },
-  { id: "engine",     icon: "🔥", label: "Engine Health Score",      desc: "Thermal, compression, timing quantum index" },
+  { id: "engine",     icon: "🔥", label: "Engine Health Score",      desc: "Thermal, compression, timing intelligence index" },
   { id: "electric",   icon: "⚡", label: "Electrical & Battery",     desc: "Alternator, battery, wiring fault map" },
   { id: "body",       icon: "🚛", label: "Body & Frame",             desc: "Structural integrity, rust, collision damage" },
   { id: "hvac",       icon: "❄️", label: "HVAC & Cab Comfort",       desc: "AC, heat, reefer unit maintenance" },
@@ -43,7 +43,7 @@ const SAMPLE_ASSETS = [
 ];
 
 const SAMPLE_RECORDS = [
-  { id:"r1", asset_name:"TRK-441", service_type:"Engine", severity:"critical", status:"open",      description:"P0401 — EGR flow insufficient. Quantum index: 87% failure probability within 800 miles.", dtc_codes:"P0401,P0402", cost_estimate:1840, created:"2026-08-14" },
+  { id:"r1", asset_name:"TRK-441", service_type:"Engine", severity:"critical", status:"open",      description:"P0401 — EGR flow insufficient. Intelligence index: 87% failure probability within 800 miles.", dtc_codes:"P0401,P0402", cost_estimate:1840, created:"2026-08-14" },
   { id:"r2", asset_name:"TRK-441", service_type:"Brakes", severity:"high",     status:"in_progress",description:"Front brake pad wear at 12% remaining. Bendix ABS sensor fault code active.", dtc_codes:"C0035",         cost_estimate:620,  created:"2026-08-13" },
   { id:"r3", asset_name:"TRL-882", service_type:"HVAC",   severity:"critical", status:"open",      description:"Reefer unit compressor cycling failure. Cargo temp variance ±8°F. Immediate shutdown risk.", dtc_codes:"",  cost_estimate:3200, created:"2026-08-14" },
   { id:"r4", asset_name:"TRK-102", service_type:"Engine", severity:"critical", status:"open",      description:"Oil pressure below threshold at idle. Metal particles in last oil sample. Bearing failure imminent.", dtc_codes:"P0520", cost_estimate:8400, created:"2026-08-12" },
@@ -59,10 +59,10 @@ const DTC_LIBRARY = {
   "P1271": { system:"Fuel", title:"Injector Circuit High",    fix:"Check fuel injector wiring. Test injector resistance. Inspect ECM connectors.",       avg_cost:1200 },
 };
 
-const QUANTUM_TIPS = [
+const ENGINE_TIPS = [
   { asset:"TRK-102", alert:"CRITICAL", msg:"ELD data shows oil temp spike pattern over last 340 miles. Bearing failure probability: 94% within 500 miles. Pull from service NOW." },
   { asset:"TRL-882", alert:"CRITICAL", msg:"Reefer engine hours at 11,400 with no major service. Compressor MTBF at this mileage: 73% failure rate. Schedule overhaul immediately." },
-  { asset:"TRK-441", alert:"HIGH",     msg:"EGR fault combined with fuel economy drop of 11% over 30 days. Quantum pattern: turbo boost restriction building. Service within 800 miles." },
+  { asset:"TRK-441", alert:"HIGH",     msg:"EGR fault combined with fuel economy drop of 11% over 30 days. Intelligence pattern: turbo boost restriction building. Service within 800 miles." },
 ];
 
 export default function VehicleMaintenanceAgentPage() {
@@ -80,8 +80,8 @@ export default function VehicleMaintenanceAgentPage() {
   const [newRecord, setNewRecord] = useState({ asset_name:"", service_type:"", severity:"medium", description:"", dtc_codes:"", cost_estimate:"" });
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
-  const [quantumRunning, setQuantumRunning] = useState(false);
-  const [quantumDone, setQuantumDone]       = useState(false);
+  const [engineRunning, setEngineRunning] = useState(false);
+  const [engineDone, setEngineDone]       = useState(false);
   const [loadingRecords, setLoadingRecords] = useState(false);
   const photoRef = useRef();
 
@@ -144,7 +144,7 @@ export default function VehicleMaintenanceAgentPage() {
       severity: "medium",
       codes: ["P0128"],
       estimate: 380,
-      quantum: "Valve cover gasket failure pattern matches 84% probability of full seal failure within 6,000 miles. Recommend immediate repair to prevent oil contamination of exhaust system.",
+      intelligence: "Valve cover gasket failure pattern matches 84% probability of full seal failure within 6,000 miles. Recommend immediate repair to prevent oil contamination of exhaust system.",
       parts: ["Valve Cover Gasket Kit", "Exhaust Manifold Bolts (Grade 8)", "Upper Radiator Hose"],
     });
     setScanning(false);
@@ -156,12 +156,12 @@ export default function VehicleMaintenanceAgentPage() {
     setDtcResult(results);
   }
 
-  async function runQuantumScan() {
-    setQuantumRunning(true);
-    setQuantumDone(false);
+  async function runEngineScan() {
+    setEngineRunning(true);
+    setEngineDone(false);
     await new Promise(r => setTimeout(r, 3200));
-    setQuantumDone(true);
-    setQuantumRunning(false);
+    setEngineDone(true);
+    setEngineRunning(false);
   }
 
   async function submitRecord() {
@@ -195,7 +195,7 @@ export default function VehicleMaintenanceAgentPage() {
     { id:"dtc",       label:"🔌 DTC Codes" },
     { id:"records",   label:"📋 Service Records" },
     { id:"log",       label:"➕ Log Service" },
-    { id:"quantum",   label:"⚛️ Quantum" },
+    { id:"intelligence",   label:"⚛️ Intelligence" },
     ...(fleetSize >= 10 ? [{ id:"branding", label:"🎨 Brand Studio" }] : []),
     { id:"modules",   label:"⚙️ Modules" },
   ];
@@ -211,7 +211,7 @@ export default function VehicleMaintenanceAgentPage() {
             : <div style={{ fontSize:26 }}>🔧</div>}
           <div>
             <div style={{ fontSize:20, fontWeight:900, letterSpacing:3, color:C.text }}>{brand.name?.toUpperCase() || "MAINTENEASE"}</div>
-            <div style={{ fontSize:11, color:C.accent, letterSpacing:2 }}>QUANTUM MAINTENANCE INTELLIGENCE · FLEET ENGINE</div>
+            <div style={{ fontSize:11, color:C.accent, letterSpacing:2 }}>INTELLIGENCE MAINTENANCE INTELLIGENCE · FLEET ENGINE</div>
           </div>
           <div style={{ marginLeft:"auto", display:"flex", gap:16, alignItems:"center" }}>
             <button onClick={() => { window.history.pushState({}, "", "/mechanic"); window.dispatchEvent(new PopStateEvent("popstate")); }}
@@ -254,13 +254,13 @@ export default function VehicleMaintenanceAgentPage() {
         {/* ══ DASHBOARD ══ */}
         {tab==="dashboard" && (
           <div>
-            {/* Quantum Alerts */}
-            {QUANTUM_TIPS.map((tip, i) => (
+            {/* Intelligence Alerts */}
+            {ENGINE_TIPS.map((tip, i) => (
               <div key={i} style={{ background: tip.alert==="CRITICAL" ? "#1a0000" : "#1a0a00", border:`1px solid ${tip.alert==="CRITICAL"?C.red:C.amber}`, borderRadius:12, padding:"16px 20px", marginBottom:12, display:"flex", gap:14, alignItems:"flex-start" }}>
                 <div style={{ fontSize:24, flexShrink:0 }}>{tip.alert==="CRITICAL"?"🚨":"⚠️"}</div>
                 <div style={{ flex:1 }}>
                   <div style={{ display:"flex", gap:10, alignItems:"center", marginBottom:4 }}>
-                    <span style={{ fontSize:12, fontWeight:900, color:tip.alert==="CRITICAL"?C.red:C.amber, letterSpacing:1 }}>⚛️ GOAT QUANTUM · {tip.alert}</span>
+                    <span style={{ fontSize:12, fontWeight:900, color:tip.alert==="CRITICAL"?C.red:C.amber, letterSpacing:1 }}>⚛️ GOAT INTELLIGENCE · {tip.alert}</span>
                     <span style={{ fontSize:12, color:C.dim }}>→ {tip.asset}</span>
                   </div>
                   <div style={{ fontSize:14, color:C.text, lineHeight:1.5 }}>{tip.msg}</div>
@@ -403,7 +403,7 @@ export default function VehicleMaintenanceAgentPage() {
             <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:"28px", marginBottom:20 }}>
               <div style={{ fontSize:18, fontWeight:900, letterSpacing:2, color:C.accent, marginBottom:6 }}>📷 PHOTO & SCAN INTAKE</div>
               <div style={{ fontSize:13, color:C.dim, marginBottom:20, lineHeight:1.6 }}>
-                Point your camera at any part of the vehicle — engine bay, undercarriage, tires, gauges, warning lights, damage, fluid leaks. THE GOAT reads the image and delivers an instant quantum diagnosis with parts list and cost estimate. No paper, no manual entry.
+                Point your camera at any part of the vehicle — engine bay, undercarriage, tires, gauges, warning lights, damage, fluid leaks. THE GOAT reads the image and delivers an instant intelligence diagnosis with parts list and cost estimate. No paper, no manual entry.
               </div>
 
               <div style={{ border:`2px dashed ${C.accent}`, borderRadius:12, padding:"40px 20px", textAlign:"center", marginBottom:20, cursor:"pointer" }}
@@ -416,7 +416,7 @@ export default function VehicleMaintenanceAgentPage() {
 
               {scanning && (
                 <div style={{ background:"#001a00", border:`1px solid ${C.green}`, borderRadius:10, padding:"20px", textAlign:"center" }}>
-                  <div style={{ fontSize:14, color:C.green, marginBottom:8, animation:"pulse 1s ease-in-out infinite" }}>⚛️ QUANTUM DIAGNOSIS RUNNING...</div>
+                  <div style={{ fontSize:14, color:C.green, marginBottom:8, animation:"pulse 1s ease-in-out infinite" }}>⚛️ INTELLIGENCE DIAGNOSIS RUNNING...</div>
                   <div style={{ fontSize:12, color:C.dim }}>Analyzing image · Indexing fault patterns · Calculating failure probability</div>
                 </div>
               )}
@@ -429,8 +429,8 @@ export default function VehicleMaintenanceAgentPage() {
                     <div style={{ fontSize:13, color:C.text, lineHeight:1.6 }}>{scanResult.detected}</div>
                   </div>
                   <div style={{ marginBottom:12 }}>
-                    <div style={{ fontSize:11, color:C.dim, letterSpacing:1, marginBottom:4 }}>QUANTUM ASSESSMENT</div>
-                    <div style={{ fontSize:13, color:C.amber, lineHeight:1.6 }}>⚛️ {scanResult.quantum}</div>
+                    <div style={{ fontSize:11, color:C.dim, letterSpacing:1, marginBottom:4 }}>INTELLIGENCE ASSESSMENT</div>
+                    <div style={{ fontSize:13, color:C.amber, lineHeight:1.6 }}>⚛️ {scanResult.intelligence}</div>
                   </div>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
                     <div style={{ background:C.card, borderRadius:8, padding:"10px", textAlign:"center" }}>
@@ -566,7 +566,7 @@ export default function VehicleMaintenanceAgentPage() {
               <div style={{ marginBottom:20 }}>
                 <label style={{ display:"block", fontSize:10, color:C.dim, letterSpacing:1, marginBottom:5 }}>DESCRIPTION *</label>
                 <textarea value={newRecord.description} onChange={e => setNewRecord(p => ({ ...p, description: e.target.value }))} rows={4}
-                  placeholder="Describe the issue or service performed. Include symptoms, sounds, observations. THE GOAT will enhance with quantum diagnosis."
+                  placeholder="Describe the issue or service performed. Include symptoms, sounds, observations. THE GOAT will enhance with intelligence diagnosis."
                   style={{ width:"100%", background:C.card2, border:`1px solid ${C.border}`, borderRadius:8, padding:"11px 13px", color:C.text, fontSize:13, resize:"vertical", boxSizing:"border-box" }} />
               </div>
               <button onClick={submitRecord} disabled={saving || !newRecord.asset_name || !newRecord.description}
@@ -577,23 +577,23 @@ export default function VehicleMaintenanceAgentPage() {
           </div>
         )}
 
-        {/* ══ QUANTUM ══ */}
-        {tab==="quantum" && (
+        {/* ══ INTELLIGENCE ══ */}
+        {tab==="intelligence" && (
           <div>
             <div style={{ background:C.card, border:`1px solid ${C.accent}44`, borderRadius:14, padding:"24px", marginBottom:20, display:"flex", gap:20, alignItems:"center", flexWrap:"wrap" }}>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:18, fontWeight:900, letterSpacing:2, color:C.accent }}>⚛️ QUANTUM PREDICTIVE ENGINE</div>
+                <div style={{ fontSize:18, fontWeight:900, letterSpacing:2, color:C.accent }}>⚛️ INTELLIGENCE PREDICTIVE ENGINE</div>
                 <div style={{ fontSize:13, color:C.dim, marginTop:4, lineHeight:1.5 }}>THE GOAT reads your ELD telematics data — engine hours, idle time, fuel economy trends, brake events, fault history — and calculates failure probability for every component across every asset in your fleet.</div>
               </div>
-              <button onClick={runQuantumScan} disabled={quantumRunning}
-                style={{ padding:"16px 32px", background:quantumRunning?C.muted:C.accent, color:"#000", border:"none", borderRadius:10, fontWeight:900, fontSize:15, cursor:quantumRunning?"not-allowed":"pointer", letterSpacing:2, whiteSpace:"nowrap" }}>
-                {quantumRunning ? "⏳ SCANNING..." : "⚡ RUN QUANTUM SCAN"}
+              <button onClick={runEngineScan} disabled={engineRunning}
+                style={{ padding:"16px 32px", background:engineRunning?C.muted:C.accent, color:"#000", border:"none", borderRadius:10, fontWeight:900, fontSize:15, cursor:engineRunning?"not-allowed":"pointer", letterSpacing:2, whiteSpace:"nowrap" }}>
+                {engineRunning ? "⏳ SCANNING..." : "⚡ RUN INTELLIGENCE SCAN"}
               </button>
             </div>
 
-            {quantumDone && (
+            {engineDone && (
               <div>
-                {QUANTUM_TIPS.map((tip, i) => (
+                {ENGINE_TIPS.map((tip, i) => (
                   <div key={i} style={{ background:tip.alert==="CRITICAL"?"#1a0000":"#1a0a00", border:`1px solid ${tip.alert==="CRITICAL"?C.red:C.amber}`, borderRadius:12, padding:"18px 20px", marginBottom:12 }}>
                     <div style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
                       <span style={{ fontSize:24 }}>{tip.alert==="CRITICAL"?"🚨":"⚠️"}</span>
@@ -627,10 +627,10 @@ export default function VehicleMaintenanceAgentPage() {
               </div>
             )}
 
-            {!quantumDone && !quantumRunning && (
+            {!engineDone && !engineRunning && (
               <div style={{ textAlign:"center", padding:"60px 20px", color:C.dim }}>
                 <div style={{ fontSize:48, marginBottom:12 }}>⚛️</div>
-                <div style={{ fontSize:16, color:C.dim }}>Hit Quantum Scan to analyze your entire fleet's health in real time.</div>
+                <div style={{ fontSize:16, color:C.dim }}>Hit Intelligence Scan to analyze your entire fleet's health in real time.</div>
               </div>
             )}
           </div>

@@ -1,5 +1,5 @@
 /**
- * QUANTUM NEXUS — rewritten to read the real load table, the real driver roster,
+ * DISPATCH NEXUS — rewritten to read the real load table, the real driver roster,
  * the real fatigue index and the real Dispatch Zero decision inputs.
  *
  * READS
@@ -10,7 +10,7 @@
  *       equipment,weight,pickupDate,broker,status,bookedByDriverId,createdAt,rpm).
  *   GET /api/fleet/drivers        (required) — drivers[] (id,name,truckNumber,status,homeBase,
  *       lat,lng,speed,heading,lastSeen,…).
- *   GET /api/quantum/fatigue      (required) — drivers[] (driverId,index,level,levelLabel,
+ *   GET /api/intelligence/fatigue (required) — drivers[] (driverId,index,level,levelLabel,
  *       insufficientData,componentsScored,componentsTotal,weightApplied), counts{}, fleetIndex.
  *
  * COMPUTES / MEASURES LOCALLY
@@ -24,13 +24,13 @@
  *   - `GOAT_INSIGHTS` — a hardcoded pool of "insights" the page presented as analysis output.
  *   - `PLATFORM_MAP` and the `SOURCES` list of 12 load boards. This platform is connected to zero
  *     load boards. DAT has no credentials; nothing scans any board.
- *   - The string "⚡ QUANTUM NEXUS SCAN COMPLETE" assembled from
+ *   - The scripted "SCAN COMPLETE" banner assembled from
  *     `GOAT_INSIGHTS[Math.floor(Math.random() * GOAT_INSIGHTS.length)]`. No scan ran.
  *   - Fake inbound broker replies produced by `replies[Math.floor(Math.random() * replies.length)]`
  *     and rendered as if a broker had actually answered a message.
  *
  * WHAT THIS PAGE DOES NOT CLAIM
- *   - No quantum computation, quantum hardware or quantum algorithm.
+ *   - No machine-learning model, no prediction, no inference engine.
  *   - No load-board connection, no board scanning, no broker outreach, no inbound reply.
  *   - No match score, no recommended driver, no predicted margin.
  *   - Route distance and drive time come from a provider with no truck profile; weight, axle,
@@ -46,7 +46,7 @@ import {
 
 const money = (n) => `$${Number(n).toLocaleString()}`;
 
-export default function QuantumNexusPage() {
+export default function DispatchNexusPage() {
   const [state, setState] = useState("loading");
   const [error, setError] = useState(null);
   const [dz, setDz] = useState(null);
@@ -65,7 +65,7 @@ export default function QuantumNexusPage() {
         timedGet("/api/dispatch-zero/status"),
         timedGet("/api/loads"),
         timedGet("/api/fleet/drivers"),
-        timedGet("/api/quantum/fatigue"),
+        timedGet("/api/intelligence/fatigue"),
       ]);
       if (!alive.current) return;
       setDz(d.body);
@@ -97,7 +97,7 @@ export default function QuantumNexusPage() {
       <Header
         icon={<GitBranch size={13} />}
         eyebrow="Dispatch inputs"
-        title="QUANTUM"
+        title="DISPATCH"
         accent="NEXUS"
         lead="The freight on the board, the drivers who could take it, and the exact inputs a dispatch decision needs before it can be committed. Nothing here scans a load board — this platform is connected to none — and nothing here recommends a driver for a load."
       />
@@ -174,7 +174,7 @@ export default function QuantumNexusPage() {
 
             <Panel
               title="Drivers and their current fatigue index"
-              note="GET /api/fleet/drivers joined to GET /api/quantum/fatigue by driverId. The index is arithmetic over HOS clocks, rest recency, telemetry and speeding rows — not a prediction."
+              note="GET /api/fleet/drivers joined to GET /api/intelligence/fatigue by driverId. The index is arithmetic over HOS clocks, rest recency, telemetry and speeding rows — not a prediction."
               icon={<Users size={15} />}
               right={<Tag tone={fatigue.counts.stop > 0 ? "warn" : "gold"}>{fatigue.counts.stop} at stop</Tag>}
             >

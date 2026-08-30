@@ -8,7 +8,7 @@ import { and, desc, eq, gte } from "drizzle-orm";
  *
  * The original eldIntegration.js wrote to five PocketBase collections that never
  * existed (`eld_devices`, `eld_sync_channels`, `eld_telemetry`,
- * `quantum_fatigue_state`, `fatigue_alerts`), so every call failed silently and
+ * `fatigue_state`, `fatigue_alerts`), so every call failed silently and
  * no device was ever actually registered.
  *
  * It also scored fatigue with Math.random() in four places — lane variance,

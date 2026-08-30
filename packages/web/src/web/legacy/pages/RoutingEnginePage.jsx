@@ -1,13 +1,13 @@
 /**
- * QuantumRoutingEngine — REBUILT 2026-08-27
- * Routes: /quantum-routing, /routing-engine  (App.jsx L476)
+ * RoutingEnginePage — REBUILT 2026-08-27
+ * Routes: /routing-engine, /routing-engine  (App.jsx L476)
  *
  * WHAT WAS DELETED FROM THE ORIGINAL AND WHY
- * (original preserved verbatim at docs/launch/QuantumRoutingEngine.ORIGINAL.jsx.txt)
+ * (original preserved verbatim at docs/launch/RoutingEnginePage.ORIGINAL.jsx.txt)
  *
  * 1. VEHICLE_MODES — 30 invented "optimization layers" (10 each for truck, car, bike), every one
  *    with an invented solve time: "Weight Restriction Scan 0.3s", "HazMat Corridor Check 0.4s",
- *    "Ghost Nerve Override 0.1s", "Quantum Route Engine solves 2.4 trillion permutations". None of
+ *    "Ghost Nerve Override 0.1s", "Route Engine solves 2.4 trillion permutations". None of
  *    these layers existed as code. Nothing was scanned, checked or solved. The page had zero fetch
  *    calls in 371 lines — it could not reach a router, a map, or a weight database.
  *
@@ -118,7 +118,7 @@ function hhmm(sec) {
 
 /* ------------------------------------------------------------------- page */
 
-export default function QuantumRoutingEngine() {
+export default function RoutingEnginePage() {
   const [status, setStatus] = useState({ state: "loading", data: null, err: "" });
   const [hos, setHos] = useState({ state: "loading", data: null, err: "" });
   const [tolls, setTolls] = useState({ state: "loading", data: null, err: "" });

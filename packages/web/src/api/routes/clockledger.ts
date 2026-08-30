@@ -51,7 +51,7 @@ import { ensureSeed } from "../lib/seed";
  *
  * WHAT THIS ENDPOINT DOES NOT CLAIM
  *   No prediction. No confidence score. No detention, deadhead or reset-stranding
- *   attribution (no source table exists). No tax, IFTA or filing output. No quantum
+ *   attribution (no source table exists). No tax, IFTA or filing output. No intelligence
  *   computation. TruckWithEase is not an ELD and files nothing with any agency.
  */
 

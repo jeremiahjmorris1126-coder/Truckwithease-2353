@@ -1,5 +1,5 @@
 /**
- * QUANTUM NERVE — rewritten to read the real haptic registry and the real accessibility service.
+ * DRIVER NERVE — rewritten to read the real haptic registry and the real accessibility service.
  *
  * READS
  *   GET /api/haptic        (required) — version, versionNote, encoding{format,note,previousFormatBug},
@@ -10,7 +10,7 @@
  *       onSupportedDevices,onUnsupportedDevices}, measuredMs.
  *   GET /api/accessibility (required) — needs[], signLanguages[], hapticDevices[], urgency[],
  *       requestKinds[], hapticPatterns{}, providers{caption,translation,sign_language}, notes{}.
- *   GET /api/quantum       (required) — the naming statement and the notClaimed[] list.
+ *   GET /api/intelligence  (required) — the notClaimed[] list.
  *
  * COMPUTES / MEASURES LOCALLY
  *   Nothing. It groups the pattern registry by category and prints the totals the server returned,
@@ -36,7 +36,7 @@
  *   - Off-palette colours #FF6B35, #F472B6 and #00FFB3.
  *
  * WHAT THIS PAGE DOES NOT CLAIM
- *   - No quantum computation, quantum hardware or quantum algorithm.
+ *   - No machine-learning model, no prediction, no inference engine.
  *   - No accuracy, uptime or delivery-rate percentage.
  *   - No competitor is named, compared to, or scored against.
  *   - Haptics are a fixed set of alert vibrations with agreed meanings, not a language, and nothing
@@ -67,12 +67,12 @@ function PulseBar({ pattern }) {
   );
 }
 
-export default function QuantumNervePage() {
+export default function DriverNervePage() {
   const [state, setState] = useState("loading");
   const [error, setError] = useState(null);
   const [haptic, setHaptic] = useState(null);
   const [acc, setAcc] = useState(null);
-  const [quantum, setQuantum] = useState(null);
+  const [intel, setIntel] = useState(null);
   const [reads, setReads] = useState([]);
   const alive = useRef(false);
 
@@ -84,12 +84,12 @@ export default function QuantumNervePage() {
       const [h, a, q] = await Promise.all([
         timedGet("/api/haptic"),
         timedGet("/api/accessibility"),
-        timedGet("/api/quantum"),
+        timedGet("/api/intelligence"),
       ]);
       if (!alive.current) return;
       setHaptic(h.body);
       setAcc(a.body);
-      setQuantum(q.body);
+      setIntel(q.body);
       setReads([h, a, q].map((r) => ({ url: r.url, status: r.status, bytes: r.bytes, ms: r.ms })));
       setState("ok");
     } catch (e) {
@@ -111,23 +111,17 @@ export default function QuantumNervePage() {
       <Header
         icon={<Waves size={13} />}
         eyebrow="Haptic + accessibility"
-        title="QUANTUM"
+        title="DRIVER"
         accent="NERVE"
         lead="The vibration alert registry a driver can feel without looking at a screen, and the accessibility request queue behind it. Every pattern below is the exact millisecond array the browser is handed. Nothing here transcribes, translates or signs on its own — no provider is connected for that yet, and the page says so."
       />
 
       <main style={wrap}>
-        {state === "loading" ? <Spin label="Reading /api/haptic, /api/accessibility and /api/quantum…" /> : null}
+        {state === "loading" ? <Spin label="Reading /api/haptic, /api/accessibility and /api/intelligence…" /> : null}
         {state === "error" ? <Err error={error} onRetry={load} /> : null}
 
         {state === "ok" ? (
           <>
-            <Panel title="On the word Quantum" note="Returned verbatim by GET /api/quantum → naming.statement.">
-              <p style={{ fontFamily: FB, fontSize: 14.5, color: C.white, lineHeight: 1.9, margin: 0 }}>
-                {quantum.naming.statement}
-              </p>
-            </Panel>
-
             <Panel
               title="Registry totals"
               note="GET /api/haptic → patternCount, limits and totals. Playback counts are rows recorded in haptic_playbacks, not an estimate."
@@ -293,9 +287,9 @@ export default function QuantumNervePage() {
               </p>
             </Panel>
 
-            <Panel title="Not claimed by anything under Quantum" note="GET /api/quantum → notClaimed[].">
+            <Panel title="Not claimed by any intelligence surface" note="GET /api/intelligence → notClaimed[].">
               <ul style={{ margin: 0, paddingLeft: 20, fontFamily: FB, fontSize: 13.5, color: C.muted, lineHeight: 2 }}>
-                {quantum.notClaimed.map((n, i) => <li key={i}>{n}</li>)}
+                {intel.notClaimed.map((n, i) => <li key={i}>{n}</li>)}
               </ul>
             </Panel>
 

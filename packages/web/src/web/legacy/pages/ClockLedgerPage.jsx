@@ -7,7 +7,6 @@
  *   GET /api/clock-ledger/chain  (optional) independent replay of the persisted chain from
  *                           genesis — every link recomputed server-side and reported pass/fail
  *   GET /api/hos            optional — fleet duty clocks, for cross-reference
- *   GET /api/quantum        optional — the naming statement printed verbatim
  *
  * COMPUTES / MEASURES LOCALLY
  *   Round-trip latency per read (timedGet), flagged at >= 3000 ms
@@ -24,9 +23,8 @@
  * WHAT THIS PAGE DOES NOT CLAIM
  *   No prediction of future clock use. No confidence or accuracy percentage.
  *   No detention, deadhead or reset-stranding figure — no source table exists.
- *   No tax, IFTA or filing output. No quantum computation; "Quantum" elsewhere in
- *   this app is a product name. TruckWithEase is not an ELD, is not registered with
- *   FMCSA, and files nothing with any agency.
+ *   No tax, IFTA or filing output. TruckWithEase is not an ELD, is not registered
+ *   with FMCSA, and files nothing with any agency.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -46,7 +44,6 @@ export default function ClockLedgerPage() {
   const [reads, setReads] = useState([]);
   const [led, setLed] = useState(null);
   const [hos, setHos] = useState(null);
-  const [quantum, setQuantum] = useState(null);
   const [chain, setChain] = useState(null);
   const alive = useRef(false);
 
@@ -63,13 +60,11 @@ export default function ClockLedgerPage() {
       const opt = await Promise.allSettled([
         timedGet("/api/clock-ledger/chain"),
         timedGet("/api/hos"),
-        timedGet("/api/quantum"),
       ]);
       if (!alive.current) return;
-      const [chainR, hosR, qR] = opt;
+      const [chainR, hosR] = opt;
       if (chainR.status === "fulfilled") { collected.push(chainR.value); setChain(chainR.value.body); }
       if (hosR.status === "fulfilled") { collected.push(hosR.value); setHos(hosR.value.body); }
-      if (qR.status === "fulfilled") { collected.push(qR.value); setQuantum(qR.value.body); }
 
       setReads(collected);
       setState("ok");
@@ -348,14 +343,6 @@ export default function ClockLedgerPage() {
                   <Stat label="Cycle" value={`${Math.round(hos.limits.cycle / 60)} h`} />
                   <Stat label="Break after" value={`${Math.round(hos.limits.breakAfter / 60)} h`} />
                 </div>
-              </Panel>
-            )}
-
-            {quantum && quantum.naming && (
-              <Panel title="ON THE WORD QUANTUM" note="naming.statement from GET /api/quantum" icon={<ShieldAlert size={16} color={GOLD} />}>
-                <p style={{ color: C.white, fontFamily: FB, fontSize: 13.5, lineHeight: 1.75, margin: 0 }}>
-                  {quantum.naming.statement}
-                </p>
               </Panel>
             )}
 

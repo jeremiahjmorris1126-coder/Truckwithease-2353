@@ -51,8 +51,8 @@ export default function DispatchRoutingAgentPage() {
   const [newsItems, setNewsItems] = useState([]);
   const [nerveFeed, setNerveFeed] = useState([]);
   const [ghostScore, setGhostScore] = useState(98);
-  const [quantumRunning, setQuantumRunning] = useState(false);
-  const [quantumResult, setQuantumResult] = useState(null);
+  const [engineRunning, setEngineRunning] = useState(false);
+  const [engineResult, setEngineResult] = useState(null);
   const [assignModal, setAssignModal] = useState(null);
   const [bookingDriver, setBookingDriver] = useState('');
   const nerveRef = useRef(null);
@@ -123,9 +123,9 @@ export default function DispatchRoutingAgentPage() {
     setRoadLoading(false);
   }
 
-  async function runQuantumDispatch() {
-    setQuantumRunning(true);
-    setQuantumResult(null);
+  async function runDispatchCore() {
+    setEngineRunning(true);
+    setEngineResult(null);
     await new Promise(r => setTimeout(r, 2800));
     const best = filteredLoads.filter(l => l.status === 'unassigned').sort((a,b) => (b.profit||0)-(a.profit||0)).slice(0,3);
     const result = best.map((load, i) => ({
@@ -134,11 +134,11 @@ export default function DispatchRoutingAgentPage() {
       score: (98 - i * 3),
       reason: `Profit-optimized • HOS clear • ${load.detentionRisk} detention risk • Route pre-verified`,
     }));
-    setQuantumResult(result);
-    setQuantumRunning(false);
-    // Award Rig Bucks for quantum dispatch use
+    setEngineResult(result);
+    setEngineRunning(false);
+    // Award Rig Bucks for intelligence dispatch use
     try {
-      await pb.collection('rig_bucks_ledger').create({ driver_name: 'Dispatcher', action: 'Quantum Dispatch Run', points: 25, source: 'dispatch', balance: 25 });
+      await pb.collection('rig_bucks_ledger').create({ driver_name: 'Dispatcher', action: 'Dispatch Run', points: 25, source: 'dispatch', balance: 25 });
     } catch {}
   }
 
@@ -176,8 +176,8 @@ export default function DispatchRoutingAgentPage() {
         @keyframes slideIn { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: none; } }
         .pulse { animation: pulse 2s infinite; }
         @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
-        .quantum-btn { background: linear-gradient(135deg, ${C.purple}, ${C.blue}); border: none; border-radius: 12px; padding: 16px 32px; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: .08em; transition: all .2s; box-shadow: 0 0 30px ${C.purple}40; }
-        .quantum-btn:hover { transform: translateY(-2px); box-shadow: 0 0 50px ${C.purple}60; }
+        .engine-btn { background: linear-gradient(135deg, ${C.purple}, ${C.blue}); border: none; border-radius: 12px; padding: 16px 32px; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: .08em; transition: all .2s; box-shadow: 0 0 30px ${C.purple}40; }
+        .engine-btn:hover { transform: translateY(-2px); box-shadow: 0 0 50px ${C.purple}60; }
         .assign-btn { background: ${C.gold}; border: none; border-radius: 8px; padding: 10px 20px; color: ${C.dark}; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .2s; }
         .assign-btn:hover { background: #ffc94d; }
         ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: ${C.dark}; } ::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 2px; }
@@ -190,7 +190,7 @@ export default function DispatchRoutingAgentPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{ width: 44, height: 44, borderRadius: 10, background: `linear-gradient(135deg, ${C.gold}, ${C.purple})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>⚡</div>
             <div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: C.gold, letterSpacing: '.04em' }}>QUANTUM DISPATCH</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: C.gold, letterSpacing: '.04em' }}>INTELLIGENCE DISPATCH</div>
               <div style={{ fontSize: 11, color: C.muted }}>Ghost Nerve Intelligence · 47-Variable Optimization · Live SerpAPI</div>
             </div>
           </div>
@@ -218,7 +218,7 @@ export default function DispatchRoutingAgentPage() {
             { id:'dashboard', label:'📊 Live Command' },
             { id:'loads', label:'📦 Load Board' },
             { id:'drivers', label:'👥 Driver Match' },
-            { id:'quantum', label:'⚡ Quantum AI' },
+            { id:'intelligence', label:'⚡ Fleet AI' },
             { id:'alerts', label:'🚨 Road Intelligence' },
             { id:'news', label:'🌍 Market Intel' },
           ].map(t => (
@@ -336,7 +336,7 @@ export default function DispatchRoutingAgentPage() {
               <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.gold, letterSpacing: '.1em', marginBottom: 14 }}>📋 ASSIGNED TODAY</div>
                 {assignments.length === 0 ? (
-                  <div style={{ fontSize: 11, color: C.muted }}>No assignments yet — run Quantum AI to optimize</div>
+                  <div style={{ fontSize: 11, color: C.muted }}>No assignments yet — run Fleet AI to optimize</div>
                 ) : assignments.slice(0,5).map((a,i) => (
                   <div key={i} style={{ padding: '8px 0', borderBottom: `1px solid ${C.border}`, fontSize: 11 }}>
                     <div style={{ color: C.text, fontWeight: 700 }}>{a.load_id || `Load ${i+1}`}</div>
@@ -424,22 +424,22 @@ export default function DispatchRoutingAgentPage() {
           </div>
         )}
 
-        {/* QUANTUM TAB */}
-        {tab === 'quantum' && (
+        {/* INTELLIGENCE TAB */}
+        {tab === 'intelligence' && (
           <div>
             <div style={{ textAlign: 'center', marginBottom: 40 }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>⚡</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: C.gold, marginBottom: 8 }}>Quantum Dispatch AI</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: C.gold, marginBottom: 8 }}>Dispatch AI</div>
               <div style={{ fontSize: 14, color: C.muted, maxWidth: 560, margin: '0 auto', lineHeight: 1.6 }}>12 simultaneous optimization layers running in parallel. Profit, HOS, detention risk, fuel cost, driver score, lane history, broker reliability, road alerts — all computed at once.</div>
             </div>
             <div style={{ textAlign: 'center', marginBottom: 40 }}>
-              <button className="quantum-btn" onClick={runQuantumDispatch} disabled={quantumRunning}>
-                {quantumRunning ? '⏳ Computing 12 Layers...' : '⚡ RUN QUANTUM DISPATCH'}
+              <button className="engine-btn" onClick={runDispatchCore} disabled={engineRunning}>
+                {engineRunning ? '⏳ Computing 12 Layers...' : '⚡ RUN INTELLIGENCE DISPATCH'}
               </button>
             </div>
-            {quantumRunning && (
+            {engineRunning && (
               <div style={{ background: C.card, border: `1px solid ${C.purple}40`, borderRadius: 14, padding: 24, maxWidth: 600, margin: '0 auto' }}>
-                {['Ghost Index pre-staging loads...','Scanning 47 profit variables...','Cross-referencing HOS logs...','Checking broker reliability via SerpAPI...','Running road alert scan...','Computing detention probability...','Matching driver safety scores...','Optimizing fuel corridors...','Verifying CDL & compliance...','Sealing HOS logs cryptographically...','Calculating net profit per mile...','Finalizing quantum dispatch order...'].map((step,i) => (
+                {['Ghost Index pre-staging loads...','Scanning 47 profit variables...','Cross-referencing HOS logs...','Checking broker reliability via SerpAPI...','Running road alert scan...','Computing detention probability...','Matching driver safety scores...','Optimizing fuel corridors...','Verifying CDL & compliance...','Sealing HOS logs cryptographically...','Calculating net profit per mile...','Finalizing intelligence dispatch order...'].map((step,i) => (
                   <div key={i} className="nerve-entry" style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10, opacity: 1 }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.purple }} className="pulse" />
                     <span style={{ fontSize: 12, color: C.muted }}>{step}</span>
@@ -447,11 +447,11 @@ export default function DispatchRoutingAgentPage() {
                 ))}
               </div>
             )}
-            {quantumResult && (
+            {engineResult && (
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: C.green, textAlign: 'center', marginBottom: 24 }}>✅ Quantum Optimization Complete — Top 3 Assignments</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.green, textAlign: 'center', marginBottom: 24 }}>✅ Intelligence Optimization Complete — Top 3 Assignments</div>
                 <div style={{ display: 'grid', gap: 18, maxWidth: 800, margin: '0 auto' }}>
-                  {quantumResult.map((r,i) => (
+                  {engineResult.map((r,i) => (
                     <div key={i} style={{ background: C.card, border: `1px solid ${C.purple}40`, borderRadius: 14, padding: 24, display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
                       <div style={{ width: 44, height: 44, borderRadius: '50%', background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, flexShrink: 0 }}>#{i+1}</div>
                       <div style={{ flex: 1 }}>

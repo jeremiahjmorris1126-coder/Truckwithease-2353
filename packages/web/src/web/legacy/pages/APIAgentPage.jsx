@@ -27,7 +27,7 @@
  *    100 and then wrote a summary line. It called nothing. Replaced with a real
  *    per-provider probe: POST /api/integrations/probe/:id, which makes an actual
  *    HTTP request to the vendor and prints the status code it got back.
- * 5. THE AUTOCAB ENTRY claiming "TruckWithEase Quantum Core surpasses all Autocab
+ * 5. THE AUTOCAB ENTRY claiming "TruckWithEase Intelligence Core surpasses all Autocab
  *    dispatch capabilities across 12 layers". The platform never scores itself
  *    against a competitor.
  * 6. Off-brand palette (#f5a623 amber, #0d1117 and #1a2540 navy, #4a9eff blue,

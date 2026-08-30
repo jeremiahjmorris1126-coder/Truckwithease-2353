@@ -163,7 +163,7 @@ export default function FreightNexusPage() {
     { id:"loads", label:"📦 Load Index", icon:"📦" },
     { id:"contacts", label:"📡 Contact Bank", icon:"📡" },
     { id:"shippers", label:"⭐ Direct Shippers", icon:"⭐" },
-    { id:"comms", label:"💬 Quantum Comms", icon:"💬" },
+    { id:"comms", label:"💬 Intelligence Comms", icon:"💬" },
   ];
 
   return (
@@ -182,7 +182,7 @@ export default function FreightNexusPage() {
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <div style={{ display:"flex", alignItems:"center", gap:6, background: C.greenDim, border:`1px solid ${C.green}`, borderRadius:20, padding:"4px 12px" }}>
                 <div style={{ width:7, height:7, borderRadius:"50%", background: C.green, boxShadow:`0 0 ${pulse?8:4}px ${C.green}`, transition:"all 0.8s" }} />
-                <span style={{ fontSize:11, color: C.green, fontWeight:700, letterSpacing:"0.06em" }}>QUANTUM LIVE</span>
+                <span style={{ fontSize:11, color: C.green, fontWeight:700, letterSpacing:"0.06em" }}>INTELLIGENCE LIVE</span>
               </div>
               <button onClick={goatScan} disabled={scanning} style={{ background: scanning ? C.goldDim : `linear-gradient(135deg, ${C.gold}, ${C.goldDim})`, border:"none", borderRadius:8, padding:"8px 18px", color: C.black, fontFamily: FONT_DISPLAY, fontSize:14, letterSpacing:"0.06em", cursor: scanning?"not-allowed":"pointer", fontWeight:700 }}>
                 {scanning ? "⚡ SCANNING..." : "🐐 GOAT SCAN"}
@@ -213,7 +213,7 @@ export default function FreightNexusPage() {
         <div style={{ background:`linear-gradient(135deg, rgba(201,168,76,0.12), rgba(201,168,76,0.04))`, border:`1px solid ${C.gold}`, margin:"16px 20px", borderRadius:12, padding:"20px 24px" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
             <span style={{ fontSize:24 }}>🐐</span>
-            <div style={{ fontFamily: FONT_DISPLAY, fontSize:20, color: C.gold, letterSpacing:"0.06em" }}>THE GOAT — QUANTUM SCAN COMPLETE</div>
+            <div style={{ fontFamily: FONT_DISPLAY, fontSize:20, color: C.gold, letterSpacing:"0.06em" }}>THE GOAT — INTELLIGENCE SCAN COMPLETE</div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:12, marginBottom:16 }}>
             {[
@@ -588,7 +588,7 @@ export default function FreightNexusPage() {
         {/* COMMS TAB */}
         {tab === "comms" && (
           <div>
-            <div style={{ fontFamily: FONT_DISPLAY, fontSize:22, color: C.gold, letterSpacing:"0.06em", marginBottom:20 }}>💬 QUANTUM COMMS</div>
+            <div style={{ fontFamily: FONT_DISPLAY, fontSize:22, color: C.gold, letterSpacing:"0.06em", marginBottom:20 }}>💬 INTELLIGENCE COMMS</div>
             <div style={{ display:"grid", gridTemplateColumns:"280px 1fr", gap:16, minHeight:500 }}>
               {/* Contact list */}
               <div style={{ background: C.panel, border:`1px solid ${C.border}`, borderRadius:12, overflow:"hidden" }}>

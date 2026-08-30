@@ -395,7 +395,7 @@ export default function FleetVoicePage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
               {[
                 { label: "⚡ A2P Registration Manager", href: "/a2p", color: C.gold },
-                { label: "⚛️ Quantum Nexus", href: "/quantum-nexus", color: "#00d4ff" },
+                { label: "⚛️ Dispatch Nexus", href: "/dispatch-nexus", color: "#00d4ff" },
                 { label: "🔑 API and Keys Setup", href: "/twilio-setup", color: "#a78bfa" },
                 { label: "🔒 Privacy Policy", href: "/privacy", color: C.green },
               ].map(link => (

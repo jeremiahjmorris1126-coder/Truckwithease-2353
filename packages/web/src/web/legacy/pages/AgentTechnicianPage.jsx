@@ -25,7 +25,7 @@
  *   · "CRITICAL FAILURES: 0 / This 24-hour period" — nothing was recorded.
  *   · "ALERT THRESHOLD 98% / Alert if uptime drops below" — no alerting exists.
  *   · Rows for engines that are not built: sign-language-engine,
- *     quantum-hos, jj-keller-compliance, blind-spatial-audio,
+ *     intelligence-hos, jj-keller-compliance, blind-spatial-audio,
  *     haptic-vibration, multi-device-haptics, broker-arrival-alerts,
  *     eld-hardware-sync, load-board-sync.
  *   · Off-brand navy/blue/green/purple palette (#0f1419, #3b82f6, #a855f7).

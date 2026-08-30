@@ -447,7 +447,7 @@ export default function FleetLoadBoardPage() {
       const avgRPM     = loads.length ? (loads.reduce((s,l)=>s+(Number(l.rate_per_mile)||0),0)/loads.length).toFixed(2) : 0;
       const topLoad    = [...loads].sort((a,b)=>b.rate-a.rate)[0];
       const topSource  = SOURCES.find(s => s.id === (loads.sort((a,b)=>b.rate-a.rate)[0]?.source))?.label || 'DAT';
-      setGoatInsight(`⚡ QUANTUM INDEX COMPLETE — ${loads.length} loads scanned across ${activeFleet?.fleet_name || 'your fleet'} in 0.3s. ${available} loads available now. ${active} loads active on road. Total board value: $${totalRate.toLocaleString()}. Average rate/mile: $${avgRPM}. Top load pays $${topLoad?.rate?.toLocaleString() || '—'} (${topSource}). THE GOAT recommends: ${GOAT_TIPS[Math.floor(Math.random() * GOAT_TIPS.length)]}`);
+      setGoatInsight(`⚡ INTELLIGENCE INDEX COMPLETE — ${loads.length} loads scanned across ${activeFleet?.fleet_name || 'your fleet'} in 0.3s. ${available} loads available now. ${active} loads active on road. Total board value: $${totalRate.toLocaleString()}. Average rate/mile: $${avgRPM}. Top load pays $${topLoad?.rate?.toLocaleString() || '—'} (${topSource}). THE GOAT recommends: ${GOAT_TIPS[Math.floor(Math.random() * GOAT_TIPS.length)]}`);
       setIndexing(false);
       setGoatScanning(false);
     }, 2200);
@@ -489,7 +489,7 @@ export default function FleetLoadBoardPage() {
           <div style={{ background:`linear-gradient(135deg, #1a1400, #0a0800)`, border:`1px solid ${GOLD}`, borderRadius:10, padding:'14px 18px', marginBottom:20, display:'flex', gap:12, alignItems:'flex-start' }}>
             <span style={{ fontSize:24, flexShrink:0 }}>🐐</span>
             <div>
-              <div style={{ color: GOLD, fontWeight:700, fontSize:12, letterSpacing:2, marginBottom:4 }}>THE GOAT QUANTUM ANALYSIS</div>
+              <div style={{ color: GOLD, fontWeight:700, fontSize:12, letterSpacing:2, marginBottom:4 }}>THE GOAT INTELLIGENCE ANALYSIS</div>
               <div style={{ color:'#ddd', fontSize:13, lineHeight:1.6 }}>{goatInsight}</div>
             </div>
             <button onClick={() => setGoatInsight('')} style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:18, marginLeft:'auto' }}>×</button>

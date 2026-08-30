@@ -23,7 +23,7 @@ const DRILLS = [
   { id:'hos', name:'HOS Compliance', icon:'⏱️', desc:'Check all logs have valid status sequences and no gaps', category:'compliance' },
   { id:'dvir', name:'DVIR Records', icon:'📋', desc:'Confirm all inspection reports are stored and retrievable', category:'safety' },
   { id:'gps', name:'GPS Telemetry Feed', icon:'📡', desc:'Ping live location stream — confirm real-time data flowing', category:'operations' },
-  { id:'dispatch', name:'Dispatch Queue', icon:'⚡', desc:'Verify load assignments and quantum routing accuracy', category:'operations' },
+  { id:'dispatch', name:'Dispatch Queue', icon:'⚡', desc:'Verify load assignments and intelligence routing accuracy', category:'operations' },
   { id:'fleet', name:'Fleet Customer Records', icon:'🏭', desc:'Validate all fleet profiles and contact data are complete', category:'fleet' },
   { id:'voice', name:'Fleet Voice Lines', icon:'📞', desc:'Test all telecom routes — Signal Sam daily line check', category:'communications' },
   { id:'payments', name:'Subscription Billing', icon:'💳', desc:'Confirm all active plan records and payment statuses', category:'billing' },
@@ -194,7 +194,7 @@ export default function AppMaintenanceAgentPage() {
                 <span style={{ fontSize:28 }}>🔧</span>
                 <div>
                   <h1 style={{ fontSize:22, fontWeight:900, letterSpacing:-0.5 }}>App Maintenance Agent</h1>
-                  <p style={{ color:'rgba(255,255,255,0.4)', fontSize:12, marginTop:2 }}>Daily diagnostics · Auto-repair · Live accuracy checks · Quantum backend monitoring</p>
+                  <p style={{ color:'rgba(255,255,255,0.4)', fontSize:12, marginTop:2 }}>Daily diagnostics · Auto-repair · Live accuracy checks · Intelligence backend monitoring</p>
                 </div>
               </div>
             </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { pb } from './lib/pb';
 
-// ─── QUANTUM SCAN & BILL ───────────────────────────────────────────────
+// ─── INTELLIGENCE SCAN & BILL ───────────────────────────────────────────────
 // One photo → auto-extract → instant bill → fires to customer, broker,
 // fleet, and AP simultaneously. Zero manual steps.
 // ──────────────────────────────────────────────────────────────────────
@@ -150,13 +150,13 @@ export default function BillingScanAgentPage() {
     reader.readAsDataURL(file);
   };
 
-  // ── Extract phase (simulated OCR + quantum parse) ─────────────────
+  // ── Extract phase (simulated OCR + intelligence parse) ─────────────────
   const runExtraction = async () => {
     setPhase('extracting');
     const extractSteps = [
       { icon:'📷', label:'Image received — processing pixels', key:'img' },
       { icon:'🔍', label:'OCR reading document text', key:'ocr' },
-      { icon:'⚡', label:'Quantum agent parsing load fields', key:'parse' },
+      { icon:'⚡', label:'Intelligence agent parsing load fields', key:'parse' },
       { icon:'🔗', label:'Cross-referencing driver & truck records', key:'xref' },
       { icon:'💲', label:'Calculating total — miles × rate + extras', key:'calc' },
       { icon:'✅', label:'Bill ready for review', key:'ready' },
@@ -185,7 +185,7 @@ export default function BillingScanAgentPage() {
       { icon:'📋', label:`Sending to Broker${emails.broker ? ' — '+emails.broker : ''}`,   key:'brok' },
       { icon:'🚛', label:`Sending to Fleet${emails.fleet ? ' — '+emails.fleet : ''}`,     key:'fleet' },
       { icon:'💰', label:`Sending to AP / Payroll${emails.ap ? ' — '+emails.ap : ''}`,    key:'ap' },
-      { icon:'⚡', label:'Quantum HR logging load & pay event',    key:'hr' },
+      { icon:'⚡', label:'Intelligence HR logging load & pay event',    key:'hr' },
       { icon:'✅', label:'All parties notified — bill complete',    key:'done' },
     ];
     setSteps(dispatchSteps.map(s => ({ ...s, status:'pending', detail:'' })));
@@ -206,7 +206,7 @@ export default function BillingScanAgentPage() {
         sent_to_broker: !!emails.broker,
         sent_to_fleet: !!emails.fleet,
         sent_to_ap: !!emails.ap,
-        quantum_processed: true,
+        engine_processed: true,
       });
     } catch(e) { console.error(e); }
     setSteps(prev => prev.map((s,i) => i===0 ? {...s, status:'done', detail:'Saved ✓'} : i===1 ? {...s, status:'running', detail:'Sending…'} : s));
@@ -262,7 +262,7 @@ export default function BillingScanAgentPage() {
           <div style={{ display:'flex', alignItems:'center', gap:14 }}>
             <div style={{ width:40, height:40, borderRadius:10, background:C.gold, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>⚡</div>
             <div>
-              <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:22, letterSpacing:3, color:C.text }}>QUANTUM SCAN &amp; BILL</div>
+              <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:22, letterSpacing:3, color:C.text }}>INTELLIGENCE SCAN &amp; BILL</div>
               <div style={{ fontSize:10, color:C.gold, letterSpacing:2, textTransform:'uppercase' }}>1 photo → instant bill → all parties notified</div>
             </div>
           </div>
@@ -360,7 +360,7 @@ export default function BillingScanAgentPage() {
               {steps.length > 0 && (
                 <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:'16px 18px' }}>
                   <div style={{ fontSize:10, fontWeight:700, letterSpacing:2, color:C.gold, textTransform:'uppercase', marginBottom:12 }}>
-                    {phase === 'extracting' ? '⚡ Quantum Agent — Extracting' : '⚡ Quantum Agent — Dispatching'}
+                    {phase === 'extracting' ? '⚡ Intelligence Agent — Extracting' : '⚡ Intelligence Agent — Dispatching'}
                   </div>
                   {steps.map((s,i) => <AgentStep key={i} {...s} />)}
                 </div>

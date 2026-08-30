@@ -42,7 +42,7 @@ import { weekReview } from "./routes/week-review";
 import { azuga } from "./routes/azuga";
 import { vatRates } from "./routes/vat-rates";
 import { algorithm } from "./routes/algorithm";
-import { quantum } from "./routes/quantum";
+import { intelligence } from "./routes/intelligence";
 import { clockLedger } from "./routes/clockledger";
 import { traxes } from "./routes/traxes";
 import { integrations } from "./routes/integrations";
@@ -106,7 +106,7 @@ const app = new Hono()
   .route("/azuga", azuga)
   .route("/vat-rates", vatRates)
   .route("/algorithm", algorithm)
-  .route("/quantum", quantum)
+  .route("/intelligence", intelligence)
   .route("/clock-ledger", clockLedger)
   .route("/traxes", traxes)
   .route("/integrations", integrations)

@@ -46,7 +46,7 @@ export default function MicrosoftIntegration() {
     },
     {
       name: 'Azure Synapse Analytics',
-      description: 'Quantum-level parallel analytics and warehousing',
+      description: 'Enterprise-level parallel analytics and warehousing',
       features: [
         '12-layer parallel queries',
         'Real-time predictive models',
@@ -101,7 +101,7 @@ export default function MicrosoftIntegration() {
             <h1 className="text-4xl font-black">Microsoft Azure Integration</h1>
           </div>
           <p className="text-xl text-gray-300">
-            Enterprise-grade cloud infrastructure powering TruckWithEase quantum logistics.
+            Enterprise-grade cloud infrastructure powering TruckWithEase intelligence logistics.
           </p>
         </div>
 

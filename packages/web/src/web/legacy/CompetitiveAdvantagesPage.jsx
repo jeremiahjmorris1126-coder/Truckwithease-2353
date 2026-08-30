@@ -86,7 +86,7 @@ const CAPABILITIES = [
     route: 'POST /api/agent/:agent · POST /api/agent/stream/:agent · GET /api/agent/roster',
     what: 'Twelve role-specific agents on a real LLM, each with a server-side system prompt that is hashed so you can verify it was not swapped.',
     does: [
-      'THE GOAT, Fleet Chief, Driver Assistant, Road Agent, Neural Safety, Health Chief, HumanAI, Finance Alert, Quantum Mind, Ghost Nerve, Memory Management, Page Guardian',
+      'THE GOAT, Fleet Chief, Driver Assistant, Road Agent, Neural Safety, Health Chief, HumanAI, Finance Alert, Fleet Mind, Ghost Nerve, Memory Management, Page Guardian',
       'Streaming responses token by token',
       'Driving mode: shorter answers, tighter timeout, voice-shaped output',
       'Prompt integrity sealing and verification at /api/integrity',

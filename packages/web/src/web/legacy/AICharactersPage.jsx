@@ -217,7 +217,7 @@ const AI_CHARACTERS = [
       "Simultaneous send to Customer + Broker + Fleet + AP",
       "Fuel surcharge + lumper fee tracking",
       "Full billing history with audit trail",
-      "Quantum HR logs every load as a pay event automatically",
+      "Intelligence HR logs every load as a pay event automatically",
     ],
     chat: [
       { from: "driver", text: "Just delivered. Here's my POD photo." },

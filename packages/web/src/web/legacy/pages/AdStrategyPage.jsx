@@ -35,7 +35,7 @@ const PLATFORMS = [
     conversionRate: "11.2%",
     reachScore: 95,
     bestTime: "Tue–Thu, 7–9 PM",
-    why: "Trucking content goes massively viral on TikTok. A 60-second screen recording of your quantum dispatch or Ghost Nerve pulsing will stop thumbs cold. #TruckTok has 4.8B views. A single viral video can deliver 50,000–500,000 views for free.",
+    why: "Trucking content goes massively viral on TikTok. A 60-second screen recording of your intelligence dispatch or Ghost Nerve pulsing will stop thumbs cold. #TruckTok has 4.8B views. A single viral video can deliver 50,000–500,000 views for free.",
     topGroups: ["#TruckTok — 4.8B views", "#CDLLife — 2.1B views", "#OwnerOperator — 890M views", "#TruckDriver — 3.2B views"],
     adType: "60-sec screen recording demo",
     roi: "Explosive if viral",

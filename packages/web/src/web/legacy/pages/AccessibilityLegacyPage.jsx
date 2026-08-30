@@ -119,8 +119,8 @@ const IMPACT_BY_NUMBERS = [
   { icon: '⚡', metric: '50ms', label: 'Multi-Device Sync', detail: '5 devices, perfectly synchronized' },
   { icon: '🎤', metric: '24', label: 'Voice Commands', detail: 'Full app control without touching screen' },
   { icon: '❤️', metric: '2,847', label: 'Human Mentors', detail: '24/7 peer support for crisis moments' },
-  { icon: '✅', metric: '34%', label: 'Fewer Accidents', detail: 'Quantum fatigue prediction works for all drivers' },
-  { icon: '💰', metric: '$8K+', label: 'Annual Income Gain', detail: 'Owner-ops with quantum pricing intel' },
+  { icon: '✅', metric: '34%', label: 'Fewer Accidents', detail: 'Intelligence fatigue prediction works for all drivers' },
+  { icon: '💰', metric: '$8K+', label: 'Annual Income Gain', detail: 'Owner-ops with intelligence pricing intel' },
 ];
 
 const ALGORITHMS_EXPLAINED = [
@@ -155,7 +155,7 @@ const ALGORITHMS_EXPLAINED = [
     result: 'Elderly driver sees 4 critical cards instead of 55+ features. Task completion time drops 87%.',
   },
   {
-    name: 'Quantum Fatigue Prediction',
+    name: 'Intelligence Fatigue Prediction',
     tech: '128-Dimensional Neural Vector Space + Multimodal Input Fusion',
     process: 'HOS Data + Speed Variance + Lane Keeping + Reaction Time + Sleep Quality → Fatigue Vector → Risk Prediction',
     result: 'System knows driver is tired 24 hours before accident happens. Routes them to safe loads.',

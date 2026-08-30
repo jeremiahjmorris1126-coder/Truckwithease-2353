@@ -31,7 +31,7 @@ const STORE_LISTING = {
 🤖 THE DREAM TEAM AI AGENTS:
 • THE GOAT — Supreme platform intelligence
 • Ghost Nerve — Live freight market intelligence
-• Quantum Mind — Unified decision engine
+• Fleet Mind — Unified decision engine
 • HRease — Smart hiring & HR management
 • Signal Sam — Fleet communications
 
