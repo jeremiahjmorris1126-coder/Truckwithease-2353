@@ -208,4 +208,81 @@ routing.get("/geocode", async (c) => {
   });
 });
 
+/**
+ * GET /api/routing/streetview?lat=..&lng=..  (or ?address=..)
+ *
+ * Server-side Street View proxy. This exists to close a real key leak: the browser helpers in
+ * legacy/maps-config.js used to build a maps.googleapis.com/streetview URL with the Maps key
+ * pasted into the query string, which means the key shipped to every visitor in plain sight and
+ * could be scraped and billed against this project. The image now comes back through this route
+ * and the key never leaves the server.
+ *
+ * Returns the JPEG bytes Google returned, or JSON with Google's own status when it refused.
+ */
+routing.get("/streetview", async (c) => {
+  const lat = (c.req.query("lat") ?? "").trim();
+  const lng = (c.req.query("lng") ?? "").trim();
+  const address = (c.req.query("address") ?? "").trim();
+
+  const location = address || (lat && lng ? `${lat},${lng}` : "");
+  if (!location) {
+    return c.json({ error: "location_required", detail: "Pass address, or both lat and lng." }, 400);
+  }
+
+  // Clamp to the Street View Static API's documented maximum so a crafted request cannot be
+  // used to bill oversized images against this project.
+  const clamp = (raw: string | undefined, dflt: number, max: number) => {
+    const n = Number.parseInt((raw ?? "").trim(), 10);
+    if (!Number.isFinite(n) || n <= 0) return dflt;
+    return Math.min(n, max);
+  };
+  const width = clamp(c.req.query("width"), 640, 640);
+  const height = clamp(c.req.query("height"), 480, 640);
+  const heading = (c.req.query("heading") ?? "").trim();
+  const pitch = (c.req.query("pitch") ?? "").trim();
+
+  const key = googleKeyFor("places");
+  if (!key) {
+    return c.json({ error: "no_streetview_key", keySource: googleKeySourceFor("places") }, 503);
+  }
+
+  const params = new URLSearchParams({
+    size: `${width}x${height}`,
+    location,
+    key,
+  });
+  if (heading) params.set("heading", heading);
+  if (pitch) params.set("pitch", pitch);
+
+  const t0 = Date.now();
+  let res: Response;
+  try {
+    res = await fetch(`https://maps.googleapis.com/maps/api/streetview?${params.toString()}`);
+  } catch (e: any) {
+    return c.json({ error: "streetview_request_failed", detail: String(e?.message ?? e) }, 502);
+  }
+
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!res.ok || !contentType.startsWith("image/")) {
+    // Google answers non-image errors as text. Pass its own words through rather than guessing.
+    const text = await res.text().catch(() => "");
+    return c.json(
+      {
+        error: "streetview_failed",
+        googleHttpStatus: res.status,
+        googleContentType: contentType || null,
+        googleBody: text.slice(0, 400) || null,
+        keySource: googleKeySourceFor("places"),
+        measuredMs: Date.now() - t0,
+      },
+      502,
+    );
+  }
+
+  const bytes = await res.arrayBuffer();
+  c.header("content-type", contentType);
+  c.header("cache-control", "public, max-age=86400");
+  return c.body(bytes, 200);
+});
+
 export { routing };

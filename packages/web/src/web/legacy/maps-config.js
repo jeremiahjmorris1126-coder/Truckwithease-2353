@@ -130,10 +130,27 @@ export async function getElevation(lat, lng) {
 }
 
 // ─── Street View Static API — delivery address photo preview ─────────────────
+// These used to build a maps.googleapis.com URL with the Maps key pasted into the query string,
+// which shipped the key to every visitor in plain sight where it could be scraped and billed
+// against this project. They now point at /api/routing/streetview, which sends the key
+// server-side and proxies the JPEG back. No key ever reaches the browser.
 export function getStreetViewUrl(lat, lng, width = 640, height = 480, heading = 0, pitch = 0) {
-  return `https://maps.googleapis.com/maps/api/streetview?size=${width}x${height}&location=${lat},${lng}&heading=${heading}&pitch=${pitch}&key=${GOOGLE_MAPS_KEY}`;
+  const q = new URLSearchParams({
+    lat: String(lat),
+    lng: String(lng),
+    width: String(width),
+    height: String(height),
+    heading: String(heading),
+    pitch: String(pitch),
+  });
+  return `/api/routing/streetview?${q.toString()}`;
 }
 
 export function getStreetViewUrlByAddress(address, width = 640, height = 480) {
-  return `https://maps.googleapis.com/maps/api/streetview?size=${width}x${height}&location=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_KEY}`;
+  const q = new URLSearchParams({
+    address: String(address),
+    width: String(width),
+    height: String(height),
+  });
+  return `/api/routing/streetview?${q.toString()}`;
 }

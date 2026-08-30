@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { lookup } from "node:dns/promises";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../database";
 import * as schema from "../database/schema";
@@ -1321,6 +1322,185 @@ export const comms = new Hono()
         clockPolicy:
           "Each retry answers with the clock recomputed at the moment of sending, not the clock that was current when the ask arrived. Stale hours are never re-sent.",
         appendOnly: "No earlier clock_answers row was edited. Each retry is a new row whose retry_of_answer_id points at the attempt it replaces.",
+        generatedAt: new Date().toISOString(),
+      },
+      200,
+    );
+  })
+
+  /**
+   * REFILE READINESS — the measurable gate in front of another 10DLC filing.
+   *
+   * The last refile came back FAILED with 30882 (TERMS_AND_CONDITIONS_URL) and 30908
+   * (PRIVACY_POLICY_URL). Neither error was about the message content: the reviewer went to
+   * the brand's website looking for Terms and a Privacy policy and the domain did not resolve.
+   * Filing again before that is fixed spends money to collect the same two errors.
+   *
+   * So this endpoint measures the thing that actually failed, from this server, right now:
+   * does the public host resolve, do the two required pages answer over HTTPS, and does the
+   * privacy page carry the sentence the carriers look for. Every number below is a live check.
+   */
+  .get("/refile-readiness", async (c) => {
+    const started = Date.now();
+    const host = (process.env.PUBLIC_SITE_HOST?.trim().replace(/^"|"$/g, "") || "truckwithease.com").replace(
+      /^https?:\/\//,
+      "",
+    );
+
+    // The exact sentence US carriers look for on a privacy policy that backs SMS traffic.
+    const CARRIER_SENTENCE =
+      "No mobile information is sold or shared with any third party for marketing or promotional purposes";
+
+    let dns: { resolves: boolean; addresses: string[]; error: string | null };
+    try {
+      const found = await lookup(host, { all: true });
+      dns = { resolves: found.length > 0, addresses: found.map((f) => f.address), error: null };
+    } catch (e) {
+      dns = { resolves: false, addresses: [], error: e instanceof Error ? e.message : String(e) };
+    }
+
+    const probe = async (path: string) => {
+      const url = `https://${host}${path}`;
+      if (!dns.resolves) {
+        return {
+          url,
+          reachable: false,
+          httpStatus: null as number | null,
+          bytes: null as number | null,
+          ms: null as number | null,
+          error: "host does not resolve, so no request was attempted",
+          carrierSentencePresent: null as boolean | null,
+        };
+      }
+      const t0 = Date.now();
+      try {
+        const res = await fetch(url, {
+          redirect: "follow",
+          headers: { accept: "text/html" },
+          signal: AbortSignal.timeout(12_000),
+        });
+        const text = await res.text();
+        return {
+          url,
+          reachable: true,
+          httpStatus: res.status,
+          bytes: new TextEncoder().encode(text).length,
+          ms: Date.now() - t0,
+          error: null as string | null,
+          carrierSentencePresent: text.includes(CARRIER_SENTENCE),
+        };
+      } catch (e) {
+        return {
+          url,
+          reachable: false,
+          httpStatus: null,
+          bytes: null,
+          ms: Date.now() - t0,
+          error: e instanceof Error ? e.message : String(e),
+          carrierSentencePresent: null,
+        };
+      }
+    };
+
+    const [terms, privacy] = await Promise.all([probe("/terms"), probe("/privacy")]);
+
+    // Same two pages, served locally. This separates "the pages don't exist" from
+    // "the pages exist but the public internet can't reach them" — very different fixes.
+    const localPort = process.env.PORT?.trim() || "4200";
+    const localProbe = async (path: string) => {
+      const t0 = Date.now();
+      try {
+        const res = await fetch(`http://localhost:${localPort}${path}`, {
+          signal: AbortSignal.timeout(8_000),
+        });
+        await res.text();
+        return { path, httpStatus: res.status, ms: Date.now() - t0, error: null as string | null };
+      } catch (e) {
+        return { path, httpStatus: null, ms: Date.now() - t0, error: e instanceof Error ? e.message : String(e) };
+      }
+    };
+    const [termsLocal, privacyLocal] = await Promise.all([localProbe("/terms"), localProbe("/privacy")]);
+
+    const pagesPublic = terms.httpStatus === 200 && privacy.httpStatus === 200;
+    const pagesLocal = termsLocal.httpStatus === 200 && privacyLocal.httpStatus === 200;
+
+    const blockers: Array<{ key: string; blocked: boolean; detail: string; whoCanFix: string }> = [
+      {
+        key: "public_dns",
+        blocked: !dns.resolves,
+        detail: dns.resolves
+          ? `${host} resolves to ${dns.addresses.join(", ")}.`
+          : `${host} has no A or AAAA record that this server can resolve${dns.error ? ` (${dns.error})` : ""}. A carrier reviewer typing the domain gets nothing, which is exactly what produced 30882 and 30908.`,
+        whoCanFix: "Jeremiah — publish the site from the Runable platform UI and point the Cloudflare DNS record at it. Not something this server can do.",
+      },
+      {
+        key: "public_terms_page",
+        blocked: terms.httpStatus !== 200,
+        detail:
+          terms.httpStatus === 200
+            ? `https://${host}/terms answered 200 in ${terms.ms} ms (${terms.bytes} bytes).`
+            : `https://${host}/terms did not answer 200${terms.error ? ` — ${terms.error}` : ` — status ${terms.httpStatus}`}. Locally the same route answers ${termsLocal.httpStatus ?? "no status"}, so the page exists; it is only unreachable from outside.`,
+        whoCanFix: "Jeremiah — same publish step.",
+      },
+      {
+        key: "public_privacy_page",
+        blocked: privacy.httpStatus !== 200,
+        detail:
+          privacy.httpStatus === 200
+            ? `https://${host}/privacy answered 200 in ${privacy.ms} ms (${privacy.bytes} bytes).`
+            : `https://${host}/privacy did not answer 200${privacy.error ? ` — ${privacy.error}` : ` — status ${privacy.httpStatus}`}. Locally the same route answers ${privacyLocal.httpStatus ?? "no status"}, so the page exists; it is only unreachable from outside.`,
+        whoCanFix: "Jeremiah — same publish step.",
+      },
+      {
+        key: "carrier_sentence_on_public_privacy",
+        blocked: privacy.carrierSentencePresent !== true,
+        detail:
+          privacy.carrierSentencePresent === true
+            ? "The public privacy page carries the no-sale sentence carriers look for, verbatim."
+            : privacy.carrierSentencePresent === false
+              ? "The public privacy page answered but does not contain the required no-sale sentence."
+              : "Could not be checked because the public privacy page was never reached.",
+        whoCanFix: "Already written into PrivacyNoticePage — it only needs to be publicly reachable to count.",
+      },
+    ];
+
+    const readyToRefile = blockers.every((b) => !b.blocked);
+
+    return c.json(
+      {
+        readyToRefile,
+        publicHost: host,
+        dns,
+        publicPages: { terms, privacy },
+        localPages: { terms: termsLocal, privacy: privacyLocal },
+        pagesPublic,
+        pagesLocal,
+        carrierSentence: CARRIER_SENTENCE,
+        blockers,
+        lastFilingResult: {
+          httpStatus: 201,
+          campaignStatus: "FAILED",
+          useCase: "LOW_VOLUME",
+          errors: [
+            { code: 30882, field: "TERMS_AND_CONDITIONS_URL", meaning: "rejected due to Terms and Conditions issues" },
+            { code: 30908, field: "PRIVACY_POLICY_URL", meaning: "a compliant privacy policy can not be verified" },
+          ],
+          readOf: "Twilio returned 201 on create, then the campaign record read back FAILED seconds later with these two errors.",
+        },
+        whatHappensWhenGreen: [
+          "Delete the FAILED campaign on the Messaging Service it was filed against.",
+          "Re-create it with the internal-fleet-comms content already live in this app — read it at GET /api/comms/a2p-status under useCaseFit.recommended.",
+          "Move the app's sending number into that Messaging Service, since a number can only belong to one.",
+          "Update TWILIO_MESSAGING_SERVICE_SID in .env and restart, because env is only read at boot.",
+          "POST a fresh inbound and confirm the outbound moves from undelivered to delivered. That is the moment the Sealed Line is provably end-to-end.",
+        ],
+        notClaimed: [
+          "A 200 from this server proves the pages are reachable from the public internet. It does not guarantee a human carrier reviewer accepts their content.",
+          "This endpoint files nothing and deletes nothing. Filing costs money and triggers vetting, so it stays a human decision.",
+          "The old 2FA campaign is deliberately left in place until a replacement is confirmed approved, at roughly $2/month of overlap.",
+          "TruckWithEase is not an ELD and is not FMCSA-registered.",
+        ],
+        measuredMs: Date.now() - started,
         generatedAt: new Date().toISOString(),
       },
       200,
