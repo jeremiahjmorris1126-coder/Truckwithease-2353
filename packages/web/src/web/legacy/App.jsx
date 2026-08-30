@@ -171,6 +171,7 @@ const PersonalIndexPage = lazy(() => import("./pages/PersonalIndexPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const DocumentsPage = lazy(() => import("./pages/DocumentsPage"));
 const PrivacyDetailPage = lazy(() => import("./pages/PrivacyDetailPage"));
+const PrivacyNoticePage = lazy(() => import("./pages/PrivacyNoticePage"));
 const VoiceClonePage = lazy(() => import("./pages/VoiceClonePage"));
 const ComplianceAuthPage = lazy(() => import("./pages/ComplianceAuthPage"));
 const UserDocumentAccessPage = lazy(() => import("./pages/UserDocumentAccessPage"));
@@ -594,7 +595,8 @@ export default function App() {
   if (path === "/nerve") return <DriverNervePage />;
   if (path === "/mind" || path === "/unified") return <FleetMindPage />;
   if (path === "/game-up" || path === "/gameup" || path === "/training") return <GameUpPage />;
-  if (path === "/privacy" || path === "/privacy-policy" || path === "/privacy-notice" || path === "/terms" || path === "/terms-of-service" || path === "/legal") return <PrivacyPolicyPage />;
+  if (path === "/privacy" || path === "/privacy-policy" || path === "/privacy-notice" || path === "/sms-privacy") return <PrivacyNoticePage />;
+  if (path === "/terms" || path === "/terms-of-service" || path === "/legal" || path === "/sms-terms" || path === "/messaging-terms") return <PrivacyPolicyPage />;
   if (path === "/documents" || path === "/docs" || path === "/document-center") return <DocumentsPage />;
   if (path === "/privacy-detailed" || path === "/privacy-full" || path === "/data-privacy") return <PrivacyDetailPage />;
   if (path === "/compliance-auth" || path === "/audit-access" || path === "/token-management") return <ComplianceAuthPage />;
