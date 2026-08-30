@@ -263,7 +263,20 @@ export default function FleetCommsPage() {
               <Stat label="Numbers on account" value={connected ? String(ov.counts?.owned ?? 0) : "—"} sub={connected ? `${ov.unassigned ?? 0} unassigned` : "unknown until connected"} />
               <Stat label="Assigned in TruckWithEase" value={String(ov.counts?.assignments ?? 0)} sub="fleet, driver or dispatch" />
               <Stat label="Threads / messages" value={`${ov.counts?.conversations ?? 0} / ${ov.counts?.messages ?? 0}`} sub="stored in this app" />
+              <Stat
+                label="Price per line"
+                value={ov.pricing?.display ?? "$10.50"}
+                sub={ov.pricing?.per ?? "line / month"}
+                tone="gold"
+              />
             </div>
+
+            <p style={{ color: C.muted, fontFamily: FM, fontSize: 11.5, lineHeight: 1.7, marginTop: 10, marginBottom: 0 }}>
+              {ov.pricing?.label ?? "$10.50 per line per month"}, billed to {ov.pricing?.billedTo ?? "the subscribing fleet"}.
+              These lines are for internal fleet communication — the fleet assigns each line to one of its own
+              drivers or dispatchers so they can text each other. They are not used to contact brokers, shippers
+              or the public.
+            </p>
 
             {/* ── Numbers ──────────────────────────────────────────────── */}
             <Panel

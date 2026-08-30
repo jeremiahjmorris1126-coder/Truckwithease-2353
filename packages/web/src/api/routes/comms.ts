@@ -506,6 +506,25 @@ export async function autoReplyTo(
   });
 }
 
+/**
+ * What a fleet pays for a line inside TruckWithEase. This is the PRODUCT price the fleet is
+ * billed, not Twilio's wholesale number rent — the two are different numbers and are not mixed.
+ * It is stated here once so the API, the UI and the carrier filing all read the same figure.
+ */
+export const LINE_PRICE = {
+  amount: 10.5,
+  currency: "USD",
+  display: "$10.50",
+  per: "line / month",
+  label: "$10.50 per line per month",
+  billedTo: "the subscribing fleet",
+  purpose:
+    "Internal fleet communication: the fleet assigns each line to one of its own drivers or dispatchers so they can text each other.",
+  notIncluded: [
+    "Twilio's own per-number rent and per-message fees are carried by the platform, not itemized to the fleet here.",
+  ],
+} as const;
+
 export const comms = new Hono()
 
   // ── Overview: account, numbers, assignments, A2P blocker ──────────────────
@@ -521,6 +540,7 @@ export const comms = new Hono()
     if (!creds) {
       return c.json({
         ...notConnected,
+        pricing: LINE_PRICE,
         assignments,
         counts: { assignments: assignments.length, conversations: threads[0]?.n ?? 0, messages: msgs[0]?.n ?? 0 },
       });
@@ -563,6 +583,7 @@ export const comms = new Hono()
 
     return c.json({
       connected: true,
+      pricing: LINE_PRICE,
       accountSid: creds.accountSid,
       friendlyName: acct.body.friendly_name ?? null,
       accountStatus: acct.body.status ?? null,
