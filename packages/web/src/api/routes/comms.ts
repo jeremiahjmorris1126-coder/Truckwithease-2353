@@ -3,7 +3,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../database";
 import * as schema from "../database/schema";
 import { twilioCreds } from "./twilio";
-import { sealMessage } from "../lib/sealedline";
+import { answerForInbound, sealMessage } from "../lib/sealedline";
 
 /**
  * FLEET TELECOMMUNICATIONS — phone numbers + in-app messaging, on Twilio.
@@ -192,6 +192,219 @@ async function threadFor(fleetNumber: string, peerNumber: string) {
   };
   await db.insert(schema.smsConversations).values(row);
   return row;
+}
+
+/* ============================================================
+ * AUTO-REPLY ON AN INBOUND LINE
+ * ============================================================
+ * When a broker texts a fleet number, the ask is parsed and answered from the
+ * driver's real duty clock as of that message's own timestamp, and the answer
+ * is sent back over the same number. The reply is then sealed into the same
+ * append-only chain as the ask, so the whole exchange replays with hours
+ * attached to every line.
+ *
+ * WHAT STOPS IT
+ *   - SEALED_LINE_AUTO_REPLY=off in .env kills it outright.
+ *   - No Twilio credentials: nothing is sent and the skip is recorded.
+ *   - No clock (no driver phone match, or no hos_logs rows): nothing is sent.
+ *   - Nothing measurable parsed out of the text: nothing is sent.
+ *   - A carrier opt-out keyword: nothing is sent, ever.
+ *   - The same answer text already went to that thread inside the last 10
+ *     minutes: nothing is sent, so a retried webhook cannot double-text.
+ * Every one of those outcomes is written to clock_answers with the reason, so
+ * a silent auto-reply is auditable rather than invisible.
+ *
+ * Sending goes through the Twilio REST API rather than TwiML, so Twilio's own
+ * Message SID, status string and error code are stored verbatim on the row.
+ */
+
+export const autoReplyEnabled = () => (process.env.SEALED_LINE_AUTO_REPLY?.trim().toLowerCase() || "on") !== "off";
+
+const DEDUPE_WINDOW_MS = 10 * 60 * 1000;
+
+/** Send one outbound SMS and write the row with Twilio's own response verbatim. */
+async function sendOutbound(args: {
+  creds: Creds;
+  conv: { id: string; messageCount?: number | null };
+  from: string | null;
+  to: string;
+  text: string;
+  sentByName: string;
+}) {
+  const mg = messagingServiceSid();
+  const form: Record<string, string> = { To: args.to, Body: args.text };
+  if (mg) form.MessagingServiceSid = mg;
+  else if (args.from) form.From = args.from;
+
+  const r = await tw(args.creds, `${API}/Accounts/${args.creds.accountSid}/Messages.json`, { method: "POST", form });
+  const now = new Date();
+  const row = {
+    id: rid("sms"),
+    conversationId: args.conv.id,
+    direction: "outbound",
+    fromNumber: (r.body.from as string) || args.from || `messaging_service:${mg}`,
+    toNumber: args.to,
+    body: args.text,
+    twilioSid: r.ok ? String(r.body.sid) : null,
+    twilioStatus: r.ok ? String(r.body.status ?? "queued") : "rejected",
+    errorCode: r.ok ? (r.body.error_code != null ? String(r.body.error_code) : null) : String(r.body.code ?? r.status),
+    errorMessage: r.ok ? ((r.body.error_message as string) ?? null) : ((r.body.message as string) ?? null),
+    numSegments: r.body.num_segments != null ? Number(r.body.num_segments) : null,
+    priceUsd: r.body.price != null ? Number(r.body.price) : null,
+    sentByUserId: null as string | null,
+    sentByName: args.sentByName,
+    statusCheckedAt: now,
+    createdAt: now,
+  };
+  await db.insert(schema.smsMessages).values(row);
+  await db
+    .update(schema.smsConversations)
+    .set({
+      lastMessageAt: now,
+      lastMessagePreview: args.text.slice(0, 140),
+      lastDirection: "outbound",
+      messageCount: (args.conv.messageCount || 0) + 1,
+      updatedAt: now,
+    })
+    .where(eq(schema.smsConversations.id, args.conv.id));
+  return { ok: r.ok, status: r.status, row, body: r.body };
+}
+
+export type AutoReplyOutcome = {
+  decision:
+    | "sent"
+    | "send_failed"
+    | "skipped_disabled"
+    | "skipped_no_creds"
+    | "skipped_no_clock"
+    | "skipped_unparsed"
+    | "skipped_opt_out"
+    | "skipped_duplicate";
+  reason: string;
+  answerId: string | null;
+  verdict: string | null;
+  replyMessageId: string | null;
+  twilioSid: string | null;
+  twilioError: string | null;
+  replyText: string | null;
+};
+
+/**
+ * Decide and, when defensible, send the clock answer for one inbound message.
+ * Always records the decision. Never throws — the caller is a webhook.
+ */
+export async function autoReplyTo(
+  inboundId: string,
+  conv: { id: string; fleetNumber: string; peerNumber: string; messageCount?: number | null },
+): Promise<AutoReplyOutcome> {
+  const ans = await answerForInbound(inboundId);
+  if (!ans)
+    return {
+      decision: "skipped_unparsed",
+      reason: "The inbound message row could not be read back, so nothing was answered.",
+      answerId: null, verdict: null, replyMessageId: null, twilioSid: null, twilioError: null, replyText: null,
+    };
+
+  const v = ans.verdict;
+  const record = async (
+    decision: AutoReplyOutcome["decision"],
+    reason: string,
+    extra: { replyMessageId?: string | null; twilioSid?: string | null; error?: string | null } = {},
+  ): Promise<AutoReplyOutcome> => {
+    const answerId = rid("cans");
+    await db.insert(schema.clockAnswers).values({
+      id: answerId,
+      sealedMessageId: null,
+      conversationId: conv.id,
+      driverId: ans.driver?.id ?? null,
+      askText: (await db.select().from(schema.smsMessages).where(eq(schema.smsMessages.id, inboundId)).limit(1))[0]?.body ?? "",
+      parsedMiles: v.parsed.miles,
+      parsedDeadlineAt: v.parsed.deadlineAtMs ? new Date(v.parsed.deadlineAtMs) : null,
+      parsedIntent: v.parsed.intent,
+      verdict: v.verdict,
+      verdictReason: v.reason,
+      clockHoursNeeded: v.hoursNeeded,
+      clockHoursAvailable: v.hoursAvailable,
+      assumedMph: v.assumedMph,
+      draftReply: v.draftReply,
+      replySentMessageId: extra.replyMessageId ?? null,
+      replyTwilioSid: extra.twilioSid ?? null,
+      autoSent: decision === "sent",
+      inboundMessageId: inboundId,
+      autoReplyDecision: decision,
+      autoReplyError: extra.error ?? null,
+    });
+    return {
+      decision,
+      reason,
+      answerId,
+      verdict: v.verdict,
+      replyMessageId: extra.replyMessageId ?? null,
+      twilioSid: extra.twilioSid ?? null,
+      twilioError: extra.error ?? null,
+      replyText: decision === "sent" || decision === "send_failed" ? v.draftReply : null,
+    };
+  };
+
+  if (!autoReplyEnabled())
+    return record("skipped_disabled", "SEALED_LINE_AUTO_REPLY is set to off in .env, so no automatic reply was sent.");
+  if (!ans.answerable) {
+    const optOut = (ans.notAnswerableReason ?? "").includes("opt-out");
+    const noClock = !ans.verdict.snapshot;
+    return record(
+      optOut ? "skipped_opt_out" : noClock ? "skipped_no_clock" : "skipped_unparsed",
+      ans.notAnswerableReason ?? "Not answerable.",
+    );
+  }
+
+  const creds = twilioCreds();
+  if (!creds)
+    return record(
+      "skipped_no_creds",
+      "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are not set, so the answer was computed and recorded but could not be sent.",
+    );
+
+  // Retried webhook guard: the same answer text already sent to this thread recently.
+  const since = new Date(Date.now() - DEDUPE_WINDOW_MS);
+  const recent = await db
+    .select()
+    .from(schema.smsMessages)
+    .where(and(eq(schema.smsMessages.conversationId, conv.id), eq(schema.smsMessages.direction, "outbound")))
+    .orderBy(desc(schema.smsMessages.createdAt))
+    .limit(10);
+  if (recent.some((m) => m.body === v.draftReply && m.createdAt instanceof Date && m.createdAt >= since))
+    return record(
+      "skipped_duplicate",
+      "This exact answer already went to this thread within the last 10 minutes, so it was not sent again.",
+    );
+
+  const sent = await sendOutbound({
+    creds,
+    conv,
+    from: conv.fleetNumber?.startsWith("+") ? conv.fleetNumber : null,
+    to: conv.peerNumber,
+    text: v.draftReply,
+    sentByName: "TruckWithEase clock answer (automatic)",
+  });
+
+  // Seal the reply into the same chain as the ask.
+  try {
+    await sealMessage(sent.row.id);
+  } catch {
+    /* the reply is stored either way; sealing is retryable and idempotent */
+  }
+
+  if (!sent.ok)
+    return record(
+      "send_failed",
+      `Twilio rejected the reply with HTTP ${sent.status}. The answer and the rejection are both stored.`,
+      { replyMessageId: sent.row.id, twilioSid: null, error: sent.row.errorMessage ?? String(sent.body.message ?? "") },
+    );
+
+  return record("sent", `Twilio accepted the reply and reported status "${sent.row.twilioStatus}".`, {
+    replyMessageId: sent.row.id,
+    twilioSid: sent.row.twilioSid,
+  });
 }
 
 export const comms = new Hono()
@@ -671,8 +884,69 @@ export const comms = new Hono()
       /* the message is stored either way; sealing is retryable and idempotent */
     }
 
-    // Empty TwiML: the message is stored and sealed, and no automatic reply is sent.
+    // THE CLOCK ANSWER: parse the ask and, when a real clock backs it, reply over
+    // the same fleet number and seal the reply into the same chain. This must
+    // never break receiving either, so every failure is swallowed and recorded.
+    try {
+      await autoReplyTo(inboundId, conv);
+    } catch {
+      /* the ask is stored and sealed either way; the answer is retryable */
+    }
+
+    // Empty TwiML on purpose: the reply goes out through the Twilio REST API
+    // instead, so Twilio's own Message SID, status and error code are stored
+    // verbatim on the outbound row. TwiML would give us none of that.
     return c.text("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response/>", 200, { "Content-Type": "text/xml" });
+  })
+
+  // ── What the auto-answer did, and what it refused to do ───────────────────
+  .get("/auto-reply", async (c) => {
+    const rows = await db
+      .select()
+      .from(schema.clockAnswers)
+      .orderBy(desc(schema.clockAnswers.createdAt))
+      .limit(50);
+    const decided = rows.filter((r) => r.autoReplyDecision);
+    const tally: Record<string, number> = {};
+    for (const r of decided) tally[r.autoReplyDecision as string] = (tally[r.autoReplyDecision as string] ?? 0) + 1;
+    return c.json(
+      {
+        enabled: autoReplyEnabled(),
+        envVar: "SEALED_LINE_AUTO_REPLY",
+        howToDisable: "Set SEALED_LINE_AUTO_REPLY=off in .env and restart. No reply is sent while it is off.",
+        twilioConfigured: Boolean(twilioCreds()),
+        decisionsRecorded: decided.length,
+        sent: tally.sent ?? 0,
+        tally,
+        recent: decided.slice(0, 20).map((r) => ({
+          id: r.id,
+          at: r.createdAt,
+          conversationId: r.conversationId,
+          driverId: r.driverId,
+          askText: r.askText,
+          parsedIntent: r.parsedIntent,
+          verdict: r.verdict,
+          hoursNeeded: r.clockHoursNeeded,
+          hoursAvailable: r.clockHoursAvailable,
+          decision: r.autoReplyDecision,
+          autoSent: r.autoSent,
+          replyText: r.autoSent ? r.draftReply : null,
+          replyMessageId: r.replySentMessageId,
+          twilioSid: r.replyTwilioSid,
+          error: r.autoReplyError,
+        })),
+        rules: [
+          "Answered only when a driver phone match produced a real duty clock AND miles, hours or a deadline parsed out of the text.",
+          "Never answered on a carrier opt-out keyword.",
+          "The same answer text is not sent to a thread twice inside 10 minutes, so a retried webhook cannot double-text.",
+          "Every skip is written to clock_answers with its reason, so silence is auditable.",
+        ],
+        notClaimed:
+          "An answer is 49 CFR 395 arithmetic against stored hos_logs rows. It is not legal advice, and it is only as correct as those rows.",
+        generatedAt: new Date().toISOString(),
+      },
+      200,
+    );
   });
 
 export default comms;

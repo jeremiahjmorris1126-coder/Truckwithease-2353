@@ -31,7 +31,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Hash, Link2, MessageSquare, Phone, ShieldAlert, Wrench } from "lucide-react";
+import { Hash, Link2, MessageSquare, Phone, Send, ShieldAlert, Wrench } from "lucide-react";
 import {
   C, GOLD, GOLDB, WARN, FB, FD, FH, FM,
   timedGet, Panel, Missing, Tag, Stat, Btn, GhostBtn, Err, Spin, Header, Reads, Disclaimer,
@@ -75,6 +75,7 @@ export default function SealedLinePage() {
   const [linkPhone, setLinkPhone] = useState("");
   const [linkResult, setLinkResult] = useState(null);
   const [resealResult, setResealResult] = useState(null);
+  const [ar, setAr] = useState(null);
   const alive = useRef(false);
 
   const load = useCallback(async () => {
@@ -91,12 +92,14 @@ export default function SealedLinePage() {
         timedGet("/api/sealed-line/chain"),
         timedGet("/api/clock-ledger/open-intervals"),
         timedGet("/api/sealed-line/coverage"),
+        timedGet("/api/comms/auto-reply"),
       ]);
       if (!alive.current) return;
-      const [chainR, openR, covR] = opt;
+      const [chainR, openR, covR, arR] = opt;
       if (chainR.status === "fulfilled") { collected.push(chainR.value); setChain(chainR.value.body); }
       if (openR.status === "fulfilled") { collected.push(openR.value); setOpen(openR.value.body); }
       if (covR.status === "fulfilled") { collected.push(covR.value); setCov(covR.value.body); }
+      if (arR.status === "fulfilled") { collected.push(arR.value); setAr(arR.value.body); }
 
       setReads(collected);
       setState("ok");
@@ -445,6 +448,79 @@ export default function SealedLinePage() {
                 <ul style={{ margin: "16px 0 0", paddingLeft: 20, fontFamily: FB, fontSize: 12.5, color: C.dim, lineHeight: 1.9 }}>
                   {cov.notClaimed.map((t, i) => <li key={i}>{t}</li>)}
                 </ul>
+              ) : null}
+            </>
+          )}
+        </Panel>
+
+        <Panel
+          title="Automatic clock answer on an inbound line"
+          icon={<Send size={15} />}
+          note={ar ? ar.howToDisable : undefined}
+        >
+          {!ar ? (
+            <Missing label="AUTO-REPLY READ DID NOT RETURN" reason="GET /api/comms/auto-reply was not answered on this load." />
+          ) : (
+            <>
+              <div style={{ fontFamily: FB, fontSize: 12.5, color: C.dim, lineHeight: 1.85, marginBottom: 14 }}>
+                When a broker texts a fleet number, the ask is answered from that driver's duty clock as of the
+                message's own timestamp, sent back over the same number through the Twilio REST API (not TwiML, so
+                Twilio's own SID, status and error are stored verbatim), and the reply is sealed into the same chain
+                as the ask.
+              </div>
+
+              <div style={grid(200)}>
+                <Stat label="Auto answer" value={ar.enabled ? "ON" : "OFF"} sub={`env ${ar.envVar}`} tone={ar.enabled ? "gold" : "warn"} />
+                <Stat label="Twilio configured" value={ar.twilioConfigured ? "YES" : "NO"} sub="credentials present in .env — acceptance is per request" tone={ar.twilioConfigured ? "gold" : "warn"} />
+                <Stat label="Decisions recorded" value={num(ar.decisionsRecorded)} sub="rows in clock_answers, sends and refusals alike" />
+                <Stat label="Actually sent" value={num(ar.sent)} sub="Twilio accepted the reply" tone={ar.sent ? "gold" : "warn"} />
+              </div>
+
+              {Array.isArray(ar.recent) && ar.recent.length > 0 ? (
+                <div style={{ overflowX: "auto", marginTop: 16 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <th style={th}>When</th>
+                        <th style={th}>Ask</th>
+                        <th style={th}>Driver</th>
+                        <th style={th}>Verdict</th>
+                        <th style={tdNum}>Needed</th>
+                        <th style={tdNum}>Legal</th>
+                        <th style={th}>Decision</th>
+                        <th style={th}>Provider</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ar.recent.map((r) => (
+                        <tr key={r.id}>
+                          <td style={{ ...td, fontFamily: FM, fontSize: 11.5 }}>{when(r.at)}</td>
+                          <td style={{ ...td, maxWidth: 260, color: C.text }}>{r.askText || "—"}</td>
+                          <td style={td}>{r.driverId || <span style={{ color: WARN }}>unresolved</span>}</td>
+                          <td style={td}><Tag tone={r.verdict === "fits" ? "gold" : "warn"}>{r.verdict}</Tag></td>
+                          <td style={tdNum}>{r.hoursNeeded === null || r.hoursNeeded === undefined ? "—" : `${r.hoursNeeded} h`}</td>
+                          <td style={tdNum}>{r.hoursAvailable === null || r.hoursAvailable === undefined ? "—" : `${r.hoursAvailable} h`}</td>
+                          <td style={td}><Tag tone={r.decision === "sent" ? "gold" : "warn"}>{r.decision}</Tag></td>
+                          <td style={{ ...td, fontFamily: FM, fontSize: 11, color: r.error ? WARN : C.dim, maxWidth: 240 }}>
+                            {r.twilioSid || r.error || "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <Missing label="NO DECISIONS YET" reason="No inbound message has reached /api/comms/inbound on this database yet, so there is nothing to show." />
+              )}
+
+              {Array.isArray(ar.rules) ? (
+                <ul style={{ margin: "16px 0 0", paddingLeft: 20, fontFamily: FB, fontSize: 12.5, color: C.dim, lineHeight: 1.9 }}>
+                  {ar.rules.map((t, i) => <li key={i}>{t}</li>)}
+                </ul>
+              ) : null}
+
+              {ar.notClaimed ? (
+                <div style={{ marginTop: 14, fontFamily: FB, fontSize: 12, color: C.dim }}>{ar.notClaimed}</div>
               ) : null}
             </>
           )}

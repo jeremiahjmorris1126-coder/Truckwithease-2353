@@ -1374,5 +1374,8 @@ export const clockAnswers = sqliteTable("clock_answers", {
   replySentMessageId: text("reply_sent_message_id"),       // sms_messages.id when actually sent
   replyTwilioSid: text("reply_twilio_sid"),
   autoSent: integer("auto_sent", { mode: "boolean" }).notNull().default(false),
+  inboundMessageId: text("inbound_message_id"),             // sms_messages.id of the ask, when it came from a real inbound
+  autoReplyDecision: text("auto_reply_decision"),           // sent, send_failed, skipped_disabled, skipped_no_clock, skipped_unparsed, skipped_opt_out, skipped_duplicate, skipped_no_creds
+  autoReplyError: text("auto_reply_error"),                 // the provider's own error text, verbatim
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });

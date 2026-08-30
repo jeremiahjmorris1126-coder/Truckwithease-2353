@@ -756,3 +756,101 @@ export async function resealResolvable(limit = 500) {
       "No existing seal was modified. Each correction is a new row carrying the clock recomputed as of the original message timestamp, with supersedes_sealed_id pointing at the earlier row.",
   };
 }
+
+/* ============================================================
+ * AUTO-ANSWER FOR AN INBOUND LINE
+ * ============================================================
+ * Turns one inbound sms_messages row into a 49 CFR 395 verdict computed
+ * against that driver's clock AS OF THE MOMENT THE MESSAGE ARRIVED, and
+ * decides whether it is defensible to send that answer back automatically.
+ *
+ * The refusals matter more than the sends. Nothing is auto-sent when:
+ *   - no driver on the thread matches a phone number, so there is no clock
+ *   - the driver has no hos_logs rows
+ *   - the text parses to nothing measurable (no miles, hours or deadline)
+ *   - the text is a carrier opt-out keyword
+ * Silence is the correct output in all four cases. A guessed legality answer
+ * sent to a broker over a fleet number is worse than no answer.
+ */
+
+/** Carrier-mandated opt-out keywords. An opt-out is never answered with a bot reply. */
+const OPT_OUT = new Set([
+  "stop", "stopall", "unsubscribe", "cancel", "end", "quit", "revoke", "optout", "opt-out",
+]);
+
+export const isOptOut = (text: string) => OPT_OUT.has(text.trim().toLowerCase().replace(/[^a-z-]/g, ""));
+
+export type InboundAnswer = {
+  messageId: string;
+  conversationId: string | null;
+  driver: { id: string; name: string } | null;
+  clockUnresolvedReason: string | null;
+  verdict: ClockVerdict;
+  /** Whether this ask is answerable at all — a clock was read AND something measurable parsed. */
+  answerable: boolean;
+  notAnswerableReason: string | null;
+  atMessageMs: number;
+};
+
+/**
+ * Build the verdict for an inbound message using the clock as it stood at that
+ * message's own timestamp — not the clock as of now.
+ */
+export async function answerForInbound(messageId: string): Promise<InboundAnswer | null> {
+  const [msg] = await db.select().from(schema.smsMessages).where(eq(schema.smsMessages.id, messageId)).limit(1);
+  if (!msg) return null;
+
+  const atMessageMs = msg.createdAt instanceof Date ? msg.createdAt.getTime() : Date.now();
+  const drivers = await db.select().from(schema.drivers);
+
+  // First precedence: one end of the message IS a driver's own phone number.
+  let driver = resolveDriver(msg, drivers);
+  let resolvedBy: "driver_phone" | "fleet_number_assignment" | null = driver ? "driver_phone" : null;
+
+  // Second precedence: a broker texted a fleet number that is assigned to a
+  // driver in fleet_phone_numbers. That assignment is an exact stored fact, not
+  // a guess, so it is allowed to carry the clock. Nothing fuzzy is used.
+  if (!driver) {
+    const assignments = await db
+      .select()
+      .from(schema.fleetPhoneNumbers)
+      .where(eq(schema.fleetPhoneNumbers.assignedToType, "driver"));
+    const ends = [digits10(msg.fromNumber), digits10(msg.toNumber)];
+    const hit = assignments.find((a) => a.assignedToId && ends.includes(digits10(a.phoneNumber)));
+    if (hit) {
+      driver = drivers.find((d) => d.id === hit.assignedToId) ?? null;
+      if (driver) resolvedBy = "fleet_number_assignment";
+    }
+  }
+
+  let snapshot: ClockSnapshot | null = null;
+  let clockUnresolvedReason: string | null = null;
+  if (!driver) {
+    clockUnresolvedReason =
+      "Neither end of this message matches a phone number on the drivers table, so no duty clock can be read for it.";
+  } else {
+    const logs = await db.select().from(schema.hosLogs).where(eq(schema.hosLogs.driverId, driver.id));
+    if (!logs.length) clockUnresolvedReason = `Driver ${driver.id} has no hos_logs rows, so there is no duty clock to answer from.`;
+    else snapshot = clockSnapshotAt(logs, atMessageMs);
+  }
+
+  const verdict = verdictFor(msg.body ?? "", snapshot, atMessageMs);
+
+  let notAnswerableReason: string | null = null;
+  if (isOptOut(msg.body ?? "")) notAnswerableReason = "The text is a carrier opt-out keyword. An opt-out is never answered automatically.";
+  else if (!snapshot) notAnswerableReason = clockUnresolvedReason;
+  else if (verdict.verdict === "unparsed" || !verdict.draftReply)
+    notAnswerableReason =
+      "No miles, hours or deadline could be parsed out of this text, so there is no arithmetic to answer with and nothing is asserted.";
+
+  return {
+    messageId,
+    conversationId: msg.conversationId ?? null,
+    driver: driver ? { id: driver.id, name: driver.name } : null,
+    clockUnresolvedReason,
+    verdict,
+    answerable: notAnswerableReason === null,
+    notAnswerableReason,
+    atMessageMs,
+  };
+}
