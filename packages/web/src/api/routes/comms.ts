@@ -97,11 +97,12 @@ const messagingServiceSid = () => process.env.TWILIO_MESSAGING_SERVICE_SID?.trim
  */
 const APP_TRAFFIC = [
   {
-    kind: "conversational_dispatch_reply",
-    sentBy: "routes/comms.ts autoReplyTo() — the sealed clock answer to a broker",
+    kind: "internal_fleet_dispatch_reply",
+    sentBy:
+      "routes/comms.ts autoReplyTo() — the sealed duty-clock answer sent back to the fleet's own dispatcher or driver on a fleet-owned line",
     isTwoFactor: false,
     example:
-      "Can't take it right now. Driving left 4.92 h, 14-hour window left 0 h, cycle left 53.92 h. My clock needs a 10-hour reset before I can move again.",
+      "Dispatch: driver can't take it right now. Driving left 4.92 h, 14-hour window left 0 h, cycle left 53.92 h. Clock needs a 10-hour reset before the truck can move again.",
   },
   {
     kind: "one_time_sign_in_code",
@@ -121,13 +122,13 @@ const RECOMMENDED_FILING = {
   useCase: "LOW_VOLUME",
   useCaseName: "Low Volume Mixed",
   whyThisOne:
-    "This app sends two different kinds of message from the same fleet number: a conversational duty-clock reply to a broker, and a one-time sign-in code. Low Volume Mixed is the only use case that covers a combination like that at this volume. 2FA covers one-time passwords ONLY, so the dispatch replies are outside what was filed.",
+    "This is an internal fleet communication tool, not an outreach channel. A fleet subscribes to phone lines inside TruckWithEase at $10.50 per line per month and uses them so its own drivers and dispatchers can text each other. Two different kinds of message leave the same line: a conversational duty-clock answer between the fleet's own employees, and a one-time sign-in code to the employee's own account. Low Volume Mixed is the use case that covers a combination like that at this volume. 2FA covers one-time passwords ONLY, so the internal dispatch replies are outside what was filed.",
   description:
-    "TruckWithEase is fleet compliance software used by My Dads Trucking LLC. Messages go to two groups: our own drivers, and brokers and shippers who are already working a load with us. Two kinds of message are sent. First, when a broker texts our dispatch number asking a driver to take more miles, the platform replies with that driver's remaining legal hours under 49 CFR 395 so the broker gets an immediate, accurate answer. Second, one-time codes are sent to a driver signing in to their own account. No marketing or promotional messages are sent on this number.",
+    "TruckWithEase is fleet compliance software. A fleet subscribes to phone lines inside the platform at $10.50 per line per month and assigns each line to one of its own employees. Every message on these lines is internal company communication between people who already work for that fleet: driver to dispatcher, dispatcher to driver, driver to driver. Two kinds of message are sent. First, when a dispatcher texts one of the fleet's drivers asking whether the driver can take more miles, the platform answers on the driver's line with that driver's remaining legal hours under 49 CFR 395, so the fleet does not dispatch a driver past their clock. Second, one-time codes are sent to an employee signing in to their own account. Recipients are exclusively the subscribing fleet's own drivers, dispatchers and staff. No marketing, promotional, lead-generation or third-party messages are ever sent on these lines, and the lines are never used to contact brokers, shippers or the general public.",
   messageFlow:
-    "Two opt-in paths, both explicit. Drivers: a driver is set up by the fleet administrator inside TruckWithEase, and during setup the driver enters their own mobile number on the account screen at truckwithease.com and checks a box reading \"Text me sign-in codes and dispatch messages at this number. Message and data rates may apply. Reply STOP to opt out.\" The checkbox is unchecked by default and the number is not saved without it. Brokers and shippers: a broker texts our published dispatch number first, and the automatic reply answers that inbound text and includes opt-out language. We never message a broker who has not messaged us first.",
+    "Every recipient is an employee of the fleet that pays for the line, and consent is collected in writing inside the product before any number is stored. A fleet administrator adds a driver or dispatcher in TruckWithEase, and that person then signs in to their own account at truckwithease.com, enters their own mobile number on the account screen, and checks a box reading \"Text me sign-in codes and dispatch messages from my fleet at this number. Message and data rates may apply. Message frequency varies. Reply HELP for help, STOP to opt out.\" The checkbox is unchecked by default, the employee checks it themselves, and the number is not saved and cannot be texted unless it is checked. Consent, the exact wording shown, the timestamp and the account are stored on the employee record. Removing the number or replying STOP ends messaging to that number immediately. Terms of service are at https://truckwithease.com/terms and the privacy policy, including the statement that no mobile information is sold or shared with any third party for marketing or promotional purposes, is at https://truckwithease.com/privacy.",
   messageSamples: [
-    "TruckWithEase dispatch: can't take it right now. Driving left 4.92 h, 14-hour window left 0 h, cycle left 53.92 h. Clock needs a 10-hour reset first. Reply STOP to opt out.",
+    "TruckWithEase dispatch: driver can't take it right now. Driving left 4.92 h, 14-hour window left 0 h, cycle left 53.92 h. Clock needs a 10-hour reset first. Reply STOP to opt out.",
     "TruckWithEase: your sign-in code is 481920. It expires in 10 minutes. Reply HELP for help, STOP to opt out.",
   ],
   hasEmbeddedLinks: false,
@@ -139,6 +140,9 @@ const RECOMMENDED_FILING = {
     "TruckWithEase fleet dispatch. Email jeremiahjmorris1126@gmail.com for help. Msg&data rates may apply. Reply STOP to opt out.",
   fixesVersusWhatWasFiled: [
     "Use case 2FA → LOW_VOLUME. The dispatch replies this app sends are not one-time passwords and are not covered by a 2FA filing.",
+    "The audience is restated as INTERNAL fleet communication. The lines are subscribed by a fleet at $10.50 per line per month and assigned to that fleet's own drivers and dispatchers; the earlier text described brokers and shippers texting the dispatch number, which is not what these lines are for. Internal employee messaging with in-product written consent is a materially lower-risk story for the carriers than any outbound-to-third-party framing.",
+    "Terms of service and privacy policy URLs are named in the message flow itself (truckwithease.com/terms and /privacy). Rejections 30882 (TERMS_AND_CONDITIONS_URL) and 30908 (PRIVACY_POLICY_URL) were both about the reviewer being unable to verify those pages on the brand's website, so the pages must resolve publicly before any refile.",
+    "The consent record is described concretely: unchecked-by-default checkbox, exact wording shown, timestamp and account stored on the employee record, STOP ends messaging immediately.",
     "The marketing sample (\"What is your biggest gripe as a driver? Truckwithease has arrived. The ALL IN ONE platform.\") is removed. It is promotional, it does not match any message this app actually sends, and it contradicts both 2FA and Low Volume Mixed.",
     "Message flow rewritten. The filed flow, 'Question asked \" Can xxxxxx send you a message ? \"', names no website, no checkbox and no consent wording, which is the single most common 10DLC rejection reason.",
     "Both samples now carry STOP language, matching what the app sends.",

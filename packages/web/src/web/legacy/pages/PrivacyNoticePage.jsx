@@ -20,12 +20,14 @@ Contact for any privacy request: jeremiahjmorris1126@gmail.com`,
   },
   {
     title: 'Mobile phone numbers and text messaging',
-    body: `We use mobile phone numbers for two things and nothing else:
+    body: `The phone lines inside TruckWithEase are internal fleet communication lines. A fleet subscribes to lines at $10.50 per line per month and assigns each line to one of its own employees, so that fleet's drivers and dispatchers can text each other about their own work. These lines are not used to contact brokers, shippers, or the general public, and they are never used for marketing, promotion, or lead generation.
 
-1. One-time sign-in codes sent to a driver signing in to their own account.
-2. Dispatch replies. When a broker or shipper texts our dispatch number about a load, the platform answers that text with the assigned driver's remaining legal hours under 49 CFR Part 395.
+We use mobile phone numbers for two things and nothing else:
 
-How consent is collected. A driver enters their own mobile number on the account screen and checks a box reading "Text me sign-in codes and dispatch messages at this number. Message and data rates may apply. Reply STOP to opt out." The box is unchecked by default and the number is not saved without it. Brokers and shippers are only ever replied to after they text our number first; we do not text a broker who has not messaged us.
+1. One-time sign-in codes sent to an employee signing in to their own account.
+2. Internal dispatch replies. When a dispatcher or driver at the fleet texts one of the fleet's own lines asking whether a driver can run more miles, the platform answers on that line with that driver's remaining legal hours under 49 CFR Part 395.
+
+How consent is collected. Every person we text is an employee of the fleet that pays for the line. That employee signs in to their own TruckWithEase account, enters their own mobile number on the account screen, and checks a box reading "Text me sign-in codes and dispatch messages from my fleet at this number. Message and data rates may apply. Message frequency varies. Reply HELP for help, STOP to opt out." The box is unchecked by default, the employee checks it themselves, and the number is not saved and cannot be texted without it. We store the consent wording shown, the timestamp, and the account it belongs to. Replying STOP, or removing the number, ends messaging to that number immediately.
 
 No mobile information is sold or shared with any third party for marketing or promotional purposes. Mobile opt-in data and consent records are never sold, rented, shared, or transferred to any third party for their own marketing, and are never shared with affiliates, lead generators, data brokers, or advertising networks for any purpose.
 
