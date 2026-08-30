@@ -112,6 +112,7 @@ const PageGuardianAgent = lazy(() => import("./pages/PageGuardianAgent"));
 const NeuralSafetyCore = lazy(() => import("./pages/NeuralSafetyCore"));
 const QuantumDispatchCore = lazy(() => import("./pages/QuantumDispatchCore"));
 const QuantumNexusPage = lazy(() => import("./QuantumNexusPage"));
+const ClockLedgerPage = lazy(() => import("./pages/ClockLedgerPage"));
 const UserGuideHub = lazy(() => import("./pages/UserGuideHub"));
 const AgentOrchestrator = lazy(() => import("./pages/AgentOrchestrator"));
 const ProfitableLanesPage = lazy(() => import("./pages/ProfitableLanesPage"));
@@ -451,6 +452,7 @@ export default function App() {
   if (path === "/load-profit") return <LoadProfitPage />;
   if (path === "/fuel-finder" || path === "/fuel") return <FuelFinderPage />;
   if (path === "/loads") return <LoadBoardMapAgentPage />;
+  if (path === "/clock-ledger" || path === "/clock" || path === "/ledger") return <ClockLedgerPage />;
   if (path === "/quantum-nexus" || path === "/nexus" || path === "/dispatch-nexus") return <QuantumNexusPage />;
   if (path === "/freight-nexus" || path === "/freight" || path === "/broker-nexus" || path === "/shipper-connect") return <FreightNexusPage />;
   if (path === "/client-builder" || path === "/clients" || path === "/shipper-network" || path === "/client-book") return <ClientBuilderPage />;
