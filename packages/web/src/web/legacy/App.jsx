@@ -112,6 +112,7 @@ const DispatchCorePage = lazy(() => import("./pages/DispatchCorePage"));
 const DispatchNexusPage = lazy(() => import("./DispatchNexusPage"));
 const ClockLedgerPage = lazy(() => import("./pages/ClockLedgerPage"));
 const SealedLinePage = lazy(() => import("./pages/SealedLinePage"));
+const ApiContractPage = lazy(() => import("./pages/ApiContractPage"));
 const FleetCommsPage = lazy(() => import("./pages/FleetCommsPage"));
 const UserGuideHub = lazy(() => import("./pages/UserGuideHub"));
 const AgentOrchestrator = lazy(() => import("./pages/AgentOrchestrator"));
@@ -455,6 +456,7 @@ export default function App() {
   if (path === "/loads") return <LoadBoardMapAgentPage />;
   if (path === "/clock-ledger" || path === "/clock" || path === "/ledger") return <ClockLedgerPage />;
   if (path === "/sealed-line" || path === "/sealed" || path === "/the-sealed-line") return <SealedLinePage />;
+  if (path === "/openapi" || path === "/contract" || path === "/the-contract" || path === "/spec") return <ApiContractPage />;
   if (path === "/comms" || path === "/fleet-phones" || path === "/messaging" || path === "/telecom") return <FleetCommsPage />;
   if (path === "/nexus" || path === "/dispatch-nexus") return <DispatchNexusPage />;
   if (path === "/freight-nexus" || path === "/freight" || path === "/broker-nexus" || path === "/shipper-connect") return <FreightNexusPage />;
