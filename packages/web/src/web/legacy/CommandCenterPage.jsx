@@ -598,7 +598,7 @@ export default function CommandCenterPage() {
                 TruckWithEase · morrishive.com
               </div>
               <div style={{ fontSize: 12, color: C.white60, marginTop: 4 }}>
-                22 live integrations · 140+ platform screens · Ghost Nerve intelligence · FMCSA registered
+                22 live integrations · 140+ platform screens · Ghost Nerve intelligence · runs alongside your existing ELD
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>

@@ -320,7 +320,7 @@ function HardwareTab({ plans }) {
             <li>Hardware SKUs and unit costs — no supplier contract is signed.</li>
             <li>Warranty length, damage protection, and replacement turnaround.</li>
             <li>Upgrade / RMA shipping times.</li>
-            <li>TruckWithEase is not a registered ELD provider yet. FMCSA registration is in progress.</li>
+            <li>TruckWithEase is not an ELD and is not an FMCSA-registered ELD provider. No registration is being pursued. It runs alongside the ELD you already have.</li>
           </ul>
         </Card>
       </div>

@@ -48,7 +48,7 @@ const CATEGORIES = {
   hos: {
     title: "Hours of Service & DVIR",
     summary:
-      "Record-keeping is built and running against the live database. FMCSA ELD registration is not complete, so this platform is not a registered ELD.",
+      "Record-keeping is built and running against the live database. This platform is not an FMCSA-registered ELD and no registration is being pursued — it runs alongside the ELD the driver already has.",
     groups: [
       {
         name: "49 CFR § 395 — Hours of Service",
@@ -92,7 +92,7 @@ const CATEGORIES = {
             state: "NOT_HELD",
             label: "FMCSA-registered ELD",
             detail:
-              "TruckWithEase is NOT a registered ELD. Registration correspondence has been sent to FMCSA and nothing has been granted. Until it is, this platform must be described as HOS record-keeping software, not an ELD.",
+              "TruckWithEase is NOT a registered ELD. It does not appear on eld.fmcsa.dot.gov/List, nothing has been filed, and no registration is being pursued. This platform is HOS record-keeping software that runs alongside a registered ELD, not an ELD.",
           },
           {
             state: "NOT_BUILT",

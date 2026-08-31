@@ -38,7 +38,7 @@ const CAPABILITIES = [
       'Fatigue banding from telemetry, requiring at least 10 samples before it scores anything',
     ],
     limits: [
-      'Not yet registered on the FMCSA ELD provider list — registration is in progress. Until it clears, logs are not a legal substitute for a registered ELD.',
+      'Not an FMCSA-registered ELD, and no registration is being pursued. These logs are not a legal substitute for the registered ELD the driver already runs.',
       'State-specific rule coverage is federal-rule based; there is no per-state rule engine in the code today.',
     ],
   },

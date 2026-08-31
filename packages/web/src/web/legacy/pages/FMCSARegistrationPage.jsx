@@ -103,7 +103,7 @@ export default function FMCSARegistrationPage() {
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
             <div style={{ background: `${GREEN}20`, border: `1px solid ${GREEN}`, borderRadius: 20, padding: '4px 14px', fontSize: 11, fontWeight: 800, color: GREEN, letterSpacing: 2, textTransform: 'uppercase' }}>
-              ✓ FMCSA Registered
+              Not FMCSA Registered
             </div>
             <div style={{ background: `${GOLD}20`, border: `1px solid ${GOLD}`, borderRadius: 20, padding: '4px 14px', fontSize: 11, fontWeight: 800, color: GOLD, letterSpacing: 2, textTransform: 'uppercase' }}>
               Active Carrier

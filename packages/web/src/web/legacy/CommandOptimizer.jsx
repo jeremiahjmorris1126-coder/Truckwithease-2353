@@ -41,7 +41,7 @@ const COMMAND_LIBRARY = [
     ],
     notes: [
       'Writes to the hos_logs table. An open status stays open until the next change is recorded.',
-      'Not a registered ELD record until FMCSA registration clears.',
+      'Not an ELD record. TruckWithEase is not an FMCSA-registered ELD and no registration is being pursued. Your existing ELD stays the log of record.',
     ],
   },
   {

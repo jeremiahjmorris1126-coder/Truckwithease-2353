@@ -47,7 +47,7 @@ export default function HomePage() {
 
           {/* Subheadline */}
           <p className="text-xl text-gray-300 max-w-2xl mb-12 leading-relaxed text-center">
-            Fleet management built by truckers. FMCSA-registered ELDs. Live HOS compliance. AI safety coaching that prevents violations before they happen. Move smarter. Earn more.
+            Fleet management built by truckers. Works with the ELD you already run. Live HOS compliance. AI safety coaching that prevents violations before they happen. Move smarter. Earn more.
           </p>
 
           {/* CTA Buttons */}
@@ -65,11 +65,11 @@ export default function HomePage() {
           <div className="flex flex-wrap gap-8 text-sm text-gray-400 mb-20 justify-center">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-              FMCSA Registered ELDs
+              Works With Your Existing ELD
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-              40% Cheaper Than Samsara
+              No Contracts, Cancel Anytime
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
