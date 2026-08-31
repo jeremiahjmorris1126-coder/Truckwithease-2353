@@ -212,7 +212,10 @@ Support is provided on a best-effort basis and is not guaranteed.`,
 ];
 
 export default function PrivacyPolicyPage() {
-  const [expanded, setExpanded] = useState(null);
+  // Every section renders EXPANDED by default: A2P/10DLC reviewers and their
+  // automated checkers read the DOM as served and do not click accordions.
+  // Collapsing is opt-in per section, so the full terms text is always present.
+  const [collapsed, setCollapsed] = useState({});
 
   return (
     <div style={{ minHeight: '100vh', background: C.black, color: C.white, padding: '24px 16px' }}>
@@ -251,7 +254,7 @@ export default function PrivacyPolicyPage() {
               }}
             >
               <button
-                onClick={() => setExpanded(expanded === idx ? null : idx)}
+                onClick={() => setCollapsed((c) => ({ ...c, [idx]: !c[idx] }))}
                 style={{
                   width: '100%',
                   padding: '16px',
@@ -272,13 +275,13 @@ export default function PrivacyPolicyPage() {
                   size={16}
                   style={{
                     transition: 'transform 0.3s',
-                    transform: expanded === idx ? 'rotate(180deg)' : 'rotate(0)',
+                    transform: collapsed[idx] ? 'rotate(0)' : 'rotate(180deg)',
                     flexShrink: 0,
                   }}
                 />
               </button>
 
-              {expanded === idx && (
+              {!collapsed[idx] && (
                 <div
                   style={{
                     padding: '16px',
