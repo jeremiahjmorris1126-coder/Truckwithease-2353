@@ -1095,7 +1095,7 @@ export default function TruckWithEaseHomePage() {
             ))}
           </div>
           <p style={{ font: `400 13px ${FB}`, color: C.dim, lineHeight: 1.7, margin: 0, maxWidth: 820 }}>
-            TruckWithEase — a product of My Dads Trucking LLC, Springfield, Missouri.
+            TruckWithEase — a product of MorrisHive LLC, Springfield, Missouri.
             {support ? ` Support ${support.email} · ${support.phone}.` : ""} TruckWithEase is compliance
             and fleet management software. It is not an electronic logging device, it is not registered
             with FMCSA as an ELD provider, and it does not file anything with any agency on your behalf.

@@ -536,7 +536,7 @@ export default function A2PRegistrationPage() {
             text="Legal business name *"
             value={form.legalBusinessName}
             onChange={set}
-            placeholder="My Dads Trucking LLC"
+            placeholder="Acme Trucking LLC"
             hint="Must match IRS and Secretary of State records character for character. A mismatch is the single most common rejection."
           />
           <Field name="dbaName" text="DBA / trade name" value={form.dbaName} onChange={set} placeholder="TruckWithEase" />

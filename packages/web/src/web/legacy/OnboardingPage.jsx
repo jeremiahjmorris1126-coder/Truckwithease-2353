@@ -761,7 +761,7 @@ export default function OnboardingPage() {
                     name="company"
                     value={form.company}
                     onChange={onChange}
-                    placeholder="My Dads Trucking LLC"
+                    placeholder="Acme Trucking LLC"
                   />
                   <Field
                     label="MC number (optional)"

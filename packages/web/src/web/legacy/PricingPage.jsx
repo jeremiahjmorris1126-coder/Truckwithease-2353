@@ -585,7 +585,7 @@ function InvoiceTab({ plans }) {
               TRUCKWITHEASE
             </div>
             <div style={{ color: MUTED, fontSize: 12, fontFamily: "Inter, sans-serif", lineHeight: 1.8, marginTop: 6 }}>
-              My Dads Trucking LLC · Springfield, MO
+              MorrisHive LLC · Springfield, MO
               <br />
               Billing: {BILLING_EMAIL}
               <br />

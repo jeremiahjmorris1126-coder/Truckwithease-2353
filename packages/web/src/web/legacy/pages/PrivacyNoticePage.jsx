@@ -14,7 +14,7 @@ const LAST_UPDATED = 'August 30, 2026';
 const sections = [
   {
     title: 'Who we are',
-    body: `TruckWithEase is fleet compliance software operated by My Dads Trucking LLC, a Missouri limited liability company. This notice explains what personal information the platform collects, why, who it is shared with, and how to get it deleted.
+    body: `TruckWithEase is fleet compliance software owned and operated by MorrisHive LLC, a Missouri limited liability company. MorrisHive LLC is the legal entity responsible for this platform and is the entity registered with our messaging carriers; TruckWithEase is the product name. This notice explains what personal information the platform collects, why, who it is shared with, and how to get it deleted.
 
 Contact for any privacy request: jeremiahjmorris1126@gmail.com`,
   },
@@ -89,7 +89,7 @@ export default function PrivacyNoticePage() {
           Privacy Policy
         </h1>
         <p style={{ fontSize: 13, color: C.white60, margin: 0 }}>
-          TruckWithEase — operated by My Dads Trucking LLC · Last updated: {LAST_UPDATED}
+          TruckWithEase — a product of MorrisHive LLC · Last updated: {LAST_UPDATED}
         </p>
 
         <div

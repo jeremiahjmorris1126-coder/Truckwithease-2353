@@ -45,7 +45,7 @@ export const branding = new Hono()
         {
           branding: {
             id: SINGLETON,
-            fleetName: "My Dads Trucking LLC",
+            fleetName: "Your Fleet Name",
             logoUrl: "/static/twe-logo-horizontal-trim.png",
             primaryColor: "#C9A84C",
             accentColor: "#FFD700",
@@ -73,7 +73,7 @@ export const branding = new Hono()
     // White-label is gated on the asset count, not on what the client sends.
     const values = {
       id: SINGLETON,
-      fleetName: b.fleetName ?? "My Dads Trucking LLC",
+      fleetName: b.fleetName ?? "Your Fleet Name",
       logoUrl: b.logoUrl ?? "/static/twe-logo-horizontal-trim.png",
       primaryColor: b.primaryColor ?? "#C9A84C",
       accentColor: b.accentColor ?? "#FFD700",

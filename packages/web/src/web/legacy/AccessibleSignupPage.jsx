@@ -446,7 +446,7 @@ export default function AccessibleSignupPage() {
                   className="as-input"
                   value={form.company}
                   onChange={(e) => setForm({ ...form, company: e.target.value })}
-                  placeholder="My Dads Trucking LLC"
+                  placeholder="Acme Trucking LLC"
                 />
               </div>
 

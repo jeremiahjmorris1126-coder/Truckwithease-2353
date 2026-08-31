@@ -223,7 +223,15 @@ export default function PrivacyPolicyPage() {
             Terms of Service & Liability
           </h1>
           <p style={{ fontSize: 14, color: C.white60, lineHeight: 1.6 }}>
-            Last Updated: August 21, 2026
+            Last Updated: August 31, 2026
+          </p>
+          <p style={{ fontSize: 13, color: C.white60, marginTop: '10px', lineHeight: 1.6 }}>
+            TruckWithEase is owned and operated by <strong style={{ color: C.gold }}>MorrisHive LLC</strong>, a
+            Missouri limited liability company (Springfield, Missouri). MorrisHive LLC is the legal entity behind this
+            Platform and the entity registered with our messaging carriers; "TruckWithEase" is the product name. In
+            these Terms, "TruckWithEase," "we," and "us" mean MorrisHive LLC. Contact:
+            jeremiahjmorris1126@gmail.com · 636-706-8338. Privacy practices are described in our{' '}
+            <a href="/privacy" style={{ color: C.gold }}>Privacy Policy</a>.
           </p>
           <p style={{ fontSize: 13, color: C.white60, marginTop: '16px', lineHeight: 1.6 }}>
             <strong>Important:</strong> By using TruckWithEase, you accept full responsibility for your use of the Platform and any consequences arising from it. Read these Terms carefully before using the Platform.
