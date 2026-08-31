@@ -10,8 +10,8 @@ const FEATURES = [
     detail: 'Ghost Nerve runs 12 simultaneous intelligence layers under every feature — silently pre-staging loads, sealing HOS logs with intelligence cryptography, scanning broker history in real time, eliminating DOT violations 72 hours before they occur, and computing 47 profit variables per mile per load. No other platform computes more than 4. Ghost Nerve never sleeps, never stops, and is architecturally impossible to replicate without rebuilding the entire platform from scratch.',
     competitors: { Samsara: false, Motive: false, DAT: false, 'Trucker Path': false },
     link: '/ghost-nerve',
-    color: '#00D68F',
-    glow: 'rgba(0,214,143,0.3)',
+    color: '#C9A84C',
+    glow: 'rgba(201,168,76,0.3)',
   },
   {
     id: 'intelligence-dispatch',
@@ -22,8 +22,8 @@ const FEATURES = [
     detail: 'The only dispatch screen in trucking that runs 12 parallel optimization layers simultaneously — fuel corridor, HOS hours, weight restrictions, broker reputation, lane profit, weather reroute, detention risk, driver safety score, ELD sync, toll optimization, rest stop sequencing, and cargo compatibility — all in under 7 seconds. Silent Dispatch pre-solves every load 4–6 hours before a driver\'s shift begins. Dispatchers open the screen and the work is already done.',
     competitors: { Samsara: false, Motive: false, DAT: false, 'Trucker Path': false },
     link: '/dispatch',
-    color: '#00E5FF',
-    glow: 'rgba(0,229,255,0.3)',
+    color: '#FFD700',
+    glow: 'rgba(255,215,0,0.3)',
   },
   {
     id: 'sovereign-eld',
@@ -34,8 +34,8 @@ const FEATURES = [
     detail: 'TruckWithEase is not an ELD and is not FMCSA registered — it runs alongside the ELD you already have. Every HOS log it holds is hash-chained inside the platform — Samsara, Motive, and every competitor are structurally locked out. Covers every driver type: long-haul ELD mandate, short-haul ≤100 air miles exempt, short-haul ≤150 air miles, local/last-mile (Amazon, van, box truck), agricultural exempt, and oilfield. One platform covers every exemption correctly — no other platform does this.',
     competitors: { Samsara: '⚠️ Own app only', Motive: '⚠️ Own app only', DAT: false, 'Trucker Path': false },
     link: '/hos-logger',
-    color: '#F5A623',
-    glow: 'rgba(245,166,35,0.3)',
+    color: '#C9A84C',
+    glow: 'rgba(201,168,76,0.3)',
   },
   {
     id: 'hrease',
@@ -46,8 +46,8 @@ const FEATURES = [
     detail: 'HRease is the only platform that closes the entire driver lifecycle in one screen: post a job ad, it auto-publishes to Facebook and LinkedIn simultaneously. Driver applies — criminal background check, FMCSA DOT record, CDL verification, Drug & Alcohol Clearinghouse, and MVR all run automatically in real time. Driver gets hired — 7-step onboarding pipeline fires automatically. Shift ends — payroll calculates from verified ELD miles, not timesheets. Samsara has none of this. Motive has none of this.',
     competitors: { Samsara: false, Motive: false, DAT: false, 'Trucker Path': false },
     link: '/humanai',
-    color: '#34D399',
-    glow: 'rgba(52,211,153,0.3)',
+    color: '#FFD700',
+    glow: 'rgba(255,215,0,0.3)',
   },
   {
     id: 'payroll-eld',
@@ -58,8 +58,8 @@ const FEATURES = [
     detail: 'The moment a driver\'s shift ends, TruckWithEase reads verified odometer miles from the Geotab ELD, calculates CPM or hourly rate, adds detention from delay data, applies deductions, and generates a pay stub — with zero dispatcher input. Export to ADP, Gusto, or QuickBooks in one tap. No other platform in trucking connects ELD hardware directly to driver payroll. This feature alone saves a 50-driver fleet 40 hours of back-office work every pay period.',
     competitors: { Samsara: false, Motive: false, DAT: false, 'Trucker Path': false },
     link: '/payroll',
-    color: '#818CF8',
-    glow: 'rgba(129,140,248,0.3)',
+    color: '#C9A84C',
+    glow: 'rgba(201,168,76,0.3)',
   },
   {
     id: 'profitable-lanes',
@@ -70,20 +70,20 @@ const FEATURES = [
     detail: 'Every lane in your fleet is scored across 47 variables: gross revenue, fuel, tolls, driver pay, detention avg, broker reliability score, commodity margin, seasonal trend, weather delay history, competitive rate benchmark, and 37 more. The AI Insight engine gives fleet managers 6 specific, actionable recommendations every week — which lane to double, which to kill, which driver\'s pattern to replicate fleet-wide. Samsara shows GPS. We show profit.',
     competitors: { Samsara: false, Motive: false, DAT: '⚠️ Rate only', 'Trucker Path': false },
     link: '/profitable-lanes',
-    color: '#F472B6',
-    glow: 'rgba(244,114,182,0.3)',
+    color: '#FFD700',
+    glow: 'rgba(255,215,0,0.3)',
   },
   {
     id: 'three-worlds',
     tier: 'UNIQUE',
     icon: '🌍',
     name: 'Three Vehicle Worlds — One Platform',
-    tagline: 'Trucks. Cars. Bikes. 13 million drivers, zero other options.',
-    detail: 'TruckWithEase is the only platform serving CDL truck drivers, non-CDL delivery van and sprinter drivers, AND bike couriers — all with full intelligence routing, earnings intelligence, safety zones, and Rig Bucks rewards. The bike courier world alone covers safe routes, local races, food spots, bike parking, e-bike charging, and city-specific laws for NYC, Chicago, SF, LA, Miami, and Seattle. 13 million drivers had zero platform options before today.',
+    tagline: 'Trucks. Cars. Bikes. One platform for all three.',
+    detail: 'TruckWithEase serves CDL truck drivers, non-CDL delivery van and sprinter drivers, and bike couriers — each with intelligence routing, earnings intelligence, safety zones, and Rig Bucks rewards. The bike courier world alone covers safe routes, local races, food spots, bike parking, e-bike charging, and city-specific laws for NYC, Chicago, SF, LA, Miami, and Seattle.',
     competitors: { Samsara: '🚛 Trucks only', Motive: '🚛 Trucks only', DAT: '🚛 Trucks only', 'Trucker Path': '🚛 Trucks only' },
     link: '/vehicle-select',
-    color: '#FB923C',
-    glow: 'rgba(251,146,60,0.3)',
+    color: '#C9A84C',
+    glow: 'rgba(201,168,76,0.3)',
   },
   {
     id: 'safety-sos',
@@ -94,8 +94,8 @@ const FEATURES = [
     detail: 'A single pulsing red button transmits live GPS coordinates directly to local 911 dispatch, state patrol for all 50 states, and fleet command simultaneously. No call needed — location, truck ID, and driver ID transmit automatically. Paired with live accident reporting: voice capture, photo upload, insurance alert, and direct 911 connect — all from one screen. No competitor has built direct emergency dispatch integration for drivers.',
     competitors: { Samsara: false, Motive: false, DAT: false, 'Trucker Path': false },
     link: '/safety-sos',
-    color: '#FF3D57',
-    glow: 'rgba(255,61,87,0.3)',
+    color: '#8A8578',
+    glow: 'rgba(138,133,120,0.3)',
   },
   {
     id: 'game-up',
@@ -106,8 +106,8 @@ const FEATURES = [
     detail: 'The only trucking platform with a fully gamified CDL training system built in. 10 modules — HOS Rules, Pre-Trip Inspection, Hazmat, DOT Inspection Prep, Defensive Driving, Load Securement, ELD Operation, Accident Reporting, Drug & Alcohol, Backing & Maneuvering. Each one plays a real YouTube training video before the quiz. Adaptive AI difficulty adjusts as drivers improve. Every pass earns Rig Bucks. Fleet managers see every driver\'s certification status in real time.',
     competitors: { Samsara: false, Motive: false, DAT: false, 'Trucker Path': false },
     link: '/game-up',
-    color: '#A78BFA',
-    glow: 'rgba(167,139,250,0.3)',
+    color: '#C9A84C',
+    glow: 'rgba(201,168,76,0.3)',
   },
   {
     id: 'fleet-voice',
@@ -118,8 +118,8 @@ const FEATURES = [
     detail: 'Fleet Voice gives every fleet dedicated real phone numbers — dispatch line, broadcast line, driver support line — and routes every call hands-free through the truck cab speakers via Bluetooth or aux. Signal Sam monitors all lines 24/7, runs daily line tests, and audits seat counts every billing cycle. Available on phone or tablet. $8.99/driver/month. No competitor has built hands-free in-cab calling directly into their dispatch platform.',
     competitors: { Samsara: false, Motive: false, DAT: false, 'Trucker Path': false },
     link: '/fleet-voice',
-    color: '#22D3EE',
-    glow: 'rgba(34,211,238,0.3)',
+    color: '#FFD700',
+    glow: 'rgba(255,215,0,0.3)',
   },
   {
     id: 'big-rig-bucks',
@@ -130,8 +130,8 @@ const FEATURES = [
     detail: 'Every clean HOS day earns 75 points automatically. Every DVIR submitted earns 50. Every DOT inspection passed earns 150. Every load dispatched via intelligence earns 50. Driver referrals earn 500. Points redeem for fuel cards, account credits, free month upgrades, priority dispatch, and merch. The leaderboard shows real driver names and live balances. No manual administration — every point logs itself with a permanent timestamp. Driver retention increases measurably within 30 days.',
     competitors: { Samsara: false, Motive: false, DAT: false, 'Trucker Path': false },
     link: '/rig-bucks',
-    color: '#FBBF24',
-    glow: 'rgba(251,191,36,0.3)',
+    color: '#C9A84C',
+    glow: 'rgba(201,168,76,0.3)',
   },
   {
     id: 'scan-bill',
@@ -142,19 +142,12 @@ const FEATURES = [
     detail: 'One photo of any load document — BOL, receipt, proof of delivery, invoice. The intelligence agent reads the image, parses every field, cross-references the driver and truck records, calculates the total, and dispatches bills to all four parties simultaneously: customer, broker, fleet, and AP. Every field is editable before sending. The agent logs the load and pay event in HR automatically. No manual data entry. No separate billing software. Nothing to remember.',
     competitors: { Samsara: false, Motive: false, DAT: false, 'Trucker Path': false },
     link: '/scan-bill',
-    color: '#10B981',
-    glow: 'rgba(16,185,129,0.3)',
+    color: '#FFD700',
+    glow: 'rgba(255,215,0,0.3)',
   },
 ];
 
 const TIERS = ['ALL', 'PROPRIETARY', 'EXCLUSIVE', 'REAL TIME', 'UNIQUE', 'LIFE SAFETY', 'INTELLIGENCE'];
-
-const PRICE_COMPARISON = [
-  { platform: 'Samsara', price: '$800+/mo', scope: 'ELD only', drivers: '10 trucks' },
-  { platform: 'Motive', price: '$600+/mo', scope: 'ELD + basic GPS', drivers: '10 trucks' },
-  { platform: 'DAT', price: '$160/mo', scope: 'Load board only', drivers: 'Per seat' },
-  { platform: 'TruckWithEase', price: '$400/mo', scope: 'Everything above + 40 more features', drivers: '10 trucks', highlight: true },
-];
 
 export default function PlatformShowcasePage() {
   const [active, setActive] = useState(null);
@@ -182,12 +175,12 @@ export default function PlatformShowcasePage() {
   const live = FEATURES[tick];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#04070D', fontFamily: "'Barlow Condensed','Barlow',Arial,sans-serif", color: '#fff', overflowX: 'hidden' }}>
+    <div style={{ minHeight: '100vh', background: '#060A10', fontFamily: "'Barlow Condensed','Barlow',Arial,sans-serif", color: '#fff', overflowX: 'hidden' }}>
 
       {/* Live pulse ticker */}
-      <div style={{ background: 'rgba(0,214,143,0.08)', borderBottom: '1px solid rgba(0,214,143,0.15)', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 12, overflowX: 'hidden' }}>
-        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#00D68F', flexShrink: 0, animation: 'blink 1.2s infinite' }} />
-        <span style={{ fontSize: 13, color: '#00D68F', fontWeight: 700, letterSpacing: 1, whiteSpace: 'nowrap' }}>LIVE ·</span>
+      <div style={{ background: 'rgba(201,168,76,0.08)', borderBottom: '1px solid rgba(201,168,76,0.15)', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 12, overflowX: 'hidden' }}>
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#C9A84C', flexShrink: 0, animation: 'blink 1.2s infinite' }} />
+        <span style={{ fontSize: 13, color: '#C9A84C', fontWeight: 700, letterSpacing: 1, whiteSpace: 'nowrap' }}>LIVE ·</span>
         <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5 }}>
           {live.icon} <strong style={{ color: live.color }}>{live.name}</strong> — {live.tagline}
         </span>
@@ -206,24 +199,22 @@ export default function PlatformShowcasePage() {
           }} />
         ))}
         <div style={{ position: 'relative', zIndex: 2 }}>
-          <div style={{ fontSize: 11, letterSpacing: 6, color: '#00D68F', fontWeight: 800, textTransform: 'uppercase', marginBottom: 16 }}>
+          <div style={{ fontSize: 11, letterSpacing: 6, color: '#C9A84C', fontWeight: 800, textTransform: 'uppercase', marginBottom: 16 }}>
             THE PLATFORM NOTHING ELSE CAN BUILD
           </div>
           <h1 style={{ fontSize: 'clamp(52px,10vw,120px)', fontWeight: 900, margin: '0 0 20px', textTransform: 'uppercase', letterSpacing: -3, lineHeight: 0.95, fontFamily: "'Barlow Condensed',sans-serif" }}>
-            TRUCK<span style={{ color: '#00D68F', WebkitTextStroke: '2px #00D68F', WebkitTextFillColor: 'transparent' }}>WITH</span>EASE
+            TRUCK<span style={{ color: '#C9A84C', WebkitTextStroke: '2px #C9A84C', WebkitTextFillColor: 'transparent' }}>WITH</span>EASE
           </h1>
           <p style={{ fontSize: 'clamp(16px,2.5vw,24px)', color: 'rgba(255,255,255,0.65)', maxWidth: 760, margin: '0 auto 40px', lineHeight: 1.6, fontFamily: "'DM Sans',sans-serif", fontWeight: 400 }}>
-            12 proprietary features no competitor has built. 13 million drivers served across three vehicle worlds. One platform that hires, dispatches, pays, trains, and protects — without a single manual step.
+            One platform that hires, dispatches, pays, trains, and protects — without a single manual step. Runs alongside the ELD you already have.
           </p>
 
           {/* Stats row */}
           <div style={{ display: 'flex', gap: 'clamp(20px,4vw,48px)', justifyContent: 'center', flexWrap: 'wrap', marginBottom: 48 }}>
             {[
-              { val: '12', label: 'Proprietary Features', color: '#00D68F' },
-              { val: '47', label: 'Profit Variables Per Mile', color: '#00E5FF' },
-              { val: '13M+', label: 'Drivers Served', color: '#F5A623' },
-              { val: '$400', label: 'vs $800+ Competitors', color: '#FF3D57' },
-              { val: '40+', label: 'Features Total', color: '#A78BFA' },
+              { val: '12', label: 'Proprietary Features', color: '#C9A84C' },
+              { val: '47', label: 'Profit Variables Per Mile', color: '#FFD700' },
+              { val: '40+', label: 'Features Total', color: '#C9A84C' },
             ].map(s => (
               <div key={s.label} style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 'clamp(36px,6vw,64px)', fontWeight: 900, color: s.color, lineHeight: 1, fontFamily: "'Barlow Condensed',sans-serif", textShadow: `0 0 30px ${s.color}60` }}>{s.val}</div>
@@ -233,36 +224,8 @@ export default function PlatformShowcasePage() {
           </div>
 
           <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/checkout" style={{ background: '#00D68F', color: '#000', borderRadius: 4, padding: '16px 40px', fontSize: 18, fontWeight: 900, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: 2, boxShadow: '0 0 40px rgba(0,214,143,0.4)' }}>START FREE TRIAL</a>
-            <a href="/dispatch" style={{ background: 'transparent', color: '#00E5FF', border: '1px solid rgba(0,229,255,0.3)', borderRadius: 4, padding: '16px 40px', fontSize: 18, fontWeight: 700, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: 2 }}>LIVE DEMO</a>
-          </div>
-        </div>
-      </div>
-
-      {/* Price comparison */}
-      <div style={{ background: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: 'clamp(40px,6vw,80px) 24px' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 40 }}>
-            <div style={{ fontSize: 11, letterSpacing: 5, color: '#FF3D57', fontWeight: 800, textTransform: 'uppercase', marginBottom: 12 }}>THE PRICE TRUTH</div>
-            <div style={{ fontSize: 'clamp(32px,5vw,56px)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: -1, fontFamily: "'Barlow Condensed',sans-serif" }}>
-              Why fleet owners switch<br /><span style={{ color: '#00D68F' }}>in the first conversation.</span>
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
-            {PRICE_COMPARISON.map(p => (
-              <div key={p.platform} style={{
-                background: p.highlight ? 'rgba(0,214,143,0.08)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${p.highlight ? '#00D68F' : 'rgba(255,255,255,0.08)'}`,
-                borderRadius: 12, padding: 24, position: 'relative',
-                boxShadow: p.highlight ? '0 0 40px rgba(0,214,143,0.15)' : 'none',
-              }}>
-                {p.highlight && <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: '#00D68F', color: '#000', fontSize: 11, fontWeight: 900, padding: '4px 16px', borderRadius: 20, letterSpacing: 2, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>BEST VALUE</div>}
-                <div style={{ fontSize: 22, fontWeight: 900, color: p.highlight ? '#00D68F' : '#fff', marginBottom: 4 }}>{p.platform}</div>
-                <div style={{ fontSize: 36, fontWeight: 900, color: p.highlight ? '#00D68F' : 'rgba(255,255,255,0.5)', fontFamily: "'Barlow Condensed',sans-serif" }}>{p.price}</div>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>{p.scope}</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>{p.drivers}</div>
-              </div>
-            ))}
+            <a href="/checkout" style={{ background: '#C9A84C', color: '#000', borderRadius: 4, padding: '16px 40px', fontSize: 18, fontWeight: 900, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: 2, boxShadow: '0 0 40px rgba(201,168,76,0.4)' }}>START FREE TRIAL</a>
+            <a href="/dispatch" style={{ background: 'transparent', color: '#FFD700', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 4, padding: '16px 40px', fontSize: 18, fontWeight: 700, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: 2 }}>LIVE DEMO</a>
           </div>
         </div>
       </div>
@@ -270,9 +233,9 @@ export default function PlatformShowcasePage() {
       {/* Feature grid */}
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: 'clamp(60px,8vw,100px) 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <div style={{ fontSize: 11, letterSpacing: 5, color: '#00D68F', fontWeight: 800, textTransform: 'uppercase', marginBottom: 12 }}>EVERY FEATURE A COMPETITOR CAN'T COPY</div>
+          <div style={{ fontSize: 11, letterSpacing: 5, color: '#C9A84C', fontWeight: 800, textTransform: 'uppercase', marginBottom: 12 }}>EVERY FEATURE A COMPETITOR CAN'T COPY</div>
           <div style={{ fontSize: 'clamp(36px,5vw,64px)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: -1, fontFamily: "'Barlow Condensed',sans-serif", lineHeight: 1 }}>
-            12 reasons<br /><span style={{ color: '#00E5FF' }}>nothing competes.</span>
+            12 reasons<br /><span style={{ color: '#FFD700' }}>nothing competes.</span>
           </div>
         </div>
 
@@ -280,9 +243,9 @@ export default function PlatformShowcasePage() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 40 }}>
           {TIERS.map(t => (
             <button key={t} onClick={() => setFilter(t)} style={{
-              background: filter === t ? '#00D68F' : 'transparent',
+              background: filter === t ? '#C9A84C' : 'transparent',
               color: filter === t ? '#000' : 'rgba(255,255,255,0.5)',
-              border: `1px solid ${filter === t ? '#00D68F' : 'rgba(255,255,255,0.12)'}`,
+              border: `1px solid ${filter === t ? '#C9A84C' : 'rgba(255,255,255,0.12)'}`,
               borderRadius: 2, padding: '8px 18px', fontSize: 11, fontWeight: 800,
               cursor: 'pointer', textTransform: 'uppercase', letterSpacing: 2, transition: 'all 0.2s',
             }}>{t}</button>
@@ -298,7 +261,7 @@ export default function PlatformShowcasePage() {
               data-id={f.id}
               onClick={() => setActive(active === f.id ? null : f.id)}
               style={{
-                background: active === f.id ? `rgba(${f.color === '#00D68F' ? '0,214,143' : f.color === '#00E5FF' ? '0,229,255' : '255,255,255'},0.06)` : 'rgba(255,255,255,0.02)',
+                background: active === f.id ? `rgba(${f.color === '#C9A84C' ? '201,168,76' : f.color === '#FFD700' ? '255,215,0' : '255,255,255'},0.06)` : 'rgba(255,255,255,0.02)',
                 border: `1px solid ${active === f.id ? f.color : 'rgba(255,255,255,0.07)'}`,
                 borderRadius: 8, padding: 28, cursor: 'pointer',
                 transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
@@ -320,7 +283,7 @@ export default function PlatformShowcasePage() {
               {/* Competitor comparison mini */}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: active === f.id ? 20 : 0 }}>
                 {Object.entries(f.competitors).map(([name, val]) => (
-                  <div key={name} style={{ background: val ? 'rgba(245,166,35,0.08)' : 'rgba(255,61,87,0.08)', border: `1px solid ${val ? 'rgba(245,166,35,0.2)' : 'rgba(255,61,87,0.2)'}`, borderRadius: 3, padding: '3px 10px', fontSize: 10, color: val ? '#F5A623' : '#FF3D57', fontWeight: 700 }}>
+                  <div key={name} style={{ background: val ? 'rgba(201,168,76,0.08)' : 'rgba(138,133,120,0.08)', border: `1px solid ${val ? 'rgba(201,168,76,0.2)' : 'rgba(138,133,120,0.2)'}`, borderRadius: 3, padding: '3px 10px', fontSize: 10, color: val ? '#C9A84C' : '#8A8578', fontWeight: 700 }}>
                     {name}: {val || '✗ NO'}
                   </div>
                 ))}
@@ -341,16 +304,16 @@ export default function PlatformShowcasePage() {
       </div>
 
       {/* Final CTA */}
-      <div style={{ background: 'linear-gradient(135deg, rgba(0,214,143,0.08) 0%, rgba(0,229,255,0.04) 100%)', borderTop: '1px solid rgba(0,214,143,0.15)', padding: 'clamp(60px,8vw,100px) 24px', textAlign: 'center' }}>
-        <div style={{ fontSize: 11, letterSpacing: 5, color: '#00D68F', fontWeight: 800, textTransform: 'uppercase', marginBottom: 20 }}>NOTHING COMES CLOSE</div>
+      <div style={{ background: 'linear-gradient(135deg, rgba(201,168,76,0.08) 0%, rgba(255,215,0,0.04) 100%)', borderTop: '1px solid rgba(201,168,76,0.15)', padding: 'clamp(60px,8vw,100px) 24px', textAlign: 'center' }}>
+        <div style={{ fontSize: 11, letterSpacing: 5, color: '#C9A84C', fontWeight: 800, textTransform: 'uppercase', marginBottom: 20 }}>NOTHING COMES CLOSE</div>
         <div style={{ fontSize: 'clamp(40px,7vw,88px)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: -2, fontFamily: "'Barlow Condensed',sans-serif", lineHeight: 0.95, marginBottom: 28 }}>
-          Your fleet.<br /><span style={{ color: '#00D68F' }}>Your advantage.</span><br />Our platform.
+          Your fleet.<br /><span style={{ color: '#C9A84C' }}>Your advantage.</span><br />Our platform.
         </div>
         <p style={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', maxWidth: 560, margin: '0 auto 40px', lineHeight: 1.7, fontFamily: "'DM Sans',sans-serif" }}>
           No contracts. No hardware required to start. Free trial. The moment you sign up, every feature above is live for your fleet — immediately.
         </p>
         <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <a href="/checkout" style={{ background: '#00D68F', color: '#000', borderRadius: 4, padding: '18px 48px', fontSize: 20, fontWeight: 900, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: 2, boxShadow: '0 0 60px rgba(0,214,143,0.35)' }}>START NOW — FREE TRIAL</a>
+          <a href="/checkout" style={{ background: '#C9A84C', color: '#000', borderRadius: 4, padding: '18px 48px', fontSize: 20, fontWeight: 900, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: 2, boxShadow: '0 0 60px rgba(201,168,76,0.35)' }}>START NOW — FREE TRIAL</a>
           <a href="/share-and-onboard" style={{ background: 'transparent', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 4, padding: '18px 48px', fontSize: 20, fontWeight: 700, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: 2 }}>SHARE TRIAL LINK</a>
         </div>
       </div>

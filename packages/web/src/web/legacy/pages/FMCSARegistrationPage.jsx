@@ -1,11 +1,11 @@
 import { useState } from 'react';
 
-const GOLD = '#f0a500';
-const NAVY = '#0a1628';
-const GREEN = '#10b981';
-const BLUE = '#3b82f6';
+const GOLD = '#C9A84C';
+const NAVY = '#060A10';
+const GREEN = '#FFD700';
+const BLUE = '#C9A84C';
 const RED = '#ef4444';
-const SLATE = '#1e2a40';
+const SLATE = '#161616';
 
 const CHECKLIST = [
   {
@@ -96,10 +96,10 @@ export default function FMCSARegistrationPage() {
   const statusColor = pct === 100 ? GREEN : pct >= 75 ? GOLD : RED;
 
   return (
-    <div style={{ minHeight: '100vh', background: NAVY, fontFamily: "'DM Sans', 'Segoe UI', sans-serif", color: '#e2e8f0', paddingBottom: 80 }}>
+    <div style={{ minHeight: '100vh', background: NAVY, fontFamily: "'DM Sans', 'Segoe UI', sans-serif", color: '#f0ede8', paddingBottom: 80 }}>
 
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f1f3d 50%, #091422 100%)', borderBottom: `2px solid ${GOLD}22`, padding: '48px 24px 40px' }}>
+      <div style={{ background: 'linear-gradient(135deg, #060A10 0%, #111111 50%, #060A10 100%)', borderBottom: `2px solid ${GOLD}22`, padding: '48px 24px 40px' }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
             <div style={{ background: `${RED}20`, border: `1px solid ${RED}`, borderRadius: 20, padding: '4px 14px', fontSize: 11, fontWeight: 800, color: RED, letterSpacing: 2, textTransform: 'uppercase' }}>
@@ -118,7 +118,7 @@ TruckWithEase is not an FMCSA-registered ELD and is not pursuing registration ‚Ä
           </p>
 
           {/* Registration badge */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, background: '#0d1a30', border: `1px solid ${GOLD}40`, borderRadius: 12, padding: '16px 24px' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, background: '#111111', border: `1px solid ${GOLD}40`, borderRadius: 12, padding: '16px 24px' }}>
             <div style={{ fontSize: 32 }}>üõ°Ô∏è</div>
             <div>
               <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>Platform ELD Status</div>
@@ -132,7 +132,7 @@ TruckWithEase is not an FMCSA-registered ELD and is not pursuing registration ‚Ä
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px 0' }}>
 
         {/* Progress bar */}
-        <div style={{ background: SLATE, borderRadius: 16, padding: '24px 28px', marginBottom: 32, border: '1px solid #1e2a40' }}>
+        <div style={{ background: SLATE, borderRadius: 16, padding: '24px 28px', marginBottom: 32, border: '1px solid #222222' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#9ca3af', marginBottom: 2 }}>Required Items Complete</div>
@@ -145,7 +145,7 @@ TruckWithEase is not an FMCSA-registered ELD and is not pursuing registration ‚Ä
               </div>
             </div>
           </div>
-          <div style={{ height: 10, background: '#111827', borderRadius: 999, overflow: 'hidden' }}>
+          <div style={{ height: 10, background: '#222222', borderRadius: 999, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg, ${statusColor}, ${statusColor}cc)`, borderRadius: 999, transition: 'width 0.4s ease' }} />
           </div>
           {pct === 100 && (
@@ -160,7 +160,7 @@ TruckWithEase is not an FMCSA-registered ELD and is not pursuing registration ‚Ä
           <button onClick={() => setActiveCategory(null)} style={{
             background: activeCategory === null ? GOLD : 'transparent',
             color: activeCategory === null ? NAVY : '#6b7280',
-            border: `1px solid ${activeCategory === null ? GOLD : '#1e2a40'}`,
+            border: `1px solid ${activeCategory === null ? GOLD : '#222222'}`,
             borderRadius: 20, padding: '7px 16px', fontSize: 12, fontWeight: 700,
             cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
           }}>All Categories</button>
@@ -172,7 +172,7 @@ TruckWithEase is not an FMCSA-registered ELD and is not pursuing registration ‚Ä
               <button key={c.category} onClick={() => setActiveCategory(activeCategory === c.category ? null : c.category)} style={{
                 background: activeCategory === c.category ? GOLD : 'transparent',
                 color: activeCategory === c.category ? NAVY : allDone ? GREEN : '#9ca3af',
-                border: `1px solid ${activeCategory === c.category ? GOLD : allDone ? GREEN + '40' : '#1e2a40'}`,
+                border: `1px solid ${activeCategory === c.category ? GOLD : allDone ? GREEN + '40' : '#222222'}`,
                 borderRadius: 20, padding: '7px 16px', fontSize: 12, fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
               }}>
@@ -184,11 +184,11 @@ TruckWithEase is not an FMCSA-registered ELD and is not pursuing registration ‚Ä
 
         {/* Checklist sections */}
         {CHECKLIST.filter(c => !activeCategory || c.category === activeCategory).map(cat => (
-          <div key={cat.category} style={{ background: SLATE, borderRadius: 16, border: '1px solid #1e2a40', marginBottom: 20, overflow: 'hidden' }}>
-            <div style={{ padding: '18px 24px', borderBottom: '1px solid #111827', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div key={cat.category} style={{ background: SLATE, borderRadius: 16, border: '1px solid #222222', marginBottom: 20, overflow: 'hidden' }}>
+            <div style={{ padding: '18px 24px', borderBottom: '1px solid #222222', display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 22 }}>{cat.icon}</span>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 15, color: '#e2e8f0' }}>{cat.category}</div>
+                <div style={{ fontWeight: 800, fontSize: 15, color: '#f0ede8' }}>{cat.category}</div>
                 <div style={{ fontSize: 11, color: '#4b5563', marginTop: 1 }}>
                   {cat.items.filter(i => checked[i.id]).length} of {cat.items.length} complete
                 </div>
@@ -201,10 +201,10 @@ TruckWithEase is not an FMCSA-registered ELD and is not pursuing registration ‚Ä
                 // Items auto-handled by TruckWithEase
                 const autoHandled = ['eld_listed','eld_certified','eld_transfer','eld_display','eld_uneditable','logs_6mo','dotaudit','accidents','drug_records','clearinghouse','cdl','medical'].includes(item.id);
                 return (
-                  <div key={item.id} style={{ borderBottom: '1px solid #111827', transition: 'background 0.15s' }}>
+                  <div key={item.id} style={{ borderBottom: '1px solid #222222', transition: 'background 0.15s' }}>
                     <div style={{
                       display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 24px',
-                      cursor: 'pointer', background: isExpanded ? '#0d1a30' : 'transparent',
+                      cursor: 'pointer', background: isExpanded ? '#111111' : 'transparent',
                     }} onClick={() => setExpandedItem(isExpanded ? null : item.id)}>
                       <button onClick={e => { e.stopPropagation(); toggleItem(item.id); }} style={{
                         width: 22, height: 22, borderRadius: 6, flexShrink: 0,
@@ -217,14 +217,14 @@ TruckWithEase is not an FMCSA-registered ELD and is not pursuing registration ‚Ä
                       </button>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: isChecked ? '#9ca3af' : '#e2e8f0', textDecoration: isChecked ? 'line-through' : 'none', transition: 'all 0.2s' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: isChecked ? '#9ca3af' : '#f0ede8', textDecoration: isChecked ? 'line-through' : 'none', transition: 'all 0.2s' }}>
                             {item.label}
                           </span>
                           {item.required && (
                             <span style={{ fontSize: 9, fontWeight: 800, color: RED, border: `1px solid ${RED}40`, borderRadius: 10, padding: '1px 6px', letterSpacing: 1, textTransform: 'uppercase' }}>Required</span>
                           )}
                           {!item.required && (
-                            <span style={{ fontSize: 9, fontWeight: 800, color: '#4b5563', border: '1px solid #1e2a40', borderRadius: 10, padding: '1px 6px', letterSpacing: 1, textTransform: 'uppercase' }}>If Applicable</span>
+                            <span style={{ fontSize: 9, fontWeight: 800, color: '#4b5563', border: '1px solid #222222', borderRadius: 10, padding: '1px 6px', letterSpacing: 1, textTransform: 'uppercase' }}>If Applicable</span>
                           )}
                           {autoHandled && (
                             <span style={{ fontSize: 9, fontWeight: 800, color: GOLD, border: `1px solid ${GOLD}40`, borderRadius: 10, padding: '1px 6px', letterSpacing: 1, textTransform: 'uppercase' }}>‚ú¶ Auto</span>
@@ -235,7 +235,7 @@ TruckWithEase is not an FMCSA-registered ELD and is not pursuing registration ‚Ä
                     </div>
                     {isExpanded && (
                       <div style={{ padding: '0 24px 16px 60px' }}>
-                        <div style={{ background: '#0a1220', border: `1px solid ${autoHandled ? GOLD + '30' : '#1e2a40'}`, borderRadius: 8, padding: '12px 16px', fontSize: 12, color: '#9ca3af', lineHeight: 1.7 }}>
+                        <div style={{ background: '#0d0d0d', border: `1px solid ${autoHandled ? GOLD + '30' : '#222222'}`, borderRadius: 8, padding: '12px 16px', fontSize: 12, color: '#9ca3af', lineHeight: 1.7 }}>
                           {autoHandled && (
                             <div style={{ color: GOLD, fontWeight: 700, marginBottom: 4, fontSize: 11 }}>
                               ‚ú¶ TruckWithEase handles this automatically
@@ -255,7 +255,7 @@ TruckWithEase is not an FMCSA-registered ELD and is not pursuing registration ‚Ä
         {/* Action strip */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 32 }}>
           <a href="/dot-compliance-vault" style={{
-            background: `linear-gradient(135deg, ${GOLD}, #ff8c00)`,
+            background: `linear-gradient(135deg, ${GOLD}, #FFD700)`,
             color: NAVY, borderRadius: 10, padding: '13px 24px', fontSize: 13,
             fontWeight: 800, textDecoration: 'none', letterSpacing: 0.5,
           }}>üìÅ Open Compliance Vault ‚Üí</a>
@@ -265,7 +265,7 @@ TruckWithEase is not an FMCSA-registered ELD and is not pursuing registration ‚Ä
             textDecoration: 'none',
           }}>üì° ELD Driver Dashboard ‚Üí</a>
           <a href="/dot-connect" style={{
-            background: 'transparent', border: '1px solid #1e2a40', color: '#6b7280',
+            background: 'transparent', border: '1px solid #222222', color: '#6b7280',
             borderRadius: 10, padding: '13px 24px', fontSize: 13, fontWeight: 800,
             textDecoration: 'none',
           }}>üìã DOT Connect ‚Üí</a>

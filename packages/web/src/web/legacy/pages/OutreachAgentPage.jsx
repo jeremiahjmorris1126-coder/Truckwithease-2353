@@ -42,7 +42,7 @@ I wanted to reach out personally because I believe TruckWithEase can save {compa
 
 We've built the only platform that covers everything your fleet needs in one screen — intelligence dispatch that eliminates guesswork on every load, HOS logging that works for CDL and local drivers alike, automated payroll directly from verified ELD miles, AI-powered driver hiring with instant background checks, and a safety intelligence system that qualifies your fleet for insurance discounts of up to 25%.
 
-Compare that to Samsara at $800+/month for ELD alone — TruckWithEase starts at $29.99 and covers everything.
+TruckWithEase starts at $29.99 per driver and covers all of it — and it runs alongside the ELD you already have, so nothing gets ripped out.
 
 I'd love to give you a live walkthrough at morrishive.com. No credit card, no commitment — just 15 minutes to show you what your fleet could look like.
 
@@ -73,7 +73,7 @@ My name is Jeremiah Morris, founder of TruckWithEase — a comprehensive fleet m
 
 We're integrating best-in-class APIs to power our intelligence dispatch, safety intelligence, and driver analytics layers. I believe {company} would be a strong fit for our platform and I'd love to explore a technology partnership.
 
-We bring access to 13 million drivers across CDL, local, van, and courier segments — a significant distribution opportunity for the right partner.
+We build for CDL, local, van, and courier drivers in one platform — a single integration reaches every one of those segments.
 
 Would you be open to a brief call to discuss API integration and partnership terms?
 
@@ -104,9 +104,9 @@ Founder, TruckWithEase / Morrishive`,
 
 I'm reaching out because TruckWithEase represents a category-defining opportunity in the $800B US trucking industry.
 
-We've built the first platform to combine intelligence dispatch, FMCSA-compliant HOS logging, automated payroll from ELD miles, AI driver hiring, fleet safety intelligence, and a three-mode experience covering 13 million drivers across CDL, van, and bike courier segments.
+We've built one platform that combines intelligence dispatch, duty-clock records sealed to the second they were sent, automated payroll from ELD miles, AI driver hiring, fleet safety intelligence, and a three-mode experience spanning CDL, van, and bike courier segments.
 
-Our competitive position: Samsara charges $800+/month for ELD alone. We charge $29.99–$59.99 for everything — and we serve driver segments Samsara has never touched.
+Our position: $29.99–$59.99 covers the whole stack, we work with the ELD hardware a fleet already owns instead of replacing it, and we serve driver segments the incumbents have never touched.
 
 The platform is live at morrishive.com with paying members and a clear path to enterprise fleet contracts.
 
