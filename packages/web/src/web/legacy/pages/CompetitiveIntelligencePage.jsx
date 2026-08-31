@@ -312,7 +312,7 @@ export default function CompetitiveIntelligencePage() {
               <p style={{ color: MUTED, fontSize: 16, marginBottom: 28, maxWidth: 500 }}>Honest gaps — what Samsara has today that we're building toward.</p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 16 }}>
                 {[
-                  { icon: "📹", title: "AI Dashcam Hardware", desc: "Samsara and Motive have proprietary AI dashcam hardware. Our white-label Geotab partnership will close this gap — dashcam integration is on the 6-month roadmap." },
+                  { icon: "📹", title: "AI Dashcam Hardware", desc: "Samsara and Motive have proprietary AI dashcam hardware. TruckWithEase ships no hardware and has no signed hardware partnership. Dashcam integration is a roadmap item, not a built feature." },
                   { icon: "🏢", title: "500+ Truck Enterprise TMS", desc: "Very large carriers with complex TMS needs may still need Trimble or Oracle. Our sweet spot today is 1–200 trucks." },
                   { icon: "🤝", title: "Broker / 3PL Integrations", desc: "Deep EDI integrations with large 3PLs and brokers are in progress. The API gateway is ready — partner agreements are the next step." },
                   { icon: "📊", title: "Brand Recognition", desc: "Samsara has a $15B valuation. We win the product comparison every time — the challenge is getting in front of fleet owners. That's marketing, not a product gap." },

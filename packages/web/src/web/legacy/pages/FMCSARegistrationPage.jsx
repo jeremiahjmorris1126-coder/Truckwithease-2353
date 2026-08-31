@@ -23,8 +23,8 @@ const CHECKLIST = [
     category: 'ELD Device Certification',
     icon: '📡',
     items: [
-      { id: 'eld_listed', label: 'ELD registered on FMCSA ELD registry', required: true, detail: 'Your ELD provider must be listed at eld.fmcsa.dot.gov. TruckWithEase + Geotab white-label path completes this.' },
-      { id: 'eld_certified', label: 'ELD self-certified by provider per 49 CFR Part 395', required: true, detail: 'Provider self-certifies and submits to FMCSA. Geotab is already FMCSA-listed.' },
+      { id: 'eld_listed', label: 'ELD registered on FMCSA ELD registry', required: true, detail: 'Your ELD provider must be listed at eld.fmcsa.dot.gov/List. TruckWithEase is not on that list and is not a provider — this item is satisfied by the ELD you already run, not by this app.' },
+      { id: 'eld_certified', label: 'ELD self-certified by provider per 49 CFR Part 395', required: true, detail: 'The provider of your ELD self-certifies and submits to FMCSA. TruckWithEase does not self-certify and files nothing with FMCSA.' },
       { id: 'eld_transfer', label: 'ELD capable of data transfer (telematics or USB/Bluetooth)', required: true, detail: 'Must support at least 2 of 4 transfer methods: telematics, email, USB, Bluetooth.' },
       { id: 'eld_display', label: 'ELD displays standard HOS data on screen', required: true, detail: 'Drive time, on-duty, sleeper berth, off-duty, and violations must all be visible.' },
       { id: 'eld_uneditable', label: 'Driving time cannot be edited by driver', required: true, detail: 'Auto-detected driving cannot be manually deleted — FMCSA hard requirement.' },
@@ -64,13 +64,13 @@ const CHECKLIST = [
   },
 ];
 
-// TruckWithEase FMCSA status — registered and active
+// TruckWithEase is NOT an FMCSA-registered ELD provider and is not pursuing registration.
+// It does not appear on eld.fmcsa.dot.gov/List. This page is a checklist for the CARRIER's
+// own federal obligations — it makes no registration claim about the platform.
 const TWE_STATUS = {
-  usdot: 'REGISTERED',
-  mc: 'ACTIVE',
-  registered_since: '2024',
-  registry_link: 'https://eld.fmcsa.dot.gov',
-  provider_name: 'TruckWithEase / Morrishive',
+  eld_provider_status: 'NOT REGISTERED',
+  registry_link: 'https://eld.fmcsa.dot.gov/List',
+  provider_name: 'TruckWithEase',
 };
 
 export default function FMCSARegistrationPage() {
@@ -102,7 +102,7 @@ export default function FMCSARegistrationPage() {
       <div style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f1f3d 50%, #091422 100%)', borderBottom: `2px solid ${GOLD}22`, padding: '48px 24px 40px' }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-            <div style={{ background: `${GREEN}20`, border: `1px solid ${GREEN}`, borderRadius: 20, padding: '4px 14px', fontSize: 11, fontWeight: 800, color: GREEN, letterSpacing: 2, textTransform: 'uppercase' }}>
+            <div style={{ background: `${RED}20`, border: `1px solid ${RED}`, borderRadius: 20, padding: '4px 14px', fontSize: 11, fontWeight: 800, color: RED, letterSpacing: 2, textTransform: 'uppercase' }}>
               Not FMCSA Registered
             </div>
             <div style={{ background: `${GOLD}20`, border: `1px solid ${GOLD}`, borderRadius: 20, padding: '4px 14px', fontSize: 11, fontWeight: 800, color: GOLD, letterSpacing: 2, textTransform: 'uppercase' }}>
@@ -114,16 +114,16 @@ export default function FMCSARegistrationPage() {
             <span style={{ color: GOLD }}>& Compliance Command</span>
           </h1>
           <p style={{ fontSize: 14, color: '#6b7280', maxWidth: 540, lineHeight: 1.7, marginBottom: 28 }}>
-            TruckWithEase is registered with FMCSA. This checklist tracks every federal requirement your operation needs to stay fully compliant — items the platform handles automatically are already checked.
+TruckWithEase is not an FMCSA-registered ELD and is not pursuing registration — it runs alongside the ELD you already have. This checklist tracks the federal requirements your own operation has to meet, and marks the items the platform helps you track.
           </p>
 
           {/* Registration badge */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, background: '#0d1a30', border: `1px solid ${GREEN}40`, borderRadius: 12, padding: '16px 24px' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, background: '#0d1a30', border: `1px solid ${GOLD}40`, borderRadius: 12, padding: '16px 24px' }}>
             <div style={{ fontSize: 32 }}>🛡️</div>
             <div>
-              <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>Platform Registration</div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: GREEN }}>{TWE_STATUS.provider_name}</div>
-              <div style={{ fontSize: 12, color: '#4b5563' }}>FMCSA ELD Registry · Registered {TWE_STATUS.registered_since} · USDOT {TWE_STATUS.usdot} · MC {TWE_STATUS.mc}</div>
+              <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>Platform ELD Status</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: GOLD }}>{TWE_STATUS.provider_name} — {TWE_STATUS.eld_provider_status}</div>
+              <div style={{ fontSize: 12, color: '#4b5563' }}>Not listed on the FMCSA ELD registry · no self-certification filed · your existing ELD stays the log of record</div>
             </div>
           </div>
         </div>
