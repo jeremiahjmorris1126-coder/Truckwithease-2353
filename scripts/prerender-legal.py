@@ -32,6 +32,13 @@ ROUTES = [
     "/privacy", "/privacy-policy", "/privacy-notice", "/sms-privacy",
 ]
 
+# Public marketing routes. The brand's registered website (morrishive.com) points
+# at this same Pages project, so a human A2P reviewer may land on the homepage
+# before ever reaching /terms. Unprerendered it is a ~1.2 KB empty shell, which
+# reads as a dead site. "/" writes dist/index.html, which is also the _redirects
+# SPA fallback target -- React re-routes on hydration, so deep links still work.
+PUBLIC_ROUTES = ["/", "/pricing", "/platform"]
+
 # Must appear in the rendered privacy markup or the carrier check fails.
 CARRIER = ("No mobile information is sold or shared with any third party "
            "for marketing or promotional purposes")
@@ -61,6 +68,23 @@ with sync_playwright() as p:
         out.write_text(html, encoding="utf-8")
         print(f"ok   {route:<18} status={status} chars={len(text):>6} "
               f"html={len(html):>7}B carrierSentence={CARRIER in html}")
+
+    for route in PUBLIC_ROUTES:
+        res = pg.goto(ORIGIN + route, wait_until="networkidle", timeout=60000)
+        pg.wait_for_timeout(2500)
+        status = res.status if res else 0
+        text = pg.inner_text("body")
+        html = pg.content()
+        if status != 200 or len(text) < 1000:
+            print(f"FAIL {route} status={status} chars={len(text)}")
+            failed += 1
+            continue
+        name = "index.html" if route == "/" else route.lstrip("/") + ".html"
+        out = DIST / name
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(html, encoding="utf-8")
+        print(f"ok   {route:<18} status={status} chars={len(text):>6} "
+              f"html={len(html):>7}B -> {name}")
     b.close()
 
 if failed:
