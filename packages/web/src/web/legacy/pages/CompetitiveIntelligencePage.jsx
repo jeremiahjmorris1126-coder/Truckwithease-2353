@@ -19,11 +19,11 @@ const COMPETITORS = [
     emoji: "🔵",
     color: "#3b82f6",
     threat: "high",
-    pricing: "$27–$33/vehicle/month + $150–$350 hardware",
-    about: "The 800-lb gorilla. Best-in-class AI dashcams, enterprise integrations, and polished hardware. Dominates large fleets (100+ trucks). $15B valuation.",
+    pricing: "Per-vehicle subscription plus upfront hardware",
+    about: "The 800-lb gorilla. Best-in-class AI dashcams, enterprise integrations, and polished hardware. Dominates large fleets (100+ trucks).",
     strengths: ["Industry-leading AI dashcam tech", "Deep enterprise integrations (SAP, Oracle)", "Best hardware reliability", "Real-time driver coaching"],
-    weaknesses: ["1–3 year contracts — no flexibility", "Solo & small fleets priced out", "No HR, hiring, or payroll tools", "No driver community", "$150–$350 upfront hardware per truck"],
-    edge: "We serve every driver from solo to 500+ trucks — no contracts, no hardware upfront. A 10-truck fleet pays $299/mo total vs $330/mo for ELD alone with Samsara, and they get HR + payroll + dispatch included."
+    weaknesses: ["1–3 year contracts — no flexibility", "Solo & small fleets priced out", "No HR, hiring, or payroll tools", "No driver community", "Upfront hardware purchase per truck"],
+    edge: "We serve every driver from solo to 500+ trucks — no contracts, no hardware upfront. One subscription covers compliance, HR, payroll, and dispatch, and it runs alongside the ELD hardware a fleet already owns."
   },
   {
     name: "Motive",
@@ -31,11 +31,11 @@ const COMPETITORS = [
     emoji: "🟠",
     color: "#ea580c",
     threat: "high",
-    pricing: "$20–$35/vehicle/month + $99–$250 hardware",
+    pricing: "Per-vehicle subscription plus hardware",
     about: "Formerly KeepTruckin — built on affordable ELD and grew up-market. 175,000+ fleets. Popular with owner-operators and small fleets.",
     strengths: ["Affordable entry, strong brand loyalty", "Clean driver-friendly mobile app", "AI dashcam built in", "Good small fleet features"],
     weaknesses: ["No hiring, HR, or onboarding tools", "No payroll from mileage data", "No driver community or retention", "Still requires hardware purchase", "Customer support widely criticized"],
-    edge: "We beat Motive's price at every tier while adding HR, payroll, community, and AI dispatch. Drivers who love Motive's clean app will love ours more — and their fleet manager gets 5x more tools."
+    edge: "We add HR, payroll, community, and AI dispatch on top of compliance. Drivers who love Motive's clean app will love ours more — and their fleet manager gets 5x more tools."
   },
   {
     name: "Geotab",
@@ -43,7 +43,7 @@ const COMPETITORS = [
     emoji: "🟢",
     color: "#16a34a",
     threat: "medium",
-    pricing: "$23–$50/vehicle/month + $150+ hardware",
+    pricing: "Per-vehicle subscription plus hardware",
     about: "Deep telematics, massive data, open API ecosystem. The choice for enterprise fleets wanting maximum data granularity. Highly customizable, requires technical expertise.",
     strengths: ["Best open API in the industry", "Deepest vehicle data & diagnostics", "Massive integration marketplace", "Strong compliance reporting"],
     weaknesses: ["Complex — requires dedicated IT staff", "Not designed for solo or small fleets", "No useful driver-facing app", "No hiring, HR, payroll, or community"],
@@ -55,11 +55,11 @@ const COMPETITORS = [
     emoji: "🔷",
     color: "#6366f1",
     threat: "medium",
-    pricing: "$45–$160/month",
+    pricing: "Monthly load board subscription",
     about: "The largest load board in North America. 183 million loads/year. Focused purely on load matching and rate benchmarking — nothing else.",
     strengths: ["Biggest load volume — 183M+ loads/year", "Industry-standard rate benchmarking", "Carrier/broker network depth"],
     weaknesses: ["Load board only — no ELD, dispatch, or HR", "No driver app or HOS compliance", "Expensive for what it is", "Requires 4+ other subscriptions to run a fleet"],
-    edge: "Our load board is built right in — fleets stop paying $160/mo to DAT. TruckWithEase replaces DAT + ELD + HR + dispatch + payroll with one subscription."
+    edge: "Our load board is built right in — no separate load board subscription. TruckWithEase replaces DAT + ELD + HR + dispatch + payroll with one subscription."
   },
   {
     name: "J.J. Keller",
@@ -67,11 +67,11 @@ const COMPETITORS = [
     emoji: "🔴",
     color: "#dc2626",
     threat: "low",
-    pricing: "$25–$55/vehicle/month",
+    pricing: "Per-vehicle subscription",
     about: "Compliance-first company. Strong DOT compliance programs, drug & alcohol clearinghouse, and safety training. Trusted by conservative fleets.",
     strengths: ["Deep FMCSA compliance expertise", "Drug & alcohol clearinghouse programs", "Driver training library"],
     weaknesses: ["Outdated, clunky interfaces", "No real-time dispatch or routing", "No community or retention tools", "Expensive for compliance-only value"],
-    edge: "Our DOT Compliance Vault matches their depth with modern UX, automated cross-referencing, and per-state rules — at half the price, bundled with everything else."
+    edge: "Our DOT Compliance Vault matches their depth with modern UX, automated cross-referencing, and per-state rules — bundled with everything else."
   },
   {
     name: "Trimble / PeopleNet",
@@ -79,17 +79,17 @@ const COMPETITORS = [
     emoji: "🟣",
     color: "#a855f7",
     threat: "low",
-    pricing: "$40–$80/vehicle/month (enterprise only)",
+    pricing: "Enterprise-only per-vehicle subscription",
     about: "Enterprise-only TMS. Focused on large carriers (500+ trucks). Complex, expensive, requires full IT implementation teams. 6-month onboarding.",
     strengths: ["Deep TMS for large carriers", "Strong legacy freight system integrations"],
-    weaknesses: ["Not accessible to fleets under 200 trucks", "6-month implementation required", "$80/vehicle minimum", "No modern driver app", "Zero community or retention"],
-    edge: "We're what Trimble customers wish they had — every capability without the 6-month implementation, IT team requirement, or $80/truck price tag. We'll take their unhappy mid-market customers every time."
+    weaknesses: ["Not accessible to fleets under 200 trucks", "6-month implementation required", "High per-vehicle minimum", "No modern driver app", "Zero community or retention"],
+    edge: "We're what Trimble customers wish they had — every capability without the 6-month implementation, IT team requirement, or enterprise price tag. We'll take their unhappy mid-market customers every time."
   }
 ];
 
 const WIN_REASONS = [
   { num: "01", icon: "🔗", title: "One App Replaces Five", color: ORANGE,
-    desc: "The average fleet pays for ELD software, a load board, HR tools, payroll, and compliance separately — $600–$900/month in subscriptions. TruckWithEase replaces all five.",
+    desc: "The average fleet pays for ELD software, a load board, HR tools, payroll, and compliance separately — five separate subscriptions. TruckWithEase replaces all five.",
     proof: "\"We cancelled three subscriptions the first month.\" — what a 15-truck fleet owner will say." },
   { num: "02", icon: "👩‍💼", title: "We Solve Driver Shortage", color: AMBER,
     desc: "Samsara helps you manage drivers you have. We help you find, screen, hire, onboard, pay, and keep drivers — automatically. The #1 fleet problem is driver retention. We fix it.",
@@ -150,7 +150,7 @@ const FEAT_TABLE = {
       ["Safety SOS / 911 Integration",   "✓", "—", "—", "—", "—"],
     ]},
     { label: "Pricing & Access", rows: [
-      ["Solo Driver Plan",               "$29.99/mo", "—", "$20+hw", "—", "$45+"],
+      ["Solo Driver Plan",               "$29.99/mo", "—", "—", "—", "—"],
       ["No Hardware Required",           "✓", "—", "—", "—", "✓"],
       ["Month-to-Month",                 "✓", "—", "partial", "—", "✓"],
       ["Local / Van / All Driver Types", "✓", "partial", "partial", "partial", "partial"],
@@ -315,7 +315,7 @@ export default function CompetitiveIntelligencePage() {
                   { icon: "📹", title: "AI Dashcam Hardware", desc: "Samsara and Motive have proprietary AI dashcam hardware. TruckWithEase ships no hardware and has no signed hardware partnership. Dashcam integration is a roadmap item, not a built feature." },
                   { icon: "🏢", title: "500+ Truck Enterprise TMS", desc: "Very large carriers with complex TMS needs may still need Trimble or Oracle. Our sweet spot today is 1–200 trucks." },
                   { icon: "🤝", title: "Broker / 3PL Integrations", desc: "Deep EDI integrations with large 3PLs and brokers are in progress. The API gateway is ready — partner agreements are the next step." },
-                  { icon: "📊", title: "Brand Recognition", desc: "Samsara has a $15B valuation. We win the product comparison every time — the challenge is getting in front of fleet owners. That's marketing, not a product gap." },
+                  { icon: "📊", title: "Brand Recognition", desc: "The incumbents have years of brand recognition and sales reach. Getting in front of fleet owners is our hardest problem — that is marketing, not a product gap." },
                 ].map(g => (
                   <div key={g.title} style={{ background: NAVY, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "20px 22px" }}>
                     <div style={{ fontSize: 22, marginBottom: 10 }}>{g.icon}</div>
@@ -397,7 +397,7 @@ export default function CompetitiveIntelligencePage() {
                 The Verdict: <span style={{ color: ORANGE }}>Yes, We Win.</span>
               </h2>
               <p style={{ fontSize: 18, color: MUTED, maxWidth: 680, margin: "0 auto 32px", lineHeight: 1.7 }}>
-                TruckWithEase doesn't need to beat Samsara at everything. We beat them at what fleet owners actually lose sleep over — finding drivers, keeping drivers, running payroll correctly, and managing the whole business from one place without a $30,000 annual contract.
+                TruckWithEase doesn't need to beat Samsara at everything. We beat them at what fleet owners actually lose sleep over — finding drivers, keeping drivers, running payroll correctly, and managing the whole business from one place — month to month, no long-term contract.
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center", marginBottom: 36 }}>
                 {["✓ Replace 5 subscriptions with 1","✓ Solo driver to 200-truck fleet","✓ Hire, pay, and retain drivers","✓ No contracts, no hardware","✓ The only app drivers love","✓ AI dispatch no one else matches"].map(p => (

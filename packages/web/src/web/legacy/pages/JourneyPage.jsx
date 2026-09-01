@@ -294,9 +294,9 @@ The Quick Access strip at the bottom of every Entitled Index screen puts Dispatc
 
 Year 1: ~$74K. Year 2: ~$340K. Year 3: ~$970K. Year 4: ~$2.2M. Year 5: ~$4.6M base case.
 
-Platform valuation at Year 5: $55M to $92M to a strategic buyer. That's not speculation — that's based on comparable SaaS multiples in the fleet management space, where Samsara went public at $6.8B and Motive (formerly KeepTruckin) raised at a $2.5B valuation.
+No valuation is modeled here. Any exit number would be a guess until there is real recurring revenue to multiply, so the forecast stops at revenue.
 
-The difference is TruckWithEase does more for less. And the drivers who use it will feel that difference every single day.`,
+The difference is that one subscription covers compliance, dispatch, HR, and payroll. The drivers who use it feel that every day.`,
       },
       {
         time: 'Partnership Discussions',
