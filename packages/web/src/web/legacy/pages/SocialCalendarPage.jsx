@@ -28,9 +28,9 @@ const PLATFORMS = [
 const POSTS = [
   // Week 1
   {
-    day: 1, week: 1, platform: "facebook", title: "The Price Punch",
-    caption: `🚛 Samsara charges $800/month for ELD alone.\n\nTruckWithEase gives you ELD + Dispatch + Driver Hiring + Payroll + Background Checks + Load Board + Big Rig Bucks rewards...\n\nFor $29.99/month.\n\nNo contracts. No hardware required. Free trial today.\n\n👉 morrishive.com`,
-    type: "Price Comparison", audience: "Fleet Managers", time: "6:00 AM", reach: "High",
+    day: 1, week: 1, platform: "facebook", title: "Everything In One Price",
+    caption: `🚛 One platform. One price. $29.99/month.\n\nDispatch + Driver Hiring + Payroll + Background Checks + Load Board + Big Rig Bucks rewards — plus sealed HOS records that work alongside the ELD you already run.\n\nNo contracts. No new hardware. Free trial today.\n\n👉 truckwithease.com`,
+    type: "Pricing", audience: "Fleet Managers", time: "6:00 AM", reach: "High",
     tip: "Post in Owner Operator Nation (180K), CDL Drivers Network (210K), Trucking USA groups"
   },
   {
@@ -41,19 +41,19 @@ const POSTS = [
   },
   {
     day: 3, week: 1, platform: "linkedin", title: "Platform Comparison",
-    caption: `Fleet managers: I built a comparison you need to see.\n\nTruckWithEase vs Samsara vs Motive — 15 features, side by side.\n\nThe result? We win 12 out of 15 on features. And we're less than half the price.\n\nHiring, payroll from ELD miles, intelligence dispatch, driver background checks — all in one platform.\n\nFree trial at morrishive.com`,
+    caption: `Fleet managers: here's everything TruckWithEase does in one screen.\n\nHiring, payroll from ELD miles, intelligence dispatch, driver background checks, sealed HOS records — one platform, one login.\n\nIt runs alongside the ELD hardware you already own, so nothing gets ripped out.\n\nFree trial at truckwithease.com`,
     type: "Comparison Post", audience: "Fleet Managers, Logistics Directors", time: "8:00 AM", reach: "High",
     tip: "Tag fleet management companies, logistics directors, and owner-operator associations"
   },
   {
     day: 4, week: 1, platform: "reddit", title: "r/Truckers Introduction",
-    caption: `Built a trucking platform for 2 years — here's what I learned Samsara and Motive get wrong\n\nNot here to bash anyone. Just sharing what drivers actually told me they needed:\n\n• HOS logging for local drivers NOT under ELD mandate\n• Hiring built into the same app as dispatch\n• Payroll calculated automatically from verified ELD miles\n• Background checks that run the moment someone applies\n\nBuilt all of it. Free trial if anyone wants to kick the tires: morrishive.com\n\nHappy to answer any questions about how it works.`,
+    caption: `Built a trucking platform for 2 years — here's what I learned Samsara and Motive get wrong\n\nNot here to bash anyone. Just sharing what drivers actually told me they needed:\n\n• HOS logging for local drivers NOT under ELD mandate\n• Hiring built into the same app as dispatch\n• Payroll calculated automatically from verified ELD miles\n• Background checks that run the moment someone applies\n\nBuilt all of it. Free trial if anyone wants to kick the tires: truckwithease.com\n\nHappy to answer any questions about how it works.`,
     type: "Authentic Story", audience: "Drivers, Owner Operators", time: "6:00 PM", reach: "High",
     tip: "Post in r/Truckers, r/CommercialTrucking, r/FreightBrokers — be genuine, answer every reply"
   },
   {
     day: 5, week: 1, platform: "twitter", title: "Ghost Nerve Thread",
-    caption: `Thread: What Ghost Nerve does that no trucking platform has ever attempted 🧵\n\n1/ Your dispatch is pre-solved 4-6 hours before the driver's shift begins. They open the app and the work is already done.\n\n2/ DOT violations are caught and eliminated 72 hours before they happen. Not reported after.\n\n3/ 47 profit variables computed per mile, per load, per driver. Samsara computes 4.\n\n4/ The HOS log is cryptographically sealed. No other platform can read, alter, or mirror it.\n\nThis is TruckWithEase. morrishive.com`,
+    caption: `Thread: what Ghost Nerve actually does 🧵\n\n1/ Your dispatch is pre-solved before the driver's shift begins. They open the app and the work is already laid out.\n\n2/ Compliance risk is flagged while you can still fix it — not reported to you after the citation.\n\n3/ Profit computed per mile, per load, per driver — not once a month.\n\n4/ Every dispatch message is stamped with the driver's legal clock at the second it was sent, then hash-chained — so altering a record afterward breaks the chain and shows up.\n\nThis is TruckWithEase. truckwithease.com`,
     type: "Thread", audience: "Industry, Investors", time: "9:00 AM", reach: "Medium",
     tip: "Pin this thread to your profile. Engage with every reply for the first 2 hours."
   },
@@ -65,14 +65,14 @@ const POSTS = [
   },
   {
     day: 7, week: 1, platform: "instagram", title: "Logo + Price Drop",
-    caption: `The trucking app that does everything.\n\nSolo drivers from $29.99/month.\nFleets from $49.99/seat.\n\nDispatch. ELD Compliance. Driver Hiring. Payroll. Load Board. Big Rig Bucks.\n\nAll of it. One platform. morrishive.com\n\n#Trucking #ELD #FleetManagement #OwnerOperator #CDL #TruckDriver #Dispatch`,
+    caption: `The trucking app that does everything.\n\nSolo drivers from $29.99/month.\nFleets from $49.99/seat.\n\nDispatch. ELD Compliance. Driver Hiring. Payroll. Load Board. Big Rig Bucks.\n\nAll of it. One platform. truckwithease.com\n\n#Trucking #ELD #FleetManagement #OwnerOperator #CDL #TruckDriver #Dispatch`,
     type: "Brand Post", audience: "All Drivers", time: "8:00 AM", reach: "Medium",
     tip: "Use your TruckWithEase logo as the image. Clean, bold, premium."
   },
   // Week 2
   {
     day: 8, week: 2, platform: "facebook", title: "Driver Hiring Feature",
-    caption: `Fleet managers — how long does it take you to hire a new driver right now?\n\nWith TruckWithEase HRease:\n✅ Post a job opening in 60 seconds\n✅ Criminal background check runs automatically on every applicant\n✅ DOT Safety record pulled from FMCSA instantly\n✅ CDL verified against state DMV automatically\n✅ You get a HIRE / DON'T HIRE recommendation before you make one phone call\n\nFree trial at morrishive.com`,
+    caption: `Fleet managers — how long does it take you to hire a new driver right now?\n\nWith TruckWithEase HRease:\n✅ Post a job opening in 60 seconds\n✅ Criminal background check runs automatically on every applicant\n✅ DOT Safety record pulled from FMCSA instantly\n✅ CDL verified against state DMV automatically\n✅ You get a HIRE / DON'T HIRE recommendation before you make one phone call\n\nFree trial at truckwithease.com`,
     type: "Feature Spotlight", audience: "Fleet Managers", time: "7:00 AM", reach: "High",
     tip: "Boost this post to fleet managers and logistics companies within 50 miles of major trucking hubs"
   },
@@ -83,20 +83,20 @@ const POSTS = [
     tip: "Show the Big Rig Bucks leaderboard updating in real time. Drivers love competition."
   },
   {
-    day: 10, week: 2, platform: "linkedin", title: "ROI Case Study",
-    caption: `A 10-truck fleet switching from Samsara to TruckWithEase saves $4,800/year on subscription costs alone.\n\nAdd the time saved on:\n• Manual payroll calculation → automated from ELD miles\n• Phone screening applicants → automated background checks\n• Spreadsheet dispatch → intelligence AI optimization\n\nThe real ROI is closer to $18,000/year for a 10-truck operation.\n\nCalculate yours at morrishive.com/roi-calculator`,
+    day: 10, week: 2, platform: "linkedin", title: "Where The Hours Go",
+    caption: `Where a 10-truck fleet quietly loses time every week:\n\n• Manual payroll calculation → automated from ELD miles\n• Phone screening applicants → automated background checks\n• Spreadsheet dispatch → intelligence route optimization\n• Digging through texts to prove what was agreed → sealed message history with the duty clock attached\n\nRun your own numbers and see what that time is worth to you.\n\nCalculate yours at truckwithease.com/roi-calculator`,
     type: "ROI Analysis", audience: "Fleet Owners, CFOs", time: "8:00 AM", reach: "High",
     tip: "Share in Fleet Management, Logistics, and Supply Chain LinkedIn groups"
   },
   {
     day: 11, week: 2, platform: "reddit", title: "Local Driver HOS",
-    caption: `PSA for local/last-mile drivers: you might not need an ELD at all\n\nIf you drive within a 100 air-mile radius and return to the same location each day, you're likely exempt from the ELD mandate.\n\nBut you still need to log hours correctly or you can get cited.\n\nTruckWithEase has a specific HOS mode built for local/short-haul/exempt drivers — separate from the ELD logging. Free to try: morrishive.com\n\nHappy to explain the exemptions if anyone has questions.`,
+    caption: `PSA for local/last-mile drivers: you might not need an ELD at all\n\nIf you drive within a 100 air-mile radius and return to the same location each day, you're likely exempt from the ELD mandate.\n\nBut you still need to log hours correctly or you can get cited.\n\nTruckWithEase has a specific HOS mode built for local/short-haul/exempt drivers — separate from the ELD logging. Free to try: truckwithease.com\n\nHappy to explain the exemptions if anyone has questions.`,
     type: "Education Post", audience: "Local Drivers", time: "5:00 PM", reach: "High",
     tip: "Post in r/Truckers and r/AmazonFlexDrivers — huge untapped audience"
   },
   {
     day: 12, week: 2, platform: "twitter", title: "Bike Courier Announcement",
-    caption: `We just built something for bike couriers in NYC, Chicago, SF, LA and Miami.\n\nSafe route mapping. Dangerous intersection alerts. E-bike battery planning. City-specific laws. Package tracking. Earnings per delivery.\n\nAll inside TruckWithEase.\n\nBecause every courier deserves a platform built for them.\n\nmorrishive.com/ride-with-ease`,
+    caption: `We just built something for bike couriers in NYC, Chicago, SF, LA and Miami.\n\nSafe route mapping. Dangerous intersection alerts. E-bike battery planning. City-specific laws. Package tracking. Earnings per delivery.\n\nAll inside TruckWithEase.\n\nBecause every courier deserves a platform built for them.\n\ntruckwithease.com/ride-with-ease`,
     type: "Product Announcement", audience: "Bike Couriers, Gig Workers", time: "12:00 PM", reach: "Medium",
     tip: "Tag @NYCMayor, @ChicagoCityHall, local cycling advocacy accounts for organic reach"
   },
@@ -108,14 +108,14 @@ const POSTS = [
   },
   {
     day: 14, week: 2, platform: "instagram", title: "Bike + Car + Truck",
-    caption: `One platform. Every vehicle.\n\n🚛 Tractor-trailers\n🚗 Sprinters & delivery vans\n🚲 Bike couriers\n\nIntelligence routing. Real-time safety. Earnings tracking. Rewards.\n\nAll of it at morrishive.com\n\n#Trucking #Delivery #BikeLife #CourierLife #Dispatch #FleetManagement`,
+    caption: `One platform. Every vehicle.\n\n🚛 Tractor-trailers\n🚗 Sprinters & delivery vans\n🚲 Bike couriers\n\nIntelligence routing. Real-time safety. Earnings tracking. Rewards.\n\nAll of it at truckwithease.com\n\n#Trucking #Delivery #BikeLife #CourierLife #Dispatch #FleetManagement`,
     type: "Brand Story", audience: "All Vehicle Types", time: "9:00 AM", reach: "Medium",
     tip: "Use a split graphic — truck, car, bike side by side in gold on black"
   },
   // Week 3
   {
     day: 15, week: 3, platform: "facebook", title: "Free Trial Push",
-    caption: `Last chance this week — free trial still open.\n\nNo credit card. No contract. No hardware.\n\nJust log in and see why 3 fleet managers already switched to TruckWithEase this month.\n\n🔗 morrishive.com`,
+    caption: `Free trial still open this week.\n\nNo credit card. No contract. No new hardware.\n\nLog in and run your own fleet's numbers through it before you decide anything.\n\n🔗 truckwithease.com`,
     type: "Urgency CTA", audience: "All", time: "6:00 AM", reach: "High",
     tip: "Run this as a paid boost for $10 — target owner operators 25-55 within 100 miles of major freight hubs"
   },
@@ -127,19 +127,19 @@ const POSTS = [
   },
   {
     day: 17, week: 3, platform: "linkedin", title: "FMCSA Compliance",
-    caption: `Fleet managers: are you covered on all 26 FMCSA compliance requirements?\n\nTruckWithEase automatically handles 18 of them — including HOS logging, DVIR submission, CSA score monitoring, drug & alcohol clearinghouse, and ELD mandate compliance.\n\nThe other 8 are business-side items we walk you through step by step.\n\nSee your full compliance checklist at morrishive.com/fmcsa-registration`,
+    caption: `Fleet managers: do you actually know where your compliance gaps are?\n\nTruckWithEase tracks HOS logging, DVIR submission, CSA score monitoring, and drug & alcohol clearinghouse status in one checklist — and shows you plainly which items it covers and which ones are still on you.\n\nNo guessing about what's handled.\n\nSee your compliance checklist at truckwithease.com/fmcsa-registration`,
     type: "Compliance Education", audience: "Fleet Managers, Safety Directors", time: "8:00 AM", reach: "High",
     tip: "Tag DOT consultants and trucking attorneys for credibility"
   },
   {
     day: 18, week: 3, platform: "reddit", title: "Game Up Training",
-    caption: `We built a gamified CDL training system inside TruckWithEase and I want honest feedback\n\n10 modules: HOS, Pre-Trip, Hazmat, DOT Inspection Prep, Defensive Driving, Load Securement, ELD Operation, Accident Reporting, Drug & Alcohol, Backing & Maneuvering.\n\nDrivers earn XP and Big Rig Bucks for completing each module. Fleet managers see every driver's certification status in real time.\n\nFree to try: morrishive.com/game-up\n\nWhat would make you actually use this?`,
+    caption: `We built a gamified CDL training system inside TruckWithEase and I want honest feedback\n\n10 modules: HOS, Pre-Trip, Hazmat, DOT Inspection Prep, Defensive Driving, Load Securement, ELD Operation, Accident Reporting, Drug & Alcohol, Backing & Maneuvering.\n\nDrivers earn XP and Big Rig Bucks for completing each module. Fleet managers see every driver's certification status in real time.\n\nFree to try: truckwithease.com/game-up\n\nWhat would make you actually use this?`,
     type: "Feedback Request", audience: "Drivers", time: "6:00 PM", reach: "High",
     tip: "r/Truckers loves giving feedback. Respond to every comment."
   },
   {
     day: 19, week: 3, platform: "twitter", title: "Payroll From ELD Miles",
-    caption: `Trucking payroll should be simple:\n\n1. Driver drives\n2. ELD records verified miles\n3. Payroll calculates automatically\n4. You approve in one tap\n5. Done\n\nThat's TruckWithEase payroll.\n\nNo spreadsheets. No manual calculations. No disputes.\n\nmorrishive.com`,
+    caption: `Trucking payroll should be simple:\n\n1. Driver drives\n2. ELD records verified miles\n3. Payroll calculates automatically\n4. You approve in one tap\n5. Done\n\nThat's TruckWithEase payroll.\n\nNo spreadsheets. No manual calculations. No disputes.\n\ntruckwithease.com`,
     type: "Feature Highlight", audience: "Fleet Managers", time: "9:00 AM", reach: "Medium",
     tip: "Simple, clear, factual. This type of post gets shared by fleet managers constantly."
   },
@@ -151,14 +151,14 @@ const POSTS = [
   },
   {
     day: 21, week: 3, platform: "instagram", title: "Safety SOS Feature",
-    caption: `One tap. 911 local dispatch. State Patrol direct connect. GPS transmitted.\n\nEvery driver on TruckWithEase has Safety SOS in their pocket.\n\nBecause getting home safe is the only metric that matters.\n\nmorrishive.com\n\n#TruckDriver #Trucking #SafetyFirst #CDL #OwnerOperator`,
+    caption: `One tap. 911 local dispatch. State Patrol direct connect. GPS transmitted.\n\nEvery driver on TruckWithEase has Safety SOS in their pocket.\n\nBecause getting home safe is the only metric that matters.\n\ntruckwithease.com\n\n#TruckDriver #Trucking #SafetyFirst #CDL #OwnerOperator`,
     type: "Safety Feature", audience: "Drivers", time: "8:00 AM", reach: "High",
     tip: "This post will be shared by drivers' families. Real emotional connection."
   },
   // Week 4
   {
     day: 22, week: 4, platform: "facebook", title: "Dream Team Agents",
-    caption: `Our AI Dream Team never sleeps.\n\n⚡ THE GOAT — master platform agent, zero errors\n👩‍💼 HRease — hiring, onboarding, driver retention\n📡 Signal Sam — every phone line, every text, 24/7\n🧾 Billie Scan — one photo, bill sent to everyone instantly\n\nThis isn't software. This is your operations team.\n\nFree trial: morrishive.com`,
+    caption: `Our AI Dream Team never sleeps.\n\n⚡ THE GOAT — master platform agent, zero errors\n👩‍💼 HRease — hiring, onboarding, driver retention\n📡 Signal Sam — every phone line, every text, 24/7\n🧾 Billie Scan — one photo, bill sent to everyone instantly\n\nThis isn't software. This is your operations team.\n\nFree trial: truckwithease.com`,
     type: "Agent Spotlight", audience: "Fleet Managers", time: "7:00 AM", reach: "High",
     tip: "Video of the Dream Team page loading with agents animating in gets huge engagement"
   },
@@ -170,21 +170,21 @@ const POSTS = [
   },
   {
     day: 24, week: 4, platform: "linkedin", title: "Ghost Nerve Moat",
-    caption: `Why Ghost Nerve cannot be copied — even with unlimited budget:\n\n1. 3-year driver data advantage — every pattern, every lane, every decision\n2. 47-variable revenue architecture — competitors compute 4\n3. Sovereign ELD — cryptographically sealed, legally unalterable\n4. Predictive compliance — violations eliminated 72 hours before they happen\n\nThis is TruckWithEase's competitive moat.\n\nmorrishive.com/ghost-nerve`,
+    caption: `What makes Ghost Nerve hard to copy:\n\n1. Driver data that compounds — every pattern, every lane, every decision\n2. Revenue computed per mile, per load, per driver\n3. The Sealed Line — every dispatch message hash-chained to the driver's duty clock at the second it was sent, so tampering is evident\n4. Compliance risk surfaced while it's still fixable\n\nThis is TruckWithEase.\n\ntruckwithease.com/ghost-nerve`,
     type: "Investor/Industry Post", audience: "Investors, Industry Leaders", time: "9:00 AM", reach: "High",
     tip: "Tag venture capital firms focused on logistics and transportation tech"
   },
   {
     day: 25, week: 4, platform: "reddit", title: "Van/Sprinter Drivers",
-    caption: `For all the Sprinter van drivers, Amazon DSP fleets, and FedEx Ground contractors: TruckWithEase now has a full mode built specifically for you\n\nCross-state compliance updates automatically. Cold chain temperature logs for pharmaceutical routes. Two-person team delivery mode. Intelligence route optimization that saves 28 minutes per shift.\n\nFree trial: morrishive.com/drive-with-ease\n\nNot for CDL holders only — built for every commercial vehicle.`,
+    caption: `For all the Sprinter van drivers, Amazon DSP fleets, and FedEx Ground contractors: TruckWithEase now has a full mode built specifically for you\n\nCross-state compliance updates automatically. Cold chain temperature logs for pharmaceutical routes. Two-person team delivery mode. Intelligence route optimization that saves 28 minutes per shift.\n\nFree trial: truckwithease.com/drive-with-ease\n\nNot for CDL holders only — built for every commercial vehicle.`,
     type: "Audience Expansion", audience: "Van/Sprinter Drivers", time: "5:00 PM", reach: "High",
     tip: "Post in r/AmazonDSP, r/FedEx, r/UPS subreddits — massive untapped audience"
   },
   {
-    day: 26, week: 4, platform: "twitter", title: "Geotab Partnership",
-    caption: `Big news coming for TruckWithEase users.\n\nGeotab ELD integration in progress — live GPS, verified odometer miles, engine data, and safety events all flowing directly into intelligence dispatch and payroll.\n\nNo manual entry. No double systems. One platform.\n\nmorrishive.com`,
-    type: "Partnership Tease", audience: "Industry", time: "10:00 AM", reach: "Medium",
-    tip: "Tag @Geotab in the post — they often retweet partner mentions"
+    day: 26, week: 4, platform: "twitter", title: "Works With Your ELD",
+    caption: `TruckWithEase is built to run alongside the ELD you already have.\n\nWe don't sell you hardware and we don't ask you to rip anything out. Your existing device keeps doing HOS. TruckWithEase handles dispatch, payroll, hiring, and sealed message records on top of it.\n\nNo double systems. One platform.\n\ntruckwithease.com`,
+    type: "Positioning", audience: "Industry", time: "10:00 AM", reach: "Medium",
+    tip: "Do not name or tag a hardware vendor — no integration partnership is signed"
   },
   {
     day: 27, week: 4, platform: "youtube", title: "Bike Courier Feature Tour",
@@ -194,13 +194,13 @@ const POSTS = [
   },
   {
     day: 28, week: 4, platform: "instagram", title: "Month 1 Milestone",
-    caption: `Month 1. Platform live. Real drivers. Real fleets.\n\nThank you to everyone who tried TruckWithEase. We're just getting started.\n\n🚛 Dispatch\n📱 Fleet Voice\n🎮 Game Up Training\n⚡ Ghost Nerve Intelligence\n💰 Big Rig Bucks\n\nmorrishive.com\n\n#TruckWithEase #Trucking #FleetManagement #Milestone`,
+    caption: `Month 1. Platform live. Real drivers. Real fleets.\n\nThank you to everyone who tried TruckWithEase. We're just getting started.\n\n🚛 Dispatch\n📱 Fleet Voice\n🎮 Game Up Training\n⚡ Ghost Nerve Intelligence\n💰 Big Rig Bucks\n\ntruckwithease.com\n\n#TruckWithEase #Trucking #FleetManagement #Milestone`,
     type: "Milestone Post", audience: "All", time: "9:00 AM", reach: "High",
     tip: "Authenticity wins on Instagram. Real milestone posts get saved and shared."
   },
   {
     day: 29, week: 5, platform: "facebook", title: "30-Day Wrap",
-    caption: `30 days of TruckWithEase. Here's what we learned from real drivers and fleet managers:\n\n✅ The #1 request: payroll from ELD miles (it's live)\n✅ The #1 surprise: bike courier mode hit harder than expected\n✅ The #1 question: "Why doesn't Samsara do this?"\n\nWe're building what the industry actually needs.\n\nFree trial still open: morrishive.com`,
+    caption: `30 days of TruckWithEase. Here's what we learned from real drivers and fleet managers:\n\n✅ The #1 request: payroll from ELD miles (it's live)\n✅ The #1 surprise: bike courier mode hit harder than expected\n✅ The #1 question: "Why doesn't Samsara do this?"\n\nWe're building what the industry actually needs.\n\nFree trial still open: truckwithease.com`,
     type: "Month Wrap-Up", audience: "All", time: "6:00 AM", reach: "High",
     tip: "Community-style wrap-up posts get massive organic reach on Facebook"
   },
