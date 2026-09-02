@@ -157,6 +157,7 @@ const DriverAlgorithmPage = lazy(() => import("./pages/DriverAlgorithmPage"));
 const AdStrategyPage = lazy(() => import("./pages/AdStrategyPage"));
 const SocialCalendarPage = lazy(() => import("./pages/SocialCalendarPage"));
 const FleetSafetyIntelligencePage = lazy(() => import("./pages/FleetSafetyIntelligencePage"));
+const InsuranceIntelligencePage = lazy(() => import("./pages/InsuranceIntelligencePage"));
 const GeminiIntegrationPage = lazy(() => import("./pages/GeminiIntegrationPage"));
 const CodeVaultPage = lazy(() => import("./pages/CodeVaultPage"));
 const SafetyMeetingsPage = lazy(() => import("./pages/SafetyMeetingsPage"));
@@ -386,7 +387,8 @@ export default function App() {
   if (path === "/driver-algorithm" || path === "/my-algorithm") return <DriverAlgorithmPage />;
   if (path === "/ad-strategy" || path === "/advertise" || path === "/marketing") return <AdStrategyPage />;
   if (path === "/social-calendar" || path === "/content-calendar" || path === "/posts") return <SocialCalendarPage />;
-  if (path === "/fleet-safety" || path === "/safety-intel" || path === "/insurance-intel") return <FleetSafetyIntelligencePage />;
+  if (path === "/fleet-safety" || path === "/safety-intel") return <FleetSafetyIntelligencePage />;
+  if (path === "/insurance-intel" || path === "/insurance") return <InsuranceIntelligencePage />;
   if (path === "/dual-ai" || path === "/gemini" || path === "/ai-intelligence") return <GeminiIntegrationPage />;
   if (path === "/code-vault" || path === "/owner-vault" || path === "/source-vault") return <CodeVaultPage />;
 
