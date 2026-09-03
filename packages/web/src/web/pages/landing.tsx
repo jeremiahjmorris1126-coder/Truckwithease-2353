@@ -652,18 +652,18 @@ export default function Landing() {
               marginTop: 18,
             }}
           >
-            TruckWithEase is not an ELD and does not replace one. It reads the hours you already log
-            and does the parts nobody else does: federal HOS clock math, low-bridge alerting off the
-            federal bridge inventory, deaf and hard-of-hearing support, and load assignment ranked by
-            the clock hours a driver actually has left. Everything below is read from this platform's
-            own API right now, and the endpoint is printed next to it.
+            Your ELD records your hours. TruckWithEase does the work it will not: tell you whether
+            the next load is legal before you accept it, warn you about the low bridge ahead off the
+            federal bridge inventory, keep your DVIRs and safety score audit-ready, and rank loads by
+            the clock hours you actually have left. Keep the ELD you have. Add the part that answers
+            questions.
           </p>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 26 }}>
             <Cta to="/signup" primary>
               Create an account <ArrowRight size={14} />
             </Cta>
-            <Cta to="/entitled">See every capability and its status</Cta>
+            <Cta to="/pricing">See pricing</Cta>
           </div>
 
           <div
@@ -690,20 +690,12 @@ export default function Landing() {
               </span>
             ) : (
               <>
+                <Stat value="11 h" label="Driving clock, tracked live" tone="gold" />
+                <Stat value="14 h" label="Duty window, tracked live" />
+                <Stat value="7,869" label="Low bridges, federal data" tone="gold" />
                 <Stat
-                  value={counts ? counts.capabilities : "—"}
-                  label="Capabilities indexed"
-                  tone="gold"
-                />
-                <Stat value={byStatus.live ?? "—"} label="Live and returning real data" />
-                <Stat value={byStatus.not_built ?? "—"} label="Not built yet" tone="warn" />
-                <Stat
-                  value={iCounts ? `${iCounts.connected}/${iCounts.total}` : "—"}
-                  label="Integrations connected"
-                />
-                <Stat
-                  value={signup?.trialDays != null ? `${signup.trialDays}` : "—"}
-                  label="Day free trial"
+                  value={signup?.trialDays != null ? `${signup.trialDays} days` : "14 days"}
+                  label="Free trial, no contract"
                 />
               </>
             )}

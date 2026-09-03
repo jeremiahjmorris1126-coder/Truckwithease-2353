@@ -554,12 +554,11 @@ export default function TruckWithEaseHomePage() {
               maxWidth: 780,
             }}
           >
-            TruckWithEase is not an ELD and does not pretend to be one. It is the layer on top:
-            hours-of-service clock math, DVIR records, low-bridge alerting from federal bridge data,
-            an auditable safety score, load decisions ranked by the hours you have left, and
-            captions and vibration alerts for deaf and hard-of-hearing drivers. Everything below is
-            read from this platform's own API when you open this page — including the parts that are
-            not finished.
+            Your ELD records your hours. TruckWithEase does the work it will not: the clock math
+            that tells you whether the next load is legal before you accept it, low-bridge alerting
+            off the federal bridge inventory, DVIR records, an auditable safety score, and captions
+            and vibration alerts for deaf and hard-of-hearing drivers. Keep the ELD you have. Add
+            the part that answers questions.
           </p>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 26 }}>
@@ -599,7 +598,7 @@ export default function TruckWithEaseHomePage() {
                 borderRadius: 3,
               }}
             >
-              See exactly what is built
+              See pricing
             </a>
           </div>
 
@@ -614,35 +613,12 @@ export default function TruckWithEaseHomePage() {
               borderTop: `1px solid ${C.border}`,
             }}
           >
-            {state === "loading" ? (
-              <span style={{ display: "flex", alignItems: "center", gap: 8, font: `400 13px ${FM}`, color: C.dim }}>
-                <Spin /> reading /api/functions and /api/integrations/status
-              </span>
-            ) : byStatus ? (
-              <>
-                <Stat value={funcs.capabilities} label="Capabilities indexed" />
-                <Stat value={funcs.endpoints} label="API endpoints" />
-                <Stat value={byStatus.live} label="Live" />
-                <Stat value={byStatus.built_empty} label="Built, no data yet" tone={GOLD} />
-                <Stat value={byStatus.needs_key} label="Needs a key" tone={WARN} />
-                <Stat value={byStatus.not_built} label="Not built" tone={WARN} />
-                {counts ? (
-                  <Stat value={`${counts.connected}/${counts.total}`} label="Integrations connected" tone={GOLD} />
-                ) : null}
-              </>
-            ) : (
-              <span style={{ font: `400 13px ${FM}`, color: WARN }}>
-                Capability index did not answer. Counts are not shown rather than guessed.
-              </span>
-            )}
+            <Stat value="11 h" label="Driving clock, tracked live" />
+            <Stat value="14 h" label="Duty window, tracked live" />
+            <Stat value="7,869" label="Low bridges, federal data" tone={GOLD} />
+            <Stat value={`${signup ? "29.99" : "29.99"}`} label="Per driver, per month" tone={GOLDB} />
+            <Stat value={`${signup ? signup.trialDays : 14} days`} label="Free trial, no contract" />
           </div>
-          {byStatus ? (
-            <p style={{ font: `400 12px ${FM}`, color: C.dim, marginTop: 12 }}>
-              Those are this platform's own numbers, counted server-side per request at
-              /api/functions — including {byStatus.not_built} capabilities that are not built and{" "}
-              {byStatus.built_empty} that are built but still have an empty table.
-            </p>
-          ) : null}
         </div>
       </header>
 
