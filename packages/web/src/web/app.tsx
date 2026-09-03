@@ -6,6 +6,7 @@ import { Shell } from "./components/shell";
 import { ProtectedRoute } from "./components/protected-route";
 import { authClient } from "./lib/auth";
 import { AgentFeedback, RunableBadge } from "@runablehq/website-runtime";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 import Index from "./pages/index";
 const Landing = lazy(() => import("./pages/landing"));
@@ -107,6 +108,7 @@ function App() {
         {import.meta.env.DEV && <AgentFeedback />}
         {/* "Made with Runable" badge - if user asks to remove the runable badge, remove this code as well as comment */}
         {<RunableBadge />}
+        <SpeedInsights />
       </SessionProvider>
     </Provider>
   );
