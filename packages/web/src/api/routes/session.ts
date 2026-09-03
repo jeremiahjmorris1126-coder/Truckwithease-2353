@@ -206,14 +206,14 @@ export const sessionRoute = new Hono()
   .get("/coverage", (c) =>
     c.json({
       gated: {
-        endpoints: ["/api/session/role"],
-        note: "Role assignment is the only endpoint that currently rejects an unauthenticated caller.",
+        endpoints: ["All feature routes except the explicitly public onboarding, liveness, and session endpoints"],
+        note: "The shared API middleware rejects unauthenticated requests before they reach feature routers. Role assignment also requires an admin session.",
       },
       notGated: {
-        note: "Every other /api route still answers without a session. That is a known gap, not a design choice — it is the next block of work after sign-in ships.",
+        note: "Public endpoints are limited to authentication, signup, support, the landing-page capability/status reads, liveness, and session-status responses. Feature APIs require a valid Better Auth session.",
       },
       honest:
-        "Auth is wired and real. Authorization across the existing 40+ routers is NOT finished. Do not describe this app as access-controlled yet.",
+        "Authentication is enforced centrally for feature routes. Endpoint-specific authorization, including fleet and record ownership checks, remains the next authorization layer.",
     }),
   );
 

@@ -61,10 +61,13 @@ import { functionsIndex } from "./routes/functions";
 import { openapiRoutes } from "./routes/openapi";
 import { responsibleUseRoute } from "./routes/responsibleuse";
 import { hapticRoute } from "./routes/haptic";
+import { requireSession } from "./middleware/session";
 
 const app = new Hono()
   .basePath('api')
   .use(cors({ origin: (origin) => origin ?? "*", credentials: true, exposeHeaders: ["set-auth-token"] }))
+  // The guard explicitly allows Better Auth and the minimal public onboarding surface.
+  .use("*", requireSession)
   // Better Auth owns /api/auth/*. Registered before every feature route so a
   // sign-in request never falls through to a feature router.
   .on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw))
