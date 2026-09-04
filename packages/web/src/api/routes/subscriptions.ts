@@ -175,6 +175,7 @@ export const subscriptions = new Hono()
   })
 
   .get("/:id", async (c) => {
+    if (!(await hasAdminRole(c.req.raw.headers))) return c.json({ error: "Admin role required." }, 403);
     const [row] = await db
       .select()
       .from(schema.subscriptions)
@@ -194,6 +195,7 @@ export const subscriptions = new Hono()
   })
 
   .post("/:id/status", async (c) => {
+    if (!(await hasAdminRole(c.req.raw.headers))) return c.json({ error: "Admin role required." }, 403);
     const body = await c.req.json().catch(() => ({}) as Record<string, unknown>);
     const status = typeof body.status === "string" ? body.status : "";
     if (!(SUB_STATUSES as readonly string[]).includes(status)) {
@@ -229,6 +231,7 @@ export const subscriptions = new Hono()
   })
 
   .post("/:id/cancel", async (c) => {
+    if (!(await hasAdminRole(c.req.raw.headers))) return c.json({ error: "Admin role required." }, 403);
     const body = await c.req.json().catch(() => ({}) as Record<string, unknown>);
     const [row] = await db
       .select()
@@ -265,6 +268,7 @@ export const subscriptions = new Hono()
 
   // ── Billing cases ─────────────────────────────────────────────────────────
   .get("/billing-cases/list", async (c) => {
+    if (!(await hasAdminRole(c.req.raw.headers))) return c.json({ error: "Admin role required." }, 403);
     const status = c.req.query("status");
     const rows = status
       ? await db
@@ -364,6 +368,7 @@ export const subscriptions = new Hono()
   })
 
   .post("/billing-cases/:id/resolve", async (c) => {
+    if (!(await hasAdminRole(c.req.raw.headers))) return c.json({ error: "Admin role required." }, 403);
     const body = await c.req.json().catch(() => ({}) as Record<string, unknown>);
     const status = typeof body.status === "string" ? body.status : "resolved";
     if (!["resolved", "refunded", "rejected", "in_review"].includes(status)) {
