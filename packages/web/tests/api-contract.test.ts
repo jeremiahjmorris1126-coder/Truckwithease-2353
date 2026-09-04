@@ -19,6 +19,20 @@ test("integration status is publicly available with provider metadata", async ()
   expect(body.providers.every((provider) => Array.isArray(provider.envKeys))).toBe(true);
 });
 
+test("subscriptions admin listing requires a Better Auth session", async () => {
+  const response = await handler(new Request(`${origin}/api/subscriptions/list`));
+
+  expect(response.status).toBe(401);
+  expect(await response.json()).toMatchObject({ error: "Authentication required." });
+});
+
+test("signup administration requires a Better Auth session", async () => {
+  const response = await handler(new Request(`${origin}/api/signup/list`));
+
+  expect(response.status).toBe(401);
+  expect(await response.json()).toMatchObject({ error: "Authentication required." });
+});
+
 test("Fleet Chief requires a Better Auth session", async () => {
   const response = await handler(
     new Request(`${origin}/api/agent/fleet-chief`, {

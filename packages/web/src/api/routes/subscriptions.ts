@@ -3,6 +3,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { db } from "../database";
 import * as schema from "../database/schema";
 import { PLANS, TRIAL_DAYS } from "./signup";
+import { hasAdminRole } from "./session";
 
 /**
  * Subscriptions + billing cases — server side.
@@ -139,6 +140,7 @@ export const subscriptions = new Hono()
   })
 
   .get("/list", async (c) => {
+    if (!(await hasAdminRole(c.req.raw.headers))) return c.json({ error: "Admin role required." }, 403);
     const status = c.req.query("status");
     const rows = status
       ? await db
