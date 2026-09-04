@@ -49,6 +49,13 @@ async function roleFor(userId: string): Promise<{ role: Role; assignedBy: string
   return { role, assignedBy: row.assignedBy ?? null, explicit: true };
 }
 
+/** True only for an authenticated user explicitly assigned the admin role. */
+export async function hasAdminRole(headers: Headers): Promise<boolean> {
+  const session = await sessionFor(headers);
+  if (!session?.user) return false;
+  return (await roleFor(session.user.id)).role === "admin";
+}
+
 async function adminCount(): Promise<number> {
   const rows = await db.select().from(userRoles).where(eq(userRoles.role, "admin"));
   return rows.length;
