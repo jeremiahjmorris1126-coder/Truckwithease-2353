@@ -10,6 +10,15 @@ test("Vercel Function forwards the public health endpoint", async () => {
   expect(await response.json()).toEqual({ status: "ok" });
 });
 
+test("integration status is publicly available with provider metadata", async () => {
+  const response = await handler(new Request(`${origin}/api/integrations/status`));
+
+  expect(response.status).toBe(200);
+  const body = await response.json() as { providers: Array<{ envKeys: string[] }> };
+  expect(Array.isArray(body.providers)).toBe(true);
+  expect(body.providers.every((provider) => Array.isArray(provider.envKeys))).toBe(true);
+});
+
 test("Fleet Chief requires a Better Auth session", async () => {
   const response = await handler(
     new Request(`${origin}/api/agent/fleet-chief`, {
