@@ -100,12 +100,12 @@ bridges.get("/status", async (c) => {
   let importedAt: number | null = null;
   try {
     const t = await rows(`SELECT COUNT(*) AS n, MIN(clearance_in) AS lo, MAX(nbi_year) AS y,
-      SUM(CASE WHEN suspect = 1 THEN 1 ELSE 0 END) AS sus, MAX(imported_at) AS imp FROM low_bridges`);
+      SUM(CASE WHEN suspect THEN 1 ELSE 0 END) AS sus, MAX(imported_at) AS imp FROM low_bridges`);
     total = Number(t[0]?.n ?? 0);
     minClr = t[0]?.lo === null || t[0]?.lo === undefined ? null : Number(t[0].lo);
     year = t[0]?.y === null || t[0]?.y === undefined ? null : Number(t[0].y);
     suspect = Number(t[0]?.sus ?? 0);
-    importedAt = t[0]?.imp ? Number(t[0].imp) : null;
+    importedAt = t[0]?.imp ? new Date(t[0].imp as string | number | Date).getTime() : null;
     byState = (
       await rows(
         `SELECT state_abbr AS s, COUNT(*) AS n, MIN(clearance_in) AS lo FROM low_bridges GROUP BY state_abbr ORDER BY n DESC`,
