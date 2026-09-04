@@ -387,6 +387,23 @@ const styles = `
     color: #fff;
   }
 
+  /* MOBILE NAV — keep it a single tidy row on small screens.
+     The full-width flex nav wraps its links past the 64px bar at ~400px,
+     so here we drop the wordmark text (logo stays), tighten spacing, and
+     forbid wrapping so the three links sit on one line. */
+  @media (max-width: 640px) {
+    .acp-nav { padding: 0 14px; height: 56px; gap: 8px; }
+    .acp-nav-label { display: none; }
+    .acp-nav-links { flex-wrap: nowrap; gap: 6px; }
+    .acp-nav-link {
+      font-size: 12px;
+      padding: 7px 10px;
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+    }
+  }
+
   /* HERO */
   .acp-hero {
     position: relative;
@@ -543,6 +560,15 @@ const styles = `
   }
   @media (max-width: 860px) {
     .acp-detail-panel { grid-template-columns: 1fr; }
+  }
+  /* Grid children default to min-width:auto, so long content (chat input row,
+     CTA, nowrap badge) was forcing the track ~68px past a 402px viewport and
+     causing horizontal scroll. min-width:0 lets the columns shrink to fit. */
+  .acp-char-card, .acp-right-col { min-width: 0; }
+  @media (max-width: 640px) {
+    .acp-detail-wrap { padding: 32px 16px; }
+    .acp-detail-panel { gap: 20px; }
+    .acp-char-card { padding: 24px; min-height: 0; border-radius: 18px; }
   }
   @keyframes fadeSlideIn {
     from { opacity: 0; transform: translateY(18px); }
@@ -1645,13 +1671,19 @@ export default function AICharactersPage() {
                 🧠 Ask {activeChar.name} Directly — Powered by Real AI
               </div>
               {(liveMessages[activeId] || []).map((m, i) => (
-                <div key={i} style={{ marginBottom:8, display:'flex', justifyContent: m.from === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div key={i} style={{ marginBottom:8, display:'flex', flexDirection:'column', alignItems: m.from === 'user' ? 'flex-end' : 'flex-start' }}>
                   <div style={{
-                    maxWidth:'80%', padding:'8px 12px', borderRadius:12, fontSize:13,
+                    maxWidth:'85%', padding:'8px 12px', borderRadius:12, fontSize:13, lineHeight:1.5,
+                    whiteSpace:'pre-wrap', wordBreak:'break-word',
                     background: m.from === 'user' ? 'rgba(255,215,0,0.15)' : `${activeChar.accent}18`,
                     border: m.from === 'user' ? '1px solid rgba(255,215,0,0.3)' : `1px solid ${activeChar.accent}44`,
                     color: m.from === 'user' ? '#FFD700' : '#fff',
-                  }}>{m.text}</div>
+                  }}>{m.text || (m.streaming ? '…' : '')}</div>
+                  {m.from === 'ai' && !m.streaming && m.live === false && m.reason === 'no_key' && (
+                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:3, letterSpacing:'0.03em' }}>
+                      Demo mode — no AI provider key is configured, so this is a sample answer, not a live model response.
+                    </div>
+                  )}
                 </div>
               ))}
               {aiThinking && (
@@ -1663,11 +1695,16 @@ export default function AICharactersPage() {
                 <input
                   value={liveInput}
                   onChange={e => setLiveInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && sendLiveMessage()}
+                  onKeyDown={e => {
+                    // Don't submit mid-IME-composition (CJK) — Enter is confirming a candidate,
+                    // not sending. keyCode 229 covers Safari's unreliable final composition event.
+                    if (e.key !== 'Enter' || e.nativeEvent.isComposing || e.keyCode === 229) return;
+                    sendLiveMessage();
+                  }}
                   placeholder={`Ask ${activeChar.name} anything…`}
                   style={{
-                    flex:1, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.15)',
-                    borderRadius:8, padding:'8px 12px', color:'#fff', fontSize:13, outline:'none',
+                    flex:1, minWidth:0, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.15)',
+                    borderRadius:8, padding:'10px 12px', color:'#fff', fontSize:16, outline:'none',
                   }}
                 />
                 <button
@@ -1675,8 +1712,8 @@ export default function AICharactersPage() {
                   disabled={aiThinking || !liveInput.trim()}
                   style={{
                     background: aiThinking ? 'rgba(255,215,0,0.2)' : 'linear-gradient(135deg,#C9A84C,#FFD700)',
-                    border:'none', borderRadius:8, padding:'8px 16px', color:'#000', fontWeight:700,
-                    fontSize:13, cursor: aiThinking ? 'not-allowed' : 'pointer',
+                    border:'none', borderRadius:8, padding:'8px 18px', color:'#000', fontWeight:700,
+                    fontSize:14, minHeight:44, flexShrink:0, cursor: aiThinking ? 'not-allowed' : 'pointer',
                   }}
                 >Send</button>
               </div>

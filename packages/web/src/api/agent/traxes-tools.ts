@@ -41,7 +41,7 @@ import { buildBrain, type TraxesBrain } from "./traxes-brain";
 type Row = Record<string, unknown>;
 
 async function run(q: string): Promise<Row[]> {
-  const r = (await db.run(sql.raw(q))) as unknown as { rows: Row[] };
+  const r = (await db.execute(sql.raw(q))) as unknown as { rows: Row[] };
   return (r.rows ?? []) as Row[];
 }
 
@@ -220,11 +220,11 @@ export function makeTraxesTools(ctx: TraxesToolCtx) {
       if (!/^[a-z_][a-z0-9_]*$/i.test(table)) {
         return { refused: true, reason: "That is not a valid table identifier, so nothing was queried." };
       }
-      const exists = await run(`select name from sqlite_master where type='table' and name='${table}'`);
+      const exists = await run(`select table_name as name from information_schema.tables where table_schema = 'public' and table_name = '${table}'`);
       if (exists.length === 0) {
         return { table, exists: false, note: "No such table in this database. Say it does not exist rather than describing what it would hold." };
       }
-      const cols = await run(`pragma table_info("${table}")`);
+      const cols = await run(`select column_name as name from information_schema.columns where table_schema = 'public' and table_name = '${table}'`);
       const count = Number((await run(`select count(*) as n from "${table}"`))[0]?.n ?? 0);
       let rows: Row[] = [];
       if (sample > 0 && count > 0) {

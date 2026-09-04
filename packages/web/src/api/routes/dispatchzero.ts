@@ -67,7 +67,7 @@ const KNOWN_MISSING = [
 const rid = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 async function rawRows(q: string): Promise<any[]> {
-  const r: any = await db.run(sql.raw(q));
+  const r: any = await db.execute(sql.raw(q));
   return (r?.rows ?? []) as any[];
 }
 

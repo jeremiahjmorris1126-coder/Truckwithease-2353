@@ -19,10 +19,6 @@ import {
   SAFETY_SARGE,
   WEATHER_WANDA,
   HUMANAI_HR,
-  BILLIE_SCAN,
-  SIGNAL_SAM,
-  GAME_UP_AI,
-  HARDWARE_BOT,
 } from "./personas";
 
 const FLEET_CHIEF = dedent`
@@ -116,10 +112,6 @@ function demoReply(agent: string, prompt: string) {
     "safety-sarge": `Highest-risk item first, always — and I coach the habit, not just the number. In demo mode I've got no logs to score, so connect your speed events, inspections and HOS and I'll give you a composite 0-100 with speeding normalized per 100 miles. DOT cert calls belong to your examiner.`,
     "weather-wanda": `Bottom line first — roll, caution, or hold — then the corridors and timing. I won't call a wind speed, a closure or an active chain law on my own authority in demo mode; check NWS and the state DOT. Give me the route and trailer type and I'll frame the decision.`,
     "humanai-hr-manager": `I run fleet HR to a master's standard — qualification files (49 CFR 391), pre-screens, FCRA background checks, payroll runs and AB5. In demo mode I won't invent mileage, pay rates or MVR results. Tell me the driver and the task and I'll give you the compliant next step and the paperwork. Fleet admins only.`,
-    "billie-scan": `I prepare documents for the TRAXES scan and filing workflow. In demo mode, paste the printed fields or describe the document and I will identify what needs human confirmation. I cannot claim that an image was scanned or a record was filed.`,
-    "signal-sam": `I can draft a driver, broker, or customer message from the facts you give me. In demo mode I cannot send, deliver, or monitor messages. Give me the recipient, channel, and the verified load details.`,
-    "game-up-ai": `I can create a short training drill and explain the supplied material. In demo mode I do not issue certifications or record completion. Tell me the topic, driver role, and any policy or regulation text to use.`,
-    "hardware-bot": `I can collect device details, triage a reported symptom, and prepare a support-case summary. In demo mode I cannot verify pairing, shipment, warranty, or device registration. Give me the make, model, connection type, and error.`,
   };
   if (DEMOS[agent]) {
     return dedent`
@@ -156,11 +148,7 @@ export type AgentId =
   | "money-marisol"
   | "safety-sarge"
   | "weather-wanda"
-  | "humanai-hr-manager"
-  | "billie-scan"
-  | "signal-sam"
-  | "game-up-ai"
-  | "hardware-bot";
+  | "humanai-hr-manager";
 
 const SYSTEMS: Record<AgentId, string> = {
   // The driver assistant IS the governing spec — guardrails are already inside it.
@@ -185,10 +173,6 @@ const SYSTEMS: Record<AgentId, string> = {
   "safety-sarge": `${PLATFORM_GUARDRAILS}\n\n${SAFETY_SARGE}`,
   "weather-wanda": `${PLATFORM_GUARDRAILS}\n\n${WEATHER_WANDA}`,
   "humanai-hr-manager": `${PLATFORM_GUARDRAILS}\n\n${HUMANAI_HR}`,
-  "billie-scan": `${PLATFORM_GUARDRAILS}\n\n${BILLIE_SCAN}`,
-  "signal-sam": `${PLATFORM_GUARDRAILS}\n\n${SIGNAL_SAM}`,
-  "game-up-ai": `${PLATFORM_GUARDRAILS}\n\n${GAME_UP_AI}`,
-  "hardware-bot": `${PLATFORM_GUARDRAILS}\n\n${HARDWARE_BOT}`,
 };
 
 /**
@@ -221,10 +205,6 @@ export const AGENT_ROSTER: { id: AgentId; name: string; role: string }[] = [
   { id: "safety-sarge", name: "Safety Sarge", role: "Safety & health coach — safety score, driving behavior, DOT physical prep" },
   { id: "weather-wanda", name: "Weather Wanda", role: "Weather intelligence — storms, ice, crosswind, chain laws by corridor" },
   { id: "humanai-hr-manager", name: "HUMANAI HR Manager", role: "Fleet HR — driver records, payroll runs, hiring, background checks, AB5" },
-  { id: "billie-scan", name: "Billie Scan", role: "Document review — prepares TRAXES scans and filing details" },
-  { id: "signal-sam", name: "Signal Sam", role: "Fleet communications — drafts driver, broker, and customer messages" },
-  { id: "game-up-ai", name: "Game Up AI", role: "Driver training — creates practice questions and coaching plans" },
-  { id: "hardware-bot", name: "Hardware Bot", role: "Device support — diagnoses reports and prepares support cases" },
 ];
 
 export type RunOpts = {
