@@ -27,7 +27,7 @@
  */
 const AGENT_ENDPOINTS = {
   'THE GOAT': 'the-goat',
-  'HRease': 'humanai',
+  'HRease': 'humanai-hr-manager',
   'Ghost Nerve': 'ghost-nerve',
   'Road Agent': 'road-agent',
   'Fleet Chief': 'fleet-chief',
@@ -37,6 +37,13 @@ const AGENT_ENDPOINTS = {
   'Fleet Mind': 'intelligence-mind',
   'Memory Management': 'memory-agent',
   'Page Guardian': 'page-guardian',
+  // AI Command Post cast — each must reach its OWN persona, not fall back to THE GOAT.
+  'Routing Robbie': 'routing-robbie',
+  'Compliant Kathy': 'compliant-kathy',
+  'Dispatch Darryl': 'dispatch-darryl',
+  'Money Marisol': 'money-marisol',
+  'Safety Sarge': 'safety-sarge',
+  'Weather Wanda': 'weather-wanda',
 };
 
 /** Agents named on legacy pages that have no server-side persona behind them. */
