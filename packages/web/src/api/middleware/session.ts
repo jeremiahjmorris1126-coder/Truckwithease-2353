@@ -12,14 +12,26 @@ const PUBLIC_GET_PATHS = new Set([
   "/session/me",
   "/session/status",
   "/session/coverage",
+  // Pure reference / computation tools — no user data, safe to read unauthenticated.
+  "/weight-check",
+  "/design-system",
+  "/design-system/tokens.css",
+  "/medical-examiner",
+  "/medical-examiner/search",
 ]);
 
 function apiPath(path: string) {
   return path.replace(/^\/api(?=\/|$)/, "") || "/";
 }
 
-/** POST routes reachable before a session exists (onboarding + demo sign-in). */
-const PUBLIC_POST_PATHS = new Set(["/signup", "/session/demo"]);
+/** POST routes reachable before a session exists (onboarding + demo sign-in + calculators). */
+const PUBLIC_POST_PATHS = new Set([
+  "/signup",
+  "/session/demo",
+  // Federal weight math — pure calculators over caller-supplied numbers, no data.
+  "/weight-check/bridge-formula",
+  "/weight-check/check",
+]);
 
 function isPublicRequest(method: string, path: string) {
   if (path.startsWith("/auth/")) return true;
