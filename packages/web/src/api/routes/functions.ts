@@ -50,7 +50,7 @@ let dbUnavailable = false;
 
 async function run(q: string): Promise<Row[]> {
   try {
-    const r = (await db.run(sql.raw(q))) as unknown as { rows: Row[] };
+    const r = (await db.execute(sql.raw(q))) as unknown as { rows: Row[] };
     return (r.rows ?? []) as Row[];
   } catch (e) {
     // The self-audit must never take itself down. If the database is missing or
@@ -1206,7 +1206,7 @@ export const functionsIndex = (getRoutes: () => { method: string; path: string }
       /* 2. TABLES — live existence + row counts, only the ones referenced -- */
       const wanted = [...new Set(CAPS.flatMap((x) => x.tables))].sort();
       const existing = new Set(
-        (await run("SELECT name FROM sqlite_master WHERE type='table'")).map((r) =>
+        (await run("SELECT table_name AS name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'")).map((r) =>
           String(r.name),
         ),
       );

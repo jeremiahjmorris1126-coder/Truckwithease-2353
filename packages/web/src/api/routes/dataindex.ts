@@ -38,7 +38,7 @@ import { db } from "../database";
 type Row = Record<string, unknown>;
 
 async function run(q: string): Promise<Row[]> {
-  const r = (await db.run(sql.raw(q))) as unknown as { rows: Row[] };
+  const r = (await db.execute(sql.raw(q))) as unknown as { rows: Row[] };
   return (r.rows ?? []) as Row[];
 }
 
@@ -110,14 +110,16 @@ const TABLE_MAP: Record<string, { domain: string; powers: string | null }> = {
 async function tableInventory() {
   const names = (
     await run(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_litestream%' ORDER BY name`,
+      `SELECT table_name AS name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name`,
     )
   ).map((r) => String(r.name));
 
   const tables = [];
   for (const name of names) {
     const c = await run(`SELECT COUNT(*) AS c FROM "${name}"`);
-    const cols = await run(`PRAGMA table_info("${name}")`);
+    const cols = await run(
+      `SELECT column_name AS name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = '${name}'`,
+    );
     const meta = TABLE_MAP[name] ?? { domain: "Unmapped", powers: null };
     tables.push({
       table: name,
@@ -596,7 +598,7 @@ export const dataIndex = new Hono()
           empty: tables.filter((t) => t.rows === 0).length,
           unmapped: tables.filter((t) => t.powers === null).length,
         },
-        note: "Live PRAGMA/COUNT(*) against the Turso database on every request. Nothing cached.",
+        note: "Live information_schema/COUNT(*) against the Neon Postgres database on every request. Nothing cached.",
       });
     } catch (e) {
       return c.json({ error: e instanceof Error ? e.message : "introspection failed" }, 502);

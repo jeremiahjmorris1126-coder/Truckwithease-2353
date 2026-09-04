@@ -43,7 +43,7 @@ const STANDARD_TRAILER_IN = 162; // 13'6"
 
 // The full house rule: nothing is cached. Every request reads the table.
 async function rows(q: string): Promise<any[]> {
-  const r: any = await db.run(sql.raw(q));
+  const r: any = await db.execute(sql.raw(q));
   return (r?.rows ?? []) as any[];
 }
 

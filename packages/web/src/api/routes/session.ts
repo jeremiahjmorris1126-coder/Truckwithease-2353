@@ -229,7 +229,7 @@ export const sessionRoute = new Hono()
     let userCount: number | null = null;
     let admins: number | null = null;
     try {
-      const r = (await db.run(
+      const r = (await db.execute(
         sql.raw('select count(*) as n from "user"'),
       )) as unknown as { rows: Array<{ n?: number | string }> };
       const n = r?.rows?.[0]?.n;
