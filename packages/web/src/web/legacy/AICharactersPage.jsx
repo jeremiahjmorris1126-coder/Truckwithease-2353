@@ -1679,7 +1679,7 @@ export default function AICharactersPage() {
                     border: m.from === 'user' ? '1px solid rgba(255,215,0,0.3)' : `1px solid ${activeChar.accent}44`,
                     color: m.from === 'user' ? '#FFD700' : '#fff',
                   }}>{m.text || (m.streaming ? '…' : '')}</div>
-                  {m.from === 'ai' && !m.streaming && m.live === false && m.reason !== 'aborted' && (
+                  {m.from === 'ai' && !m.streaming && m.live === false && m.reason === 'no_key' && (
                     <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:3, letterSpacing:'0.03em' }}>
                       Demo mode — no AI provider key is configured, so this is a sample answer, not a live model response.
                     </div>
