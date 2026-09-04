@@ -93,6 +93,73 @@ export const agentRoutes = new Hono()
     const text = await runAgent("page-guardian", messages ?? [{ role: "user", content: "Report on the latest health checks." }], checks ? `# Health check results\n${JSON.stringify(checks, null, 2)}` : undefined);
     return c.json({ text, live: hasAI() }, 200);
   })
+  /* AI Command Post — the 7 personality-driven characters. */
+  .post("/routing-robbie", async (c) => {
+    const { messages, driving, profile, driverId } = await c.req.json();
+    const text = await runAgent("routing-robbie", messages, await profileNote(driverId), { driving: !!driving, profile: profile ?? null });
+    return c.json({ text, live: hasAI(), driving: !!driving }, 200);
+  })
+  .post("/compliant-kathy", async (c) => {
+    const { messages, driving, profile, driverId } = await c.req.json();
+    const text = await runAgent("compliant-kathy", messages, await profileNote(driverId), { driving: !!driving, profile: profile ?? null });
+    return c.json({ text, live: hasAI() }, 200);
+  })
+  .post("/dispatch-darryl", async (c) => {
+    const { messages, profile, context, driverId } = await c.req.json();
+    const loadCtx = context ? `# Load / broker context supplied by the platform\n${typeof context === "string" ? context : JSON.stringify(context, null, 2)}` : undefined;
+    const learned = await profileNote(driverId);
+    const text = await runAgent("dispatch-darryl", messages, [loadCtx, learned].filter(Boolean).join("\n\n") || undefined, { profile: profile ?? null });
+    return c.json({ text, live: hasAI() }, 200);
+  })
+  .post("/money-marisol", async (c) => {
+    const { messages, profile, context, traxes, driverId } = await c.req.json();
+    const money = context ?? traxes;
+    const moneyCtx = money ? `# TRAXES / financial context supplied by the platform\n${typeof money === "string" ? money : JSON.stringify(money, null, 2)}` : undefined;
+    const learned = await profileNote(driverId);
+    const text = await runAgent("money-marisol", messages, [moneyCtx, learned].filter(Boolean).join("\n\n") || undefined, { profile: profile ?? null });
+    return c.json({ text, live: hasAI() }, 200);
+  })
+  .post("/safety-sarge", async (c) => {
+    const { messages, driving, profile, driverId } = await c.req.json();
+    const text = await runAgent("safety-sarge", messages, await profileNote(driverId), { driving: !!driving, profile: profile ?? null });
+    return c.json({ text, live: hasAI() }, 200);
+  })
+  .post("/weather-wanda", async (c) => {
+    const { messages, driving, profile, driverId } = await c.req.json();
+    const text = await runAgent("weather-wanda", messages, await profileNote(driverId), { driving: !!driving, profile: profile ?? null });
+    return c.json({ text, live: hasAI() }, 200);
+  })
+  .post("/humanai-hr-manager", async (c) => {
+    const { messages, profile, context, driverId } = await c.req.json();
+    const hrCtx = context ? `# HR / roster context supplied by the platform\n${typeof context === "string" ? context : JSON.stringify(context, null, 2)}` : undefined;
+    const learned = await profileNote(driverId);
+    const text = await runAgent("humanai-hr-manager", messages, [hrCtx, learned].filter(Boolean).join("\n\n") || undefined, { profile: profile ?? null });
+    return c.json({ text, live: hasAI() }, 200);
+  })
+  .post("/billie-scan", async (c) => {
+    const { messages, context, driverId } = await c.req.json();
+    const document = context ? `# Document details supplied by the platform\n${typeof context === "string" ? context : JSON.stringify(context, null, 2)}` : undefined;
+    const text = await runAgent("billie-scan", messages, [document, await profileNote(driverId)].filter(Boolean).join("\n\n") || undefined);
+    return c.json({ text, live: hasAI() }, 200);
+  })
+  .post("/signal-sam", async (c) => {
+    const { messages, context, driverId } = await c.req.json();
+    const communication = context ? `# Communication facts supplied by the platform\n${typeof context === "string" ? context : JSON.stringify(context, null, 2)}` : undefined;
+    const text = await runAgent("signal-sam", messages, [communication, await profileNote(driverId)].filter(Boolean).join("\n\n") || undefined);
+    return c.json({ text, live: hasAI() }, 200);
+  })
+  .post("/game-up-ai", async (c) => {
+    const { messages, context, driverId } = await c.req.json();
+    const training = context ? `# Training material supplied by the platform\n${typeof context === "string" ? context : JSON.stringify(context, null, 2)}` : undefined;
+    const text = await runAgent("game-up-ai", messages, [training, await profileNote(driverId)].filter(Boolean).join("\n\n") || undefined);
+    return c.json({ text, live: hasAI() }, 200);
+  })
+  .post("/hardware-bot", async (c) => {
+    const { messages, context, driverId } = await c.req.json();
+    const hardware = context ? `# Hardware details supplied by the platform\n${typeof context === "string" ? context : JSON.stringify(context, null, 2)}` : undefined;
+    const text = await runAgent("hardware-bot", messages, [hardware, await profileNote(driverId)].filter(Boolean).join("\n\n") || undefined);
+    return c.json({ text, live: hasAI() }, 200);
+  })
   /**
    * Streaming chat. Plain HTTP (not JSON-per-request) because the point is to flush tokens as
    * they arrive — the one case the house style allows a non-JSON response.
