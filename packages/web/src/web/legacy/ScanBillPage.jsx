@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const NAVY = "#0B2A6B";
 const NAVY2 = "#081E4D";
@@ -705,7 +705,10 @@ export default function ScanBillPage() {
   const [sendingInvoice, setSendingInvoice] = useState(false);
   const [carrier, setCarrier] = useState(CARRIER);
   const [bol, setBol] = useState(INITIAL_BOL);
-  const [scanText, setScanText] = useState("Reading your Bill of Lading…");
+  const [scanText, setScanText] = useState("Choose a BOL image or PDF to begin.");
+  const [scanError, setScanError] = useState("");
+  const [scanRecord, setScanRecord] = useState(null);
+  const fileInput = useRef(null);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -714,24 +717,44 @@ export default function ScanBillPage() {
     return () => document.head.removeChild(style);
   }, []);
 
-  const handleScan = () => {
-    setScanning(true);
-    setStep(2);
-    setTimeout(() => setScanText("Dispatch Darryl is extracting the details…"), 1200);
-    setTimeout(() => {
-      setScanning(false);
-      setStep(3);
-    }, 2500);
+  const handleScan = () => fileInput.current?.click();
+
+  const scanFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setScanError(""); setScanning(true); setStep(2); setScanText("Requesting secure upload…");
+    try {
+      const signed = await fetch("/api/storage/presign-upload", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filename: file.name, contentType: file.type, size: file.size, folder: "bol" }) });
+      const upload = await signed.json();
+      if (!signed.ok) throw new Error(upload.error || "Object storage is unavailable.");
+      setScanText("Uploading your BOL securely…");
+      const put = await fetch(upload.url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+      if (!put.ok) throw new Error("The secure upload was rejected.");
+      setScanText("Extracting printed fields…");
+      const scanned = await fetch("/api/traxes/scan", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: upload.key, kind: "bol" }) });
+      const result = await scanned.json();
+      if (!scanned.ok) throw new Error(result.error || "OCR is unavailable.");
+      const x = result.extracted || {};
+      setScanRecord({ key: upload.key, fileName: file.name, mimeType: file.type, sizeBytes: file.size, extracted: x, note: result.note });
+      setBol((old) => ({ ...old, bolNumber: x.reference || old.bolNumber, shipper: x.vendor || old.shipper, origin: x.origin || old.origin, destination: x.destination || old.destination, weight: x.weight ? `${x.weight} lbs` : old.weight, rate: x.amount == null ? old.rate : `$${Number(x.amount).toFixed(2)}` }));
+      setScanning(false); setStep(3);
+    } catch (error) { setScanning(false); setStep(1); setScanError(error instanceof Error ? error.message : "Scan failed."); }
+    finally { event.target.value = ""; }
   };
 
-  const handleSendInvoice = () => {
-    setSendingInvoice(true);
-    setTimeout(() => {
-      setSendingInvoice(false);
-      setStep(4);
-    }, 1500);
+  const handleSendInvoice = async () => {
+    setSendingInvoice(true); setScanError("");
+    try {
+      const amount = Number(String(bol.rate).replace(/[^0-9.]/g, ""));
+      const created = await fetch("/api/traxes/records", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ driverId: "drv-1", kind: "bol", category: "revenue", docKey: scanRecord?.key, fileName: scanRecord?.fileName, mimeType: scanRecord?.mimeType, sizeBytes: scanRecord?.sizeBytes, reference: bol.bolNumber, broker: bol.billTo, vendor: bol.shipper, amount: Number.isFinite(amount) ? amount : null, notes: `Route: ${bol.origin} to ${bol.destination}` }) });
+      const record = await created.json();
+      if (!created.ok) throw new Error(record.error || "Could not file the BOL.");
+      const filed = await fetch(`/api/traxes/send/${record.record.id}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ destination: "dispatch" }) });
+      const result = await filed.json();
+      if (!filed.ok) throw new Error(result.error || "Could not file to dispatch.");
+      setSendingInvoice(false); setStep(4);
+    } catch (error) { setSendingInvoice(false); setScanError(error instanceof Error ? error.message : "Could not file document."); }
   };
-
   const handleReset = () => {
     setStep(1);
     setScanning(false);
@@ -744,7 +767,7 @@ export default function ScanBillPage() {
     { label: "Scan BOL", num: 1 },
     { label: "Processing", num: 2 },
     { label: "Confirm", num: 3 },
-    { label: "Invoice Sent", num: 4 },
+    { label: "Filed to Dispatch", num: 4 },
   ];
 
   const showSidebar = step >= 3;
@@ -779,6 +802,8 @@ export default function ScanBillPage() {
       </nav>
 
       <div style={styles.body}>
+        <input ref={fileInput} type="file" accept="image/*,application/pdf" onChange={scanFile} style={{ display: "none" }} />
+        {scanError && <div style={{ color: "#fca5a5", marginBottom: 16, fontSize: 13 }}>{scanError}</div>}
         <div style={{ marginBottom: 28 }}>
           <h1 style={styles.pageTitle}>Scan & Bill</h1>
           <p style={styles.pageSub}>BOL → Dispatch → Invoice · Automated in seconds</p>
@@ -921,9 +946,9 @@ export default function ScanBillPage() {
                 )}
                 <button
                   style={sendingInvoice ? { ...styles.btnBig, opacity: 0.7, cursor: "not-allowed" } : styles.btnBig}
-                  onClick={!sendingInvoice ? handleSendInvoice : undefined}
+                  onClick={!sendingInvoice && scanRecord ? handleSendInvoice : undefined}
                 >
-                  {sendingInvoice ? "⏳ Sending to Dispatch…" : "✅ Send to Dispatch & Create Invoice"}
+                  {sendingInvoice ? "⏳ Filing to Dispatch…" : scanRecord ? "✅ File BOL to Dispatch" : "Choose a BOL before filing"}
                 </button>
               </div>
             </div>
@@ -934,15 +959,15 @@ export default function ScanBillPage() {
           </div>
         )}
 
-        {/* STEP 4 — INVOICE CREATED */}
+        {/* STEP 4 — BOL FILED */}
         {step === 4 && (
           <div className="two-col fade-in">
             <div>
               <div style={{ padding: "10px 16px", background: "rgba(22,163,74,0.1)", border: `1px solid rgba(22,163,74,0.3)`, borderRadius: 10, marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 20 }}>🎉</span>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: GREEN }}>Invoice created and sent!</div>
-                  <div style={{ fontSize: 12, color: "#6BA882" }}>AutoZone has been billed — check your email for confirmation.</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: GREEN }}>BOL filed to dispatch!</div>
+                  <div style={{ fontSize: 12, color: "#6BA882" }}>The BOL is in the TruckWithEase dispatch queue. No broker email was sent.</div>
                 </div>
               </div>
 
@@ -999,13 +1024,15 @@ export default function ScanBillPage() {
                 <button
                   style={styles.btnPrimary}
                   className="btn-primary"
-                  onClick={() => alert("PDF ready — in real app downloads to your phone")}
+                  disabled
+                  title="PDF export is not configured"
                 >
                   📥 Download PDF
                 </button>
                 <button
                   style={styles.btnSecondary}
-                  onClick={() => alert(`Email sent to ${bol.billToEmail}`)}
+                  disabled
+                  title="Email requires a configured provider"
                 >
                   📧 Re-send to Broker
                 </button>

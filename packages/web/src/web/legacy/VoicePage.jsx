@@ -48,39 +48,17 @@ export default function VoicePage() {
 
   const categories = ["All", ...new Set(COMMANDS.map(c => c.category))];
 
-  function simulate() {
-    setListening(true);
-    setTranscript("");
-    setResponse(null);
-    let t = 0;
-    const phrase = "Log me as driving";
-    const interval = setInterval(() => {
-      t++;
-      setTranscript(phrase.slice(0, t * 3));
-      if (t * 3 >= phrase.length) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setListening(false);
-          setResponse(COMMANDS[0].action);
-        }, 500);
-      }
-    }, 80);
+  async function tryCommand(cmd) {
+    setListening(true); setTranscript(cmd.phrase); setResponse(null);
+    try {
+      const response = await fetch("/api/voice/execute", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcript: cmd.phrase, driverId: "drv-1" }) });
+      const body = await response.json();
+      setResponse(body.message || body.error || `Command failed (${response.status}).`);
+    } catch (error) { setResponse(error instanceof Error ? error.message : "Command unavailable."); }
+    finally { setListening(false); }
   }
 
-  function tryCommand(cmd) {
-    setListening(true);
-    setTranscript("");
-    setResponse(null);
-    let t = 0;
-    const interval = setInterval(() => {
-      t++;
-      setTranscript(cmd.phrase.slice(0, t * 4));
-      if (t * 4 >= cmd.phrase.length) {
-        clearInterval(interval);
-        setTimeout(() => { setListening(false); setResponse(cmd.action); }, 600);
-      }
-    }, 60);
-  }
+  function simulate() { tryCommand(COMMANDS[0]); }
 
   const filtered = filter === "All" ? COMMANDS : COMMANDS.filter(c => c.category === filter);
   const catColors = { HOS:"#60A5FA", DVIR:"#34D399", Dispatch:"#FB923C", Fuel:"#FBBF24", Navigation:"#38BDF8", Emergency:"#F87171", Finance:"#A3E635" };
