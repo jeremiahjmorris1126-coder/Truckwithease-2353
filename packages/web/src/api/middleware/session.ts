@@ -18,10 +18,13 @@ function apiPath(path: string) {
   return path.replace(/^\/api(?=\/|$)/, "") || "/";
 }
 
+/** POST routes reachable before a session exists (onboarding + demo sign-in). */
+const PUBLIC_POST_PATHS = new Set(["/signup", "/session/demo"]);
+
 function isPublicRequest(method: string, path: string) {
   if (path.startsWith("/auth/")) return true;
   if (method === "GET" && PUBLIC_GET_PATHS.has(path)) return true;
-  return method === "POST" && path === "/signup";
+  return method === "POST" && PUBLIC_POST_PATHS.has(path);
 }
 
 /**

@@ -27,16 +27,64 @@ import { expo } from "@better-auth/expo";
 import { runableManagedAuth } from "@runablehq/managed-auth/server";
 import { db } from "./database";
 
+const isDev = process.env.NODE_ENV === "development";
+
+/**
+ * The exact origins allowed to start a session — never a wildcard.
+ *
+ * Production trusts only WEBSITE_URL (the Runable-injected canonical origin).
+ * Development additionally trusts localhost and the exact v0 preview origins so
+ * sign-in works inside the cross-site preview iframe. We echo the request origin
+ * ONLY in development, because the v0 sandbox host is ephemeral and is not always
+ * present in the env vars above; production never reflects an arbitrary origin.
+ */
+function trustedOrigins(request?: Request): string[] {
+  const list = new Set<string>();
+  const add = (u?: string | null) => {
+    if (!u) return;
+    try {
+      list.add(new URL(u).origin);
+    } catch {
+      /* not a URL — ignore */
+    }
+  };
+
+  add(process.env.WEBSITE_URL);
+
+  if (isDev) {
+    add("http://localhost:3000");
+    add("http://localhost:5173");
+    add(process.env.V0_RUNTIME_URL);
+    add(process.env.V0_DEV_APP_URL);
+    add(process.env.V0_BUILD_URL);
+    add(process.env.V0_SANDBOX_URL);
+    add(request?.headers.get("origin"));
+  }
+
+  return [...list];
+}
+
 export const auth = betterAuth({
   basePath: "/api/auth",
   baseURL: process.env.WEBSITE_URL,
   database: drizzleAdapter(db, { provider: "sqlite" }),
   emailAndPassword: { enabled: true },
   secret: process.env.BETTER_AUTH_SECRET,
-  trustedOrigins: (request) => {
-    const origin = request?.headers.get("origin");
-    return origin ? [origin] : ["*"];
-  },
+  trustedOrigins,
+  // Required by the cross-site v0 preview iframe. Without SameSite=None; Secure
+  // the browser silently drops the session cookie, so login succeeds but the
+  // very next request looks signed out. Production keeps Better Auth's secure
+  // first-party defaults (SameSite=Lax).
+  ...(isDev
+    ? {
+        advanced: {
+          defaultCookieAttributes: {
+            sameSite: "none" as const,
+            secure: true,
+          },
+        },
+      }
+    : {}),
   plugins: [
     ...runableManagedAuth({
       applicationId: process.env.APPLICATION_ID!,

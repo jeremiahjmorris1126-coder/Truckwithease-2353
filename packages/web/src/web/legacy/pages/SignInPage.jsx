@@ -232,6 +232,24 @@ export default function SignInPage() {
     }
   }
 
+  async function demoSignIn() {
+    setErr("");
+    setBusy(true);
+    try {
+      const r = await fetch("/api/session/demo", { method: "POST" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setErr(j.error || `Demo sign-in failed (${r.status}).`);
+        return;
+      }
+      window.location.href = j.redirect || "/app";
+    } catch (e) {
+      setErr(String(e?.message || e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const managedLive = Boolean(status?.methods?.managedGoogle);
 
   return (
@@ -370,6 +388,33 @@ export default function SignInPage() {
               }
             >
               <div style={{ display: "grid", gap: 14 }}>
+                <div style={{ display: "grid", gap: 8 }}>
+                  <Btn primary full disabled={busy} onClick={demoSignIn}>
+                    <LogIn size={14} />
+                    {busy ? "Working…" : "Try the live demo — no account needed"}
+                  </Btn>
+                  <div style={{ fontSize: 11, color: C.dim, fontFamily: "Inter, sans-serif", lineHeight: 1.6 }}>
+                    Signs you into a shared demo driver account so every page and API works immediately. Data is not
+                    private and may be reset. The demo is never an admin.
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ height: 1, background: C.border, flex: 1 }} />
+                  <span
+                    style={{
+                      fontFamily: "Oswald, sans-serif",
+                      letterSpacing: "0.2em",
+                      fontSize: 10,
+                      color: C.dim,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    or
+                  </span>
+                  <div style={{ height: 1, background: C.border, flex: 1 }} />
+                </div>
+
                 <div style={{ display: "grid", gap: 12 }}>
                   <Btn full disabled={busy || !managedLive} onClick={() => managed("google")}>
                     Continue with Google
