@@ -10,20 +10,24 @@
  *   avatar was navy #0B2A6B, and hover states were #103574 / #EEF2FA. All of it
  *   is now gold #C9A84C / bright gold #FFD700 on black #0a0a0a, cards #161616,
  *   nav #111111, borders #222222 — the launch brand.
- * - The green #1FA971 shield next to "Demo mode". The status line itself is
- *   accurate and stays, but it now reads in gold-on-black and says plainly that
- *   there is no login wall yet rather than dressing it as a healthy state.
+ * - The green #1FA971 shield next to "Demo mode". The status line was rewritten
+ *   again once real auth landed: it no longer claims "no login wall". Every
+ *   /app route is now behind a Better Auth session, so the header states the
+ *   signed-in identity and role (both sourced from GET /api/session/me) and
+ *   offers a real Sign Out. The old client-side role switcher is gone — role is
+ *   decided on the server and cannot be toggled from this browser.
  *
  * No claim on this chrome is new. Nothing here reports a number.
  */
 import { Link, useLocation } from "wouter";
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import {
   LayoutDashboard, Clock, Map, ClipboardCheck, Fuel, Route, HeartPulse,
   Wrench, Trophy, Package, MessageSquare, FileText, CreditCard, Truck,
-  ChevronDown, ShieldAlert,
+  ShieldCheck, LogOut,
 } from "lucide-react";
-import { useSession, type Role } from "../lib/session";
+import { useSession } from "../lib/session";
+import { authClient } from "../lib/auth";
 
 const NAV = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "dispatch", "driver"] },
@@ -41,18 +45,19 @@ const NAV = [
   { to: "/app/pricing", label: "Plans", icon: CreditCard, roles: ["admin", "dispatch", "driver"] },
 ];
 
-const ROLES: { role: Role; driverId: string; name: string; label: string }[] = [
-  { role: "admin", driverId: "drv-1", name: "Fleet Admin", label: "Fleet Admin" },
-  { role: "dispatch", driverId: "drv-1", name: "Dispatcher", label: "Dispatcher" },
-  { role: "driver", driverId: "drv-1", name: "Marcus Bell", label: "Driver — Marcus Bell (T-104)" },
-  { role: "hr", driverId: "drv-1", name: "HR Manager", label: "HR Manager" },
-];
-
 export function Shell({ children }: { children: ReactNode }) {
-  const [loc] = useLocation();
-  const { session, setSession } = useSession();
-  const [open, setOpen] = useState(false);
+  const [loc, navigate] = useLocation();
+  const { session } = useSession();
   const nav = NAV.filter((n) => n.roles.includes(session.role));
+
+  const signOut = async () => {
+    try {
+      await authClient.signOut();
+    } catch {
+      /* even if the network call fails, drop the user back to the wall */
+    }
+    navigate("/sign-in");
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex">
@@ -95,52 +100,37 @@ export function Shell({ children }: { children: ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 bg-[#111111] border-b border-[#222222] flex items-center justify-between px-6 sticky top-0 z-20">
           <div className="flex items-center gap-2 text-sm text-[#8A8A8A]">
-            <ShieldAlert className="h-4 w-4 text-[#c96a4c]" />
+            <ShieldCheck className="h-4 w-4 text-[#C9A84C]" />
             <span>
-              <span className="font-[Oswald] uppercase tracking-[0.18em] text-[11px] text-[#c96a4c]">No login wall</span>
+              <span className="font-[Oswald] uppercase tracking-[0.18em] text-[11px] text-[#C9A84C]">Signed in</span>
               <span className="mx-2 text-[#333]">|</span>
-              Every role is open to anyone with the URL. Real accounts are not built yet.
+              Every /app route is behind a real account. Your role is assigned on the server.
             </span>
           </div>
-          {/* Role switcher */}
-          <div className="relative">
-            <button
-              onClick={() => setOpen((o) => !o)}
-              className="flex items-center gap-2 rounded-lg border border-[#222222] bg-[#161616] px-3 py-2 text-sm hover:border-[#C9A84C] transition-colors"
-            >
+          {/* Real signed-in identity + sign out. Role is server-assigned; it cannot be toggled here. */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-lg border border-[#222222] bg-[#161616] px-3 py-2 text-sm">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#C9A84C] text-[#0a0a0a] text-xs font-bold">
-                {session.name[0]}
+                {(session.name?.[0] ?? "?").toUpperCase()}
               </span>
-              <span className="font-medium text-[#F5F5F5]">{session.name}</span>
+              <span className="flex flex-col leading-tight">
+                <span className="font-medium text-[#F5F5F5]">{session.name}</span>
+                {session.email && (
+                  <span className="text-[11px] text-[#8A8A8A]">{session.email}</span>
+                )}
+              </span>
               <span className="rounded bg-[#1C1C1C] border border-[#222222] px-1.5 py-0.5 font-[Oswald] text-[10px] font-semibold uppercase tracking-[0.14em] text-[#C9A84C]">
                 {session.role}
               </span>
-              <ChevronDown className="h-4 w-4 text-[#8A8A8A]" />
+            </div>
+            <button
+              onClick={signOut}
+              className="flex items-center gap-2 rounded-lg border border-[#222222] bg-[#161616] px-3 py-2 text-sm text-[#C9C9C9] hover:border-[#C9A84C] hover:text-[#FFD700] transition-colors"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Sign out</span>
             </button>
-            {open && (
-              <div className="absolute right-0 mt-2 w-64 rounded-xl border border-[#222222] bg-[#161616] shadow-lg shadow-black/60 py-1 z-30">
-                <div className="px-3 py-2 font-[Oswald] text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8A8A]">
-                  Switch role
-                </div>
-                {ROLES.map((r) => (
-                  <button
-                    key={r.role}
-                    onClick={() => {
-                      setSession({ role: r.role, driverId: r.driverId, name: r.name });
-                      setOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-[#1C1C1C] transition-colors ${
-                      session.role === r.role ? "text-[#FFD700] font-semibold" : "text-[#C9C9C9]"
-                    }`}
-                  >
-                    {r.label}
-                  </button>
-                ))}
-                <div className="px-3 pt-2 pb-1 mt-1 border-t border-[#222222] text-[11px] leading-snug text-[#666666]">
-                  Switching role changes what this browser shows. It is not authentication.
-                </div>
-              </div>
-            )}
           </div>
         </header>
         <main className="flex-1 p-6 max-w-[1400px] w-full mx-auto">{children}</main>
