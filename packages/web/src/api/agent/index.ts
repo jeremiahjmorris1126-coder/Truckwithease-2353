@@ -91,7 +91,7 @@ function demoReply(agent: string, prompt: string) {
   }
   const DEMOS: Record<string, string> = {
     "the-goat": `As the final authority here, I rank by exposure: out-of-service risk first, then DOT-recordable exposure, then cost. Give me the section to scan — incidents, drivers, maintenance, loads, or money — and upload your fleet procedure document and I'll enforce it clause by clause against 49 CFR.`,
-    "road-agent": `I don't have live traffic or weather feeds in demo mode, and I won't call a road clear on my own authority. Check 511 and the state DOT for the corridor, then give me origin, destination, trailer type and your height/weight and I'll build the brief around it.`,
+    "road-agent": `I can help structure a go-to-market plan, messaging, channels, and partnership outreach, but I do not have verified live market, competitor, or partner data in demo mode. Tell me the audience, launch stage, budget, and the product capabilities you can substantiate, and I will produce a practical next step.`,
     "ghost-nerve": `No fleet telemetry connected in demo mode, so there's nothing real to flag. Wire up fuel, DEF, DVIR and inspection history and I'll baseline each unit against itself and surface drift before it becomes a breakdown.`,
     "intelligence-mind": `Every answer I give normalizes per mile, per truck, per week — raw totals lie when your miles change. Send revenue, fuel, maintenance and pay data and I'll show the trend, the driver behind it, and what it's worth in dollars per mile.`,
     "neural-safety": `Highest-risk item first, always. In demo mode I have no logs to score. Connect HOS, inspections and speed events and I'll give you a composite 0-100 with speeding normalized per 100 miles and violations as a weekly rate — not raw counts that punish your hardest-running driver.`,
@@ -159,7 +159,7 @@ export const AGENT_ROSTER: { id: AgentId; name: string; role: string }[] = [
   { id: "the-goat", name: "THE GOAT", role: "Supreme master agent — scans the operation, enforces your fleet procedure, final authority" },
   { id: "fleet-chief", name: "INDEX=MECHANIC / Fleet Chief", role: "Master tractor & trailer diesel diagnosis, out-of-service calls" },
   { id: "driver-assistant", name: "Driver Assistant", role: "In-cab co-pilot — hours, routing, parking, hands-free" },
-  { id: "road-agent", name: "Road Agent", role: "Traffic, weather, construction and congestion in one road brief" },
+  { id: "road-agent", name: "Road Agent", role: "Trucking-market growth strategy, positioning, channels and partnerships" },
   { id: "neural-safety", name: "Neural Safety", role: "HOS violations, inspection failures, accident-risk behavior patterns" },
   { id: "health-chief", name: "Health Chief", role: "DOT physical standards and road-life wellness coaching" },
   { id: "humanai", name: "HumanAI", role: "HR manager — driver qualification files, hiring, discipline, payroll" },
