@@ -62,6 +62,7 @@ import { openapiRoutes } from "./routes/openapi";
 import { responsibleUseRoute } from "./routes/responsibleuse";
 import { hapticRoute } from "./routes/haptic";
 import { requireSession } from "./middleware/session";
+import { voice } from "./routes/voice";
 
 const app = new Hono()
   .basePath('api')
@@ -113,6 +114,7 @@ const app = new Hono()
   .route("/fleet-memory", fleetMemory)
   .route("/routing", routing)
   .route("/weather", weather)
+  .route("/voice", voice)
   .route("/week-review", weekReview)
   .route("/azuga", azuga)
   .route("/vat-rates", vatRates)
