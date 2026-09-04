@@ -18,6 +18,9 @@ const PUBLIC_GET_PATHS = new Set([
   "/design-system/tokens.css",
   "/medical-examiner",
   "/medical-examiner/search",
+  // Road weather — keyless National Weather Service data, no user scoping.
+  "/weather",
+  "/weather/cities",
 ]);
 
 function apiPath(path: string) {
@@ -31,6 +34,8 @@ const PUBLIC_POST_PATHS = new Set([
   // Federal weight math — pure calculators over caller-supplied numbers, no data.
   "/weight-check/bridge-formula",
   "/weight-check/check",
+  // Route weather — NWS forecast at each caller-supplied stop, no user data.
+  "/weather/route",
 ]);
 
 function isPublicRequest(method: string, path: string) {
