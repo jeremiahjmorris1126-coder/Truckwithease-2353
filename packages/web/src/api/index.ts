@@ -63,6 +63,7 @@ import { responsibleUseRoute } from "./routes/responsibleuse";
 import { hapticRoute } from "./routes/haptic";
 import { profit } from "./routes/profit";
 import { voice } from "./routes/voice";
+import { command } from "./routes/command";
 import { requireSession } from "./middleware/session";
 
 const app = new Hono()
@@ -81,6 +82,7 @@ const app = new Hono()
   .route("/loads", loads)
   .route("/profit", profit)
   .route("/voice", voice)
+  .route("/command", command)
   .route("/chat", chat)
   .route("/rewards", rewards)
   .route("/fuel", fuel)

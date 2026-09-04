@@ -166,43 +166,21 @@ export default function CommandCenterPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const { signal } = controller;
-    // An aborted fetch is a React StrictMode remount, not a failed load. Reporting it
-    // would print "COULD NOT LOAD" next to numbers that actually arrived.
-    const fail = (what, err) => {
-      if (err && (err.name === "AbortError" || signal.aborted)) return;
-      setLoadErrors((e) => (e.includes(what) ? e : [...e, what]));
-    };
-
-    fetch("/api/signup/list", { signal })
-      .then((r) => r.json())
-      .then((d) => {
-        setMembers(Array.isArray(d.signups) ? d.signups.slice(0, 50) : []);
-        setStats((st) => ({ ...st, members: typeof d.total === "number" ? d.total : null }));
+    fetch("/api/command/overview", { credentials: "include", signal: controller.signal })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || `Command Center unavailable (${response.status})`);
+        return body;
       })
-      .catch((err) => fail("signups", err));
-
-    fetch("/api/support/tickets", { signal })
-      .then((r) => r.json())
-      .then((d) => {
-        const rows = Array.isArray(d.tickets) ? d.tickets : Array.isArray(d) ? d : [];
-        setMessages(rows.slice(0, 10));
-        setStats((st) => ({ ...st, tickets: rows.length }));
+      .then((data) => {
+        setMembers(Array.isArray(data.signups) ? data.signups : []);
+        setMessages((Array.isArray(data.tickets) ? data.tickets : []).map((ticket) => ({ name: ticket.subject || "Support ticket", message: ticket.body || "No detail", created: ticket.createdAt, status: ticket.status })));
+        setStats({ members: data.counts?.signups ?? null, tickets: data.counts?.openTickets ?? null, drivers: data.counts?.drivers ?? null, openHos: null });
+        setLoadErrors([]);
       })
-      .catch((err) => fail("support tickets", err));
-
-    fetch("/api/hos", { signal })
-      .then((r) => r.json())
-      .then((d) => {
-        const fleet = Array.isArray(d.fleet) ? d.fleet : [];
-        setStats((st) => ({
-          ...st,
-          drivers: fleet.length,
-          openHos: fleet.filter((f) => f.violations && f.violations.length > 0).length,
-        }));
-      })
-      .catch((err) => fail("HOS fleet", err));
-
+      .catch((error) => {
+        if (error.name !== "AbortError") setLoadErrors([error.message || "Command Center"]);
+      });
     return () => controller.abort();
   }, []);
 
@@ -320,7 +298,7 @@ export default function CommandCenterPage() {
             {[
               { label: "Signups", value: show(stats.members), sub: "Rows in the signups table", color: C.gold, icon: "👥", path: "/admin/subscriptions" },
               { label: "Drivers On File", value: show(stats.drivers), sub: "From /api/hos", color: C.goldBright, icon: "🚚", path: "/hos" },
-              { label: "HOS Flags", value: show(stats.openHos), sub: "Drivers with a violation flag", color: C.warn, icon: "⏱", path: "/hos" },
+              { label: "HOS Flags", value: "VIEW", sub: "Open the HOS workspace", color: C.warn, icon: "⏱", path: "/hos" },
               { label: "Support Tickets", value: show(stats.tickets), sub: "From /api/support/tickets", color: C.gold, icon: "💬", path: "/contact-inbox" },
               { label: "Site Traffic", value: "NOT TRACKED", sub: "No analytics route in this app", color: C.white30, icon: "👁", path: null },
             ].map((kpi, i) => (
@@ -358,11 +336,8 @@ export default function CommandCenterPage() {
                 textTransform: "uppercase", color: C.gold, marginBottom: 8,
               }}>Where these numbers come from</div>
               <div style={{ fontSize: 11.5, color: C.white60, lineHeight: 1.6 }}>
-                Signups, drivers, HOS flags and support tickets are read live from the API.
-                Fleet blacklist, charge-stop ratings and site analytics are not shown: those
-                collections exist only in browser storage on this device, so anything displayed
-                for them would be per-device and effectively empty. They return when there is a
-                server route behind them.
+                Signups, driver count, open support tickets, document queue, maintenance, and integration configuration are read through one authenticated operations endpoint.
+                The page never displays provider credentials or claims an external integration is live without its own health check.
               </div>
               {loadErrors.length > 0 && (
                 <div style={{ marginTop: 10, fontSize: 11, color: C.warn, fontFamily: FONT_MONO }}>
@@ -441,7 +416,7 @@ export default function CommandCenterPage() {
                         ● {m.plan || "Pro"}
                       </div>
                       <div style={{ fontSize: 10, color: C.white30, marginTop: 3 }}>
-                        {m.created ? new Date(m.created).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
+                        {m.createdAt ? new Date(m.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
                       </div>
                     </div>
                   </div>
@@ -505,7 +480,7 @@ export default function CommandCenterPage() {
                       </div>
                     </div>
                     <div style={{ fontSize: 10, color: C.white30, flexShrink: 0 }}>
-                      {m.created ? new Date(m.created).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
+                      {m.createdAt ? new Date(m.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
                     </div>
                   </div>
                 ))}
@@ -530,32 +505,32 @@ export default function CommandCenterPage() {
               gap: 10,
             }}>
               {[
-                { icon: "⚖️", label: "SCALES", path: "/catscales", tag: "ALLOCATION" },
-                { icon: "🛠", label: "THE KNOW IT ALL", path: "/mechanic", tag: "ALL BRANDS" },
-                { icon: "⚛️", label: "Dispatch Nexus", path: "/dispatch-nexus", tag: "NEW" },
-                { icon: "⚛", label: "Dispatch", path: "/dispatch", tag: "LIVE" },
-                { icon: "🚛", label: "Asset Bank", path: "/asset-ease", tag: "GOAT" },
-                { icon: "📍", label: "Live GPS", path: "/live-gps", tag: "REAL-TIME" },
-                { icon: "📦", label: "Fleet Load Board", path: "/fleet-load-board", tag: "12 SOURCES" },
-                { icon: "👻", label: "Ghost Nerve", path: "/ghost-nerve", tag: "PROPRIETARY" },
-                { icon: "⏱", label: "HOS Logger", path: "/hos", tag: "ELD" },
-                { icon: "👥", label: "HRease Hiring", path: "/humanai", tag: "AI" },
-                { icon: "💰", label: "Payroll", path: "/payroll", tag: "AUTO" },
-                { icon: "📦", label: "Load Board", path: "/loads", tag: "5 SOURCES" },
-                { icon: "📄", label: "Scan & Bill", path: "/scan-bill", tag: "INSTANT" },
-                { icon: "🛡", label: "Neural Safety", path: "/neural-safety", tag: "AI" },
-                { icon: "🎓", label: "Game Up", path: "/game-up", tag: "TRAINING" },
+                { icon: "⚖️", label: "SCALES", path: "/catscales", tag: "OPEN" },
+                { icon: "🛠", label: "THE KNOW IT ALL", path: "/mechanic", tag: "OPEN" },
+                { icon: "⚛️", label: "Dispatch Nexus", path: "/dispatch-nexus", tag: "OPEN" },
+                { icon: "⚛", label: "Dispatch", path: "/dispatch", tag: "OPEN" },
+                { icon: "🚛", label: "Asset Bank", path: "/asset-ease", tag: "OPEN" },
+                { icon: "📍", label: "Live GPS", path: "/live-gps", tag: "OPEN" },
+                { icon: "📦", label: "Fleet Load Board", path: "/fleet-load-board", tag: "OPEN" },
+                { icon: "👻", label: "Ghost Nerve", path: "/ghost-nerve", tag: "OPEN" },
+                { icon: "⏱", label: "HOS Logger", path: "/hos", tag: "OPEN" },
+                { icon: "👥", label: "HRease Hiring", path: "/humanai", tag: "OPEN" },
+                { icon: "💰", label: "Payroll", path: "/payroll", tag: "OPEN" },
+                { icon: "📦", label: "Load Board", path: "/loads", tag: "OPEN" },
+                { icon: "📄", label: "Scan & Bill", path: "/scan-bill", tag: "OPEN" },
+                { icon: "🛡", label: "Neural Safety", path: "/neural-safety", tag: "OPEN" },
+                { icon: "🎓", label: "Game Up", path: "/game-up", tag: "OPEN" },
                 { icon: "📊", label: "Profitable Lanes", path: "/profitable-lanes", tag: "INTEL" },
-                { icon: "🤖", label: "Dream Team", path: "/ai-team", tag: "12 AGENTS" },
-                { icon: "📡", label: "Fleet Voice", path: "/fleet-voice", tag: "HANDS-FREE" },
-                { icon: "🚗", label: "DriveWithEase", path: "/drive-with-ease", tag: "VAN" },
-                { icon: "🚲", label: "RideWithEase", path: "/ride-with-ease", tag: "COURIER" },
-                { icon: "🔍", label: "Broker Check", path: "/loads", tag: "LIVE" },
+                { icon: "🤖", label: "Dream Team", path: "/ai-team", tag: "OPEN" },
+                { icon: "📡", label: "Fleet Voice", path: "/fleet-voice", tag: "OPEN" },
+                { icon: "🚗", label: "DriveWithEase", path: "/drive-with-ease", tag: "OPEN" },
+                { icon: "🚲", label: "RideWithEase", path: "/ride-with-ease", tag: "OPEN" },
+                { icon: "🔍", label: "Broker Check", path: "/loads", tag: "OPEN" },
                 { icon: "📋", label: "Safety Meetings", path: "/safety-meetings", tag: "DOT" },
-                { icon: "🏛", label: "FMCSA Status", path: "/fmcsa-registration", tag: "REGISTERED" },
-                { icon: "📘", label: "Customer Book", path: "/customer-book", tag: "CRM" },
-                { icon: "🔑", label: "API Keys", path: "/key-agent", tag: "22 LIVE" },
-                { icon: "💻", label: "Code Vault", path: "/code-vault", tag: "SECURE" },
+                { icon: "🏛", label: "FMCSA Status", path: "/fmcsa-registration", tag: "OPEN" },
+                { icon: "📘", label: "Customer Book", path: "/customer-book", tag: "OPEN" },
+                { icon: "🔑", label: "API Keys", path: "/key-agent", tag: "OPEN" },
+                { icon: "💻", label: "Code Vault", path: "/code-vault", tag: "OPEN" },
               ].map((f, i) => (
                 <button
                   key={i}
@@ -598,7 +573,7 @@ export default function CommandCenterPage() {
                 TruckWithEase · morrishive.com
               </div>
               <div style={{ fontSize: 12, color: C.white60, marginTop: 4 }}>
-                22 live integrations · 140+ platform screens · Ghost Nerve intelligence · runs alongside your existing ELD
+                Operational status and integration configuration are available through the authenticated backend.
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
