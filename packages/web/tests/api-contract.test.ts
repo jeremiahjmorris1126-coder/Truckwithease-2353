@@ -32,3 +32,16 @@ test("maintenance endpoints require a Better Auth session", async () => {
   expect(response.status).toBe(401);
   expect(await response.json()).toMatchObject({ error: "Authentication required." });
 });
+
+test("broker verification requires a Better Auth session", async () => {
+  const response = await handler(
+    new Request(`${origin}/api/intel/broker/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "dispatch@example.com" }),
+    }),
+  );
+
+  expect(response.status).toBe(401);
+  expect(await response.json()).toMatchObject({ error: "Authentication required." });
+});
