@@ -19,7 +19,8 @@
  *         W = max weight in lb on any group of 2+ consecutive axles
  *         L = distance in feet between the extremes of the group (outer axles)
  *         N = number of axles in the group
- *       The statutory result is rounded DOWN to the nearest 500 lb, and no group
+ *       The statutory result is rounded to the NEAREST 500 lb (with an exact
+ *       half-increment tie resolved DOWNWARD, per FHWA policy), and no group
  *       may exceed 80,000 lb regardless of what the formula yields.
  *
  * WHAT THIS IS NOT
@@ -45,15 +46,20 @@ export const FEDERAL_LIMITS = {
   system: "Interstate System",
 } as const;
 
-/** Bridge Formula rounds DOWN to the nearest 500 lb. */
-function roundDownTo500(lb: number): number {
-  return Math.floor(lb / 500) * 500;
+/**
+ * Bridge Formula rounds to the NEAREST 500 lb (23 CFR 658.17 / FHWA "Bridge
+ * Formula Weights": "W ... to the nearest 500 pounds"). FHWA policy resolves an
+ * exact half-increment tie (e.g. 79,750 -> 159.5) DOWNWARD, so we cannot use
+ * Math.round, which rounds .5 up. Math.ceil(x - 0.5) rounds half-down.
+ */
+function roundNearest500(lb: number): number {
+  return Math.ceil(lb / 500 - 0.5) * 500;
 }
 
 /**
  * bridgeFormula — W = 500 x ( L*N/(N-1) + 12N + 36 ), capped at the 80,000 gross.
- * Returns both the raw and the statutory (rounded-down, capped) figure so the
- * caller can see the rounding rather than take it on faith.
+ * Returns both the raw and the statutory (rounded-to-nearest-500, capped) figure
+ * so the caller can see the rounding rather than take it on faith.
  */
 export function bridgeFormula(lengthFt: number, axles: number) {
   if (!Number.isFinite(lengthFt) || !Number.isFinite(axles)) {
@@ -68,7 +74,7 @@ export function bridgeFormula(lengthFt: number, axles: number) {
   if (lengthFt < 0) return { error: "lengthFt cannot be negative." as const };
 
   const raw = 500 * ((lengthFt * N) / (N - 1) + 12 * N + 36);
-  const rounded = roundDownTo500(raw);
+  const rounded = roundNearest500(raw);
   const capped = Math.min(rounded, FEDERAL_LIMITS.grossVehicleLb);
 
   return {
@@ -77,7 +83,7 @@ export function bridgeFormula(lengthFt: number, axles: number) {
     formula: "W = 500 x ( L*N/(N-1) + 12N + 36 )",
     rawLb: Math.round(raw),
     statutoryMaxLb: capped,
-    roundedDownToNearest500: rounded !== Math.round(raw),
+    roundedToNearest500: rounded !== Math.round(raw),
     cappedAtGross: rounded > FEDERAL_LIMITS.grossVehicleLb,
     citation: FEDERAL_LIMITS.citation,
   };
@@ -102,7 +108,7 @@ export const weightCheck = new Hono()
           L: "distance in feet between the extreme (outer) axles of the group",
           N: "number of axles in the group",
         },
-        rounding: "Result is rounded DOWN to the nearest 500 lb and may never exceed the 80,000 lb gross.",
+        rounding: "Result is rounded to the nearest 500 lb (an exact half-increment tie is resolved downward) and may never exceed the 80,000 lb gross.",
         citation: FEDERAL_LIMITS.citation,
       },
       workedExample: {

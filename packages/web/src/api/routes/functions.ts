@@ -216,7 +216,7 @@ export const CAPS: Cap[] = [
     tables: [],
     envKeys: [],
     trust:
-      "23 U.S.C. 127 and 23 CFR 658.17: 80,000 gross / 20,000 single / 34,000 tandem, W = 500 x [ LN/(N-1) + 12N + 36 ], rounded down to the nearest 500 lb. Interstate System only. No per-state table is published because each state row would need its own verified statute citation. This is not a permit and does not weigh the truck.",
+      "23 U.S.C. 127 and 23 CFR 658.17: 80,000 gross / 20,000 single / 34,000 tandem, W = 500 x [ LN/(N-1) + 12N + 36 ], rounded to the nearest 500 lb (an exact half-increment tie resolves downward). Interstate System only. No per-state table is published because each state row would need its own verified statute citation. This is not a permit and does not weigh the truck.",
   },
 
   /* ---------------- Safety ---------------- */
