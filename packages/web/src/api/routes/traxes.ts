@@ -48,6 +48,7 @@ export const TRAXES_KINDS = [
   { kind: "bol", label: "Bill of lading", category: "revenue" },
   { kind: "rate_confirmation", label: "Rate confirmation", category: "revenue" },
   { kind: "invoice", label: "Invoice", category: "revenue" },
+  { kind: "proof_of_delivery", label: "Proof of delivery", category: "revenue" },
   { kind: "fuel_receipt", label: "Fuel receipt", category: "fuel" },
   { kind: "lumper_receipt", label: "Lumper receipt", category: "lumper" },
   { kind: "scale_ticket", label: "Scale ticket", category: "scale" },

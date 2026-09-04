@@ -9,49 +9,22 @@ const RED = "#DC2626";
 const DARK = "#06090F";
 
 const CARRIER = {
-  businessName: "Morris Trucking LLC",
-  mc: "MC-483920",
-  dot: "DOT-4481029",
-  phone: "(214) 555-0198",
-  email: "jeremiahjmorris1126@gmail.com",
+  businessName: "",
+  mc: "",
+  dot: "",
+  phone: "",
+  email: "",
 };
 
 const INITIAL_BOL = {
-  bolNumber: "BL-778201",
-  poNumber: "PO-33915",
-  shipper: "Midwest Auto Parts Co.",
-  shipperAddress: "4400 Industrial Blvd, St. Louis, MO 63103",
-  consignee: "AutoZone Distribution Center",
-  consigneeAddress: "1801 S. Wabash Ave, Chicago, IL 60616",
-  origin: "St. Louis, MO",
-  destination: "Chicago, IL",
-  commodity: "Automotive Parts (Non-Hazmat)",
-  weight: "41,500 lbs",
-  pieces: "847 cartons",
-  pickupDate: "July 12, 2026",
-  deliveryDate: "July 13, 2026",
-  rate: "$2,450.00",
-  billTo: "AutoZone Corporation",
-  billToEmail: "ap-invoices@autozone.com",
-  dockNumber: "",
-  gateCode: "",
-  apptTime: "",
-  arrivedAt: "",
-  freeTimeMin: "120",
-  detentionRate: "50",
+  bolNumber: "", poNumber: "", shipper: "", shipperAddress: "", consignee: "", consigneeAddress: "",
+  origin: "", destination: "", commodity: "", weight: "", pieces: "", pickupDate: "", deliveryDate: "",
+  rate: "", billTo: "", billToEmail: "",
 };
 
-const INVOICE_HISTORY = [
-  { id: "INV-1001", client: "AutoZone", dest: "Chicago", amount: "$2,450", status: "SENT", date: "Jul 12, 2026" },
-  { id: "INV-1000", client: "Walmart DC", dest: "Nashville", amount: "$1,890", status: "PAID", date: "Jul 9, 2026" },
-  { id: "INV-0999", client: "Kroger Distribution", dest: "Memphis", amount: "$3,120", status: "PAID", date: "Jul 5, 2026" },
-];
+const DOCUMENT_HISTORY = [];
 
-const DISPATCH_FEED = [
-  { icon: "🟢", sender: "Dispatch Darryl", time: "just now", msg: "New load confirmed: St. Louis → Chicago, 41,500 lbs. INV-1001 created and sent to AutoZone." },
-  { icon: "💬", sender: "Ray Davis", time: "2 min ago", msg: "Pulling into dock now. Gate B-7." },
-  { icon: "📋", sender: "System", time: "5 min ago", msg: "Load LD-8843 delivered — awaiting PODS." },
-];
+const DISPATCH_FEED = [];
 
 const styles = {
   page: {
@@ -686,6 +659,7 @@ function DispatchSidebar() {
         <span style={{ marginLeft: 2, color: GREEN }}>Live</span>
       </div>
       <div style={styles.dispatchDivider} />
+      {DISPATCH_FEED.length === 0 && <div style={styles.dispatchText}>Dispatch activity is available in the dispatch queue after a document is filed.</div>}
       {DISPATCH_FEED.map((item, i) => (
         <div key={i} style={styles.dispatchMsg}>
           <div style={styles.dispatchSender}>
@@ -708,6 +682,7 @@ export default function ScanBillPage() {
   const [scanText, setScanText] = useState("Choose a BOL image or PDF to begin.");
   const [scanError, setScanError] = useState("");
   const [scanRecord, setScanRecord] = useState(null);
+  const [documentKind, setDocumentKind] = useState("bol");
   const fileInput = useRef(null);
 
   useEffect(() => {
@@ -731,7 +706,7 @@ export default function ScanBillPage() {
       const put = await fetch(upload.url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
       if (!put.ok) throw new Error("The secure upload was rejected.");
       setScanText("Extracting printed fields…");
-      const scanned = await fetch("/api/traxes/scan", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: upload.key, kind: "bol" }) });
+      const scanned = await fetch("/api/traxes/scan", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: upload.key, kind: documentKind }) });
       const result = await scanned.json();
       if (!scanned.ok) throw new Error(result.error || "OCR is unavailable.");
       const x = result.extracted || {};
@@ -746,7 +721,7 @@ export default function ScanBillPage() {
     setSendingInvoice(true); setScanError("");
     try {
       const amount = Number(String(bol.rate).replace(/[^0-9.]/g, ""));
-      const created = await fetch("/api/traxes/records", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ driverId: "drv-1", kind: "bol", category: "revenue", docKey: scanRecord?.key, fileName: scanRecord?.fileName, mimeType: scanRecord?.mimeType, sizeBytes: scanRecord?.sizeBytes, reference: bol.bolNumber, broker: bol.billTo, vendor: bol.shipper, amount: Number.isFinite(amount) ? amount : null, notes: `Route: ${bol.origin} to ${bol.destination}` }) });
+      const created = await fetch("/api/traxes/records", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ driverId: "drv-1", kind: documentKind, category: "revenue", docKey: scanRecord?.key, fileName: scanRecord?.fileName, mimeType: scanRecord?.mimeType, sizeBytes: scanRecord?.sizeBytes, reference: bol.bolNumber, broker: bol.billTo, vendor: bol.shipper, amount: Number.isFinite(amount) ? amount : null, notes: `Route: ${bol.origin} to ${bol.destination}` }) });
       const record = await created.json();
       if (!created.ok) throw new Error(record.error || "Could not file the BOL.");
       const filed = await fetch(`/api/traxes/send/${record.record.id}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ destination: "dispatch" }) });
@@ -764,7 +739,7 @@ export default function ScanBillPage() {
   };
 
   const STEPS = [
-    { label: "Scan BOL", num: 1 },
+    { label: "Scan Document", num: 1 },
     { label: "Processing", num: 2 },
     { label: "Confirm", num: 3 },
     { label: "Filed to Dispatch", num: 4 },
@@ -806,7 +781,7 @@ export default function ScanBillPage() {
         {scanError && <div style={{ color: "#fca5a5", marginBottom: 16, fontSize: 13 }}>{scanError}</div>}
         <div style={{ marginBottom: 28 }}>
           <h1 style={styles.pageTitle}>Scan & Bill</h1>
-          <p style={styles.pageSub}>BOL → Dispatch → Invoice · Automated in seconds</p>
+          <p style={styles.pageSub}>Secure document upload → review → dispatch queue</p>
         </div>
 
         {/* STEP BAR */}
@@ -830,8 +805,22 @@ export default function ScanBillPage() {
             <div>
               <div style={styles.uploadZone}>
                 <span style={styles.uploadEmoji}>📷</span>
-                <div style={styles.uploadHeadline}>Scan Bill of Lading</div>
-                <p style={styles.uploadSub}>Take a photo or choose from your photo library</p>
+                <div style={styles.uploadHeadline}>Scan a Trucking Document</div>
+                <p style={styles.uploadSub}>Take a photo or choose an image/PDF. OCR extracts printed fields when storage and OCR are configured.</p>
+                <label style={{ ...styles.formLabel, display: "block", marginBottom: 8 }}>Document Type</label>
+                <select value={documentKind} onChange={(e) => setDocumentKind(e.target.value)} style={{ ...styles.formInput, maxWidth: 300, marginBottom: 20 }}>
+                  <option value="bol">Bill of Lading</option>
+                  <option value="proof_of_delivery">Proof of Delivery</option>
+                  <option value="rate_confirmation">Rate Confirmation</option>
+                  <option value="invoice">Invoice</option>
+                  <option value="fuel_receipt">Fuel Receipt</option>
+                  <option value="lumper_receipt">Lumper Receipt</option>
+                  <option value="scale_ticket">Scale Ticket</option>
+                  <option value="toll_receipt">Toll Receipt</option>
+                  <option value="repair_invoice">Repair Invoice</option>
+                  <option value="permit">Permit</option>
+                  <option value="other">Other</option>
+                </select>
                 <div style={styles.btnRow}>
                   <button className="btn-primary" style={styles.btnPrimary} onClick={handleScan}>
                     📷 Take Photo
@@ -844,7 +833,7 @@ export default function ScanBillPage() {
                   {[
                     ["1", "Snap or upload your BOL"],
                     ["2", "AI reads it in seconds"],
-                    ["3", "Invoice sent to your broker"],
+                    ["3", "File the confirmed document to dispatch"],
                   ].map(([num, text]) => (
                     <div key={num} style={styles.howItem}>
                       <div style={styles.howNum}>{num}</div>
@@ -948,7 +937,7 @@ export default function ScanBillPage() {
                   style={sendingInvoice ? { ...styles.btnBig, opacity: 0.7, cursor: "not-allowed" } : styles.btnBig}
                   onClick={!sendingInvoice && scanRecord ? handleSendInvoice : undefined}
                 >
-                  {sendingInvoice ? "⏳ Filing to Dispatch…" : scanRecord ? "✅ File BOL to Dispatch" : "Choose a BOL before filing"}
+                  {sendingInvoice ? "⏳ Filing to Dispatch…" : scanRecord ? `✅ File ${documentKind === "proof_of_delivery" ? "Proof of Delivery" : "Document"} to Dispatch` : "Choose a document before filing"}
                 </button>
               </div>
             </div>
@@ -966,17 +955,17 @@ export default function ScanBillPage() {
               <div style={{ padding: "10px 16px", background: "rgba(22,163,74,0.1)", border: `1px solid rgba(22,163,74,0.3)`, borderRadius: 10, marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 20 }}>🎉</span>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: GREEN }}>BOL filed to dispatch!</div>
-                  <div style={{ fontSize: 12, color: "#6BA882" }}>The BOL is in the TruckWithEase dispatch queue. No broker email was sent.</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: GREEN }}>Document filed to dispatch!</div>
+                  <div style={{ fontSize: 12, color: "#6BA882" }}>The document is in the TruckWithEase dispatch queue. No broker email was sent.</div>
                 </div>
               </div>
 
-              {/* INVOICE PREVIEW */}
+              {/* DOCUMENT PREVIEW */}
               <div style={styles.invoiceCard}>
                 <div style={styles.invoiceHeader}>
                   <div>
-                    <div style={styles.invoiceTitle}>INVOICE</div>
-                    <div style={styles.invoiceNum}>INV-1001</div>
+                    <div style={styles.invoiceTitle}>DOCUMENT</div>
+                    <div style={styles.invoiceNum}>{bol.bolNumber || "No reference"}</div>
                   </div>
                   <div style={styles.sentBadge}>SENT ✓</div>
                 </div>
@@ -1041,9 +1030,9 @@ export default function ScanBillPage() {
                 </button>
               </div>
 
-              {/* INVOICE HISTORY */}
+              {/* DOCUMENT HISTORY */}
               <div style={styles.card}>
-                <div style={styles.cardTitle}>📋 Invoice History</div>
+                <div style={styles.cardTitle}>📋 Document History</div>
                 <table style={styles.historyTable}>
                   <thead>
                     <tr>
@@ -1053,7 +1042,7 @@ export default function ScanBillPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {INVOICE_HISTORY.map(row => (
+                    {DOCUMENT_HISTORY.map(row => (
                       <tr key={row.id}>
                         <td style={{ ...styles.historyTd, color: AMBER, fontWeight: 700 }}>{row.id}</td>
                         <td style={styles.historyTd}>{row.client}</td>
@@ -1063,6 +1052,7 @@ export default function ScanBillPage() {
                         <td style={{ ...styles.historyTd, color: "#7B9BC0" }}>{row.date}</td>
                       </tr>
                     ))}
+                    {DOCUMENT_HISTORY.length === 0 && <tr><td colSpan="6" style={styles.historyTd}>No invoice history is loaded here. Documents filed through this page appear in the dispatch queue; external invoicing requires a configured billing provider.</td></tr>}
                   </tbody>
                 </table>
               </div>
