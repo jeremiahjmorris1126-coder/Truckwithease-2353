@@ -12,6 +12,13 @@ import {
   FINANCE_ALERT,
   MEMORY_AGENT,
   PAGE_GUARDIAN,
+  ROUTING_ROBBIE,
+  COMPLIANT_KATHY,
+  DISPATCH_DARRYL,
+  MONEY_MARISOL,
+  SAFETY_SARGE,
+  WEATHER_WANDA,
+  HUMANAI_HR,
 } from "./personas";
 
 const FLEET_CHIEF = dedent`
@@ -98,6 +105,13 @@ function demoReply(agent: string, prompt: string) {
     "finance-alert": `Priority order is cash runway, receivables aging, revenue dip, then cost spike. One rule I never break: I don't recommend deferring a safety-critical repair to protect cash — you park the truck instead. Connect your invoices and expenses and I'll date the day it gets tight.`,
     "memory-agent": `I hold durable facts, fleet history and your preferences so every other agent stops asking twice. I don't store card numbers, SSNs, medical detail beyond DOT cert status, or keys. Tell me what to remember and I'll restate it as one durable fact.`,
     "page-guardian": `No health-check results in context, so I have nothing to report — and I won't call a route healthy without one. Triage order when I do: pages a driver hits rolling (HOS, DVIR, SOS, fuel, loads), then compliance, then admin.`,
+    "routing-robbie": `I plan the whole run — HOS clock, fuel, tolls, scales and parking — but I won't invent live traffic or fuel prices in demo mode. Give me origin, destination, trailer type and your height/weight/axles and I'll build a truck-legal route with one honest alternate.`,
+    "compliant-kathy": `I track your HOS, DVIR, permits and expiring docs and remind you before anything lapses. I won't guess a permit fee or filing date — I'll point you to the issuing agency to confirm. Tell me the state and the move and I'll give you the requirement, the CFR, and the deadline.`,
+    "dispatch-darryl": `I move loads, push ETAs to brokers and run the detention clock — but I only bill a rate that's in the load terms, never one I made up. Give me the load, the broker terms and the driver and I'll match it and prep the update. Confirm before I send anything.`,
+    "money-marisol": `I run per-load net off TRAXES — gross minus fuel, tolls and deadhead, shown per mile with the math. In demo mode I have no settlement or market data to pull, so send the rate, miles and costs and I'll tell you take, counter, or pass. I flag and quantify; a CPA files.`,
+    "safety-sarge": `Highest-risk item first, always — and I coach the habit, not just the number. In demo mode I've got no logs to score, so connect your speed events, inspections and HOS and I'll give you a composite 0-100 with speeding normalized per 100 miles. DOT cert calls belong to your examiner.`,
+    "weather-wanda": `Bottom line first — roll, caution, or hold — then the corridors and timing. I won't call a wind speed, a closure or an active chain law on my own authority in demo mode; check NWS and the state DOT. Give me the route and trailer type and I'll frame the decision.`,
+    "humanai-hr-manager": `I run fleet HR to a master's standard — qualification files (49 CFR 391), pre-screens, FCRA background checks, payroll runs and AB5. In demo mode I won't invent mileage, pay rates or MVR results. Tell me the driver and the task and I'll give you the compliant next step and the paperwork. Fleet admins only.`,
   };
   if (DEMOS[agent]) {
     return dedent`
@@ -127,7 +141,14 @@ export type AgentId =
   | "neural-safety"
   | "finance-alert"
   | "memory-agent"
-  | "page-guardian";
+  | "page-guardian"
+  | "routing-robbie"
+  | "compliant-kathy"
+  | "dispatch-darryl"
+  | "money-marisol"
+  | "safety-sarge"
+  | "weather-wanda"
+  | "humanai-hr-manager";
 
 const SYSTEMS: Record<AgentId, string> = {
   // The driver assistant IS the governing spec — guardrails are already inside it.
@@ -144,6 +165,14 @@ const SYSTEMS: Record<AgentId, string> = {
   "finance-alert": `${PLATFORM_GUARDRAILS}\n\n${FINANCE_ALERT}`,
   "memory-agent": `${PLATFORM_GUARDRAILS}\n\n${MEMORY_AGENT}`,
   "page-guardian": `${PLATFORM_GUARDRAILS}\n\n${PAGE_GUARDIAN}`,
+  // AI Command Post — the 7 personality-driven characters.
+  "routing-robbie": `${PLATFORM_GUARDRAILS}\n\n${ROUTING_ROBBIE}`,
+  "compliant-kathy": `${PLATFORM_GUARDRAILS}\n\n${COMPLIANT_KATHY}`,
+  "dispatch-darryl": `${PLATFORM_GUARDRAILS}\n\n${DISPATCH_DARRYL}`,
+  "money-marisol": `${PLATFORM_GUARDRAILS}\n\n${MONEY_MARISOL}`,
+  "safety-sarge": `${PLATFORM_GUARDRAILS}\n\n${SAFETY_SARGE}`,
+  "weather-wanda": `${PLATFORM_GUARDRAILS}\n\n${WEATHER_WANDA}`,
+  "humanai-hr-manager": `${PLATFORM_GUARDRAILS}\n\n${HUMANAI_HR}`,
 };
 
 /**
@@ -168,6 +197,14 @@ export const AGENT_ROSTER: { id: AgentId; name: string; role: string }[] = [
   { id: "ghost-nerve", name: "Ghost Nerve", role: "Predictive anomaly layer — catches drift before it becomes a breakdown" },
   { id: "memory-agent", name: "Memory Management", role: "The platform's memory — keeps every agent on your fleet's real history" },
   { id: "page-guardian", name: "Page Guardian", role: "Background monitor — catches broken pages before a driver hits one" },
+  // AI Command Post — the 7 personality-driven characters (/ai-command-post).
+  { id: "routing-robbie", name: "Routing Robbie", role: "Routing & navigation — truck-legal routes, low bridges, weigh stations, reroutes" },
+  { id: "compliant-kathy", name: "Compliant Kathy", role: "Compliance — HOS clock, DVIR, permits, inspections, expiring docs" },
+  { id: "dispatch-darryl", name: "Dispatch Darryl", role: "Dispatch — load assignment, ETA updates, detention timer, fleet messaging" },
+  { id: "money-marisol", name: "Money Marisol", role: "Revenue & tax — per-load profit, TRAXES settlements, per diem, counter-offers" },
+  { id: "safety-sarge", name: "Safety Sarge", role: "Safety & health coach — safety score, driving behavior, DOT physical prep" },
+  { id: "weather-wanda", name: "Weather Wanda", role: "Weather intelligence — storms, ice, crosswind, chain laws by corridor" },
+  { id: "humanai-hr-manager", name: "HUMANAI HR Manager", role: "Fleet HR — driver records, payroll runs, hiring, background checks, AB5" },
 ];
 
 export type RunOpts = {

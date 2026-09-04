@@ -41,7 +41,7 @@ import { CAPS, appScreens, envPresent, type Cap } from "../routes/functions";
 type Row = Record<string, unknown>;
 
 async function run(q: string): Promise<Row[]> {
-  const r = (await db.run(sql.raw(q))) as unknown as { rows: Row[] };
+  const r = (await db.execute(sql.raw(q))) as unknown as { rows: Row[] };
   return (r.rows ?? []) as Row[];
 }
 
@@ -202,7 +202,7 @@ export async function buildBrain(getRoutes: () => { method: string; path: string
   const unreadable: string[] = [];
   let names: string[] = [];
   try {
-    names = (await run("select name from sqlite_master where type='table' and name not like 'sqlite_%' order by name")).map((r) =>
+    names = (await run("select table_name as name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE' order by table_name")).map((r) =>
       String(r.name),
     );
   } catch (e) {
@@ -334,7 +334,7 @@ export async function buildBrain(getRoutes: () => { method: string; path: string
       severity: "blocking",
       what: `A database object could not be read: ${u.split(":")[0]}.`,
       evidence: u,
-      fix: "Check the schema against the live database. Note that drizzle-kit db:push needs a TTY in this environment; tables here are created with raw CREATE TABLE IF NOT EXISTS through @libsql/client.",
+      fix: "Check the schema against the live database. Tables are created from the Drizzle schema with `drizzle-kit push` against Neon Postgres.",
       owner: "deployment",
     });
   }
@@ -376,7 +376,7 @@ export async function buildBrain(getRoutes: () => { method: string; path: string
     blockers,
     reads: [
       "app.routes (live Hono route table, passed in as a lazy getter)",
-      "sqlite_master + COUNT(*) per table (live Turso)",
+      "information_schema + COUNT(*) per table (live Neon Postgres)",
       "process.env presence as booleans only",
       "CAPS registry in api/routes/functions.ts",
       "legacy/App.jsx route table via appScreens()",

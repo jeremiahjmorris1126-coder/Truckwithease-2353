@@ -43,11 +43,10 @@ export const AGENTS = {
   MAINTENANCE: { name: 'Page Guardian',  endpoint: 'page-guardian', model: 'anthropic/claude-sonnet-4.6', built: true,  emoji: '🔄', specialty: 'maintenance' },
   MECHANIC:    { name: 'Fleet Chief',    endpoint: 'fleet-chief',   model: 'anthropic/claude-sonnet-4.6', built: true,  emoji: '🔧', specialty: 'diagnosis' },
   INTELLIGENCE:     { name: 'Fleet Mind',   endpoint: 'intelligence-mind',  model: 'anthropic/claude-sonnet-4.6', built: true,  emoji: '🧠', specialty: 'trend-analysis' },
-  // No server-side persona behind these. Do not route them somewhere else and pretend.
-  BILLIE:      { name: 'Billie Scan',    endpoint: null, model: null, built: false, emoji: '📄', specialty: 'billing' },
-  SIGNAL:      { name: 'Signal Sam',     endpoint: null, model: null, built: false, emoji: '📡', specialty: 'telecom' },
-  TRAINING:    { name: 'Game Up AI',     endpoint: null, model: null, built: false, emoji: '🎮', specialty: 'training' },
-  HARDWARE:    { name: 'Hardware Bot',   endpoint: null, model: null, built: false, emoji: '🔧', specialty: 'hardware' },
+  BILLIE:      { name: 'Billie Scan',    endpoint: 'billie-scan', model: 'anthropic/claude-sonnet-4.6', built: true, emoji: '📄', specialty: 'document review' },
+  SIGNAL:      { name: 'Signal Sam',     endpoint: 'signal-sam', model: 'anthropic/claude-sonnet-4.6', built: true, emoji: '📡', specialty: 'communications drafting' },
+  TRAINING:    { name: 'Game Up AI',     endpoint: 'game-up-ai', model: 'anthropic/claude-sonnet-4.6', built: true, emoji: '🎮', specialty: 'driver training' },
+  HARDWARE:    { name: 'Hardware Bot',   endpoint: 'hardware-bot', model: 'anthropic/claude-sonnet-4.6', built: true, emoji: '🔧', specialty: 'device support' },
 };
 
 /** POST to a server agent endpoint. Returns text, or an explicit failure string. */

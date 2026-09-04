@@ -160,6 +160,73 @@ export const sessionRoute = new Hono()
     );
   })
 
+  /**
+   * POST /api/session/demo — one tap into a real session.
+   *
+   * WHY: the whole backend sits behind a Better Auth session, and managed
+   * Google/Apple/Microsoft sign-in needs env vars that are not always present.
+   * Email + password is always on (it needs only BETTER_AUTH_SECRET), so this
+   * ensures a single shared demo account exists and signs into it, forwarding
+   * the real Set-Cookie so every gated /app page and feature API works at once.
+   *
+   * HONEST LIMITS:
+   *   - The demo account is shared. Its data is not private and may be reset.
+   *   - It is a `driver`. It is NEVER made admin — role rules above are unchanged.
+   *   - Set DISABLE_DEMO=1 to turn this off (e.g. once real onboarding is live).
+   */
+  .post("/demo", async (c) => {
+    if (process.env.DISABLE_DEMO === "1") {
+      return c.json({ error: "Demo sign-in is disabled on this deployment." }, 403);
+    }
+    if (!process.env.BETTER_AUTH_SECRET) {
+      return c.json({ error: "Auth is not configured: BETTER_AUTH_SECRET is missing." }, 503);
+    }
+
+    const email = (process.env.DEMO_EMAIL ?? "demo@truckwithease.app").trim().toLowerCase();
+    const password = process.env.DEMO_PASSWORD ?? "twe-demo-account-2026";
+
+    // Ensure the account exists. A second call throws "user already exists" —
+    // that is expected and ignored; we only care that sign-in below works.
+    try {
+      await auth.api.signUpEmail({ body: { email, password, name: "Demo Driver" } });
+    } catch {
+      /* already created on a previous demo tap */
+    }
+
+    // Sign in and forward the session cookie(s) verbatim to the browser.
+    let res: Response;
+    try {
+      res = await auth.api.signInEmail({ body: { email, password }, asResponse: true });
+    } catch {
+      return c.json({ error: "Demo sign-in failed while creating a session." }, 500);
+    }
+
+    const cookies =
+      typeof (res.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie === "function"
+        ? (res.headers as Headers & { getSetCookie: () => string[] }).getSetCookie()
+        : (() => {
+            const single = res.headers.get("set-cookie");
+            return single ? [single] : [];
+          })();
+    for (const cookie of cookies) c.header("set-cookie", cookie, { append: true });
+
+    if (!res.ok || cookies.length === 0) {
+      return c.json({ error: "Demo sign-in did not return a session cookie." }, 500);
+    }
+
+    return c.json(
+      {
+        ok: true,
+        demo: true,
+        email,
+        role: DEFAULT_ROLE,
+        redirect: "/app",
+        note: "Shared demo account. Data is not private and may be reset. Never admin.",
+      },
+      200,
+    );
+  })
+
   /** GET /api/session/status — is auth actually configured and reachable. */
   .get("/status", async (c) => {
     const secretSet = Boolean(process.env.BETTER_AUTH_SECRET);
@@ -169,7 +236,7 @@ export const sessionRoute = new Hono()
     let userCount: number | null = null;
     let admins: number | null = null;
     try {
-      const r = (await db.run(
+      const r = (await db.execute(
         sql.raw('select count(*) as n from "user"'),
       )) as unknown as { rows: Array<{ n?: number | string }> };
       const n = r?.rows?.[0]?.n;
