@@ -110,32 +110,29 @@ function PatternCard({ p }) {
 /* ---------------------------------------------------------------- page */
 
 export default function DriverAlgorithmPage() {
-  const [drivers, setDrivers] = useState([]);
-  const [driverId, setDriverId] = useState("drv-1");
   const [status, setStatus] = useState(null);
+  const [personalizationEnabled, setPersonalizationEnabled] = useState(false);
   const [profile, setProfile] = useState(null);
   const [state, setState] = useState("loading");
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    fetch("/api/fleet/drivers")
-      .then((r) => r.json())
-      .then((d) => setDrivers(Array.isArray(d?.drivers) ? d.drivers : []))
-      .catch(() => setDrivers([]));
     fetch("/api/algorithm/status")
       .then((r) => r.json())
       .then(setStatus)
       .catch(() => setStatus(null));
   }, []);
 
-  const load = useCallback(async (id) => {
+  const load = useCallback(async () => {
     setState("loading");
     setErr("");
     try {
-      const res = await fetch(`/api/algorithm/${encodeURIComponent(id)}`);
+      const res = await fetch("/api/algorithm/me", { credentials: "include" });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `server returned ${res.status}`);
-      setProfile(data);
+      setPersonalizationEnabled(Boolean(data.personalizationEnabled));
+      if (!data.linked) { setProfile(null); setState("unlinked"); return; }
+      setProfile(data.driver);
       setState("ok");
     } catch (e) {
       setErr(String(e?.message || e));
@@ -143,7 +140,21 @@ export default function DriverAlgorithmPage() {
     }
   }, []);
 
-  useEffect(() => { load(driverId); }, [driverId, load]);
+  const claim = useCallback(async () => {
+    const res = await fetch("/api/algorithm/me/claim", { method: "POST", credentials: "include" });
+    const data = await res.json();
+    if (!res.ok) { setErr(data?.error || `server returned ${res.status}`); setState("error"); return; }
+    await load();
+  }, [load]);
+
+  const setConsent = useCallback(async (enabled) => {
+    const res = await fetch("/api/algorithm/me/consent", { method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify({ enabled }) });
+    const data = await res.json();
+    if (!res.ok) { setErr(data?.error || `server returned ${res.status}`); return; }
+    setPersonalizationEnabled(Boolean(data.personalizationEnabled));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#e8e8e8" }}>
@@ -169,17 +180,8 @@ export default function DriverAlgorithmPage() {
           </p>
 
           <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 20, flexWrap: "wrap" }}>
-            <select
-              value={driverId}
-              onChange={(e) => setDriverId(e.target.value)}
-              style={{ background: "#0f0f0f", color: "#e8e8e8", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "9px 12px", fontFamily: "JetBrains Mono, monospace", fontSize: 13 }}
-            >
-              {(drivers.length ? drivers : [{ id: "drv-1", name: "drv-1" }]).map((d) => (
-                <option key={d.id} value={d.id}>{d.name} {d.truckNumber ? `(${d.truckNumber})` : ""}</option>
-              ))}
-            </select>
             <button
-              onClick={() => load(driverId)}
+              onClick={load}
               style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "transparent", color: GOLD, border: `1px solid ${GOLD}`, borderRadius: 6, padding: "9px 15px", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
             >
               <RefreshCw size={14} /> Recompute
@@ -189,6 +191,18 @@ export default function DriverAlgorithmPage() {
       </div>
 
       <div style={{ maxWidth: 1180, margin: "0 auto", padding: "26px" }}>
+        {state === "unlinked" && (
+          <Panel title="Connect your driver profile" note="Your sign-in email must match the driver email held by dispatch.">
+            <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.6 }}>Claiming links only the driver record matching your signed-in email. It never exposes another driver’s history.</p>
+            <button onClick={claim} style={{ marginTop: 14, background: GOLD, color: "#0a0a0a", border: 0, borderRadius: 6, padding: "9px 15px", cursor: "pointer", fontWeight: 700 }}>Claim my driver profile</button>
+          </Panel>
+        )}
+        {state === "ok" && (
+          <Panel title="Personalization consent" note="Observed signals are advisory context for dispatch; they never override HOS, safety, or route gates.">
+            <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.6 }}>Allow dispatch and agents to use your sample-qualified driving, load, customer, and route patterns. You can turn this off at any time.</p>
+            <button onClick={() => setConsent(!personalizationEnabled)} style={{ marginTop: 14, background: personalizationEnabled ? "transparent" : GOLD, color: personalizationEnabled ? GOLD : "#0a0a0a", border: `1px solid ${GOLD}`, borderRadius: 6, padding: "9px 15px", cursor: "pointer", fontWeight: 700 }}>{personalizationEnabled ? "Disable personalization" : "Enable personalization"}</button>
+          </Panel>
+        )}
         {/* what the engine can learn from */}
         <Panel title="What the engine can learn from right now" note="GET /api/algorithm/status">
           {!status ? (
@@ -214,7 +228,7 @@ export default function DriverAlgorithmPage() {
         )}
 
         {state === "error" && (
-          <Panel title="Profile failed" note={`GET /api/algorithm/${driverId}`}>
+          <Panel title="Profile failed" note="GET /api/algorithm/me">
             <div style={{ color: WARN, fontFamily: "JetBrains Mono, monospace", fontSize: 13 }}>{err}</div>
           </Panel>
         )}
