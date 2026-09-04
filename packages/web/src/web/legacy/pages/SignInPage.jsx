@@ -121,10 +121,11 @@ const inputStyle = {
   background: "#0d0d0d",
   border: `1px solid ${C.border}`,
   borderRadius: 3,
-  padding: "11px 12px",
+  padding: "12px 12px",
   color: C.white,
   fontFamily: "Inter, sans-serif",
-  fontSize: 14,
+  // 16px keeps iOS Safari from auto-zooming the page when the field is focused.
+  fontSize: 16,
   outline: "none",
 };
 
@@ -253,7 +254,29 @@ export default function SignInPage() {
   const managedLive = Boolean(status?.methods?.managedGoogle);
 
   return (
-    <div style={{ minHeight: "100vh", background: C.black, color: C.white }}>
+    <div style={{ minHeight: "100vh", background: C.black, color: C.white, overflowX: "hidden" }}>
+      {/*
+        Mobile-first layout. Default is a single column so nothing overflows a
+        402px phone; the form-and-status split only appears once there is room
+        at >=768px. The hero size is clamped for the same reason.
+      */}
+      <style>{`
+        .si-grid {
+          max-width: 1080px;
+          margin: 0 auto;
+          padding: 22px 18px 56px;
+          display: grid;
+          gap: 18px;
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .si-hero { font-size: clamp(38px, 12vw, 52px); }
+        @media (min-width: 768px) {
+          .si-grid {
+            padding: 26px 22px 60px;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+          }
+        }
+      `}</style>
       {/* header band */}
       <div
         style={{
@@ -288,9 +311,9 @@ export default function SignInPage() {
             </span>
           </div>
           <h1
+            className="si-hero"
             style={{
               fontFamily: "Bebas Neue, sans-serif",
-              fontSize: 52,
               lineHeight: 1,
               letterSpacing: "0.02em",
               margin: 0,
@@ -315,16 +338,7 @@ export default function SignInPage() {
         </div>
       </div>
 
-      <div
-        style={{
-          maxWidth: 1080,
-          margin: "0 auto",
-          padding: "26px 22px 60px",
-          display: "grid",
-          gap: 18,
-          gridTemplateColumns: "minmax(0,1fr) minmax(0,0.85fr)",
-        }}
-      >
+      <div className="si-grid">
         {/* left: the form */}
         <div style={{ display: "grid", gap: 18 }}>
           {isPending ? null : session ? (
@@ -469,6 +483,11 @@ export default function SignInPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => {
+                      // Ignore Enter during CJK IME composition (confirming a candidate, not submitting).
+                      if (e.key !== "Enter" || e.nativeEvent.isComposing || e.keyCode === 229) return;
+                      emailSubmit();
+                    }}
                     placeholder="you@example.com"
                     autoComplete="email"
                   />
@@ -481,7 +500,8 @@ export default function SignInPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") emailSubmit();
+                      if (e.key !== "Enter" || e.nativeEvent.isComposing || e.keyCode === 229) return;
+                      emailSubmit();
                     }}
                     placeholder="At least 8 characters"
                     autoComplete={mode === "signup" ? "new-password" : "current-password"}

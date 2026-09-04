@@ -86,10 +86,18 @@ export const auth = betterAuth({
       }
     : {}),
   plugins: [
-    ...runableManagedAuth({
-      applicationId: process.env.APPLICATION_ID!,
-      issuer: process.env.VITE_RUNABLE_AUTH_ISSUER!,
-    }),
+    // Runable managed login (Google/Apple/Microsoft) is only registered when its
+    // env vars are actually present. Previously these were `!`-asserted and called
+    // unconditionally, so a server without APPLICATION_ID / VITE_RUNABLE_AUTH_ISSUER
+    // threw at module load and took the ENTIRE API down with a bare 500. Email +
+    // password and the demo session do not depend on managed auth, so they must keep
+    // working when it is absent — which is exactly what /api/session/status reports.
+    ...(process.env.APPLICATION_ID && process.env.VITE_RUNABLE_AUTH_ISSUER
+      ? runableManagedAuth({
+          applicationId: process.env.APPLICATION_ID,
+          issuer: process.env.VITE_RUNABLE_AUTH_ISSUER,
+        })
+      : []),
     expo(),
   ],
 });
