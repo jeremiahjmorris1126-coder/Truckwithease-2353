@@ -61,6 +61,7 @@ import { functionsIndex } from "./routes/functions";
 import { openapiRoutes } from "./routes/openapi";
 import { responsibleUseRoute } from "./routes/responsibleuse";
 import { hapticRoute } from "./routes/haptic";
+import { profit } from "./routes/profit";
 import { requireSession } from "./middleware/session";
 
 const app = new Hono()
@@ -77,6 +78,7 @@ const app = new Hono()
   .route("/hos", hos)
   .route("/dvir", dvir)
   .route("/loads", loads)
+  .route("/profit", profit)
   .route("/chat", chat)
   .route("/rewards", rewards)
   .route("/fuel", fuel)
