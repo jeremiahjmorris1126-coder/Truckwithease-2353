@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from "hono/cors";
 import { fleet } from "./routes/fleet";
 import { assets } from "./routes/assets";
+import { quantumOperations } from "./routes/quantum-operations";
 import { hos } from "./routes/hos";
 import { dvir } from "./routes/dvir";
 import { loads } from "./routes/loads";
@@ -66,7 +67,6 @@ import { profit } from "./routes/profit";
 import { voice } from "./routes/voice";
 import { command } from "./routes/command";
 import { requireSession } from "./middleware/session";
-import { voice } from "./routes/voice";
 
 const app = new Hono()
   .basePath('api')
@@ -80,6 +80,7 @@ const app = new Hono()
   .get('/health', (c) => c.json({ status: 'ok' }, 200))
   .route("/fleet", fleet)
   .route("/assets", assets)
+  .route("/quantum-operations", quantumOperations)
   .route("/hos", hos)
   .route("/dvir", dvir)
   .route("/loads", loads)

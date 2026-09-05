@@ -10,6 +10,12 @@ test("Vercel Function forwards the public health endpoint", async () => {
   expect(await response.json()).toEqual({ status: "ok" });
 });
 
+test("Quantum Operations requires a Better Auth session", async () => {
+  const response = await handler(new Request(`${origin}/api/quantum-operations`));
+  expect(response.status).toBe(401);
+  expect(await response.json()).toMatchObject({ error: "Authentication required." });
+});
+
 test("asset tracker requires a Better Auth session", async () => {
   const response = await handler(new Request(`${origin}/api/assets`));
   expect(response.status).toBe(401);

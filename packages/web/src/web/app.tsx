@@ -19,6 +19,7 @@ const Tolls = lazy(() => import("./pages/tolls"));
 const Health = lazy(() => import("./pages/health"));
 const FleetChief = lazy(() => import("./pages/fleet-chief"));
 const Assets = lazy(() => import("./pages/assets"));
+const QuantumOperations = lazy(() => import("./pages/quantum-operations"));
 const HR = lazy(() => import("./pages/hr"));
 const Rewards = lazy(() => import("./pages/rewards"));
 const Loads = lazy(() => import("./pages/loads"));
@@ -95,6 +96,7 @@ function App() {
           <Route path="/app/health" component={() => <AppShell><Health /></AppShell>} />
           <Route path="/app/fleet-chief" component={() => <AppShell><FleetChief /></AppShell>} />
           <Route path="/app/assets" component={() => <AppShell><Assets /></AppShell>} />
+          <Route path="/app/quantum-operations" component={() => <AppShell><QuantumOperations /></AppShell>} />
           <Route path="/app/rewards" component={() => <AppShell><Rewards /></AppShell>} />
           <Route path="/app/loads" component={() => <AppShell><Loads /></AppShell>} />
           <Route path="/app/chat" component={() => <AppShell><Chat /></AppShell>} />
