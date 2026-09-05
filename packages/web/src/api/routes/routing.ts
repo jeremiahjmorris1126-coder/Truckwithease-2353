@@ -285,4 +285,152 @@ routing.get("/streetview", async (c) => {
   return c.body(bytes, 200);
 });
 
+/** Google Routes API (v2). Returns only car-profile routing; commercial restrictions are not applied. */
+routing.post("/routes", async (c) => {
+  const body = await c.req.json().catch(() => null) as PlanBody | null;
+  const origin = body?.origin?.trim() ?? "";
+  const destination = body?.destination?.trim() ?? "";
+  if (!origin || !destination) return c.json({ error: "origin and destination are required" }, 400);
+  const key = googleKeyFor("routes");
+  if (!key) return c.json({ error: "no_routes_key", keySource: googleKeySourceFor("routes") }, 503);
+  const t0 = Date.now();
+  let response: Response;
+  try {
+    response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.description" },
+      body: JSON.stringify({ origin: { address: origin }, destination: { address: destination }, travelMode: "DRIVE", routingPreference: "TRAFFIC_AWARE" }),
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (error) {
+    return c.json({ error: "routes_request_failed", detail: error instanceof Error ? error.message : "request failed" }, 502);
+  }
+  const payload = await response.json().catch(() => null) as { routes?: Array<{ duration?: string; distanceMeters?: number; polyline?: { encodedPolyline?: string }; description?: string }>; error?: { message?: string } } | null;
+  if (!response.ok || !payload?.routes?.[0]) return c.json({ error: "routes_failed", googleHttpStatus: response.status, googleError: payload?.error?.message ?? null, measuredMs: Date.now() - t0 }, 502);
+  const route = payload.routes[0];
+  const seconds = Number.parseInt(route.duration ?? "0", 10);
+  return c.json({ source: "google-routes", live: true, request: { origin, destination }, distance: { meters: route.distanceMeters ?? null, miles: route.distanceMeters ? Math.round(route.distanceMeters / METERS_PER_MILE * 10) / 10 : null }, duration: { seconds, minutes: Math.round(seconds / 60) }, overviewPolyline: route.polyline?.encodedPolyline ?? null, summary: route.description ?? null, truckProfile: false, notApplied: ["Truck height and weight restrictions", "Hazmat routing", "Truck-prohibited roads"], keySource: googleKeySourceFor("routes"), measuredMs: Date.now() - t0 });
+});
+
+/** Google Places Text Search for operational stops. */
+routing.post("/places", async (c) => {
+  const body = await c.req.json().catch(() => null) as { query?: string; maxResults?: number } | null;
+  const query = body?.query?.trim() ?? "";
+  if (!query) return c.json({ error: "query_required" }, 400);
+  const key = googleKeyFor("places");
+  if (!key) return c.json({ error: "no_places_key", keySource: googleKeySourceFor("places") }, 503);
+  const maxResultCount = Math.min(Math.max(Number(body?.maxResults) || 10, 1), 20);
+  const t0 = Date.now();
+  let response: Response;
+  try {
+    response = await fetch("https://places.googleapis.com/v1/places:searchText", { method: "POST", headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.types" }, body: JSON.stringify({ textQuery: query, maxResultCount }), signal: AbortSignal.timeout(20_000) });
+  } catch (error) {
+    return c.json({ error: "places_request_failed", detail: error instanceof Error ? error.message : "request failed" }, 502);
+  }
+  const payload = await response.json().catch(() => null) as { places?: Array<{ id: string; displayName?: { text?: string }; formattedAddress?: string; location?: { latitude?: number; longitude?: number }; types?: string[] }>; error?: { message?: string } } | null;
+  if (!response.ok) return c.json({ error: "places_failed", googleHttpStatus: response.status, googleError: payload?.error?.message ?? null, measuredMs: Date.now() - t0 }, 502);
+  return c.json({ source: "google-places", query, places: (payload?.places ?? []).map((place) => ({ id: place.id, name: place.displayName?.text ?? null, address: place.formattedAddress ?? null, lat: place.location?.latitude ?? null, lng: place.location?.longitude ?? null, types: place.types ?? [] })), keySource: googleKeySourceFor("places"), measuredMs: Date.now() - t0 });
+});
+
+/**
+ * Google Routes Route Matrix for dispatch comparisons.
+ * This compares up to 25 typed origins with one typed destination. It is not
+ * truck-legal routing: height, weight, hazmat, and truck-prohibited roads are
+ * not applied by Google Routes.
+ */
+routing.post("/matrix", async (c) => {
+  const body = await c.req.json().catch(() => null) as { origins?: Array<{ id?: string; address?: string }>; destination?: string } | null;
+  const origins = Array.isArray(body?.origins) ? body.origins : [];
+  const destination = body?.destination?.trim() ?? "";
+  if (!destination) return c.json({ error: "destination_required" }, 400);
+  if (!origins.length || origins.length > 25) return c.json({ error: "origins must contain 1 to 25 items" }, 400);
+  const normalized = origins.map((origin, index) => ({ id: origin.id?.trim() || String(index), address: origin.address?.trim() || "" }));
+  if (normalized.some((origin) => !origin.address)) return c.json({ error: "every origin requires an address" }, 400);
+
+  const key = googleKeyFor("routes");
+  if (!key) return c.json({ error: "no_routes_key", keySource: googleKeySourceFor("routes") }, 503);
+  const started = Date.now();
+  let response: Response;
+  try {
+    response = await fetch("https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": "originIndex,destinationIndex,condition,distanceMeters,duration,staticDuration",
+      },
+      body: JSON.stringify({
+        origins: normalized.map((origin) => ({ waypoint: { address: origin.address } })),
+        destinations: [{ waypoint: { address: destination } }],
+        travelMode: "DRIVE",
+        routingPreference: "TRAFFIC_AWARE",
+      }),
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (error) {
+    return c.json({ error: "matrix_request_failed", detail: error instanceof Error ? error.message : "request failed" }, 502);
+  }
+  const payload = await response.json().catch(() => null) as { error?: { message?: string }; [key: string]: unknown } | null;
+  if (!response.ok || !Array.isArray(payload)) {
+    return c.json({ error: "matrix_failed", googleHttpStatus: response.status, googleError: payload?.error?.message ?? null, measuredMs: Date.now() - started }, 502);
+  }
+  const comparisons = payload.map((element: any) => {
+    const source = normalized[element.originIndex ?? -1];
+    const seconds = Number.parseInt(element.duration ?? "0", 10);
+    return {
+      originId: source?.id ?? null,
+      origin: source?.address ?? null,
+      condition: element.condition ?? "UNKNOWN",
+      distance: { meters: element.distanceMeters ?? null, miles: element.distanceMeters ? Math.round(element.distanceMeters / METERS_PER_MILE * 10) / 10 : null },
+      duration: { seconds, minutes: Math.round(seconds / 60) },
+    };
+  }).sort((a: { duration: { seconds: number } }, b: { duration: { seconds: number } }) => a.duration.seconds - b.duration.seconds);
+  return c.json({ source: "google-routes-route-matrix", live: true, destination, comparisons, truckProfile: false, notApplied: ["Truck height and weight restrictions", "Hazmat routing", "Truck-prohibited roads"], keySource: googleKeySourceFor("routes"), measuredMs: Date.now() - started });
+});
+
+/** Snap a bounded GPS trace to Google Roads. */
+routing.post("/roads/snap", async (c) => {
+  const body = await c.req.json().catch(() => null) as { points?: Array<{ lat?: number; lng?: number }> } | null;
+  const points = Array.isArray(body?.points) ? body.points : [];
+  if (points.length < 2 || points.length > 100) return c.json({ error: "points must contain 2 to 100 locations" }, 400);
+  if (points.some((point) => !Number.isFinite(point.lat) || !Number.isFinite(point.lng))) return c.json({ error: "every point requires numeric lat and lng" }, 400);
+  const key = googleKeyFor("roads");
+  if (!key) return c.json({ error: "no_roads_key", keySource: googleKeySourceFor("roads") }, 503);
+  const started = Date.now();
+  let response: Response;
+  try { response = await fetch(`https://roads.googleapis.com/v1/snapToRoads?path=${encodeURIComponent(points.map((point) => `${point.lat},${point.lng}`).join("|"))}&interpolate=true&key=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(20_000) }); } catch (error) { return c.json({ error: "roads_request_failed", detail: error instanceof Error ? error.message : "request failed" }, 502); }
+  const payload = await response.json().catch(() => null) as { snappedPoints?: Array<{ location?: { latitude?: number; longitude?: number }; placeId?: string; originalIndex?: number }>; error?: { message?: string } } | null;
+  if (!response.ok) return c.json({ error: "roads_failed", googleHttpStatus: response.status, googleError: payload?.error?.message ?? null, measuredMs: Date.now() - started }, 502);
+  return c.json({ source: "google-roads", points: (payload?.snappedPoints ?? []).map((point) => ({ lat: point.location?.latitude ?? null, lng: point.location?.longitude ?? null, placeId: point.placeId ?? null, originalIndex: point.originalIndex ?? null })), keySource: googleKeySourceFor("roads"), measuredMs: Date.now() - started });
+});
+
+/** Resolve a route point's local timezone using Google Time Zone API. */
+routing.get("/timezone", async (c) => {
+  const lat = Number(c.req.query("lat")); const lng = Number(c.req.query("lng"));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return c.json({ error: "numeric lat and lng are required" }, 400);
+  const key = googleKeyFor("timezone");
+  if (!key) return c.json({ error: "no_timezone_key", keySource: googleKeySourceFor("timezone") }, 503);
+  const started = Date.now();
+  let response: Response;
+  try { response = await fetch(`https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${Math.floor(Date.now() / 1000)}&key=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(20_000) }); } catch (error) { return c.json({ error: "timezone_request_failed", detail: error instanceof Error ? error.message : "request failed" }, 502); }
+  const payload = await response.json().catch(() => null) as { status?: string; timeZoneId?: string; timeZoneName?: string; rawOffset?: number; dstOffset?: number; errorMessage?: string } | null;
+  if (!response.ok || payload?.status !== "OK") return c.json({ error: "timezone_failed", googleHttpStatus: response.status, googleStatus: payload?.status ?? null, googleError: payload?.errorMessage ?? null, measuredMs: Date.now() - started }, 502);
+  return c.json({ source: "google-timezone", lat, lng, timeZoneId: payload.timeZoneId, timeZoneName: payload.timeZoneName, rawOffsetSeconds: payload.rawOffset, dstOffsetSeconds: payload.dstOffset, keySource: googleKeySourceFor("timezone"), measuredMs: Date.now() - started });
+});
+
+/** Get elevations for up to 100 route points. */
+routing.post("/elevation", async (c) => {
+  const body = await c.req.json().catch(() => null) as { points?: Array<{ lat?: number; lng?: number }> } | null;
+  const points = Array.isArray(body?.points) ? body.points : [];
+  if (!points.length || points.length > 100 || points.some((point) => !Number.isFinite(point.lat) || !Number.isFinite(point.lng))) return c.json({ error: "points must contain 1 to 100 numeric locations" }, 400);
+  const key = googleKeyFor("elevation");
+  if (!key) return c.json({ error: "no_elevation_key", keySource: googleKeySourceFor("elevation") }, 503);
+  const started = Date.now();
+  let response: Response;
+  try { response = await fetch(`https://maps.googleapis.com/maps/api/elevation/json?locations=${encodeURIComponent(points.map((point) => `${point.lat},${point.lng}`).join("|"))}&key=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(20_000) }); } catch (error) { return c.json({ error: "elevation_request_failed", detail: error instanceof Error ? error.message : "request failed" }, 502); }
+  const payload = await response.json().catch(() => null) as { status?: string; results?: Array<{ elevation?: number; location?: { lat?: number; lng?: number }; resolution?: number }>; error_message?: string } | null;
+  if (!response.ok || payload?.status !== "OK") return c.json({ error: "elevation_failed", googleHttpStatus: response.status, googleStatus: payload?.status ?? null, googleError: payload?.error_message ?? null, measuredMs: Date.now() - started }, 502);
+  return c.json({ source: "google-elevation", elevations: (payload.results ?? []).map((result) => ({ meters: result.elevation ?? null, lat: result.location?.lat ?? null, lng: result.location?.lng ?? null, resolutionMeters: result.resolution ?? null })), keySource: googleKeySourceFor("elevation"), measuredMs: Date.now() - started });
+});
+
 export { routing };
