@@ -27,10 +27,13 @@ const env = () => ({
   places: clean(process.env.GOOGLE_PLACES_API_KEY),
   directions: clean(process.env.GOOGLE_DIRECTIONS_KEY),
   geocoding: clean(process.env.GOOGLE_GEOCODING_KEY),
+  roads: clean(process.env.GOOGLE_ROADS_KEY),
+  timezone: clean(process.env.GOOGLE_TIMEZONE_KEY),
+  elevation: clean(process.env.GOOGLE_ELEVATION_KEY),
 });
 
 /** Google API families this app calls. */
-export type GoogleApi = "directions" | "geocoding" | "places";
+export type GoogleApi = "directions" | "routes" | "geocoding" | "places" | "roads" | "timezone" | "elevation";
 
 /**
  * The key to use for one API family. Order: a purpose-specific override, then
@@ -40,11 +43,17 @@ export type GoogleApi = "directions" | "geocoding" | "places";
 export function googleKeyFor(api: GoogleApi): string {
   const e = env();
   const chain: string[] =
-    api === "directions"
+    api === "directions" || api === "routes"
       ? [e.directions, e.explicit, e.browser, e.places]
       : api === "geocoding"
         ? [e.geocoding, e.explicit, e.places, e.browser]
-        : [e.explicit, e.places, e.browser];
+        : api === "roads"
+          ? [e.roads, e.explicit, e.places, e.browser]
+          : api === "timezone"
+            ? [e.timezone, e.explicit, e.places, e.browser]
+            : api === "elevation"
+              ? [e.elevation, e.explicit, e.places, e.browser]
+              : [e.explicit, e.places, e.browser];
   return chain.find((k) => k.length > 0) || "";
 }
 
@@ -52,11 +61,17 @@ export function googleKeyFor(api: GoogleApi): string {
 export function googleKeySourceFor(api: GoogleApi): string | null {
   const e = env();
   const named: Array<[string, string]> =
-    api === "directions"
+    api === "directions" || api === "routes"
       ? [["GOOGLE_DIRECTIONS_KEY", e.directions], ["GOOGLE_MAPS_KEY", e.explicit], ["VITE_GOOGLE_MAPS_KEY", e.browser], ["GOOGLE_PLACES_API_KEY", e.places]]
       : api === "geocoding"
         ? [["GOOGLE_GEOCODING_KEY", e.geocoding], ["GOOGLE_MAPS_KEY", e.explicit], ["GOOGLE_PLACES_API_KEY", e.places], ["VITE_GOOGLE_MAPS_KEY", e.browser]]
-        : [["GOOGLE_MAPS_KEY", e.explicit], ["GOOGLE_PLACES_API_KEY", e.places], ["VITE_GOOGLE_MAPS_KEY", e.browser]];
+        : api === "roads"
+          ? [["GOOGLE_ROADS_KEY", e.roads], ["GOOGLE_MAPS_KEY", e.explicit], ["GOOGLE_PLACES_API_KEY", e.places], ["VITE_GOOGLE_MAPS_KEY", e.browser]]
+          : api === "timezone"
+            ? [["GOOGLE_TIMEZONE_KEY", e.timezone], ["GOOGLE_MAPS_KEY", e.explicit], ["GOOGLE_PLACES_API_KEY", e.places], ["VITE_GOOGLE_MAPS_KEY", e.browser]]
+            : api === "elevation"
+              ? [["GOOGLE_ELEVATION_KEY", e.elevation], ["GOOGLE_MAPS_KEY", e.explicit], ["GOOGLE_PLACES_API_KEY", e.places], ["VITE_GOOGLE_MAPS_KEY", e.browser]]
+              : [["GOOGLE_MAPS_KEY", e.explicit], ["GOOGLE_PLACES_API_KEY", e.places], ["VITE_GOOGLE_MAPS_KEY", e.browser]];
   return named.find(([, v]) => v.length > 0)?.[0] ?? null;
 }
 
@@ -68,7 +83,7 @@ export function maskKey(k: string): string | null {
 
 /** What key each API family will use right now. Contains no key material. */
 export function googleKeyReport() {
-  const apis: GoogleApi[] = ["directions", "geocoding", "places"];
+  const apis: GoogleApi[] = ["directions", "routes", "geocoding", "places", "roads", "timezone", "elevation"];
   return {
     projectNumber: "405307027459",
     projectNumberSource:
