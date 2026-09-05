@@ -65,6 +65,7 @@ import { weightCheck } from "./routes/weight-check";
 import { designSystem } from "./routes/design-system";
 import { medicalExaminer } from "./routes/medical-examiner";
 import { requireSession } from "./middleware/session";
+import { voice } from "./routes/voice";
 
 const app = new Hono()
   .basePath('api')
@@ -116,6 +117,7 @@ const app = new Hono()
   .route("/fleet-memory", fleetMemory)
   .route("/routing", routing)
   .route("/weather", weather)
+  .route("/voice", voice)
   .route("/week-review", weekReview)
   .route("/azuga", azuga)
   .route("/vat-rates", vatRates)
