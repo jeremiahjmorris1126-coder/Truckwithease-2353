@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from "hono/cors";
 import { fleet } from "./routes/fleet";
+import { assets } from "./routes/assets";
 import { hos } from "./routes/hos";
 import { dvir } from "./routes/dvir";
 import { loads } from "./routes/loads";
@@ -78,6 +79,7 @@ const app = new Hono()
   .get('/ping', (c) => c.json({ message: `Pong! ${Date.now()}` }, 200))
   .get('/health', (c) => c.json({ status: 'ok' }, 200))
   .route("/fleet", fleet)
+  .route("/assets", assets)
   .route("/hos", hos)
   .route("/dvir", dvir)
   .route("/loads", loads)
