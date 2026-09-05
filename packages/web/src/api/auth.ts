@@ -97,6 +97,18 @@ export const auth = betterAuth({
   emailAndPassword: { enabled: true },
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins,
+  // requireSession runs auth.api.getSession() on every feature request. Without
+  // a cache that is a database round trip per request. The cookie cache stores a
+  // short-lived signed copy of the session in the cookie, so getSession validates
+  // it in-process and only falls back to the database when the cache expires or
+  // the session is revoked. maxAge is deliberately short (60s) so role/session
+  // revocation still takes effect quickly.
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 60,
+    },
+  },
   // Required by the cross-site v0 preview iframe. Without SameSite=None; Secure
   // the browser silently drops the session cookie, so login succeeds but the
   // very next request looks signed out. Production keeps Better Auth's secure
