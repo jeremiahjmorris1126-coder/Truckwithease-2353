@@ -20,7 +20,7 @@ import { Link, useLocation } from "wouter";
 import { useState, type ReactNode } from "react";
 import {
   LayoutDashboard, Clock, Map, ClipboardCheck, Fuel, Route, HeartPulse,
-  Wrench, Trophy, Package, MessageSquare, FileText, CreditCard, Truck, Boxes,
+  Wrench, Trophy, Package, MessageSquare, FileText, CreditCard, Truck, Boxes, BrainCircuit,
   ChevronDown, ShieldAlert,
 } from "lucide-react";
 import { useSession, type Role } from "../lib/session";
@@ -35,6 +35,7 @@ const NAV = [
   { to: "/app/health", label: "Driver Health", icon: HeartPulse, roles: ["admin", "dispatch", "driver"] },
   { to: "/app/fleet-chief", label: "Fleet Chief AI", icon: Wrench, roles: ["admin", "dispatch", "driver"] },
   { to: "/app/assets", label: "Fleet Assets", icon: Boxes, roles: ["admin", "dispatch"] },
+  { to: "/app/quantum-operations", label: "Quantum Operations", icon: BrainCircuit, roles: ["admin", "dispatch"] },
   { to: "/app/rewards", label: "EaseRewards", icon: Trophy, roles: ["admin", "dispatch", "driver"] },
   { to: "/app/loads", label: "Load Board", icon: Package, roles: ["admin", "dispatch", "driver"] },
   { to: "/app/chat", label: "Dispatch Chat", icon: MessageSquare, roles: ["admin", "dispatch", "driver"] },
