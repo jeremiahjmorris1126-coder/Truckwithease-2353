@@ -285,4 +285,107 @@ routing.get("/streetview", async (c) => {
   return c.body(bytes, 200);
 });
 
+/** Google Routes API (v2). Returns only car-profile routing; commercial restrictions are not applied. */
+routing.post("/routes", async (c) => {
+  const body = await c.req.json().catch(() => null) as PlanBody | null;
+  const origin = body?.origin?.trim() ?? "";
+  const destination = body?.destination?.trim() ?? "";
+  if (!origin || !destination) return c.json({ error: "origin and destination are required" }, 400);
+  const key = googleKeyFor("routes");
+  if (!key) return c.json({ error: "no_routes_key", keySource: googleKeySourceFor("routes") }, 503);
+  const t0 = Date.now();
+  let response: Response;
+  try {
+    response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.description" },
+      body: JSON.stringify({ origin: { address: origin }, destination: { address: destination }, travelMode: "DRIVE", routingPreference: "TRAFFIC_AWARE" }),
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (error) {
+    return c.json({ error: "routes_request_failed", detail: error instanceof Error ? error.message : "request failed" }, 502);
+  }
+  const payload = await response.json().catch(() => null) as { routes?: Array<{ duration?: string; distanceMeters?: number; polyline?: { encodedPolyline?: string }; description?: string }>; error?: { message?: string } } | null;
+  if (!response.ok || !payload?.routes?.[0]) return c.json({ error: "routes_failed", googleHttpStatus: response.status, googleError: payload?.error?.message ?? null, measuredMs: Date.now() - t0 }, 502);
+  const route = payload.routes[0];
+  const seconds = Number.parseInt(route.duration ?? "0", 10);
+  return c.json({ source: "google-routes", live: true, request: { origin, destination }, distance: { meters: route.distanceMeters ?? null, miles: route.distanceMeters ? Math.round(route.distanceMeters / METERS_PER_MILE * 10) / 10 : null }, duration: { seconds, minutes: Math.round(seconds / 60) }, overviewPolyline: route.polyline?.encodedPolyline ?? null, summary: route.description ?? null, truckProfile: false, notApplied: ["Truck height and weight restrictions", "Hazmat routing", "Truck-prohibited roads"], keySource: googleKeySourceFor("routes"), measuredMs: Date.now() - t0 });
+});
+
+/** Google Places Text Search for operational stops. */
+routing.post("/places", async (c) => {
+  const body = await c.req.json().catch(() => null) as { query?: string; maxResults?: number } | null;
+  const query = body?.query?.trim() ?? "";
+  if (!query) return c.json({ error: "query_required" }, 400);
+  const key = googleKeyFor("places");
+  if (!key) return c.json({ error: "no_places_key", keySource: googleKeySourceFor("places") }, 503);
+  const maxResultCount = Math.min(Math.max(Number(body?.maxResults) || 10, 1), 20);
+  const t0 = Date.now();
+  let response: Response;
+  try {
+    response = await fetch("https://places.googleapis.com/v1/places:searchText", { method: "POST", headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.types" }, body: JSON.stringify({ textQuery: query, maxResultCount }), signal: AbortSignal.timeout(20_000) });
+  } catch (error) {
+    return c.json({ error: "places_request_failed", detail: error instanceof Error ? error.message : "request failed" }, 502);
+  }
+  const payload = await response.json().catch(() => null) as { places?: Array<{ id: string; displayName?: { text?: string }; formattedAddress?: string; location?: { latitude?: number; longitude?: number }; types?: string[] }>; error?: { message?: string } } | null;
+  if (!response.ok) return c.json({ error: "places_failed", googleHttpStatus: response.status, googleError: payload?.error?.message ?? null, measuredMs: Date.now() - t0 }, 502);
+  return c.json({ source: "google-places", query, places: (payload?.places ?? []).map((place) => ({ id: place.id, name: place.displayName?.text ?? null, address: place.formattedAddress ?? null, lat: place.location?.latitude ?? null, lng: place.location?.longitude ?? null, types: place.types ?? [] })), keySource: googleKeySourceFor("places"), measuredMs: Date.now() - t0 });
+});
+
+/**
+ * Google Routes Route Matrix for dispatch comparisons.
+ * This compares up to 25 typed origins with one typed destination. It is not
+ * truck-legal routing: height, weight, hazmat, and truck-prohibited roads are
+ * not applied by Google Routes.
+ */
+routing.post("/matrix", async (c) => {
+  const body = await c.req.json().catch(() => null) as { origins?: Array<{ id?: string; address?: string }>; destination?: string } | null;
+  const origins = Array.isArray(body?.origins) ? body.origins : [];
+  const destination = body?.destination?.trim() ?? "";
+  if (!destination) return c.json({ error: "destination_required" }, 400);
+  if (!origins.length || origins.length > 25) return c.json({ error: "origins must contain 1 to 25 items" }, 400);
+  const normalized = origins.map((origin, index) => ({ id: origin.id?.trim() || String(index), address: origin.address?.trim() || "" }));
+  if (normalized.some((origin) => !origin.address)) return c.json({ error: "every origin requires an address" }, 400);
+
+  const key = googleKeyFor("routes");
+  if (!key) return c.json({ error: "no_routes_key", keySource: googleKeySourceFor("routes") }, 503);
+  const started = Date.now();
+  let response: Response;
+  try {
+    response = await fetch("https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": "originIndex,destinationIndex,condition,distanceMeters,duration,staticDuration",
+      },
+      body: JSON.stringify({
+        origins: normalized.map((origin) => ({ waypoint: { address: origin.address } })),
+        destinations: [{ waypoint: { address: destination } }],
+        travelMode: "DRIVE",
+        routingPreference: "TRAFFIC_AWARE",
+      }),
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (error) {
+    return c.json({ error: "matrix_request_failed", detail: error instanceof Error ? error.message : "request failed" }, 502);
+  }
+  const payload = await response.json().catch(() => null) as { error?: { message?: string }; [key: string]: unknown } | null;
+  if (!response.ok || !Array.isArray(payload)) {
+    return c.json({ error: "matrix_failed", googleHttpStatus: response.status, googleError: payload?.error?.message ?? null, measuredMs: Date.now() - started }, 502);
+  }
+  const comparisons = payload.map((element: any) => {
+    const source = normalized[element.originIndex ?? -1];
+    const seconds = Number.parseInt(element.duration ?? "0", 10);
+    return {
+      originId: source?.id ?? null,
+      origin: source?.address ?? null,
+      condition: element.condition ?? "UNKNOWN",
+      distance: { meters: element.distanceMeters ?? null, miles: element.distanceMeters ? Math.round(element.distanceMeters / METERS_PER_MILE * 10) / 10 : null },
+      duration: { seconds, minutes: Math.round(seconds / 60) },
+    };
+  }).sort((a: { duration: { seconds: number } }, b: { duration: { seconds: number } }) => a.duration.seconds - b.duration.seconds);
+  return c.json({ source: "google-routes-route-matrix", live: true, destination, comparisons, truckProfile: false, notApplied: ["Truck height and weight restrictions", "Hazmat routing", "Truck-prohibited roads"], keySource: googleKeySourceFor("routes"), measuredMs: Date.now() - started });
+});
+
 export { routing };

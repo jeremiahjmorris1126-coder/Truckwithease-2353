@@ -30,7 +30,7 @@ const env = () => ({
 });
 
 /** Google API families this app calls. */
-export type GoogleApi = "directions" | "geocoding" | "places";
+export type GoogleApi = "directions" | "routes" | "geocoding" | "places";
 
 /**
  * The key to use for one API family. Order: a purpose-specific override, then
@@ -40,7 +40,7 @@ export type GoogleApi = "directions" | "geocoding" | "places";
 export function googleKeyFor(api: GoogleApi): string {
   const e = env();
   const chain: string[] =
-    api === "directions"
+    api === "directions" || api === "routes"
       ? [e.directions, e.explicit, e.browser, e.places]
       : api === "geocoding"
         ? [e.geocoding, e.explicit, e.places, e.browser]
@@ -52,7 +52,7 @@ export function googleKeyFor(api: GoogleApi): string {
 export function googleKeySourceFor(api: GoogleApi): string | null {
   const e = env();
   const named: Array<[string, string]> =
-    api === "directions"
+    api === "directions" || api === "routes"
       ? [["GOOGLE_DIRECTIONS_KEY", e.directions], ["GOOGLE_MAPS_KEY", e.explicit], ["VITE_GOOGLE_MAPS_KEY", e.browser], ["GOOGLE_PLACES_API_KEY", e.places]]
       : api === "geocoding"
         ? [["GOOGLE_GEOCODING_KEY", e.geocoding], ["GOOGLE_MAPS_KEY", e.explicit], ["GOOGLE_PLACES_API_KEY", e.places], ["VITE_GOOGLE_MAPS_KEY", e.browser]]
