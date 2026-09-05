@@ -38,10 +38,39 @@ function connectionString(): string {
   return url;
 }
 
-/** The shared pg Pool. Built lazily; reused by both Drizzle and Better Auth. */
+/**
+ * The shared pg Pool. Built lazily; reused by both Drizzle and Better Auth.
+ *
+ * Tuned for a serverless deployment (Vercel Functions) in front of Neon's own
+ * connection pooler. The relevant differences from pg's defaults:
+ *   - `max: 5` — a single function instance serves a small number of concurrent
+ *     requests, and Neon's pooler multiplexes the real Postgres connections.
+ *     Leaving pg at its default `max: 10` per instance lets a burst of cold
+ *     starts exhaust Neon's connection ceiling. Overridable via DB_POOL_MAX.
+ *   - `connectionTimeoutMillis: 10000` — pg's default is 0 (wait forever). A
+ *     saturated pool would otherwise hang the request until the platform kills
+ *     it; now it fails fast with a real error.
+ *   - `idleTimeoutMillis: 30000` — return idle connections to Neon promptly.
+ *   - `allowExitOnIdle: true` — let a frozen/idle function instance exit cleanly
+ *     instead of being held open by a lingering socket.
+ *   - `keepAlive: true` — avoid re-dialing on reused warm connections.
+ */
 export function getPool(): Pool {
   if (cachedPool) return cachedPool;
-  cachedPool = new Pool({ connectionString: connectionString() });
+  const max = Number(process.env.DB_POOL_MAX) || 5;
+  cachedPool = new Pool({
+    connectionString: connectionString(),
+    max,
+    connectionTimeoutMillis: 10_000,
+    idleTimeoutMillis: 30_000,
+    allowExitOnIdle: true,
+    keepAlive: true,
+  });
+  // A pool-level error (e.g. Neon dropping an idle socket) must not crash the
+  // process; log it and let the next query re-open a connection.
+  cachedPool.on("error", (err) => {
+    console.error("[v0] pg pool error:", err.message);
+  });
   return cachedPool;
 }
 
