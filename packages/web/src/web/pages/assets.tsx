@@ -1,0 +1,15 @@
+import { useEffect, useState } from "react";
+import { Card, PageHeader, Button, Badge, Missing } from "../components/ui/kit";
+
+type Asset = { id: string; name: string; assetType: string; status: string; unit?: string | null; assignedTo?: string | null; suggestion: string };
+
+export default function Assets() {
+  const [assets, setAssets] = useState<Asset[]>([]); const [error, setError] = useState("");
+  const [form, setForm] = useState({ name: "", assetType: "truck", unit: "" });
+  async function load() { try { const r = await fetch("/api/assets"); if (!r.ok) throw Error(); setAssets((await r.json()).assets); } catch { setError("Asset records are unavailable right now."); } }
+  useEffect(() => { load(); }, []);
+  async function add(e: React.FormEvent) { e.preventDefault(); if (!form.name.trim()) return; const r = await fetch("/api/assets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) }); if (r.ok) { setForm({ name: "", assetType: "truck", unit: "" }); load(); } else setError("The asset could not be saved."); }
+  return <div><PageHeader title="Fleet Assets" subtitle="Track trucks, trailers, equipment, and attachments in one operational record." />
+    <div className="grid gap-6 lg:grid-cols-3"><Card className="p-5 lg:col-span-1"><h2 className="font-bold text-[#F5F5F5]">Add an asset</h2><form onSubmit={add} className="mt-4 space-y-3"><input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Asset name" className="w-full rounded-lg border border-[#222222] bg-[#111] p-3 text-sm text-white" /><select value={form.assetType} onChange={e=>setForm({...form,assetType:e.target.value})} className="w-full rounded-lg border border-[#222222] bg-[#111] p-3 text-sm text-white"><option value="truck">Truck</option><option value="trailer">Trailer</option><option value="equipment">Equipment</option><option value="attachment">Attachment</option><option value="other">Other</option></select><input value={form.unit} onChange={e=>setForm({...form,unit:e.target.value})} placeholder="Unit number (optional)" className="w-full rounded-lg border border-[#222222] bg-[#111] p-3 text-sm text-white" /><Button type="submit">Save asset</Button></form><p className="mt-4 text-xs text-[#8A8A8A]">Attach photos and documents through the existing secure storage workflow from the asset detail view.</p></Card>
+      <div className="space-y-3 lg:col-span-2">{error && <Missing label="ASSET TRACKER UNAVAILABLE" reason={error} />}{!error && assets.length===0 && <Missing label="NO ASSETS YET" reason="Add a truck, trailer, or equipment item to begin building your fleet inventory." />}{assets.map(a=><Card key={a.id} className="p-5" accent><div className="flex justify-between gap-4"><div><h2 className="font-bold text-[#F5F5F5]">{a.name}</h2><p className="mt-1 text-sm text-[#8A8A8A]">{a.assetType}{a.unit ? ` · Unit ${a.unit}` : ""}{a.assignedTo ? ` · Assigned to ${a.assignedTo}` : ""}</p></div><Badge status={a.status}>{a.status.replace("_"," ")}</Badge></div><p className="mt-3 text-sm text-[#C9C9C9]">{a.suggestion}</p></Card>)}</div></div></div>;
+}
