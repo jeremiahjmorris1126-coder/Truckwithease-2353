@@ -45,6 +45,8 @@ export default function VoicePage() {
   const [transcript, setTranscript] = useState("");
   const [response, setResponse]     = useState(null);
   const [filter, setFilter]         = useState("All");
+  const [signedIn, setSignedIn]     = useState(false);
+  const [error, setError]           = useState(null);
 
   const categories = ["All", ...new Set(COMMANDS.map(c => c.category))];
 
@@ -59,6 +61,24 @@ export default function VoicePage() {
   }
 
   function simulate() { tryCommand(COMMANDS[0]); }
+
+  function simulate() {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) return runCommand("Log me as driving");
+    const recognition = new Recognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = true;
+    recognition.onstart = () => { setListening(true); setTranscript(""); setResponse(null); setError(null); };
+    recognition.onresult = (event) => {
+      const phrase = Array.from(event.results).map((result) => result[0].transcript).join(" ").trim();
+      setTranscript(phrase);
+      if (event.results[event.results.length - 1].isFinal) runCommand(phrase);
+    };
+    recognition.onerror = () => { setListening(false); setError("Voice recognition failed. Select a command below or try again."); };
+    recognition.start();
+  }
+
+  function tryCommand(cmd) { runCommand(cmd.phrase); }
 
   const filtered = filter === "All" ? COMMANDS : COMMANDS.filter(c => c.category === filter);
   const catColors = { HOS:"#60A5FA", DVIR:"#34D399", Dispatch:"#FB923C", Fuel:"#FBBF24", Navigation:"#38BDF8", Emergency:"#F87171", Finance:"#A3E635" };
@@ -123,7 +143,8 @@ export default function VoicePage() {
                 ✓ {response}
               </div>
             )}
-            {!listening && !response && <div style={{ marginTop: 12, color: "rgba(255,255,255,0.35)", fontSize: 13 }}>Tap to demo a command</div>}
+            {error && <div style={{ marginTop: 12, color: "#FCA5A5", fontSize: 13 }}>{error}</div>}
+            {!listening && !response && !error && <div style={{ marginTop: 12, color: "rgba(255,255,255,0.35)", fontSize: 13 }}>{signedIn ? "Tap to speak or select a command" : "Sign in to run voice commands"}</div>}
           </div>
         </FadeIn>
 

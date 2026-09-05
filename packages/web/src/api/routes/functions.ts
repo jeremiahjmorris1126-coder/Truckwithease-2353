@@ -45,9 +45,22 @@ import { db } from "../database";
 
 type Row = Record<string, unknown>;
 
+/** True once a query has failed because the database itself is unreachable. */
+let dbUnavailable = false;
+
 async function run(q: string): Promise<Row[]> {
-  const r = (await db.run(sql.raw(q))) as unknown as { rows: Row[] };
-  return (r.rows ?? []) as Row[];
+  try {
+    const r = (await db.execute(sql.raw(q))) as unknown as { rows: Row[] };
+    return (r.rows ?? []) as Row[];
+  } catch (e) {
+    // The self-audit must never take itself down. If the database is missing or
+    // unreachable, the honest answer is "I can't read row counts", not a 500.
+    // We return no rows (which the audit reads as built_empty / unknown) and
+    // flag it so the response can say so plainly.
+    dbUnavailable = true;
+    console.log("[v0] functions audit: DB query failed, degrading:", (e as Error)?.message);
+    return [];
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -195,15 +208,15 @@ export const CAPS: Cap[] = [
     pages: ["/bypass", "/catscales"],
     name: "Federal weight and axle check",
     domain: "Compliance",
-    what: "Gross/single/tandem limits plus the Bridge Formula, computed in the browser from the citation.",
+    what: "Gross/single/tandem limits plus the Bridge Formula, computed server-side from the citation so web and mobile agree.",
     kind: "algorithm",
     disciplines: ["programmer"],
     worlds: ["truck"],
-    endpoints: [],
+    endpoints: ["/api/weight-check"],
     tables: [],
     envKeys: [],
     trust:
-      "23 U.S.C. 127 and 23 CFR 658.17: 80,000 gross / 20,000 single / 34,000 tandem, W = 500 x [ LN/(N-1) + 12N + 36 ]. Interstate System only. No per-state table is published because each state row would need its own verified statute citation.",
+      "23 U.S.C. 127 and 23 CFR 658.17: 80,000 gross / 20,000 single / 34,000 tandem, W = 500 x [ LN/(N-1) + 12N + 36 ], rounded to the nearest 500 lb (an exact half-increment tie resolves downward). Interstate System only. No per-state table is published because each state row would need its own verified statute citation. This is not a permit and does not weigh the truck.",
   },
 
   /* ---------------- Safety ---------------- */
@@ -809,15 +822,15 @@ export const CAPS: Cap[] = [
     pages: ["/medical-cdl"],
     name: "Certified medical examiner locator",
     domain: "Health",
-    what: "Deep-links a driver into the FMCSA National Registry search.",
+    what: "Builds a deep link into the official FMCSA National Registry search from a zip or state.",
     kind: "human",
     disciplines: ["design", "webdev"],
     worlds: ["truck"],
-    endpoints: [],
+    endpoints: ["/api/medical-examiner"],
     tables: [],
     envKeys: [],
     trust:
-      "The National Registry cannot be scraped or mirrored, so no examiner list is stored locally. This is a deep link into the official registry, by design.",
+      "The National Registry cannot be scraped or mirrored, so no examiner list is stored locally. The endpoint is a URL builder into the official registry — it stores nothing about examiners and cannot confirm a given examiner is currently certified; only the live registry does that.",
   },
   {
     id: "week-review",
@@ -1061,15 +1074,15 @@ export const CAPS: Cap[] = [
     pages: ["/design"],
     name: "Design system",
     domain: "Design",
-    what: "One gold-on-black token set and four loaded fonts shared by web and mobile.",
+    what: "One gold-on-black token set and four loaded fonts, served as data (JSON + generated CSS variables) so web and mobile read one source.",
     kind: "human",
     disciplines: ["design"],
     worlds: ["truck", "car", "bike"],
-    endpoints: [],
+    endpoints: ["/api/design-system"],
     tables: [],
     envKeys: [],
     trust:
-      "Tokens: gold #C9A84C, bright gold #FFD700, black #0a0a0a, card #161616, nav #111111, border #222222. Fonts load once in the document head; no component imports a font at runtime.",
+      "Tokens: gold #C9A84C, bright gold #FFD700, black #0a0a0a, card #161616, nav #111111, border #222222. Fonts load once in the document head; no component imports a font at runtime. The endpoint is the source of truth, not an enforcer — a component can still hard-code a value, so drift is possible and is not hidden.",
   },
   {
     id: "broker-reputation",
@@ -1161,8 +1174,9 @@ export const functionsIndex = (getRoutes: () => { method: string; path: string }
      * The whole index in one response: measured endpoints, capability rows with computed
      * status, world coverage, and the duplicate proof.
      */
-    .get("/", async (c) => {
-      const t0 = Date.now();
+  .get("/", async (c) => {
+    const t0 = Date.now();
+    dbUnavailable = false; // reset per request; run() flips it if a query fails
 
       /* 1. ENDPOINTS — measured off the running app, deduped -------------- */
       const raw = getRoutes() ?? [];
@@ -1192,7 +1206,7 @@ export const functionsIndex = (getRoutes: () => { method: string; path: string }
       /* 2. TABLES — live existence + row counts, only the ones referenced -- */
       const wanted = [...new Set(CAPS.flatMap((x) => x.tables))].sort();
       const existing = new Set(
-        (await run("SELECT name FROM sqlite_master WHERE type='table'")).map((r) =>
+        (await run("SELECT table_name AS name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'")).map((r) =>
           String(r.name),
         ),
       );
@@ -1368,12 +1382,16 @@ export const functionsIndex = (getRoutes: () => { method: string; path: string }
             note:
               "Screen routes are read out of the legacy route table at request time, the same way endpoints are read off the running Hono app. `unclaimed` are pages that resolve in the app but that no indexed function claims yet — most of them are legacy screens still waiting on a rewrite. They are listed, not hidden.",
           },
-          measuredMs: Date.now() - t0,
-          generatedAt: new Date().toISOString(),
-        },
-        200,
-      );
-    })
+      measuredMs: Date.now() - t0,
+        generatedAt: new Date().toISOString(),
+        dbUnavailable,
+        dbNote: dbUnavailable
+          ? "The database was unreachable, so row-count checks were skipped. Capabilities that depend on stored rows may read as empty here even though their tables exist. This is a degraded read, stated plainly, not a healthy zero."
+          : undefined,
+      },
+      200,
+    );
+  })
 
     /** GET /api/functions/endpoints — just the measured route list. */
     .get("/endpoints", (c) => {

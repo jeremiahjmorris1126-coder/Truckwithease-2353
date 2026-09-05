@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../database";
 import * as schema from "../database/schema";
+import { hasAdminRole } from "./session";
 
 /**
  * Signups and trial links — server side.
@@ -152,6 +153,7 @@ export const signup = new Hono()
 
   // ── List / filter signups (admin) ─────────────────────────────────────────
   .get("/list", async (c) => {
+    if (!(await hasAdminRole(c.req.raw.headers))) return c.json({ error: "Admin role required." }, 403);
     const status = c.req.query("status");
     const rows = await db
       .select()
@@ -169,6 +171,7 @@ export const signup = new Hono()
   })
 
   .post("/:id/status", async (c) => {
+    if (!(await hasAdminRole(c.req.raw.headers))) return c.json({ error: "Admin role required." }, 403);
     const id = c.req.param("id");
     const body = await c.req.json().catch(() => ({}) as Record<string, unknown>);
     const status = String(body.status ?? "");
@@ -193,6 +196,7 @@ export const signup = new Hono()
 
   // ── Trial links ───────────────────────────────────────────────────────────
   .get("/trial-links", async (c) => {
+    if (!(await hasAdminRole(c.req.raw.headers))) return c.json({ error: "Admin role required." }, 403);
     const rows = await db
       .select()
       .from(schema.trialLinks)
@@ -208,6 +212,7 @@ export const signup = new Hono()
   })
 
   .post("/trial-links", async (c) => {
+    if (!(await hasAdminRole(c.req.raw.headers))) return c.json({ error: "Admin role required." }, 403);
     const body = await c.req.json().catch(() => ({}) as Record<string, unknown>);
     const label = typeof body.label === "string" ? body.label.trim() : "";
     if (!label) return c.json({ error: "A label is required so you know who a link went to.", field: "label" }, 400);
@@ -238,6 +243,7 @@ export const signup = new Hono()
   })
 
   .post("/trial-links/:id/deactivate", async (c) => {
+    if (!(await hasAdminRole(c.req.raw.headers))) return c.json({ error: "Admin role required." }, 403);
     const id = c.req.param("id");
     const [row] = await db.select().from(schema.trialLinks).where(eq(schema.trialLinks.id, id)).limit(1);
     if (!row) return c.json({ error: "Trial link not found." }, 404);

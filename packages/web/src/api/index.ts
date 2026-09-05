@@ -65,6 +65,7 @@ import { profit } from "./routes/profit";
 import { voice } from "./routes/voice";
 import { command } from "./routes/command";
 import { requireSession } from "./middleware/session";
+import { voice } from "./routes/voice";
 
 const app = new Hono()
   .basePath('api')
@@ -119,6 +120,7 @@ const app = new Hono()
   .route("/fleet-memory", fleetMemory)
   .route("/routing", routing)
   .route("/weather", weather)
+  .route("/voice", voice)
   .route("/week-review", weekReview)
   .route("/azuga", azuga)
   .route("/vat-rates", vatRates)
@@ -135,6 +137,9 @@ const app = new Hono()
   .route("/session", sessionRoute)
   .route("/responsible-use", responsibleUseRoute)
   .route("/haptic", hapticRoute)
+  .route("/weight-check", weightCheck)
+  .route("/design-system", designSystem)
+  .route("/medical-examiner", medicalExaminer)
   // The function index reads the app's OWN registered route table at request time. It cannot
   // import `app` (circular), so it takes a getter that is resolved lazily, after construction.
   .route("/functions", functionsIndex(() => app.routes as { method: string; path: string }[]))

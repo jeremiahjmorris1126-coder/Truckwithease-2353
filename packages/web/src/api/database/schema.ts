@@ -1,11 +1,11 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, doublePrecision, timestamp, boolean } from "drizzle-orm/pg-core";
 
 /**
  * TruckWithEase schema — core fleet + compliance entities.
  * Demo-friendly: seeded on boot. No hard auth wall.
  */
 
-export const drivers = sqliteTable("drivers", {
+export const drivers = pgTable("drivers", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   truckNumber: text("truck_number"),
@@ -16,15 +16,15 @@ export const drivers = sqliteTable("drivers", {
   homeBase: text("home_base"),
   tier: text("tier").notNull().default("solo"), // solo, pro, fleet
   points: integer("points").notNull().default(0),
-  lat: real("lat"),
-  lng: real("lng"),
-  speed: real("speed").default(0),
-  heading: real("heading").default(0),
-  lastSeen: integer("last_seen", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
+  speed: doublePrecision("speed").default(0),
+  heading: doublePrecision("heading").default(0),
+  lastSeen: timestamp("last_seen", { mode: "date", withTimezone: true }),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const trucks = sqliteTable("trucks", {
+export const trucks = pgTable("trucks", {
   id: text("id").primaryKey(),
   unit: text("unit").notNull(),
   make: text("make"),
@@ -35,21 +35,21 @@ export const trucks = sqliteTable("trucks", {
   assignedDriverId: text("assigned_driver_id"),
   odometer: integer("odometer").default(0),
   status: text("status").notNull().default("active"), // active, maintenance, out_of_service
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const hosLogs = sqliteTable("hos_logs", {
+export const hosLogs = pgTable("hos_logs", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
   status: text("status").notNull(), // driving, on_duty, sleeper, off_duty
-  startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
-  endedAt: integer("ended_at", { mode: "timestamp" }),
+  startedAt: timestamp("started_at", { mode: "date", withTimezone: true }).notNull(),
+  endedAt: timestamp("ended_at", { mode: "date", withTimezone: true }),
   location: text("location"),
   note: text("note"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const dvirInspections = sqliteTable("dvir_inspections", {
+export const dvirInspections = pgTable("dvir_inspections", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
   truckUnit: text("truck_unit").notNull(),
@@ -58,50 +58,50 @@ export const dvirInspections = sqliteTable("dvir_inspections", {
   odometer: integer("odometer"),
   location: text("location"),
   defects: text("defects"), // JSON string array
-  hasDefects: integer("has_defects", { mode: "boolean" }).notNull().default(false),
-  safeToOperate: integer("safe_to_operate", { mode: "boolean" }).notNull().default(true),
+  hasDefects: boolean("has_defects").notNull().default(false),
+  safeToOperate: boolean("safe_to_operate").notNull().default(true),
   signature: text("signature"),
   photoUrls: text("photo_urls"), // JSON
   status: text("status").notNull().default("submitted"), // submitted, needs_repair, resolved
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const trips = sqliteTable("trips", {
+export const trips = pgTable("trips", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
   origin: text("origin"),
   destination: text("destination"),
-  miles: real("miles").default(0),
-  startedAt: integer("started_at", { mode: "timestamp" }),
-  endedAt: integer("ended_at", { mode: "timestamp" }),
-  maxSpeed: real("max_speed").default(0),
+  miles: doublePrecision("miles").default(0),
+  startedAt: timestamp("started_at", { mode: "date", withTimezone: true }),
+  endedAt: timestamp("ended_at", { mode: "date", withTimezone: true }),
+  maxSpeed: doublePrecision("max_speed").default(0),
   idleMinutes: integer("idle_minutes").default(0),
   status: text("status").notNull().default("active"), // active, completed
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const loads = sqliteTable("loads", {
+export const loads = pgTable("loads", {
   id: text("id").primaryKey(),
   origin: text("origin").notNull(),
   destination: text("destination").notNull(),
-  miles: real("miles"),
-  rate: real("rate"),
+  miles: doublePrecision("miles"),
+  rate: doublePrecision("rate"),
   equipment: text("equipment"), // dry van, reefer, flatbed
   weight: integer("weight"),
   pickupDate: text("pickup_date"),
   broker: text("broker"),
   status: text("status").notNull().default("available"), // available, booked
   bookedByDriverId: text("booked_by_driver_id"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const messages = sqliteTable("messages", {
+export const messages = pgTable("messages", {
   id: text("id").primaryKey(),
   fromId: text("from_id").notNull(),
   fromName: text("from_name").notNull(),
   toId: text("to_id"), // null = broadcast
   body: text("body").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /* ============================================================
@@ -109,7 +109,7 @@ export const messages = sqliteTable("messages", {
  * ============================================================ */
 
 // People: drivers, prospects/applicants, and other employees
-export const hrPeople = sqliteTable("hr_people", {
+export const hrPeople = pgTable("hr_people", {
   id: text("id").primaryKey(),
   driverId: text("driver_id"), // link to drivers table if applicable
   name: text("name").notNull(),
@@ -123,16 +123,16 @@ export const hrPeople = sqliteTable("hr_people", {
   cdlState: text("cdl_state"),
   endorsements: text("endorsements"), // e.g. "H, N, T"
   homeBase: text("home_base"),
-  yearsExperience: real("years_experience").default(0),
+  yearsExperience: doublePrecision("years_experience").default(0),
   payType: text("pay_type").notNull().default("mileage"), // mileage, hourly, salary
-  payRate: real("pay_rate").notNull().default(0), // $/mile, $/hour, or $/year
+  payRate: doublePrecision("pay_rate").notNull().default(0), // $/mile, $/hour, or $/year
   hireDate: text("hire_date"),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // Occurrences: violations, accidents, complaints, coaching, commendations
-export const hrOccurrences = sqliteTable("hr_occurrences", {
+export const hrOccurrences = pgTable("hr_occurrences", {
   id: text("id").primaryKey(),
   personId: text("person_id").notNull(),
   category: text("category").notNull().default("coaching"), // violation, accident, complaint, coaching, commendation, attendance, drug_alcohol
@@ -145,11 +145,11 @@ export const hrOccurrences = sqliteTable("hr_occurrences", {
   points: integer("points").default(0), // CSA/internal points
   status: text("status").notNull().default("open"), // open, under_review, resolved
   reportedBy: text("reported_by"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // Documents: long-term storage — CDLs, medical cards, contracts, applications
-export const hrDocuments = sqliteTable("hr_documents", {
+export const hrDocuments = pgTable("hr_documents", {
   id: text("id").primaryKey(),
   personId: text("person_id").notNull(),
   category: text("category").notNull().default("misc"), // cdl, medical_card, contract, application, background, mvr, w4, misc
@@ -159,11 +159,11 @@ export const hrDocuments = sqliteTable("hr_documents", {
   notes: text("notes"),
   issuedOn: text("issued_on"),
   expiresOn: text("expires_on"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // Screening: AI pre-screen interview sessions
-export const hrScreenings = sqliteTable("hr_screenings", {
+export const hrScreenings = pgTable("hr_screenings", {
   id: text("id").primaryKey(),
   personId: text("person_id"),
   candidateName: text("candidate_name").notNull(),
@@ -174,68 +174,68 @@ export const hrScreenings = sqliteTable("hr_screenings", {
   summary: text("summary"),
   redFlags: text("red_flags"), // JSON string[]
   status: text("status").notNull().default("completed"), // in_progress, completed
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // Background checks: consent intake + generated report
-export const hrBackgroundChecks = sqliteTable("hr_background_checks", {
+export const hrBackgroundChecks = pgTable("hr_background_checks", {
   id: text("id").primaryKey(),
   personId: text("person_id").notNull(),
   ssnLast4: text("ssn_last4"),
   dob: text("dob"),
   licenseState: text("license_state"),
-  consent: integer("consent", { mode: "boolean" }).notNull().default(false),
+  consent: boolean("consent").notNull().default(false),
   checkTypes: text("check_types"), // JSON string[] — mvr, criminal, employment, drug, psp, clearinghouse
   status: text("status").notNull().default("intake"), // intake, pending, complete
   findings: text("findings"), // JSON per check-type result
   reportSummary: text("report_summary"),
   adjudication: text("adjudication"), // clear, review, adverse
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // Payroll runs + pay statements
-export const hrPayrollRuns = sqliteTable("hr_payroll_runs", {
+export const hrPayrollRuns = pgTable("hr_payroll_runs", {
   id: text("id").primaryKey(),
   periodStart: text("period_start").notNull(),
   periodEnd: text("period_end").notNull(),
   status: text("status").notNull().default("draft"), // draft, finalized
-  totalGross: real("total_gross").default(0),
-  totalNet: real("total_net").default(0),
+  totalGross: doublePrecision("total_gross").default(0),
+  totalNet: doublePrecision("total_net").default(0),
   headcount: integer("headcount").default(0),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const hrPayStatements = sqliteTable("hr_pay_statements", {
+export const hrPayStatements = pgTable("hr_pay_statements", {
   id: text("id").primaryKey(),
   runId: text("run_id").notNull(),
   personId: text("person_id").notNull(),
   personName: text("person_name").notNull(),
   payType: text("pay_type").notNull(),
-  units: real("units").default(0), // miles or hours
-  rate: real("rate").default(0),
-  gross: real("gross").default(0),
+  units: doublePrecision("units").default(0), // miles or hours
+  rate: doublePrecision("rate").default(0),
+  gross: doublePrecision("gross").default(0),
   deductions: text("deductions"), // JSON { label, amount }[]
-  totalDeductions: real("total_deductions").default(0),
-  net: real("net").default(0),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  totalDeductions: doublePrecision("total_deductions").default(0),
+  net: doublePrecision("net").default(0),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // Profitability: cost vs revenue per run
-export const hrRuns = sqliteTable("hr_runs", {
+export const hrRuns = pgTable("hr_runs", {
   id: text("id").primaryKey(),
   personId: text("person_id"),
   driverName: text("driver_name"),
   origin: text("origin"),
   destination: text("destination"),
-  miles: real("miles").default(0),
-  revenue: real("revenue").default(0),
-  fuelCost: real("fuel_cost").default(0),
-  driverPay: real("driver_pay").default(0),
-  tolls: real("tolls").default(0),
-  maintenance: real("maintenance").default(0),
-  otherCost: real("other_cost").default(0),
+  miles: doublePrecision("miles").default(0),
+  revenue: doublePrecision("revenue").default(0),
+  fuelCost: doublePrecision("fuel_cost").default(0),
+  driverPay: doublePrecision("driver_pay").default(0),
+  tolls: doublePrecision("tolls").default(0),
+  maintenance: doublePrecision("maintenance").default(0),
+  otherCost: doublePrecision("other_cost").default(0),
   ranOn: text("ran_on"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -244,7 +244,7 @@ export const hrRuns = sqliteTable("hr_runs", {
  * ───────────────────────────────────────────────────────────────────────────── */
 
 // INDEX=MECHANIC: every diagnosis, ELD fault scan, and DVIR session
-export const mechanicSessions = sqliteTable("mechanic_sessions", {
+export const mechanicSessions = pgTable("mechanic_sessions", {
   id: text("id").primaryKey(),
   driverId: text("driver_id"),
   truckUnit: text("truck_unit"),
@@ -259,15 +259,15 @@ export const mechanicSessions = sqliteTable("mechanic_sessions", {
   photoUrls: text("photo_urls"), // JSON string[]
   damageNotes: text("damage_notes"),
   priorDvirId: text("prior_dvir_id"), // the DVIR this session was compared against
-  newDamage: integer("new_damage", { mode: "boolean" }).default(false),
-  insuranceFlagged: integer("insurance_flagged", { mode: "boolean" }).default(false),
+  newDamage: boolean("new_damage").default(false),
+  insuranceFlagged: boolean("insurance_flagged").default(false),
   insuranceCarrier: text("insurance_carrier"),
-  loggedToMaintease: integer("logged_to_maintease", { mode: "boolean" }).default(false),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  loggedToMaintease: boolean("logged_to_maintease").default(false),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // MaintEase: the permanent service archive
-export const maintenanceRecords = sqliteTable("maintenance_records", {
+export const maintenanceRecords = pgTable("maintenance_records", {
   id: text("id").primaryKey(),
   truckUnit: text("truck_unit").notNull(),
   driverId: text("driver_id"),
@@ -285,29 +285,29 @@ export const maintenanceRecords = sqliteTable("maintenance_records", {
   photoNotes: text("photo_notes"),
   photoUrls: text("photo_urls"), // JSON string[]
   odometer: integer("odometer"),
-  engineHours: real("engine_hours"),
+  engineHours: doublePrecision("engine_hours"),
   vendor: text("vendor"),
   vendorPhone: text("vendor_phone"),
   invoiceNumber: text("invoice_number"),
-  partsCost: real("parts_cost").default(0),
-  laborCost: real("labor_cost").default(0),
-  laborHours: real("labor_hours").default(0),
-  totalCost: real("total_cost").default(0),
-  warrantyClaim: integer("warranty_claim", { mode: "boolean" }).default(false),
+  partsCost: doublePrecision("parts_cost").default(0),
+  laborCost: doublePrecision("labor_cost").default(0),
+  laborHours: doublePrecision("labor_hours").default(0),
+  totalCost: doublePrecision("total_cost").default(0),
+  warrantyClaim: boolean("warranty_claim").default(false),
   warrantyClaimNumber: text("warranty_claim_number"),
-  downtimeHours: real("downtime_hours").default(0),
+  downtimeHours: doublePrecision("downtime_hours").default(0),
   pmInterval: text("pm_interval"), // e.g. "oil_change", "dpf_clean", "dot_annual"
   nextDueMiles: integer("next_due_miles"),
   nextDueDate: text("next_due_date"),
   performedOn: text("performed_on"),
   performedBy: text("performed_by"),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // Brand Studio: white-label settings (unlocks at 10+ assets)
-export const fleetBranding = sqliteTable("fleet_branding", {
+export const fleetBranding = pgTable("fleet_branding", {
   id: text("id").primaryKey(),
   fleetName: text("fleet_name").notNull(),
   logoUrl: text("logo_url"),
@@ -315,26 +315,26 @@ export const fleetBranding = sqliteTable("fleet_branding", {
   accentColor: text("accent_color").default("#FFD700"),
   backgroundColor: text("background_color").default("#0a0a0a"),
   enabledModules: text("enabled_modules"), // JSON string[] — the 16 toggleable modules
-  whiteLabel: integer("white_label", { mode: "boolean" }).default(false),
+  whiteLabel: boolean("white_label").default(false),
   assetCount: integer("asset_count").default(0),
-  unlocked: integer("unlocked", { mode: "boolean" }).default(false),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  unlocked: boolean("unlocked").default(false),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // Incident command: the permanent fleet incident archive
-export const accidentReports = sqliteTable("accident_reports", {
+export const accidentReports = pgTable("accident_reports", {
   id: text("id").primaryKey(),
   driverId: text("driver_id"),
   driverName: text("driver_name"),
   truckUnit: text("truck_unit"),
-  occurredAt: integer("occurred_at", { mode: "timestamp" }),
+  occurredAt: timestamp("occurred_at", { mode: "date", withTimezone: true }),
   location: text("location"),
-  lat: real("lat"),
-  lng: real("lng"),
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
   severity: text("severity").notNull().default("minor"), // minor, moderate, major, fatality
-  injuries: integer("injuries", { mode: "boolean" }).default(false),
-  towRequired: integer("tow_required", { mode: "boolean" }).default(false),
+  injuries: boolean("injuries").default(false),
+  towRequired: boolean("tow_required").default(false),
   policeReportNumber: text("police_report_number"),
   otherParties: text("other_parties"), // JSON blob
   description: text("description"),
@@ -345,56 +345,56 @@ export const accidentReports = sqliteTable("accident_reports", {
   complianceGaps: text("compliance_gaps"), // JSON string[]
   documentUrls: text("document_urls"), // JSON string[]
   photoUrls: text("photo_urls"), // JSON string[]
-  insuranceNotified: integer("insurance_notified", { mode: "boolean" }).default(false),
+  insuranceNotified: boolean("insurance_notified").default(false),
   status: text("status").notNull().default("open"), // open, under_review, closed
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // Integration credentials + platform toggles. NOTE: values are stored as-is;
 // never put a live secret here that the browser can read back.
-export const platformSettings = sqliteTable("platform_settings", {
+export const platformSettings = pgTable("platform_settings", {
   id: text("id").primaryKey(),
   key: text("key").notNull(),
   category: text("category").default("general"), // eld, load_board, comms, gps, payments, weather
   provider: text("provider"),
   value: text("value"),
-  secret: integer("secret", { mode: "boolean" }).default(false), // true => never returned to the client
-  enabled: integer("enabled", { mode: "boolean" }).default(true),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  secret: boolean("secret").default(false), // true => never returned to the client
+  enabled: boolean("enabled").default(true),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // ── API key vault ────────────────────────────────────────────────────────────
 // Encrypted at rest with AES-256-GCM (see api/lib/crypto.ts). The ciphertext
 // never leaves the server: routes return a masked preview only. Replaces the
 // client-side base64 "vault", which was not encryption at all.
-export const apiKeyVault = sqliteTable("api_key_vault", {
+export const apiKeyVault = pgTable("api_key_vault", {
   id: text("id").primaryKey(),
   service: text("service").notNull(), // apifreaks, google_maps, twilio, checkr, ...
   label: text("label"),
   ciphertext: text("ciphertext").notNull(), // iv.tag.data — base64url
   hint: text("hint").notNull(), // last 4 chars only, safe to display
   fingerprint: text("fingerprint").notNull(), // sha256 of plaintext, for rotation checks
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  lastRotated: integer("last_rotated", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  lastRotated: timestamp("last_rotated", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
   rotationCount: integer("rotation_count").notNull().default(0),
   accessCount: integer("access_count").notNull().default(0),
-  lastAccessed: integer("last_accessed", { mode: "timestamp" }),
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  lastAccessed: timestamp("last_accessed", { mode: "date", withTimezone: true }),
+  enabled: boolean("enabled").notNull().default(true),
 });
 
-export const apiKeyAuditLog = sqliteTable("api_key_audit_log", {
+export const apiKeyAuditLog = pgTable("api_key_audit_log", {
   id: text("id").primaryKey(),
   service: text("service").notNull(),
   action: text("action").notNull(), // store, rotate, use, denied, delete
   outcome: text("outcome").notNull(), // ok, not_found, disabled, error
   actor: text("actor").default("server"),
   detail: text("detail"),
-  at: integer("at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  at: timestamp("at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // ── Broker / shipper verification ────────────────────────────────────────────
-export const brokerVerifications = sqliteTable("broker_verifications", {
+export const brokerVerifications = pgTable("broker_verifications", {
   id: text("id").primaryKey(),
   email: text("email"),
   domain: text("domain"),
@@ -411,27 +411,27 @@ export const brokerVerifications = sqliteTable("broker_verifications", {
   reasons: text("reasons"), // JSON string[]
   source: text("source").notNull().default("heuristic"), // apifreaks, heuristic
   raw: text("raw"), // JSON provider payload
-  checkedAt: integer("checked_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  checkedAt: timestamp("checked_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // ── Agent integrity ─────────────────────────────────────────────────────────
 // Baseline sha256 of each agent's composed system prompt. Verification is
 // server-side: a modified prompt changes its hash and is actually detected.
-export const agentIntegrity = sqliteTable("agent_integrity", {
+export const agentIntegrity = pgTable("agent_integrity", {
   id: text("id").primaryKey(), // agent id
   name: text("name").notNull(),
   baselineHash: text("baseline_hash").notNull(),
   promptChars: integer("prompt_chars").notNull().default(0),
-  guardrailsPresent: integer("guardrails_present", { mode: "boolean" }).notNull().default(true),
-  sealedAt: integer("sealed_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  lastCheckedAt: integer("last_checked_at", { mode: "timestamp" }),
+  guardrailsPresent: boolean("guardrails_present").notNull().default(true),
+  sealedAt: timestamp("sealed_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  lastCheckedAt: timestamp("last_checked_at", { mode: "date", withTimezone: true }),
   lastResult: text("last_result"), // ok, drift, missing_guardrails
 });
 
 // ── ELD hardware ─────────────────────────────────────────────────────────────
 // Physical device registry + telemetry. Replaces the client-side eldIntegration
 // lib, which wrote to PocketBase collections that never existed.
-export const eldDevices = sqliteTable("eld_devices", {
+export const eldDevices = pgTable("eld_devices", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
   truckId: text("truck_id"),
@@ -442,44 +442,44 @@ export const eldDevices = sqliteTable("eld_devices", {
   batteryLevel: integer("battery_level").default(100),
   signalStrength: integer("signal_strength").default(-75), // dBm
   syncIntervalSeconds: integer("sync_interval_seconds").notNull().default(30),
-  lastSync: integer("last_sync", { mode: "timestamp" }),
-  registeredAt: integer("registered_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  lastSync: timestamp("last_sync", { mode: "date", withTimezone: true }),
+  registeredAt: timestamp("registered_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const eldTelemetry = sqliteTable("eld_telemetry", {
+export const eldTelemetry = pgTable("eld_telemetry", {
   id: text("id").primaryKey(),
   deviceId: text("device_id").notNull(),
   driverId: text("driver_id").notNull(),
-  speedMph: real("speed_mph"),
+  speedMph: doublePrecision("speed_mph"),
   rpm: integer("rpm"),
-  engineHours: real("engine_hours"),
-  odometer: real("odometer"),
-  lat: real("lat"),
-  lng: real("lng"),
-  harshBrake: integer("harsh_brake", { mode: "boolean" }).default(false),
-  harshAccel: integer("harsh_accel", { mode: "boolean" }).default(false),
-  laneDeparture: integer("lane_departure", { mode: "boolean" }).default(false),
+  engineHours: doublePrecision("engine_hours"),
+  odometer: doublePrecision("odometer"),
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
+  harshBrake: boolean("harsh_brake").default(false),
+  harshAccel: boolean("harsh_accel").default(false),
+  laneDeparture: boolean("lane_departure").default(false),
   fatigueScore: integer("fatigue_score"), // 0 alert .. 100 critical
-  recordedAt: integer("recorded_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  recordedAt: timestamp("recorded_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // ── Dispatch compliance ─────────────────────────────────────────────────────
-export const dispatchComplianceLog = sqliteTable("dispatch_compliance_log", {
+export const dispatchComplianceLog = pgTable("dispatch_compliance_log", {
   id: text("id").primaryKey(),
   loadId: text("load_id"),
   driverId: text("driver_id"),
   originState: text("origin_state"),
   destinationState: text("destination_state"),
-  distanceMiles: real("distance_miles"),
-  estimatedDriveHours: real("estimated_drive_hours"),
+  distanceMiles: doublePrecision("distance_miles"),
+  estimatedDriveHours: doublePrecision("estimated_drive_hours"),
   status: text("status").notNull().default("clear"), // clear, warning, critical
   alerts: text("alerts"), // JSON
-  estimatedFuelTax: real("estimated_fuel_tax"),
-  checkedAt: integer("checked_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  estimatedFuelTax: doublePrecision("estimated_fuel_tax"),
+  checkedAt: timestamp("checked_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // ── DOT physical failure recovery ───────────────────────────────────────────
-export const healthRecoveryPlans = sqliteTable("health_recovery_plans", {
+export const healthRecoveryPlans = pgTable("health_recovery_plans", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
   failureCategory: text("failure_category").notNull(), // VISION, HEARING, BLOOD_PRESSURE, ...
@@ -489,34 +489,34 @@ export const healthRecoveryPlans = sqliteTable("health_recovery_plans", {
   minDays: integer("min_days").notNull().default(30),
   maxDays: integer("max_days").notNull().default(90),
   estimatedCost: text("estimated_cost"),
-  retestEarliest: integer("retest_earliest", { mode: "timestamp" }),
-  retestLatest: integer("retest_latest", { mode: "timestamp" }),
-  retestScheduled: integer("retest_scheduled", { mode: "timestamp" }),
-  clearedAt: integer("cleared_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  retestEarliest: timestamp("retest_earliest", { mode: "date", withTimezone: true }),
+  retestLatest: timestamp("retest_latest", { mode: "date", withTimezone: true }),
+  retestScheduled: timestamp("retest_scheduled", { mode: "date", withTimezone: true }),
+  clearedAt: timestamp("cleared_at", { mode: "date", withTimezone: true }),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // ── Checkout fraud screening (server-side, replaces the client-side mock) ────
-export const checkoutScreenings = sqliteTable("checkout_screenings", {
+export const checkoutScreenings = pgTable("checkout_screenings", {
   id: text("id").primaryKey(),
   transactionId: text("transaction_id"),
   ipAddress: text("ip_address"),
-  amount: real("amount"),
+  amount: doublePrecision("amount"),
   paymentMethod: text("payment_method"),
   riskScore: integer("risk_score").notNull(),
   riskLevel: text("risk_level").notNull(), // low, elevated, high, critical
   recommendation: text("recommendation").notNull(), // allow, verify, block
-  requiresVerification: integer("requires_verification", { mode: "boolean" }).notNull().default(false),
+  requiresVerification: boolean("requires_verification").notNull().default(false),
   riskFactors: text("risk_factors"), // JSON
   source: text("source").notNull().default("heuristic"), // apifreaks | heuristic
-  live: integer("live", { mode: "boolean" }).notNull().default(false),
+  live: boolean("live").notNull().default(false),
   actionTaken: text("action_taken"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // ── Customer support tickets ─────────────────────────────────────────────────
-export const supportTickets = sqliteTable("support_tickets", {
+export const supportTickets = pgTable("support_tickets", {
   id: text("id").primaryKey(),
   ticketNumber: text("ticket_number").notNull(),
   category: text("category").notNull(), // TECHNICAL, BILLING, COMPLIANCE, ...
@@ -528,14 +528,14 @@ export const supportTickets = sqliteTable("support_tickets", {
   contactPhone: text("contact_phone"),
   status: text("status").notNull().default("open"), // open, in_progress, resolved, closed
   resolution: text("resolution"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // ── RideWithEase (second product: bike / car courier) ────────────────────────
 // Separate product from TruckWithEase. No FMCSA/HOS surface here — a bicycle
 // courier is not a CMV driver and none of 49 CFR 395 applies to them.
-export const rideCouriers = sqliteTable("ride_couriers", {
+export const rideCouriers = pgTable("ride_couriers", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   vehicleType: text("vehicle_type").notNull(), // ebike, road_bike, cargo_bike, hybrid, fat_tire_ebike, car, scooter
@@ -543,51 +543,51 @@ export const rideCouriers = sqliteTable("ride_couriers", {
   platforms: text("platforms"), // JSON array of platform keys the courier actually works
   contactEmail: text("contact_email"),
   contactPhone: text("contact_phone"),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const rideDeliveries = sqliteTable("ride_deliveries", {
+export const rideDeliveries = pgTable("ride_deliveries", {
   id: text("id").primaryKey(),
   courierId: text("courier_id").notNull(),
   platform: text("platform").notNull(),
   externalId: text("external_id"), // the platform's own order id, if the courier types it in
   pickupAddress: text("pickup_address"),
   dropoffAddress: text("dropoff_address"),
-  distanceMi: real("distance_mi"),
-  payout: real("payout"),
-  tip: real("tip"),
-  platformFee: real("platform_fee"),
+  distanceMi: doublePrecision("distance_mi"),
+  payout: doublePrecision("payout"),
+  tip: doublePrecision("tip"),
+  platformFee: doublePrecision("platform_fee"),
   status: text("status").notNull().default("pending"), // pending, in_progress, delivered, cancelled
   proofPhotoUrl: text("proof_photo_url"),
-  acceptedAt: integer("accepted_at", { mode: "timestamp" }),
-  deliveredAt: integer("delivered_at", { mode: "timestamp" }),
+  acceptedAt: timestamp("accepted_at", { mode: "date", withTimezone: true }),
+  deliveredAt: timestamp("delivered_at", { mode: "date", withTimezone: true }),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const rideExpenses = sqliteTable("ride_expenses", {
+export const rideExpenses = pgTable("ride_expenses", {
   id: text("id").primaryKey(),
   courierId: text("courier_id").notNull(),
   category: text("category").notNull(), // gear, maintenance, platform_fee, phone, insurance, charging, other
   description: text("description").notNull(),
-  amount: real("amount").notNull(),
+  amount: doublePrecision("amount").notNull(),
   businessPct: integer("business_pct").notNull().default(100),
   receiptUrl: text("receipt_url"),
-  incurredAt: integer("incurred_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  incurredAt: timestamp("incurred_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const rideMaintenance = sqliteTable("ride_maintenance", {
+export const rideMaintenance = pgTable("ride_maintenance", {
   id: text("id").primaryKey(),
   courierId: text("courier_id").notNull(),
   item: text("item").notNull(), // chain_lube, tires, brake_pads, battery, ...
-  lastServiceAt: integer("last_service_at", { mode: "timestamp" }),
-  lastServiceMi: real("last_service_mi"),
+  lastServiceAt: timestamp("last_service_at", { mode: "date", withTimezone: true }),
+  lastServiceMi: doublePrecision("last_service_mi"),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -599,7 +599,7 @@ export const rideMaintenance = sqliteTable("ride_maintenance", {
 // showed a success message and threw the record away.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const signups = sqliteTable("signups", {
+export const signups = pgTable("signups", {
   id: text("id").primaryKey(),
   email: text("email").notNull(),
   name: text("name"),
@@ -615,11 +615,11 @@ export const signups = sqliteTable("signups", {
   trialCode: text("trial_code"),
   status: text("status").notNull().default("new"), // new, contacted, activated, rejected
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const trialLinks = sqliteTable("trial_links", {
+export const trialLinks = pgTable("trial_links", {
   id: text("id").primaryKey(),
   code: text("code").notNull(),
   label: text("label"),
@@ -627,13 +627,13 @@ export const trialLinks = sqliteTable("trial_links", {
   trialDays: integer("trial_days").notNull().default(14),
   maxUses: integer("max_uses"),
   uses: integer("uses").notNull().default(0),
-  expiresAt: integer("expires_at", { mode: "timestamp" }),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }),
+  active: boolean("active").notNull().default(true),
   createdBy: text("created_by"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const subscriptions = sqliteTable("subscriptions", {
+export const subscriptions = pgTable("subscriptions", {
   id: text("id").primaryKey(),
   signupId: text("signup_id"),
   accountName: text("account_name").notNull(),
@@ -641,39 +641,39 @@ export const subscriptions = sqliteTable("subscriptions", {
   plan: text("plan").notNull(), // solo, pro, fleet_lease, fleet_owned
   seats: integer("seats").notNull().default(1),
   trucks: integer("trucks").notNull().default(0),
-  unitPrice: real("unit_price").notNull(),
+  unitPrice: doublePrecision("unit_price").notNull(),
   status: text("status").notNull().default("trialing"), // trialing, active, past_due, cancelled
-  trialEndsAt: integer("trial_ends_at", { mode: "timestamp" }),
-  startedAt: integer("started_at", { mode: "timestamp" }),
-  cancelledAt: integer("cancelled_at", { mode: "timestamp" }),
+  trialEndsAt: timestamp("trial_ends_at", { mode: "date", withTimezone: true }),
+  startedAt: timestamp("started_at", { mode: "date", withTimezone: true }),
+  cancelledAt: timestamp("cancelled_at", { mode: "date", withTimezone: true }),
   cancelReason: text("cancel_reason"),
   // Set only when a real payment provider has the record. Null means nobody
   // has ever been charged for this row.
   provider: text("provider"),
   providerRef: text("provider_ref"),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const billingCases = sqliteTable("billing_cases", {
+export const billingCases = pgTable("billing_cases", {
   id: text("id").primaryKey(),
   subscriptionId: text("subscription_id"),
   contactEmail: text("contact_email").notNull(),
   category: text("category").notNull(), // overcharge, refund, failed_payment, plan_change, invoice_request, cancellation, other
   subject: text("subject").notNull(),
   description: text("description").notNull(),
-  amountDisputed: real("amount_disputed"),
+  amountDisputed: doublePrecision("amount_disputed"),
   priority: text("priority").notNull().default("normal"), // low, normal, high
   status: text("status").notNull().default("open"), // open, in_review, resolved, refunded, rejected
   assignedTo: text("assigned_to"),
   resolution: text("resolution"),
-  resolvedAt: integer("resolved_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  resolvedAt: timestamp("resolved_at", { mode: "date", withTimezone: true }),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const a2pRegistrations = sqliteTable("a2p_registrations", {
+export const a2pRegistrations = pgTable("a2p_registrations", {
   id: text("id").primaryKey(),
   legalBusinessName: text("legal_business_name").notNull(),
   dbaName: text("dba_name"),
@@ -705,49 +705,49 @@ export const a2pRegistrations = sqliteTable("a2p_registrations", {
   a2pProfileBundleSid: text("a2p_profile_bundle_sid"),
   lastCarrierResponse: text("last_carrier_response"),
   status: text("status").notNull().default("draft"), // draft, ready, submitted, approved, rejected
-  submittedAt: integer("submitted_at", { mode: "timestamp" }),
-  decisionAt: integer("decision_at", { mode: "timestamp" }),
+  submittedAt: timestamp("submitted_at", { mode: "date", withTimezone: true }),
+  decisionAt: timestamp("decision_at", { mode: "date", withTimezone: true }),
   rejectionReason: text("rejection_reason"),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // ── Twilio account setup: domain verification + Trust Hub bundles ────────────
 // Twilio verifies domain ownership with a DNS TXT record. Nothing here proves
 // verification by itself — `verifiedAt` is only set after a real DNS lookup
 // finds the token in the zone.
-export const twilioDomainVerifications = sqliteTable("twilio_domain_verifications", {
+export const twilioDomainVerifications = pgTable("twilio_domain_verifications", {
   id: text("id").primaryKey(),
   domain: text("domain").notNull(),
   token: text("token").notNull(),
   recordName: text("record_name"),
   purpose: text("purpose"), // link_shortening, organization, messaging
-  lastCheckedAt: integer("last_checked_at", { mode: "timestamp" }),
+  lastCheckedAt: timestamp("last_checked_at", { mode: "date", withTimezone: true }),
   lastCheckResult: text("last_check_result"),
-  verifiedAt: integer("verified_at", { mode: "timestamp" }),
+  verifiedAt: timestamp("verified_at", { mode: "date", withTimezone: true }),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // ── Accessibility (from the pasted PocketBase schema, rebuilt server-side) ───
-export const driverAccessibility = sqliteTable("driver_accessibility", {
+export const driverAccessibility = pgTable("driver_accessibility", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
   preferredLanguage: text("preferred_language").notNull().default("en"),
   needs: text("needs"), // json array: deaf, hard_of_hearing, low_vision, dyslexia, ...
-  captionsEnabled: integer("captions_enabled", { mode: "boolean" }).notNull().default(false),
-  hapticsEnabled: integer("haptics_enabled", { mode: "boolean" }).notNull().default(false),
+  captionsEnabled: boolean("captions_enabled").notNull().default(false),
+  hapticsEnabled: boolean("haptics_enabled").notNull().default(false),
   signLanguage: text("sign_language"), // ASL, BSL, LSF, ...
   hapticDevice: text("haptic_device"), // phone, smartwatch, steering_wheel, dashboard
   vehicleWorld: text("vehicle_world").notNull().default("truck"), // truck, car, bike
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const hapticEvents = sqliteTable("haptic_events", {
+export const hapticEvents = pgTable("haptic_events", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
   patternType: text("pattern_type").notNull(),
@@ -755,15 +755,15 @@ export const hapticEvents = sqliteTable("haptic_events", {
   deviceType: text("device_type").notNull().default("phone"),
   urgency: text("urgency").notNull().default("low"), // low, medium, high, critical
   message: text("message"),
-  delivered: integer("delivered", { mode: "boolean" }).notNull().default(false),
+  delivered: boolean("delivered").notNull().default(false),
   deliveryNote: text("delivery_note"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // One table for caption / translation / sign-language requests. Nothing is
 // fulfilled until a real provider is connected — `fulfilled` stays false and
 // `note` says why. No fabricated confidence scores, no fake media urls.
-export const accessibilityRequests = sqliteTable("accessibility_requests", {
+export const accessibilityRequests = pgTable("accessibility_requests", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
   kind: text("kind").notNull(), // caption, translation, sign_language
@@ -773,15 +773,15 @@ export const accessibilityRequests = sqliteTable("accessibility_requests", {
   resultText: text("result_text"),
   resultSource: text("result_source"), // static_catalog | provider | null
   provider: text("provider"), // null until a real one is wired
-  fulfilled: integer("fulfilled", { mode: "boolean" }).notNull().default(false),
+  fulfilled: boolean("fulfilled").notNull().default(false),
   note: text("note"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // Load board seats. Credentials are NOT stored here — `credentialRef` points at
 // an api_key_vault row (AES-256-GCM). A password hash cannot be used to log in,
 // so the pasted `password_hash` field was dropped on purpose.
-export const loadBoardLicenses = sqliteTable("load_board_licenses", {
+export const loadBoardLicenses = pgTable("load_board_licenses", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
   fleetId: text("fleet_id"),
@@ -790,14 +790,14 @@ export const loadBoardLicenses = sqliteTable("load_board_licenses", {
   credentialRef: text("credential_ref"), // api_key_vault.id, null = no credential stored
   status: text("status").notNull().default("pending"), // pending, active, expired, revoked
   seatLabel: text("seat_label"),
-  purchased: integer("purchased", { mode: "boolean" }).notNull().default(false),
-  expiresAt: integer("expires_at", { mode: "timestamp" }),
-  lastLoginAt: integer("last_login_at", { mode: "timestamp" }),
+  purchased: boolean("purchased").notNull().default(false),
+  expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }),
+  lastLoginAt: timestamp("last_login_at", { mode: "date", withTimezone: true }),
   loginCount: integer("login_count").notNull().default(0),
   revokedReason: text("revoked_reason"),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // ── Safety scoring ──────────────────────────────────────────────────────────
@@ -806,38 +806,38 @@ export const loadBoardLicenses = sqliteTable("load_board_licenses", {
 // eld_telemetry). There is deliberately no `accidentRisk` column: the platform
 // has no crash-outcome dataset, so an accident-probability number would be
 // invented. The API returns accidentRisk: null for that reason.
-export const safetyScores = sqliteTable("safety_scores", {
+export const safetyScores = pgTable("safety_scores", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
   score: integer("score"),                       // 0-100, null when insufficient data
   grade: text("grade"),                          // platinum, gold, silver, needs_work, at_risk
   windowDays: integer("window_days").notNull().default(30),
-  milesDriven: real("miles_driven").notNull().default(0),
+  milesDriven: doublePrecision("miles_driven").notNull().default(0),
   speedingComponent: integer("speeding_component"),
   hosComponent: integer("hos_component"),
   dvirComponent: integer("dvir_component"),
   violationComponent: integer("violation_component"),
   fatigueComponent: integer("fatigue_component"),
-  insufficientData: integer("insufficient_data", { mode: "boolean" }).notNull().default(true),
+  insufficientData: boolean("insufficient_data").notNull().default(true),
   missing: text("missing"),                      // JSON array of component names with no data
   note: text("note"),
-  computedAt: integer("computed_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  computedAt: timestamp("computed_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const speedingEvents = sqliteTable("speeding_events", {
+export const speedingEvents = pgTable("speeding_events", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
   truckUnit: text("truck_unit"),
-  speedMph: real("speed_mph").notNull(),
-  limitMph: real("limit_mph").notNull(),
-  overBy: real("over_by").notNull(),
+  speedMph: doublePrecision("speed_mph").notNull(),
+  limitMph: doublePrecision("limit_mph").notNull(),
+  overBy: doublePrecision("over_by").notNull(),
   severity: text("severity").notNull().default("minor"), // minor (1-9), moderate (10-14), severe (15+)
-  lat: real("lat"),
-  lng: real("lng"),
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
   roadName: text("road_name"),
   source: text("source").notNull().default("eld"),       // eld, gps, manual, citation
-  occurredAt: integer("occurred_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  occurredAt: timestamp("occurred_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /**
@@ -849,7 +849,7 @@ export const speedingEvents = sqliteTable("speeding_events", {
  * "cross-fleet intelligence" pages rendered an empty array as if the fleet were clean.
  */
 
-export const activityLog = sqliteTable("activity_log", {
+export const activityLog = pgTable("activity_log", {
   id: text("id").primaryKey(),
   sessionId: text("session_id").notNull(),
   module: text("module").notNull(),
@@ -857,10 +857,10 @@ export const activityLog = sqliteTable("activity_log", {
   detail: text("detail"),
   value: text("value"),
   device: text("device"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const fleetNotes = sqliteTable("fleet_intelligence_notes", {
+export const fleetNotes = pgTable("fleet_intelligence_notes", {
   id: text("id").primaryKey(),
   entityName: text("entity_name").notNull(),
   entityNameKey: text("entity_name_key").notNull(),   // lowercased, trimmed — what lookups match on
@@ -872,12 +872,12 @@ export const fleetNotes = sqliteTable("fleet_intelligence_notes", {
   driverName: text("driver_name"),
   loadNumber: text("load_number"),
   mcNumber: text("mc_number"),
-  resolved: integer("resolved", { mode: "boolean" }).notNull().default(false),
+  resolved: boolean("resolved").notNull().default(false),
   sessionId: text("session_id"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const entityRatings = sqliteTable("shipper_broker_ratings", {
+export const entityRatings = pgTable("shipper_broker_ratings", {
   id: text("id").primaryKey(),
   companyName: text("company_name").notNull(),
   companyNameKey: text("company_name_key").notNull(),
@@ -888,10 +888,10 @@ export const entityRatings = sqliteTable("shipper_broker_ratings", {
   reviewText: text("review_text"),
   mcNumber: text("mc_number"),
   sessionId: text("session_id"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-export const stopFeedback = sqliteTable("route_stop_feedback", {
+export const stopFeedback = pgTable("route_stop_feedback", {
   id: text("id").primaryKey(),
   stopName: text("stop_name").notNull(),
   stopNameKey: text("stop_name_key").notNull(),
@@ -900,7 +900,7 @@ export const stopFeedback = sqliteTable("route_stop_feedback", {
   routeOrigin: text("route_origin"),
   routeDest: text("route_dest"),
   sessionId: text("session_id"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /**
@@ -913,13 +913,13 @@ export const stopFeedback = sqliteTable("route_stop_feedback", {
  * trips / loads / hos_logs / dvir_inspections / speeding_events / safety_scores
  * and are never persisted as a snapshot of invented numbers.
  */
-export const weekReviewSubscriptions = sqliteTable("week_review_subscriptions", {
+export const weekReviewSubscriptions = pgTable("week_review_subscriptions", {
   id: text("id").primaryKey(),
   driverId: text("driver_id"),
   email: text("email").notNull(),
   weekEnding: text("week_ending"),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /**
@@ -957,12 +957,12 @@ export const driverSignals = sqliteTable("driver_signals", {
   // speeding, dvir_defect, shift_start, break_taken, route_planned, fuel_stop
   kind: text("kind").notNull(),
   subject: text("subject"),              // broker name, lane string, road name, equipment
-  numericValue: real("numeric_value"),   // rate, rpm, miles, mph over, hours
+  numericValue: doublePrecision("numeric_value"),   // rate, rpm, miles, mph over, hours
   unit: text("unit"),                    // usd, usd_per_mile, miles, mph, seconds
   source: text("source").notNull(),      // which endpoint or user action produced this
   meta: text("meta"),                    // JSON blob of the raw observation
-  occurredAt: integer("occurred_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  occurredAt: timestamp("occurred_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 
@@ -982,7 +982,7 @@ export const driverSignals = sqliteTable("driver_signals", {
  * TRAXES is a record-keeper and a calculator. It does not file anything with any
  * tax authority and it makes no claim of IRS acceptance.
  */
-export const traxesRecords = sqliteTable("traxes_records", {
+export const traxesRecords = pgTable("traxes_records", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
   // kind: bol | rate_confirmation | invoice | fuel_receipt | lumper_receipt |
@@ -999,23 +999,23 @@ export const traxesRecords = sqliteTable("traxes_records", {
   loadId: text("load_id"),
   reference: text("reference"),           // BOL #, PO #, invoice #, pro #
   vendor: text("vendor"),                 // truck stop, repair shop, lumper service
-  amount: real("amount"),                 // null when unreadable — never guessed
+  amount: doublePrecision("amount"),                 // null when unreadable — never guessed
   currency: text("currency").default("USD"),
   taxYear: integer("tax_year"),
-  occurredAt: integer("occurred_at", { mode: "timestamp" }),
-  deductible: integer("deductible", { mode: "boolean" }).notNull().default(true),
+  occurredAt: timestamp("occurred_at", { mode: "date", withTimezone: true }),
+  deductible: boolean("deductible").notNull().default(true),
   ocrRaw: text("ocr_raw"),                // the model's raw JSON reply, kept for audit
   ocrNote: text("ocr_note"),              // plain-English reason a field came back null
   ocrModel: text("ocr_model"),
-  ocrConfidence: real("ocr_confidence"),  // null — provider returns none
+  ocrConfidence: doublePrecision("ocr_confidence"),  // null — provider returns none
   // status: captured | extracted | filed | needs_review
   status: text("status").notNull().default("captured"),
   // destination: dispatch | link | none
   destination: text("destination").notNull().default("none"),
   destinationNote: text("destination_note"),
-  sentAt: integer("sent_at", { mode: "timestamp" }),
+  sentAt: timestamp("sent_at", { mode: "date", withTimezone: true }),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /**
@@ -1034,25 +1034,25 @@ export const traxesRecords = sqliteTable("traxes_records", {
  *  - This is a clearance ADVISORY layer, not truck-legal routing.
  *  - 99.99 m in the source means "no restriction recorded", not "measured".
  */
-export const lowBridges = sqliteTable("low_bridges", {
+export const lowBridges = pgTable("low_bridges", {
   id: text("id").primaryKey(),
   structureNumber: text("structure_number").notNull(), // NBI item 8
   stateCode: text("state_code").notNull(),             // NBI item 1 (FIPS)
   stateAbbr: text("state_abbr").notNull(),
   countyCode: text("county_code"),                     // NBI item 3
-  lat: real("lat").notNull(),                          // decimal degrees, from item 16
-  lng: real("lng").notNull(),                          // decimal degrees, from item 17
+  lat: doublePrecision("lat").notNull(),                          // decimal degrees, from item 16
+  lng: doublePrecision("lng").notNull(),                          // decimal degrees, from item 17
   clearanceIn: integer("clearance_in").notNull(),      // item 54B converted to inches
-  clearanceM: real("clearance_m").notNull(),           // item 54B as published (meters)
+  clearanceM: doublePrecision("clearance_m").notNull(),           // item 54B as published (meters)
   underRef: text("under_ref").notNull(),               // item 54A: H = highway, R = railroad
   featureUnder: text("feature_under"),                 // item 6A
   facilityCarried: text("facility_carried"),           // item 7
   location: text("location"),                          // item 9
   openPosted: text("open_posted"),                     // item 41
-  suspect: integer("suspect", { mode: "boolean" }).notNull().default(false),
+  suspect: boolean("suspect").notNull().default(false),
   nbiYear: integer("nbi_year").notNull(),
   source: text("source").notNull().default("FHWA NBI"),
-  importedAt: integer("imported_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  importedAt: timestamp("imported_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /**
@@ -1073,7 +1073,7 @@ export const lowBridges = sqliteTable("low_bridges", {
  *
  * Nothing here is ever recomputed or rewritten. Rows are append-only.
  */
-export const dispatchDecisions = sqliteTable("dispatch_decisions", {
+export const dispatchDecisions = pgTable("dispatch_decisions", {
   id: text("id").primaryKey(),
   seq: integer("seq").notNull(),                        // monotonic, 1-based
   loadId: text("load_id"),
@@ -1083,12 +1083,12 @@ export const dispatchDecisions = sqliteTable("dispatch_decisions", {
   inputsJson: text("inputs_json").notNull(),            // which of the 7 inputs were live
   blockersJson: text("blockers_json").notNull(),        // hard stops at decision time
   unverifiedJson: text("unverified_json").notNull(),    // inputs we did NOT have
-  revenuePerClockHour: real("revenue_per_clock_hour"),  // null when clock is 0
+  revenuePerClockHour: doublePrecision("revenue_per_clock_hour"),  // null when clock is 0
   payloadHash: text("payload_hash").notNull(),
   prevHash: text("prev_hash").notNull(),
   chainHash: text("chain_hash").notNull(),
   decidedBy: text("decided_by").notNull().default("dispatch"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /**
@@ -1106,7 +1106,7 @@ export const dispatchDecisions = sqliteTable("dispatch_decisions", {
  * server-side. If the wording changes, the hash changes, and prior acceptances
  * no longer count as acceptance of the new text.
  */
-export const responsibleUseAcceptances = sqliteTable("responsible_use_acceptances", {
+export const responsibleUseAcceptances = pgTable("responsible_use_acceptances", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
   userEmail: text("user_email"),
@@ -1114,9 +1114,9 @@ export const responsibleUseAcceptances = sqliteTable("responsible_use_acceptance
   localeStatus: text("locale_status").notNull(),  // TRANSLATED | ENGLISH_ONLY — was the text actually translated
   termsVersion: text("terms_version").notNull(),  // sha256 of the pledge text shown
   pledgeCount: integer("pledge_count").notNull(),
-  acceptedAll: integer("accepted_all", { mode: "boolean" }).notNull(),
+  acceptedAll: boolean("accepted_all").notNull(),
   userAgent: text("user_agent"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /**
@@ -1139,7 +1139,7 @@ export const responsibleUseAcceptances = sqliteTable("responsible_use_acceptance
  * not an assumption. iOS Safari does not implement the Vibration API, so this
  * column is how we learn how often the feature silently does nothing.
  */
-export const hapticPlaybacks = sqliteTable("haptic_playbacks", {
+export const hapticPlaybacks = pgTable("haptic_playbacks", {
   id: text("id").primaryKey(),
   userId: text("user_id"),                          // nullable — anonymous playback is a valid measurement
   patternKey: text("pattern_key").notNull(),
@@ -1147,9 +1147,9 @@ export const hapticPlaybacks = sqliteTable("haptic_playbacks", {
   onTimeMs: integer("on_time_ms").notNull(),         // summed vibrate time only
   totalMs: integer("total_ms").notNull(),            // vibrate + pause, wall clock
   pulseCount: integer("pulse_count").notNull(),
-  deviceSupported: integer("device_supported", { mode: "boolean" }).notNull(),
+  deviceSupported: boolean("device_supported").notNull(),
   userAgent: text("user_agent"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 // Better Auth tables (user, session, account, verification) — generated by the
@@ -1167,12 +1167,12 @@ export * from "./auth-schema";
  *
  * Absence of a row means role "driver". New accounts are NEVER admin.
  */
-export const userRoles = sqliteTable("user_roles", {
+export const userRoles = pgTable("user_roles", {
   userId: text("user_id").primaryKey(),
   role: text("role").notNull().default("driver"), // driver | dispatch | hr | admin
   assignedBy: text("assigned_by"), // user id of the assigner, or "bootstrap"
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /**
@@ -1189,23 +1189,23 @@ export const userRoles = sqliteTable("user_roles", {
  * chainHash = sha256(payloadHash + prevHash). seq is global and monotonic, so the
  * whole ledger is one chain across all drivers, verifiable head-to-genesis.
  */
-export const clockLedgerEntries = sqliteTable("clock_ledger_entries", {
+export const clockLedgerEntries = pgTable("clock_ledger_entries", {
   id: text("id").primaryKey(),
   seq: integer("seq").notNull(),                          // monotonic, 1-based, global
   driverId: text("driver_id").notNull(),
   windowDays: integer("window_days").notNull(),
-  windowStartedAt: integer("window_started_at", { mode: "timestamp" }).notNull(),
-  windowEndedAt: integer("window_ended_at", { mode: "timestamp" }).notNull(),
-  clockHoursConsumed: real("clock_hours_consumed").notNull(),
-  drivingHours: real("driving_hours").notNull(),
-  burnedHours: real("burned_hours").notNull(),
-  revenueAttributed: real("revenue_attributed"),          // null when no load is attributed
+  windowStartedAt: timestamp("window_started_at", { mode: "date", withTimezone: true }).notNull(),
+  windowEndedAt: timestamp("window_ended_at", { mode: "date", withTimezone: true }).notNull(),
+  clockHoursConsumed: doublePrecision("clock_hours_consumed").notNull(),
+  drivingHours: doublePrecision("driving_hours").notNull(),
+  burnedHours: doublePrecision("burned_hours").notNull(),
+  revenueAttributed: doublePrecision("revenue_attributed"),          // null when no load is attributed
   intervalsUsed: integer("intervals_used").notNull(),
   intervalsExcludedOpen: integer("intervals_excluded_open").notNull(),
   payloadHash: text("payload_hash").notNull(),            // sha256 of the measured fields
   prevHash: text("prev_hash").notNull(),
   chainHash: text("chain_hash").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /* ============================================================
@@ -1228,7 +1228,7 @@ export const clockLedgerEntries = sqliteTable("clock_ledger_entries", {
  */
 
 /** A Twilio number on the account, assigned to a fleet, a driver, or a purpose. */
-export const fleetPhoneNumbers = sqliteTable("fleet_phone_numbers", {
+export const fleetPhoneNumbers = pgTable("fleet_phone_numbers", {
   id: text("id").primaryKey(),
   phoneNumber: text("phone_number").notNull(),            // E.164, as Twilio reports it
   twilioSid: text("twilio_sid").notNull(),                // PNxxxx — proof the number is real
@@ -1237,37 +1237,37 @@ export const fleetPhoneNumbers = sqliteTable("fleet_phone_numbers", {
   assignedToType: text("assigned_to_type").notNull().default("fleet"), // fleet, driver, dispatch, support
   assignedToId: text("assigned_to_id"),                   // drivers.id when assignedToType = driver
   assignedToName: text("assigned_to_name"),
-  smsCapable: integer("sms_capable", { mode: "boolean" }).notNull().default(false),
-  voiceCapable: integer("voice_capable", { mode: "boolean" }).notNull().default(false),
-  mmsCapable: integer("mms_capable", { mode: "boolean" }).notNull().default(false),
+  smsCapable: boolean("sms_capable").notNull().default(false),
+  voiceCapable: boolean("voice_capable").notNull().default(false),
+  mmsCapable: boolean("mms_capable").notNull().default(false),
   messagingServiceSid: text("messaging_service_sid"),     // MGxxxx when the number is in a service
   status: text("status").notNull().default("active"),     // active, released
-  assignedAt: integer("assigned_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  releasedAt: integer("released_at", { mode: "timestamp" }),
+  assignedAt: timestamp("assigned_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  releasedAt: timestamp("released_at", { mode: "date", withTimezone: true }),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /** One thread between a fleet number and one outside number. */
-export const smsConversations = sqliteTable("sms_conversations", {
+export const smsConversations = pgTable("sms_conversations", {
   id: text("id").primaryKey(),
   fleetNumberId: text("fleet_number_id"),                 // fleet_phone_numbers.id, null if number not assigned yet
   fleetNumber: text("fleet_number").notNull(),            // E.164 of our side
   peerNumber: text("peer_number").notNull(),              // E.164 of the other side
   peerName: text("peer_name"),                            // resolved from drivers/hr_people when it matches
   peerType: text("peer_type"),                            // driver, broker, unknown
-  lastMessageAt: integer("last_message_at", { mode: "timestamp" }),
+  lastMessageAt: timestamp("last_message_at", { mode: "date", withTimezone: true }),
   lastMessagePreview: text("last_message_preview"),
   lastDirection: text("last_direction"),                  // inbound, outbound
   unreadInbound: integer("unread_inbound").notNull().default(0),
   messageCount: integer("message_count").notNull().default(0),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /** Every SMS this app sent or received, with Twilio's own SID and status. */
-export const smsMessages = sqliteTable("sms_messages", {
+export const smsMessages = pgTable("sms_messages", {
   id: text("id").primaryKey(),
   conversationId: text("conversation_id").notNull(),
   direction: text("direction").notNull(),                 // inbound, outbound
@@ -1279,11 +1279,11 @@ export const smsMessages = sqliteTable("sms_messages", {
   errorCode: text("error_code"),                          // Twilio's code, verbatim
   errorMessage: text("error_message"),                    // Twilio's text, verbatim
   numSegments: integer("num_segments"),
-  priceUsd: real("price_usd"),                            // null until Twilio reports it
+  priceUsd: doublePrecision("price_usd"),                            // null until Twilio reports it
   sentByUserId: text("sent_by_user_id"),
   sentByName: text("sent_by_name"),
-  statusCheckedAt: integer("status_checked_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  statusCheckedAt: timestamp("status_checked_at", { mode: "date", withTimezone: true }),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /* ============================================================
@@ -1297,19 +1297,19 @@ export const smsMessages = sqliteTable("sms_messages", {
  * came from. Nothing here invents a duty time — the only accepted close source
  * is another row's start time or a human-supplied time that is stored as such.
  */
-export const hosIntervalRepairs = sqliteTable("hos_interval_repairs", {
+export const hosIntervalRepairs = pgTable("hos_interval_repairs", {
   id: text("id").primaryKey(),
   hosLogId: text("hos_log_id").notNull(),
   driverId: text("driver_id").notNull(),
   status: text("status").notNull(),                        // duty status of the repaired row
-  startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
-  openForHours: real("open_for_hours").notNull(),          // how long it had been left open
-  closedAt: integer("closed_at", { mode: "timestamp" }).notNull(),
+  startedAt: timestamp("started_at", { mode: "date", withTimezone: true }).notNull(),
+  openForHours: doublePrecision("open_for_hours").notNull(),          // how long it had been left open
+  closedAt: timestamp("closed_at", { mode: "date", withTimezone: true }).notNull(),
   closeSource: text("close_source").notNull(),             // next_interval_start, supplied_time
-  minutesRecovered: real("minutes_recovered").notNull(),   // minutes the clock now counts again
+  minutesRecovered: doublePrecision("minutes_recovered").notNull(),   // minutes the clock now counts again
   actor: text("actor").notNull().default("server"),
   note: text("note"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /* ============================================================
@@ -1327,7 +1327,7 @@ export const hosIntervalRepairs = sqliteTable("hos_interval_repairs", {
  * a third-party timestamp authority, and not proof the underlying hos_logs rows
  * were correct when captured.
  */
-export const sealedMessages = sqliteTable("sealed_messages", {
+export const sealedMessages = pgTable("sealed_messages", {
   id: text("id").primaryKey(),
   seq: integer("seq").notNull(),                           // monotonic, 1-based, global
   messageId: text("message_id").notNull(),                 // sms_messages.id
@@ -1337,7 +1337,7 @@ export const sealedMessages = sqliteTable("sealed_messages", {
   toNumber: text("to_number").notNull(),
   bodyHash: text("body_hash").notNull(),                   // sha256 of the exact body text
   bodyChars: integer("body_chars").notNull(),
-  occurredAt: integer("occurred_at", { mode: "timestamp" }).notNull(),
+  occurredAt: timestamp("occurred_at", { mode: "date", withTimezone: true }).notNull(),
   driverId: text("driver_id"),                             // resolved by phone number match
   driverName: text("driver_name"),
   dutyStatusAtMessage: text("duty_status_at_message"),
@@ -1346,7 +1346,7 @@ export const sealedMessages = sqliteTable("sealed_messages", {
   cycleRemainingMin: integer("cycle_remaining_min"),
   atLimit: text("at_limit"),                               // JSON string[] of limits hit
   clockSnapshotJson: text("clock_snapshot_json"),          // full snapshot, verbatim
-  clockResolved: integer("clock_resolved", { mode: "boolean" }).notNull().default(false),
+  clockResolved: boolean("clock_resolved").notNull().default(false),
   clockUnresolvedReason: text("clock_unresolved_reason"),
   payloadHash: text("payload_hash").notNull(),
   prevHash: text("prev_hash").notNull(),
@@ -1356,7 +1356,7 @@ export const sealedMessages = sqliteTable("sealed_messages", {
   // and points back at the original. Both rows stay in the chain forever.
   supersedesSealedId: text("supersedes_sealed_id"),
   sealReason: text("seal_reason"),                          // first_seal, clock_resolved_after_phone_link
-  sealedAt: integer("sealed_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  sealedAt: timestamp("sealed_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
 /**
@@ -1364,27 +1364,27 @@ export const sealedMessages = sqliteTable("sealed_messages", {
  * the driver's clock at that moment. The verdict is arithmetic against 49 CFR 395
  * using a declared average speed — it is not a prediction and carries no score.
  */
-export const clockAnswers = sqliteTable("clock_answers", {
+export const clockAnswers = pgTable("clock_answers", {
   id: text("id").primaryKey(),
   sealedMessageId: text("sealed_message_id"),
   conversationId: text("conversation_id"),
   driverId: text("driver_id"),
   askText: text("ask_text").notNull(),
-  parsedMiles: real("parsed_miles"),
-  parsedDeadlineAt: integer("parsed_deadline_at", { mode: "timestamp" }),
+  parsedMiles: doublePrecision("parsed_miles"),
+  parsedDeadlineAt: timestamp("parsed_deadline_at", { mode: "date", withTimezone: true }),
   parsedIntent: text("parsed_intent").notNull(),           // availability, miles_ask, deadline_ask, hours_ask, unparsed
   verdict: text("verdict").notNull(),                      // fits, does_not_fit, needs_break, needs_reset, unparsed, no_clock
   verdictReason: text("verdict_reason").notNull(),
-  clockHoursNeeded: real("clock_hours_needed"),
-  clockHoursAvailable: real("clock_hours_available"),
-  assumedMph: real("assumed_mph"),
+  clockHoursNeeded: doublePrecision("clock_hours_needed"),
+  clockHoursAvailable: doublePrecision("clock_hours_available"),
+  assumedMph: doublePrecision("assumed_mph"),
   draftReply: text("draft_reply").notNull(),
   replySentMessageId: text("reply_sent_message_id"),       // sms_messages.id when actually sent
   replyTwilioSid: text("reply_twilio_sid"),
-  autoSent: integer("auto_sent", { mode: "boolean" }).notNull().default(false),
+  autoSent: boolean("auto_sent").notNull().default(false),
   inboundMessageId: text("inbound_message_id"),             // sms_messages.id of the ask, when it came from a real inbound
   autoReplyDecision: text("auto_reply_decision"),           // sent, send_failed, skipped_disabled, skipped_no_clock, skipped_unparsed, skipped_opt_out, skipped_duplicate, skipped_no_creds
   autoReplyError: text("auto_reply_error"),                 // the provider's own error text, verbatim
   retryOfAnswerId: text("retry_of_answer_id"),               // clock_answers.id this attempt re-tries; append-only, the earlier row is never edited
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
