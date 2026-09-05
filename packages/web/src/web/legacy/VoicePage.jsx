@@ -50,45 +50,17 @@ export default function VoicePage() {
 
   const categories = ["All", ...new Set(COMMANDS.map(c => c.category))];
 
-  useEffect(() => {
-    fetch("/api/session/me", { credentials: "include" })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => setSignedIn(Boolean(data?.signedIn)))
-      .catch(() => setSignedIn(false));
-  }, []);
-
-  async function locationPayload() {
-    if (!navigator.geolocation) return {};
-    return new Promise((resolve) => navigator.geolocation.getCurrentPosition(
-      (position) => resolve({ lat: position.coords.latitude, lon: position.coords.longitude }),
-      () => resolve({}), { maximumAge: 300000, timeout: 5000 },
-    ));
-  }
-
-  async function runCommand(phrase) {
-    if (!signedIn) {
-      setError("Sign in before running a voice command.");
-      return;
-    }
-    setListening(true);
-    setTranscript(phrase);
-    setResponse(null);
-    setError(null);
+  async function tryCommand(cmd) {
+    setListening(true); setTranscript(cmd.phrase); setResponse(null);
     try {
-      const r = await fetch("/api/voice/execute", {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: phrase, ...(await locationPayload()) }),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Command failed.");
-      setResponse(data.message);
-      if (data.next?.startsWith("/")) window.location.assign(data.next);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Command failed.");
-    } finally {
-      setListening(false);
-    }
+      const response = await fetch("/api/voice/execute", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcript: cmd.phrase, driverId: "drv-1" }) });
+      const body = await response.json();
+      setResponse(body.message || body.error || `Command failed (${response.status}).`);
+    } catch (error) { setResponse(error instanceof Error ? error.message : "Command unavailable."); }
+    finally { setListening(false); }
   }
+
+  function simulate() { tryCommand(COMMANDS[0]); }
 
   function simulate() {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;

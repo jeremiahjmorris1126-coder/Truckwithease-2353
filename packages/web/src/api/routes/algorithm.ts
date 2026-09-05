@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { and, desc, eq, gte } from "drizzle-orm";
+import { auth } from "../auth";
+import { ensurePersonalizationSchema } from "../lib/personalization";
 import { db } from "../database";
 import * as schema from "../database/schema";
 import { readInterval } from "../lib/dutyclock";
@@ -32,6 +34,32 @@ import { readInterval } from "../lib/dutyclock";
  */
 
 export const algorithm = new Hono();
+
+type SessionUser = { id: string; email?: string | null };
+
+async function currentUser(headers: Headers): Promise<SessionUser | null> {
+  try {
+    const session = await auth.api.getSession({ headers });
+    return session?.user ? { id: session.user.id, email: session.user.email } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function ownProfile(userId: string) {
+  await ensurePersonalizationSchema();
+  const rows = await db.select().from(schema.userDriverProfiles).where(eq(schema.userDriverProfiles.userId, userId)).limit(1);
+  return rows[0] ?? null;
+}
+
+async function mayReadDriver(headers: Headers, driverId: string) {
+  const user = await currentUser(headers);
+  if (!user) return false;
+  const roleRows = await db.select().from(schema.userRoles).where(eq(schema.userRoles.userId, user.id)).limit(1);
+  const role = roleRows[0]?.role ?? "driver";
+  if (role === "admin" || role === "dispatch") return true;
+  return (await ownProfile(user.id))?.driverId === driverId;
+}
 
 /** Below this many observations a pattern is not reported as a pattern. */
 const MIN_SAMPLES = 5;
@@ -144,6 +172,7 @@ algorithm.post("/signal", async (c) => {
   const source = String(body.source ?? "").trim();
 
   if (!driverId) return c.json({ error: "driverId is required." }, 400);
+  if (!(await mayReadDriver(c.req.raw.headers, driverId))) return c.json({ error: "Not authorized to record a signal for this driver." }, 403);
   if (!DIMENSIONS.includes(dimension))
     return c.json({ error: `dimension must be one of: ${DIMENSIONS.join(", ")}` }, 400);
   if (!kind) return c.json({ error: "kind is required — name the observed event." }, 400);
@@ -174,8 +203,45 @@ algorithm.post("/signal", async (c) => {
   return c.json({ recorded: true, signal: row }, 201);
 });
 
+algorithm.get("/me", async (c) => {
+  const user = await currentUser(c.req.raw.headers);
+  if (!user) return c.json({ error: "Not signed in." }, 401);
+  const profile = await ownProfile(user.id);
+  if (!profile) return c.json({ linked: false, personalizationEnabled: false, driver: null });
+  const driver = await buildProfile(profile.driverId);
+  return c.json({ linked: true, personalizationEnabled: profile.personalizationEnabled, consentedAt: profile.consentedAt, driver });
+});
+
+/** Claim only the driver record carrying the signed-in email; users cannot choose another driver's history. */
+algorithm.post("/me/claim", async (c) => {
+  const user = await currentUser(c.req.raw.headers);
+  if (!user?.email) return c.json({ error: "A signed-in account with an email address is required." }, 401);
+  await ensurePersonalizationSchema();
+  const matches = await db.select().from(schema.drivers).where(eq(schema.drivers.email, user.email)).limit(2);
+  if (matches.length !== 1) return c.json({ error: "No unique driver record matches your sign-in email. Ask dispatch to set your driver email before claiming a profile." }, 409);
+  const existing = await ownProfile(user.id);
+  if (existing && existing.driverId !== matches[0].id) return c.json({ error: "This account is already linked to another driver profile." }, 409);
+  const now = new Date();
+  if (existing) await db.update(schema.userDriverProfiles).set({ updatedAt: now }).where(eq(schema.userDriverProfiles.userId, user.id));
+  else await db.insert(schema.userDriverProfiles).values({ userId: user.id, driverId: matches[0].id, personalizationEnabled: false, updatedAt: now });
+  return c.json({ linked: true, driver: { id: matches[0].id, name: matches[0].name, truckNumber: matches[0].truckNumber }, personalizationEnabled: false });
+});
+
+algorithm.post("/me/consent", async (c) => {
+  const user = await currentUser(c.req.raw.headers);
+  if (!user) return c.json({ error: "Not signed in." }, 401);
+  const profile = await ownProfile(user.id);
+  if (!profile) return c.json({ error: "Claim your driver profile before changing personalization." }, 409);
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>));
+  if (typeof body.enabled !== "boolean") return c.json({ error: "enabled must be true or false." }, 400);
+  const now = new Date();
+  await db.update(schema.userDriverProfiles).set({ personalizationEnabled: body.enabled, consentedAt: body.enabled ? now : null, updatedAt: now }).where(eq(schema.userDriverProfiles.userId, user.id));
+  return c.json({ linked: true, personalizationEnabled: body.enabled, consentedAt: body.enabled ? now : null });
+});
+
 algorithm.get("/:driverId/signals", async (c) => {
   const driverId = c.req.param("driverId");
+  if (!(await mayReadDriver(c.req.raw.headers, driverId))) return c.json({ error: "Not authorized to read this driver profile." }, 403);
   const limit = Math.min(Number(c.req.query("limit") ?? 50) || 50, 200);
   const rows = await db
     .select()
@@ -489,12 +555,28 @@ async function buildProfile(driverId: string) {
 }
 
 algorithm.get("/:driverId", async (c) => {
+  if (!(await mayReadDriver(c.req.raw.headers, c.req.param("driverId")))) return c.json({ error: "Not authorized to read this driver profile." }, 403);
   try {
     return c.json(await buildProfile(c.req.param("driverId")));
   } catch (e) {
     return c.json({ error: String(e instanceof Error ? e.message : e) }, 500);
   }
 });
+
+/** Personalization supplied to dispatch only after the driver opted in. It is advisory and never changes safety or HOS gates. */
+export async function dispatchPersonalization(driverId: string) {
+  await ensurePersonalizationSchema();
+  const rows = await db.select().from(schema.userDriverProfiles).where(and(eq(schema.userDriverProfiles.driverId, driverId), eq(schema.userDriverProfiles.personalizationEnabled, true))).limit(1);
+  if (!rows[0]) return { enabled: false, patternsLearned: 0, note: "No consented driver profile is available; dispatch ranking is unchanged." };
+  const profile = await buildProfile(driverId);
+  const learned = Object.values(profile.dimensions).flat().filter((p) => !p.insufficient).map((p) => ({ label: p.label, value: p.value, sampleCount: p.sampleCount, confidence: p.confidence }));
+  return {
+    enabled: true,
+    patternsLearned: learned.length,
+    observedPatterns: learned,
+    note: learned.length ? "Observed driver patterns are shown as advisory context only. They never override HOS, route, or safety gates and do not change rank." : "The driver consented, but no pattern has enough observations yet; dispatch ranking is unchanged.",
+  };
+}
 
 /* ------------------------------------- compact context for the agents */
 
@@ -546,6 +628,7 @@ export async function driverAlgorithmContext(driverId: string) {
 }
 
 algorithm.get("/:driverId/context", async (c) => {
+  if (!(await mayReadDriver(c.req.raw.headers, c.req.param("driverId")))) return c.json({ error: "Not authorized to read this driver profile." }, 403);
   try {
     return c.json(await driverAlgorithmContext(c.req.param("driverId")));
   } catch (e) {

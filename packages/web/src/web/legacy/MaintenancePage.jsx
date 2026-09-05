@@ -83,8 +83,9 @@ function FadeIn({ children, delay = 0, style = {} }) {
 }
 
 export default function MaintenancePage() {
-  const [items, setItems]         = useState(DEFAULT_ITEMS);
+  const [items, setItems]         = useState([]);
   const [selectedTruck, setTruck] = useState("TRK-441");
+  const [loadState, setLoadState] = useState({ status: "loading", message: "Loading service plan…" });
   const [category, setCat]        = useState("All");
   const [showAdd, setShowAdd]     = useState(false);
   const [selectedItem, setItem]   = useState(null);
@@ -93,9 +94,31 @@ export default function MaintenancePage() {
   const [tab, setTab]             = useState("list");
   const [newItem, setNewItem]     = useState({ truckId: "TRK-441", category: "Engine", component: "", intervalMiles: "", intervalDays: "", currentMiles: "148200", costEst: "", priority: "medium", notes: "" });
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/maintenance/pm-plan/${encodeURIComponent(selectedTruck)}?odometer=0`, { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Maintenance plan unavailable (${response.status})`);
+        return response.json();
+      })
+      .then((body) => {
+        if (cancelled) return;
+        setItems((body.plan || []).map((item, index) => ({
+          id: `${selectedTruck}-${item.key}`, truckId: selectedTruck, category: "Maintenance", component: item.label,
+          intervalMiles: item.miles || 0, intervalDays: (item.months || 0) * 30, lastServiceMiles: item.lastServiceMiles || 0,
+          lastServiceDate: item.lastServiceDate ? String(item.lastServiceDate).slice(0, 10) : "", currentMiles: body.odometer || 0,
+          costEst: 0, priority: item.status === "overdue" ? "high" : item.status === "due_soon" ? "medium" : "low",
+          notes: item.status, serverStatus: item.status, pmInterval: item.key,
+        })));
+        setLoadState({ status: "ready", message: "Server maintenance plan" });
+      })
+      .catch((error) => { if (!cancelled) setLoadState({ status: "error", message: error.message }); });
+    return () => { cancelled = true; };
+  }, [selectedTruck]);
+
   const filtered = items
     .filter(i => i.truckId === selectedTruck && (category === "All" || i.category === category))
-    .map(i => ({ ...i, ...computeStatus(i) }))
+    .map(i => ({ ...i, ...(i.serverStatus ? { status: i.serverStatus === "on_track" ? "ok" : i.serverStatus, milesUntil: null, daysUntil: null, urgency: i.serverStatus === "overdue" ? 0 : i.serverStatus === "due_soon" ? 1 : 2 } : computeStatus(i)) }))
     .sort((a, b) => a.urgency - b.urgency);
 
   const overdue   = filtered.filter(i => i.status === "overdue");
@@ -103,30 +126,25 @@ export default function MaintenancePage() {
   const ok        = filtered.filter(i => i.status === "ok");
   const estCostOverdue = overdue.reduce((s, i) => s + i.costEst, 0);
 
-  function logService(id) {
-    setItems(prev => prev.map(i => {
-      if (i.id !== id) return i;
-      const miles = parseInt(logMiles) || i.currentMiles;
-      return { ...i, lastServiceMiles: miles, lastServiceDate: new Date().toISOString().split("T")[0], currentMiles: miles };
-    }));
-    setItem(null);
-    setLogMiles("");
-    setLogNote("");
+  async function logService(id) {
+    const item = items.find((entry) => entry.id === id);
+    if (!item) return;
+    try {
+      const response = await fetch("/api/maintenance", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ truckUnit: item.truckId, type: "pm", status: "complete", priority: item.priority, title: item.component, pmInterval: item.pmInterval, odometer: parseInt(logMiles) || item.currentMiles, performedOn: new Date().toISOString().slice(0, 10), notes: logNote || null }) });
+      if (!response.ok) throw new Error(`Could not save service (${response.status})`);
+      setItems(prev => prev.map(i => i.id === id ? { ...i, lastServiceMiles: parseInt(logMiles) || i.currentMiles, lastServiceDate: new Date().toISOString().split("T")[0] } : i));
+      setLoadState({ status: "ready", message: "Service saved." }); setItem(null); setLogMiles(""); setLogNote("");
+    } catch (error) { setLoadState({ status: "error", message: error.message }); }
   }
 
-  function addItem() {
+  async function addItem() {
     if (!newItem.component) return;
-    setItems(prev => [...prev, {
-      ...newItem,
-      id: Date.now(),
-      intervalMiles: parseInt(newItem.intervalMiles) || 0,
-      intervalDays: parseInt(newItem.intervalDays) || 0,
-      costEst: parseInt(newItem.costEst) || 0,
-      lastServiceMiles: 0,
-      lastServiceDate: new Date().toISOString().split("T")[0],
-    }]);
-    setShowAdd(false);
-    setNewItem({ truckId: "TRK-441", category: "Engine", component: "", intervalMiles: "", intervalDays: "", currentMiles: "148200", costEst: "", priority: "medium", notes: "" });
+    try {
+      const response = await fetch("/api/maintenance", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ truckUnit: newItem.truckId, type: "pm", status: "open", priority: newItem.priority, category: newItem.category, title: newItem.component, odometer: parseInt(newItem.currentMiles) || 0, nextDueMiles: parseInt(newItem.intervalMiles) || null, nextDueDate: newItem.intervalDays ? new Date(Date.now() + parseInt(newItem.intervalDays) * 86400000).toISOString().slice(0, 10) : null, notes: newItem.notes || null }) });
+      if (!response.ok) throw new Error(`Could not add service item (${response.status})`);
+      setShowAdd(false); setLoadState({ status: "ready", message: "Service item saved." });
+      setNewItem({ truckId: "TRK-441", category: "Engine", component: "", intervalMiles: "", intervalDays: "", currentMiles: "148200", costEst: "", priority: "medium", notes: "" });
+    } catch (error) { setLoadState({ status: "error", message: error.message }); }
   }
 
   const statusConfig = {
@@ -213,6 +231,7 @@ export default function MaintenancePage() {
       )}
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 5% 60px" }}>
+        <div style={{ color: loadState.status === "error" ? RED : "#64748B", fontSize: 12, marginBottom: 12 }}>{loadState.message}</div>
 
         {/* ── SUMMARY CARDS ──────────────────────────────────────────────────── */}
         <FadeIn>

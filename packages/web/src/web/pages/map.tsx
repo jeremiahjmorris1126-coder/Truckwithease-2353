@@ -5,7 +5,7 @@ import { Card, Badge, Spinner, PageHeader, Button } from "../components/ui/kit";
 import { Truck, Navigation, MapPin, Layers, Activity } from "lucide-react";
 import { FleetMap } from "../components/FleetMap";
 
-const HAS_MAPS = !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+const HAS_MAPS = !!import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
 export default function MapPage() {
   const [selected, setSelected] = useState<string | null>(null);
@@ -39,7 +39,7 @@ export default function MapPage() {
         ) : undefined} />
       {!HAS_MAPS && (
         <div className="rounded-lg bg-[#C9A84C]/10 border border-[#C9A84C]/30 px-4 py-2.5 text-sm text-[#8B6914] mb-4">
-          Add a <b>Google Maps API key</b> (VITE_GOOGLE_MAPS_API_KEY) for the full interactive map with traffic &amp; truck routing. Showing the live schematic tracker below.
+          Add a <b>Google Maps API key</b> (VITE_GOOGLE_MAPS_KEY) for the full interactive map with traffic &amp; truck routing. Showing the live schematic tracker below.
         </div>
       )}
 

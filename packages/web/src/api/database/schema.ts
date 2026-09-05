@@ -940,7 +940,15 @@ export const weekReviewSubscriptions = pgTable("week_review_subscriptions", {
  * caller renders NOT ENOUGH DATA with the real count.
  */
 
-export const driverSignals = pgTable("driver_signals", {
+export const userDriverProfiles = sqliteTable("user_driver_profiles", {
+  userId: text("user_id").primaryKey(),
+  driverId: text("driver_id").notNull().unique(),
+  personalizationEnabled: integer("personalization_enabled", { mode: "boolean" }).notNull().default(false),
+  consentedAt: integer("consented_at", { mode: "timestamp" }),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const driverSignals = sqliteTable("driver_signals", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
   // dimension: driving | customer | load | route

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 
 const NAVY   = "#0B2A6B";
 const NAVY2  = "#081E4D";
@@ -81,6 +81,7 @@ export default function LoadProfitPage() {
     other:       "0",
   });
   const [history, setHistory] = useState([]);
+  const [saveState, setSaveState] = useState({ status: "idle", message: "" });
   const [activePreset, setPreset] = useState(0);
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
@@ -120,8 +121,44 @@ export default function LoadProfitPage() {
 
   const broker = BROKER_RISK[form.broker] || BROKER_RISK["Other"];
 
-  function saveLoad() {
-    setHistory(h => [{ id: Date.now(), label: form.broker + " · " + form.trailerType, gross, miles, netProfit, rpmNet, verdict }, ...h.slice(0, 9)]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/profit/calculations", { credentials: "include" })
+      .then(async (r) => {
+        if (r.status === 401) return [];
+        if (!r.ok) throw new Error(`History unavailable (${r.status})`);
+        const body = await r.json();
+        return body.calculations || [];
+      })
+      .then((rows) => {
+        if (cancelled) return;
+        setHistory(rows.map((row) => ({
+          id: row.id,
+          label: `${row.calculation.broker || "Unspecified"} · ${row.calculation.trailerType || "Unspecified"}`,
+          gross: row.calculation.grossPay,
+          miles: row.calculation.miles,
+          netProfit: row.calculation.netProfit,
+          rpmNet: row.calculation.netPerMile,
+          verdict: row.calculation.verdict,
+        })));
+      })
+      .catch((error) => { if (!cancelled) setSaveState({ status: "error", message: error.message }); });
+    return () => { cancelled = true; };
+  }, []);
+
+  async function saveLoad() {
+    setSaveState({ status: "saving", message: "Saving…" });
+    const payload = { grossPay: gross, miles, deadhead, mpg, fuelPrice, tolls, lumper, detention, driverPayPerMile: driverPay, otherCosts: other, broker: form.broker, trailerType: form.trailerType, weight: Number(form.weight) || 0 };
+    try {
+      const response = await fetch("/api/profit/calculations", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || `Save failed (${response.status})`);
+      const saved = body.calculation;
+      setHistory((h) => [{ id: saved.id, label: `${saved.calculation.broker || "Unspecified"} · ${saved.calculation.trailerType || "Unspecified"}`, gross: saved.calculation.grossPay, miles: saved.calculation.miles, netProfit: saved.calculation.netProfit, rpmNet: saved.calculation.netPerMile, verdict: saved.calculation.verdict }, ...h].slice(0, 10));
+      setSaveState({ status: "saved", message: "Saved to your signed-in history." });
+    } catch (error) {
+      setSaveState({ status: "error", message: error instanceof Error ? error.message : "Save failed." });
+    }
   }
 
   function loadPreset(i) {
@@ -447,12 +484,13 @@ export default function LoadProfitPage() {
             <FadeIn delay={100}>
               <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
                 <button onClick={saveLoad} style={{ flex: 1, background: NAVY, color: "white", border: "none", borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Poppins', sans-serif" }}>
-                  Save to History
+                  {saveState.status === "saving" ? "Saving…" : "Save to History"}
                 </button>
                 <a href="/trip-planner" style={{ flex: 1, background: "#F1F5F9", color: NAVY, borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'Poppins', sans-serif", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                   🗺️ Plan This Route
                 </a>
               </div>
+              {saveState.message && <div style={{ color: saveState.status === "error" ? RED : GREEN, fontSize: 12, marginTop: 8 }}>{saveState.message}</div>}
             </FadeIn>
 
             {/* History */}

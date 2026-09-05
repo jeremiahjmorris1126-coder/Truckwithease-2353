@@ -37,8 +37,21 @@ import * as schema from "../database/schema";
 import { googleKeyFor } from "../lib/googlekeys";
 import { computeClocks, hosViolations } from "./hos";
 import { computeSafetyScore } from "./safety";
+import { dispatchPersonalization } from "./algorithm";
+import { auth } from "../auth";
 
 const dispatchZero = new Hono();
+
+async function mayDispatch(headers: Headers) {
+  try {
+    const session = await auth.api.getSession({ headers });
+    if (!session?.user) return false;
+    const roles = await db.select().from(schema.userRoles).where(eq(schema.userRoles.userId, session.user.id)).limit(1);
+    return roles[0]?.role === "dispatch" || roles[0]?.role === "admin";
+  } catch {
+    return false;
+  }
+}
 
 const DIRECTIONS = "https://maps.googleapis.com/maps/api/directions/json";
 const METERS_PER_MILE = 1609.344;
@@ -270,6 +283,7 @@ type Candidate = {
     hosViolations: { level: string; msg: string }[];
   };
   safety: { score: number | null; grade: string | null; insufficientData: boolean; missing: string[]; error?: string };
+  personalization: Awaited<ReturnType<typeof dispatchPersonalization>>;
   economics: {
     rate: number | null;
     miles: number | null;
@@ -284,6 +298,7 @@ type Candidate = {
 // POST /score
 // ---------------------------------------------------------------------------
 dispatchZero.post("/score", async (c) => {
+  if (!(await mayDispatch(c.req.raw.headers))) return c.json({ error: "Dispatch role required." }, 403);
   let body: any;
   try {
     body = await c.req.json();
@@ -360,6 +375,8 @@ dispatchZero.post("/score", async (c) => {
 
     const blockers: string[] = [];
     const advisories: string[] = [];
+    const personalization = await dispatchPersonalization(d.id);
+    if (personalization.enabled && personalization.patternsLearned > 0) advisories.push(`Personalization context available from ${personalization.patternsLearned} observed pattern(s); it is advisory only and does not change rank.`);
 
     // 1 — HOS feasibility. This is a hard stop, not a warning.
     const drivingRemaining = clocks.drivingRemaining;
@@ -414,6 +431,7 @@ dispatchZero.post("/score", async (c) => {
         hosViolations: hv,
       },
       safety,
+      personalization,
       economics: {
         rate,
         miles,
@@ -449,8 +467,9 @@ dispatchZero.post("/score", async (c) => {
     { n: 3, key: "clearance", label: "Low-bridge clearance corridor scan", live: clearance.live, source: "FHWA NBI 2025, item 54B", error: clearance.error ?? null, note: CLEARANCE_NOTE },
     { n: 4, key: "safetyFit", label: "Driver safety score", live: candidates.some((cd) => cd.safety.score !== null), source: "computeSafetyScore() over 30 days" },
     { n: 5, key: "economics", label: "Rate, RPM, revenue per clock-hour", live: rate !== null && !!miles, source: rate === null ? "no rate on this load" : `rate from ${load.id ? "loads table" : "request body"}, miles from ${milesSource ?? "nowhere"}` },
-    { n: 6, key: "honesty", label: "Live vs missing input ledger", live: true, source: "computed per request, never cached" },
-    { n: 7, key: "chain", label: "SHA-256 decision chain", live: true, source: "dispatch_decisions table" },
+    { n: 6, key: "personalization", label: "Consented driver memory", live: candidates.some((cd) => cd.personalization.enabled), source: "driver_signals; advisory only, never a ranking or safety gate" },
+    { n: 7, key: "honesty", label: "Live vs missing input ledger", live: true, source: "computed per request, never cached" },
+    { n: 8, key: "chain", label: "SHA-256 decision chain", live: true, source: "dispatch_decisions table" },
   ];
 
   return c.json({
@@ -494,6 +513,7 @@ dispatchZero.post("/score", async (c) => {
 // POST /commit — append-only, hash-chained
 // ---------------------------------------------------------------------------
 dispatchZero.post("/commit", async (c) => {
+  if (!(await mayDispatch(c.req.raw.headers))) return c.json({ error: "Dispatch role required." }, 403);
   let body: any;
   try {
     body = await c.req.json();
@@ -714,7 +734,7 @@ dispatchZero.get("/status", async (c) => {
     dz = Number(r?.n ?? 0);
     if (dz > 0) head = String((await rawRows("SELECT chain_hash FROM dispatch_decisions ORDER BY seq DESC LIMIT 1"))[0]?.chain_hash ?? "");
   } catch {}
-  out.push({ n: 7, key: "chain", label: "SHA-256 decision chain", live: true, detail: dz === 0 ? "chain empty — no decisions committed yet" : `${dz} sealed decisions, head ${head?.slice(0, 12)}…`, source: "dispatch_decisions table" });
+  out.push({ n: 8, key: "chain", label: "SHA-256 decision chain", live: true, detail: dz === 0 ? "chain empty — no decisions committed yet" : `${dz} sealed decisions, head ${head?.slice(0, 12)}…`, source: "dispatch_decisions table" });
 
   return c.json({
     inputs: out,

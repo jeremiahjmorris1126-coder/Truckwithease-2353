@@ -120,7 +120,7 @@ export function FleetMap(props: {
   positions: FleetPos[]; selected: string | null; onSelect: (id: string) => void;
   traffic: boolean; mapType: "roadmap" | "satellite";
 }) {
-  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+  const key = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
   const center = useMemo(() => ({ lat: 38.9, lng: -90.0 }), []);
   if (!key) return null;
 

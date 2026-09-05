@@ -33,6 +33,7 @@ function FadeIn({ children, delay = 0, style = {} }) {
 }
 
 function formatMessage(text) {
+  // Agent responses are untrusted text. Escape before adding our limited Markdown formatting.
   text = String(text)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -92,10 +93,12 @@ export default function RoadAgentPage() {
   async function send(text) {
     const q = (text || input).trim();
     if (!q || typing) return;
+
     setInput("");
     setMessages((current) => [...current, { role: "user", text: q }]);
     setTyping(true);
     let responseStarted = false;
+
     try {
       const result = await askAgentStream("Road Agent", q, (chunk) => {
         setMessages((current) => {
@@ -108,7 +111,9 @@ export default function RoadAgentPage() {
           return updated;
         });
       });
-      if (!responseStarted) setMessages((current) => [...current, { role: "agent", text: result.text || "Road Agent returned an empty response. Nothing was generated." }]);
+      if (!responseStarted) {
+        setMessages((current) => [...current, { role: "agent", text: result.text || "Road Agent returned an empty response. Nothing was generated." }]);
+      }
     } finally {
       setTyping(false);
     }

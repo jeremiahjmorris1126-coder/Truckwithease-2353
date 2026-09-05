@@ -61,9 +61,9 @@ import { functionsIndex } from "./routes/functions";
 import { openapiRoutes } from "./routes/openapi";
 import { responsibleUseRoute } from "./routes/responsibleuse";
 import { hapticRoute } from "./routes/haptic";
-import { weightCheck } from "./routes/weight-check";
-import { designSystem } from "./routes/design-system";
-import { medicalExaminer } from "./routes/medical-examiner";
+import { profit } from "./routes/profit";
+import { voice } from "./routes/voice";
+import { command } from "./routes/command";
 import { requireSession } from "./middleware/session";
 import { voice } from "./routes/voice";
 
@@ -81,6 +81,9 @@ const app = new Hono()
   .route("/hos", hos)
   .route("/dvir", dvir)
   .route("/loads", loads)
+  .route("/profit", profit)
+  .route("/voice", voice)
+  .route("/command", command)
   .route("/chat", chat)
   .route("/rewards", rewards)
   .route("/fuel", fuel)
