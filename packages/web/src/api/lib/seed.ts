@@ -5,8 +5,15 @@ import { sql } from "drizzle-orm";
 /**
  * Idempotent seed for demo. Runs once on first API call.
  * Populates realistic fleet so every screen is explorable.
+ *
+ * Memoized as a single in-flight promise rather than a boolean: 17 route
+ * handlers call ensureSeed() at their top, so on a cold start several concurrent
+ * requests can all reach the check before any flag is set — each then runs its
+ * own count(*) and races the inserts. Sharing one promise collapses that to a
+ * single seed operation; on failure the promise is cleared so a later request
+ * can retry.
  */
-let seeded = false;
+let seedPromise: Promise<void> | null = null;
 
 const now = Date.now();
 const hoursAgo = (h: number) => new Date(now - h * 3600_000);
@@ -35,12 +42,17 @@ const LOADS = [
   { id: "load-5", origin: "Columbus, OH", destination: "Pittsburgh, PA", miles: 185, rate: 720, equipment: "Reefer", weight: 39000, pickupDate: "2026-07-08", broker: "Echo", status: "available" },
 ];
 
-export async function ensureSeed() {
-  if (seeded) return;
+export function ensureSeed(): Promise<void> {
+  if (!seedPromise) {
+    seedPromise = runSeed();
+  }
+  return seedPromise;
+}
+
+async function runSeed(): Promise<void> {
   try {
     const existing = await db.select({ c: sql<number>`count(*)` }).from(schema.drivers);
     if ((existing[0]?.c ?? 0) > 0) {
-      seeded = true;
       return;
     }
 
@@ -75,8 +87,11 @@ export async function ensureSeed() {
       { id: "msg-2", fromId: "drv-1", fromName: "Marcus Bell", toId: "dispatch", body: "Copy. Rolling now, ETA Indy 2pm.", createdAt: new Date(now - 2.5 * 3600_000) },
     ]);
 
-    seeded = true;
   } catch (e) {
-    console.error("Seed error:", e);
+    // Best-effort: callers await this but must not 500 on a transient seed
+    // hiccup. Clear the memo so the next request retries instead of caching the
+    // failure forever.
+    console.error("[v0] Seed error:", e);
+    seedPromise = null;
   }
 }
