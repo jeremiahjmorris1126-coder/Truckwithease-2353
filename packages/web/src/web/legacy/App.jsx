@@ -43,7 +43,6 @@ const MigrationROICalculator = lazy(() => import("./MigrationROICalculator"));
 const SalesCollateral = lazy(() => import("./SalesCollateral"));
 const ComplianceAudit = lazy(() => import("./ComplianceAudit"));
 const ProofOfConceptSandbox = lazy(() => import("./ProofOfConceptSandbox"));
-const IntegrationVerification = lazy(() => import("./IntegrationVerification"));
 const CustomerMemorySystem = lazy(() => import("./CustomerMemorySystem"));
 const DocumentScanningSystem = lazy(() => import("./DocumentScanningSystem"));
 const OperationsHealthDashboard = lazy(() => import("./OperationsHealthDashboard"));
@@ -521,7 +520,7 @@ export default function App() {
   if (path === "/sales-collateral") return <SalesCollateral />;
   if (path === "/compliance") return <ComplianceAudit />;
   if (path === "/poc") return <ProofOfConceptSandbox />;
-  if (path === "/integrations") return <IntegrationVerification />;
+  if (path === "/integrations") return <IntegrationHubPage />;
   if (path === "/customer-memory") return <CustomerMemorySystem />;
   if (path === "/documents") return <DocumentScanningSystem />;
   if (path === "/operations-health") return <OperationsHealthDashboard />;
