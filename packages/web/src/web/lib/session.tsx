@@ -27,8 +27,8 @@ export type Session = {
   loading: boolean;
 };
 
-/** Seeded demo driver record until auth users are linked to driver rows. */
-const DRIVER_ID = "drv-1";
+/** Empty until the signed-in user claims the matching driver profile. */
+const DRIVER_ID = "";
 
 /** Pre-fetch placeholder. Never claims admin, never claims to be signed in. */
 const LOADING: Session = {
@@ -63,9 +63,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setSessionState({ ...LOADING, loading: false, signedIn: false, name: "Guest" });
         return;
       }
+      let driverId = DRIVER_ID;
+      try {
+        const profile = await fetch("/api/algorithm/me", { credentials: "include" });
+        const data = await profile.json();
+        if (profile.ok && data?.linked && typeof data?.driver?.driverId === "string") driverId = data.driver.driverId;
+      } catch {
+        // A profile link is optional; leave driver-specific actions unavailable until claimed.
+      }
       setSessionState({
         role: me.role ?? "driver",
-        driverId: DRIVER_ID,
+        driverId,
         name: nameFrom(me.user),
         email: me.user.email,
         userId: me.user.id,
