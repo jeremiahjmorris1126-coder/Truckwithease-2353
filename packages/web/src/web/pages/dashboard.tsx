@@ -13,6 +13,7 @@ export default function Dashboard() {
   const trucks = useQuery({ queryKey: ["trucks"], queryFn: async () => (await api.fleet.trucks.$get()).json() });
 
   if (drivers.isLoading || hosFleet.isLoading) return <Spinner label="Loading fleet…" />;
+  if (drivers.isError || hosFleet.isError || dvir.isError || trucks.isError) return <Card className="p-5 border-[#ef4444]"><p className="text-sm text-[#ef4444]">Fleet data could not be loaded. Refresh to retry.</p></Card>;
 
   const ds = drivers.data?.drivers ?? [];
   const driving = ds.filter((d) => d.status === "driving").length;
@@ -38,23 +39,23 @@ export default function Dashboard() {
         {/* Alerts */}
         <Card className="p-5 lg:col-span-2" accent>
           <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="h-5 w-5 text-[#c96a4c]" />
-            <h2 className="font-bold text-[#F5F5F5]">Compliance Alerts</h2>
+            <AlertTriangle className="h-5 w-5 text-[#ef4444]" />
+            <h2 className="font-bold text-[#e3e2e6]">Compliance Alerts</h2>
           </div>
           {allViolations.length === 0 && needsRepair.length === 0 ? (
-            <p className="text-sm text-[#8A8A8A] py-6 text-center">All clear — no active compliance issues. </p>
+            <p className="text-sm text-[#94a3b8] py-6 text-center">All clear — no active compliance issues. </p>
           ) : (
             <div className="space-y-2">
               {allViolations.map((v, i) => (
-                <div key={`v${i}`} className="flex items-center gap-3 rounded-lg bg-[#0a0a0a] px-3 py-2.5">
+                <div key={`v${i}`} className="flex items-center gap-3  bg-[#08090c] px-3 py-2.5">
                   <Badge status={v.level} />
-                  <span className="text-sm text-[#F5F5F5]"><b>{v.name}:</b> {v.msg}</span>
+                  <span className="text-sm text-[#e3e2e6]"><b>{v.name}:</b> {v.msg}</span>
                 </div>
               ))}
               {needsRepair.map((r) => (
-                <div key={r.id} className="flex items-center gap-3 rounded-lg bg-[#0a0a0a] px-3 py-2.5">
+                <div key={r.id} className="flex items-center gap-3  bg-[#08090c] px-3 py-2.5">
                   <Badge status="danger" />
-                  <span className="text-sm text-[#F5F5F5]"><b>{r.truckUnit}:</b> DVIR defect — {(r.defects as string[]).join(", ")}</span>
+                  <span className="text-sm text-[#e3e2e6]"><b>{r.truckUnit}:</b> DVIR defect — {(r.defects as string[]).join(", ")}</span>
                 </div>
               ))}
             </div>
@@ -63,7 +64,7 @@ export default function Dashboard() {
 
         {/* Quick links */}
         <Card className="p-5">
-          <h2 className="font-bold text-[#F5F5F5] mb-4">Quick Actions</h2>
+          <h2 className="font-bold text-[#e3e2e6] mb-4">Quick Actions</h2>
           <div className="space-y-2">
             {[
               { to: "/app/hos", label: "Log Hours (HOS)", icon: Clock },
@@ -72,9 +73,9 @@ export default function Dashboard() {
             ].map((q) => {
               const Icon = q.icon;
               return (
-                <Link key={q.to} to={q.to} className="flex items-center justify-between rounded-lg border border-[#222222] px-3 py-2.5 hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 transition-colors">
-                  <span className="flex items-center gap-2.5 text-sm font-medium text-[#F5F5F5]"><Icon className="h-4 w-4 text-[#C9A84C]" />{q.label}</span>
-                  <ArrowRight className="h-4 w-4 text-[#8A8A8A]" />
+                <Link key={q.to} to={q.to} className="flex items-center justify-between  border border-[#222634] px-3 py-2.5 hover:border-[#d4af37] hover:bg-[#d4af37]/5 transition-colors">
+                  <span className="flex items-center gap-2.5 text-sm font-medium text-[#e3e2e6]"><Icon className="h-4 w-4 text-[#d4af37]" />{q.label}</span>
+                  <ArrowRight className="h-4 w-4 text-[#94a3b8]" />
                 </Link>
               );
             })}
@@ -84,10 +85,10 @@ export default function Dashboard() {
 
       {/* Driver roster */}
       <Card className="mt-6 overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#222222]"><h2 className="font-bold text-[#F5F5F5]">Driver Roster</h2></div>
+        <div className="px-5 py-4 border-b border-[#222634]"><h2 className="font-bold text-[#e3e2e6]">Driver Roster</h2></div>
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-[#8A8A8A] text-xs uppercase tracking-wide bg-[#0a0a0a]">
+            <tr className="text-left text-[#94a3b8] text-xs uppercase tracking-wide bg-[#08090c]">
               <th className="px-5 py-2.5 font-semibold">Driver</th>
               <th className="px-5 py-2.5 font-semibold">Truck</th>
               <th className="px-5 py-2.5 font-semibold">Status</th>
@@ -98,13 +99,13 @@ export default function Dashboard() {
           </thead>
           <tbody>
             {ds.map((d) => (
-              <tr key={d.id} className="border-t border-[#222222] hover:bg-[#0a0a0a]">
-                <td className="px-5 py-3 font-medium text-[#F5F5F5]">{d.name}</td>
-                <td className="px-5 py-3 font-mono-data text-[#8A8A8A]">{d.truckNumber}</td>
+              <tr key={d.id} className="border-t border-[#222634] hover:bg-[#08090c]">
+                <td className="px-5 py-3 font-medium text-[#e3e2e6]">{d.name}</td>
+                <td className="px-5 py-3 font-mono-data text-[#94a3b8]">{d.truckNumber}</td>
                 <td className="px-5 py-3"><Badge status={d.status} /></td>
-                <td className="px-5 py-3 text-[#8A8A8A]">{d.homeBase}</td>
-                <td className="px-5 py-3 capitalize text-[#8A8A8A]">{d.tier}</td>
-                <td className="px-5 py-3 text-right font-mono-data text-[#FFD700] font-semibold">{d.points.toLocaleString()}</td>
+                <td className="px-5 py-3 text-[#94a3b8]">{d.homeBase}</td>
+                <td className="px-5 py-3 capitalize text-[#94a3b8]">{d.tier}</td>
+                <td className="px-5 py-3 text-right font-mono-data text-[#ffd700] font-semibold">{d.points.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>

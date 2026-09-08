@@ -27,41 +27,44 @@ export default function Chat() {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs.data]);
 
   const rows = msgs.data?.messages ?? [];
+  const unavailable = !session.driverId;
 
   return (
     <div>
       <PageHeader title="Dispatch Chat" subtitle="Direct line between dispatch and the road — live, per fleet." />
       <Card className="flex flex-col h-[calc(100vh-200px)] overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-3 border-b border-[#222222] bg-[#0a0a0a]">
-          <MessageSquare className="h-4 w-4 text-[#C9A84C]" />
-          <span className="font-bold text-sm text-[#F5F5F5]">Fleet Channel</span>
-          <span className="ml-auto flex items-center gap-1.5 text-xs text-[#C9A84C]"><span className="h-2 w-2 rounded-full bg-[#C9A84C] animate-pulse" />Live</span>
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-[#222634] bg-[#08090c]">
+          <MessageSquare className="h-4 w-4 text-[#d4af37]" />
+          <span className="font-bold text-sm text-[#e3e2e6]">Fleet Channel</span>
+          <span className="ml-auto flex items-center gap-1.5 text-xs text-[#d4af37]"><span className="h-2 w-2  bg-[#d4af37] animate-pulse" />Live</span>
         </div>
         <div className="flex-1 overflow-y-auto p-5 space-y-3">
-          {msgs.isLoading ? <Spinner /> : rows.length === 0 ? (
-            <p className="text-sm text-[#8A8A8A] text-center py-10">No messages yet. Say hello to the fleet.</p>
+          {msgs.isError ? <p className="text-sm text-[#ef4444] text-center py-10">Messages could not be loaded. Refresh to retry.</p> : msgs.isLoading ? <Spinner /> : rows.length === 0 ? (
+            <p className="text-sm text-[#94a3b8] text-center py-10">No messages yet. Say hello to the fleet.</p>
           ) : rows.map((m) => {
             const mine = m.fromId === session.driverId && m.fromName === session.name;
             return (
               <div key={m.id} className={`flex ${mine ? "justify-end" : ""}`}>
                 <div className={`max-w-[75%] ${mine ? "items-end" : ""}`}>
-                  <div className={`text-[11px] mb-1 ${mine ? "text-right text-[#8A8A8A]" : "text-[#8A8A8A]"}`}>{m.fromName}</div>
-                  <div className={`rounded-2xl px-4 py-2.5 text-sm ${mine ? "bg-[#C9A84C] text-[#0a0a0a]" : "bg-[#0a0a0a] text-[#F5F5F5]"}`}>{m.body}</div>
+                  <div className={`text-[11px] mb-1 ${mine ? "text-right text-[#94a3b8]" : "text-[#94a3b8]"}`}>{m.fromName}</div>
+                  <div className={` px-4 py-2.5 text-sm ${mine ? "bg-[#d4af37] text-[#08090c]" : "bg-[#08090c] text-[#e3e2e6]"}`}>{m.body}</div>
                 </div>
               </div>
             );
           })}
           <div ref={endRef} />
         </div>
-        <div className="border-t border-[#222222] p-3 space-y-2">
+        <div className="border-t border-[#222634] p-3 space-y-2">
+          {unavailable ? <p className="text-xs text-[#eab308]">Claim your driver profile to send messages.</p> : null}
+          {send.isError ? <p className="text-xs text-[#ef4444]">Message was not sent. Try again.</p> : null}
           <div className="flex flex-wrap gap-1.5">
             {QUICK.map((q) => (
-              <button key={q} onClick={() => send.mutate(q)} disabled={send.isPending} className="flex items-center gap-1 rounded-full border border-[#222222] px-2.5 py-1 text-xs text-[#8A8A8A] hover:border-[#C9A84C] hover:text-[#F5F5F5]"><Zap className="h-3 w-3 text-[#C9A84C]" />{q}</button>
+              <button key={q} onClick={() => send.mutate(q)} disabled={send.isPending || unavailable} className="flex items-center gap-1  border border-[#222634] px-2.5 py-1 text-xs text-[#94a3b8] hover:border-[#d4af37] hover:text-[#e3e2e6]"><Zap className="h-3 w-3 text-[#d4af37]" />{q}</button>
             ))}
           </div>
           <form onSubmit={(e) => { e.preventDefault(); if (text.trim()) send.mutate(text); }} className="flex gap-2">
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Message the fleet…" className="flex-1 rounded-lg border border-[#222222] px-3 py-2.5 text-sm focus:border-[#C9A84C] focus:outline-none" />
-            <Button variant="amber" type="submit" disabled={send.isPending}><Send className="h-4 w-4" /></Button>
+            <input value={text} onChange={(e) => setText(e.target.value)} placeholder={unavailable ? "Claim your driver profile before messaging…" : "Message the fleet…"} className="flex-1  border border-[#222634] px-3 py-2.5 text-sm focus:border-[#d4af37] focus:outline-none" />
+            <Button variant="amber" type="submit" disabled={send.isPending || unavailable}><Send className="h-4 w-4" /></Button>
           </form>
         </div>
       </Card>
