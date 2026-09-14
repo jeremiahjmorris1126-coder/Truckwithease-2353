@@ -66,6 +66,9 @@ import { hapticRoute } from "./routes/haptic";
 import { profit } from "./routes/profit";
 import { voice } from "./routes/voice";
 import { command } from "./routes/command";
+import { weightCheck } from "./routes/weight-check";
+import { designSystem } from "./routes/design-system";
+import { medicalExaminer } from "./routes/medical-examiner";
 import { requireSession } from "./middleware/session";
 
 const app = new Hono()
