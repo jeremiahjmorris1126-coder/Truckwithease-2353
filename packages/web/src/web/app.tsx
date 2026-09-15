@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import { Provider } from "./components/provider";
 import { SessionProvider } from "./lib/session";
 import { Shell } from "./components/shell";
@@ -7,6 +7,7 @@ import { ProtectedRoute } from "./components/protected-route";
 import { authClient } from "./lib/auth";
 import { AgentFeedback, RunableBadge } from "@runablehq/website-runtime";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { trackPageView } from "./lib/ga4";
 
 import Index from "./pages/index";
 const Landing = lazy(() => import("./pages/landing"));
@@ -77,12 +78,19 @@ function useManagedRedirect() {
   return done;
 }
 
+function GoogleAnalytics() {
+  const [location] = useLocation();
+  useEffect(() => { trackPageView(location); }, [location]);
+  return null;
+}
+
 function App() {
   const authReady = useManagedRedirect();
   if (!authReady) return <RouteFallback />;
   return (
     <Provider>
       <SessionProvider>
+        <GoogleAnalytics />
         <Suspense fallback={<RouteFallback />}>
         <Switch>
           <Route path="/" component={Landing} />
