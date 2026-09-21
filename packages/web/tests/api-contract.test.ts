@@ -57,3 +57,16 @@ test("maintenance endpoints require a Better Auth session", async () => {
   expect(response.status).toBe(401);
   expect(await response.json()).toMatchObject({ error: "Authentication required." });
 });
+
+test("telemetry ingestion bypasses user-session auth but requires device credentials", async () => {
+  const response = await handler(
+    new Request(`${origin}/api/eld/telemetry`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    }),
+  );
+
+  expect(response.status).toBe(400);
+  expect(await response.json()).toMatchObject({ error: "deviceId, positive integer sequence, and Bearer device token are required" });
+});

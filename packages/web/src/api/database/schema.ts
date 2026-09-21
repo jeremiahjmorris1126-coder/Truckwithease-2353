@@ -459,8 +459,50 @@ export const eldDevices = sqliteTable("eld_devices", {
   batteryLevel: integer("battery_level").default(100),
   signalStrength: integer("signal_strength").default(-75), // dBm
   syncIntervalSeconds: integer("sync_interval_seconds").notNull().default(30),
+  // SHA-256 digest of the one-time enrollment token. The raw token is never persisted.
+  telemetryTokenHash: text("telemetry_token_hash"),
+  lastSequence: integer("last_sequence").notNull().default(0),
   lastSync: integer("last_sync", { mode: "timestamp" }),
   registeredAt: integer("registered_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+/** Append-only receipt ledger for telemetry delivery and replay detection. */
+export const eldTelemetryReceipts = sqliteTable("eld_telemetry_receipts", {
+  id: text("id").primaryKey(),
+  deviceId: text("device_id").notNull(),
+  sequence: integer("sequence").notNull(),
+  payloadHash: text("payload_hash").notNull(),
+  telemetryId: text("telemetry_id").notNull(),
+  receivedAt: integer("received_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+/** Immutable duty-status history; corrections append a new event rather than rewriting history. */
+export const eldDutyEvents = sqliteTable("eld_duty_events", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id").notNull(),
+  eventType: text("event_type").notNull(), // status_change, correction
+  status: text("status").notNull(),
+  occurredAt: integer("occurred_at", { mode: "timestamp" }).notNull(),
+  location: text("location"),
+  note: text("note"),
+  source: text("source").notNull(), // driver, dispatcher, device
+  revisionOf: text("revision_of"),
+  payloadHash: text("payload_hash").notNull(),
+  prevHash: text("prev_hash").notNull(),
+  chainHash: text("chain_hash").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+/** A driver attestation binds a defined log window to the event-chain head seen at certification time. */
+export const eldLogCertifications = sqliteTable("eld_log_certifications", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id").notNull(),
+  periodStart: integer("period_start", { mode: "timestamp" }).notNull(),
+  periodEnd: integer("period_end", { mode: "timestamp" }).notNull(),
+  eventChainHead: text("event_chain_head").notNull(),
+  attestation: text("attestation").notNull(),
+  certifiedBy: text("certified_by").notNull(),
+  certifiedAt: integer("certified_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });
 
 export const eldTelemetry = sqliteTable("eld_telemetry", {

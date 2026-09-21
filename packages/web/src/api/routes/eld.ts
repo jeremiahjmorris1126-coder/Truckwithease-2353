@@ -1,7 +1,9 @@
 import { Hono } from "hono";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { db } from "../database";
 import * as schema from "../database/schema";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { sha256 } from "../lib/eld-integrity";
 
 /**
  * ELD hardware integration — server-side.
@@ -42,6 +44,11 @@ export function fatigueBand(score: number) {
 }
 
 const MIN_SAMPLES = 10;
+const tokenHash = (token: string) => createHash("sha256").update(token).digest("hex");
+const secureEqual = (a: string, b: string) => {
+  const left = Buffer.from(a); const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
+};
 
 type TelemetryRow = typeof schema.eldTelemetry.$inferSelect;
 
@@ -236,6 +243,7 @@ export const eld = new Hono()
     if (existing.length) return c.json({ error: "That serial is already registered", device: existing[0] }, 409);
 
     const id = `eld-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const enrollmentToken = randomBytes(32).toString("base64url");
     await db.insert(schema.eldDevices).values({
       id,
       driverId,
@@ -245,9 +253,10 @@ export const eld = new Hono()
       firmwareVersion: b.firmwareVersion ?? b.firmware_version ?? null,
       status: "active",
       syncIntervalSeconds: Number(b.syncIntervalSeconds ?? 30),
+      telemetryTokenHash: tokenHash(enrollmentToken),
     });
     const [device] = await db.select().from(schema.eldDevices).where(eq(schema.eldDevices.id, id));
-    return c.json({ ok: true, device, note: "Device is registered in the platform. It is not 'connected' until it posts telemetry to POST /api/eld/telemetry." }, 201);
+    return c.json({ ok: true, device, enrollmentToken, note: "Enroll the device with this token now. It is returned once and only its SHA-256 digest is stored. Device registration is not ELD certification." }, 201);
   })
 
   .get("/devices/:driverId", async (c) => {
@@ -258,46 +267,78 @@ export const eld = new Hono()
   .post("/telemetry", async (c) => {
     const b = await c.req.json().catch(() => ({}));
     const deviceId = b.deviceId ?? b.device_id;
-    if (!deviceId) return c.json({ error: "deviceId is required" }, 400);
+    const sequence = Number(b.sequence);
+    const authorization = c.req.header("authorization");
+    const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
+    if (!deviceId || !Number.isInteger(sequence) || sequence < 1 || !token) {
+      return c.json({ error: "deviceId, positive integer sequence, and Bearer device token are required" }, 400);
+    }
     const [device] = await db.select().from(schema.eldDevices).where(eq(schema.eldDevices.id, deviceId)).limit(1);
-    if (!device) return c.json({ error: "Unknown device. Register it first at POST /api/eld/devices." }, 404);
+    if (!device || !device.telemetryTokenHash || !secureEqual(tokenHash(token), device.telemetryTokenHash)) {
+      return c.json({ error: "Device authentication failed" }, 401);
+    }
+    if (device.status === "retired") return c.json({ error: "Retired devices cannot submit telemetry" }, 409);
 
-    const id = `tlm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    await db.insert(schema.eldTelemetry).values({
-      id,
-      deviceId,
-      driverId: device.driverId,
-      speedMph: b.speedMph ?? b.speed_mph ?? null,
-      rpm: b.rpm ?? b.obd2_engine_rpm ?? null,
-      engineHours: b.engineHours ?? null,
-      odometer: b.odometer ?? null,
-      lat: b.lat ?? b.gps_lat ?? null,
-      lng: b.lng ?? b.gps_lng ?? null,
-      harshBrake: Boolean(b.harshBrake ?? b.harsh_brake ?? false),
-      harshAccel: Boolean(b.harshAccel ?? b.harsh_accel ?? false),
-      laneDeparture: Boolean(b.laneDeparture ?? b.lane_departure ?? false),
-    });
-
-    await db.update(schema.eldDevices)
-      .set({
-        lastSync: new Date(),
-        status: "active",
-        batteryLevel: b.batteryLevel ?? b.battery_level ?? device.batteryLevel,
-        signalStrength: b.signalStrength ?? b.signal_strength ?? device.signalStrength,
-      })
-      .where(eq(schema.eldDevices.id, deviceId));
+    const [prior] = await db.select().from(schema.eldTelemetryReceipts)
+      .where(and(eq(schema.eldTelemetryReceipts.deviceId, deviceId), eq(schema.eldTelemetryReceipts.sequence, sequence))).limit(1);
+    const payloadHash = sha256(JSON.stringify({ ...b, deviceId, sequence }));
+    if (prior) {
+      if (prior.payloadHash !== payloadHash) return c.json({ error: "Sequence replay has a different payload" }, 409);
+      return c.json({ ok: true, duplicate: true, telemetryId: prior.telemetryId }, 200);
+    }
+    const id = `tlm-${crypto.randomUUID()}`;
+    try {
+      await db.transaction(async (tx) => {
+        // The database unique constraint reserves this device/sequence before telemetry is written.
+        await tx.insert(schema.eldTelemetryReceipts).values({ id: `rcpt-${crypto.randomUUID()}`, deviceId, sequence, payloadHash, telemetryId: id });
+        await tx.insert(schema.eldTelemetry).values({ id, deviceId, driverId: device.driverId,
+          speedMph: b.speedMph ?? b.speed_mph ?? null, rpm: b.rpm ?? b.obd2_engine_rpm ?? null,
+          engineHours: b.engineHours ?? null, odometer: b.odometer ?? null, lat: b.lat ?? b.gps_lat ?? null,
+          lng: b.lng ?? b.gps_lng ?? null, harshBrake: Boolean(b.harshBrake ?? b.harsh_brake ?? false),
+          harshAccel: Boolean(b.harshAccel ?? b.harsh_accel ?? false), laneDeparture: Boolean(b.laneDeparture ?? b.lane_departure ?? false),
+        });
+        await tx.update(schema.eldDevices).set({ lastSequence: Math.max(device.lastSequence, sequence), lastSync: new Date(), status: "active",
+          batteryLevel: b.batteryLevel ?? b.battery_level ?? device.batteryLevel,
+          signalStrength: b.signalStrength ?? b.signal_strength ?? device.signalStrength,
+        }).where(eq(schema.eldDevices.id, deviceId));
+      });
+    } catch (error) {
+      const [receipt] = await db.select().from(schema.eldTelemetryReceipts)
+        .where(and(eq(schema.eldTelemetryReceipts.deviceId, deviceId), eq(schema.eldTelemetryReceipts.sequence, sequence))).limit(1);
+      if (receipt) {
+        if (receipt.payloadHash !== payloadHash) return c.json({ error: "Sequence replay has a different payload" }, 409);
+        return c.json({ ok: true, duplicate: true, telemetryId: receipt.telemetryId }, 200);
+      }
+      throw error;
+    }
 
     const since = new Date(Date.now() - 8 * 3600_000);
-    const window = await db.select().from(schema.eldTelemetry)
-      .where(and(eq(schema.eldTelemetry.deviceId, deviceId), gte(schema.eldTelemetry.recordedAt, since)))
-      .orderBy(desc(schema.eldTelemetry.recordedAt))
-      .limit(500);
-
+    const window = await db.select().from(schema.eldTelemetry).where(and(eq(schema.eldTelemetry.deviceId, deviceId), gte(schema.eldTelemetry.recordedAt, since))).orderBy(desc(schema.eldTelemetry.recordedAt)).limit(500);
     const fatigue = scoreFatigue(window);
-    if (!fatigue.insufficientData && fatigue.score !== null) {
-      await db.update(schema.eldTelemetry).set({ fatigueScore: fatigue.score }).where(eq(schema.eldTelemetry.id, id));
+    if (!fatigue.insufficientData && fatigue.score !== null) await db.update(schema.eldTelemetry).set({ fatigueScore: fatigue.score }).where(eq(schema.eldTelemetry.id, id));
+    return c.json({ ok: true, id, sequence, fatigue }, 201);
+  })
+
+  .get("/duty-events/:driverId", async (c) => {
+    const driverId = c.req.param("driverId");
+    const events = await db.select().from(schema.eldDutyEvents).where(eq(schema.eldDutyEvents.driverId, driverId)).orderBy(desc(schema.eldDutyEvents.occurredAt));
+    const certifications = await db.select().from(schema.eldLogCertifications).where(eq(schema.eldLogCertifications.driverId, driverId)).orderBy(desc(schema.eldLogCertifications.certifiedAt));
+    return c.json({ driverId, events, certifications, note: "Events are append-only application records and have not been certified as an FMCSA ELD output." });
+  })
+
+  .post("/duty-events/:driverId/certifications", async (c) => {
+    const driverId = c.req.param("driverId");
+    const b = await c.req.json().catch(() => ({}));
+    const periodStart = new Date(b.periodStart); const periodEnd = new Date(b.periodEnd);
+    if (Number.isNaN(+periodStart) || Number.isNaN(+periodEnd) || periodStart >= periodEnd || typeof b.certifiedBy !== "string" || !b.certifiedBy.trim()) {
+      return c.json({ error: "Valid periodStart, periodEnd, and certifiedBy are required" }, 400);
     }
-    return c.json({ ok: true, id, fatigue }, 201);
+    const [head] = await db.select().from(schema.eldDutyEvents).where(and(eq(schema.eldDutyEvents.driverId, driverId), lte(schema.eldDutyEvents.occurredAt, periodEnd))).orderBy(desc(schema.eldDutyEvents.createdAt)).limit(1);
+    if (!head) return c.json({ error: "No duty events exist in or before this certification period" }, 409);
+    const certification = { id: `cert-${crypto.randomUUID()}`, driverId, periodStart, periodEnd, eventChainHead: head.chainHash,
+      attestation: "I certify that I reviewed this application duty-status record for the stated period.", certifiedBy: b.certifiedBy.trim() };
+    await db.insert(schema.eldLogCertifications).values(certification);
+    return c.json({ ok: true, certification, complianceNote: "This attestation does not make TruckWithEase an FMCSA-registered ELD." }, 201);
   })
 
   .get("/status/:driverId", async (c) => {

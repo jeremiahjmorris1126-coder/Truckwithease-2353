@@ -31,6 +31,8 @@ function apiPath(path: string) {
 const PUBLIC_POST_PATHS = new Set([
   "/signup",
   "/session/demo",
+  // Hardware telemetry authenticates with its device enrollment token in the route.
+  "/eld/telemetry",
   // Federal weight math — pure calculators over caller-supplied numbers, no data.
   "/weight-check/bridge-formula",
   "/weight-check/check",

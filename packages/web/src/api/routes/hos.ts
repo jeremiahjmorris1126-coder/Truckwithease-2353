@@ -6,6 +6,7 @@ import * as schema from "../database/schema";
 import { eq, desc } from "drizzle-orm";
 import { ensureSeed } from "../lib/seed";
 import { LIMITS as DUTY_LIMITS, clockSnapshotAt } from "../lib/dutyclock";
+import { appendDutyEvent } from "../lib/eld-integrity";
 
 const rid = () => Math.random().toString(36).slice(2, 10);
 
@@ -71,7 +72,11 @@ export const hos = new Hono()
       id: `hos-${rid()}`, driverId, status: b.status, startedAt: nowD, location: b.location ?? null, note: b.note ?? null,
     }).returning();
     await db.update(schema.drivers).set({ status: b.status }).where(eq(schema.drivers.id, driverId));
-    return c.json({ log }, 201);
+    const event = await appendDutyEvent({
+      driverId, eventType: "status_change", status: b.status, occurredAt: nowD,
+      location: b.location ?? null, note: b.note ?? null, source: "driver",
+    });
+    return c.json({ log, event, complianceNote: "This is an auditable application record, not an FMCSA-certified ELD log." }, 201);
   })
   // Fleet-wide HOS summary for admin
   .get("/", async (c) => {
