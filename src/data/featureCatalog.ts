@@ -210,6 +210,26 @@ export const ALL_FEATURES_CATALOG: FeatureItem[] = [
 
   // 3. AI ADVOCATE & COMPLIANCE
   {
+    id: 'fleet-chief',
+    name: 'Fleet Chief AI Master Truck & Trailer Mechanic',
+    shortLabel: 'Fleet Chief',
+    category: 'AI ADVOCATE & COMPLIANCE',
+    description: 'Master-level heavy-duty diagnostics for tractors and commercial trailers — real mechanic answers by make, model, year, and J1939 fault codes.',
+    badge: 'MECHANIC',
+    defaultEnabledForRoles: ['admin', 'mechanic', 'driver', 'safety', 'dispatch'],
+    impactLevel: 'OPERATIONAL',
+  },
+  {
+    id: 'health-chief',
+    name: 'Health Chief DOT Physical & Biometrics Coach (49 CFR § 391)',
+    shortLabel: 'Health Chief',
+    category: 'AI ADVOCATE & COMPLIANCE',
+    description: 'Proactive medical compliance, biometric vitals tracking, DOT medical card countdown, and NRCME exam protection.',
+    badge: 'DOT CARD',
+    defaultEnabledForRoles: ['admin', 'driver', 'safety'],
+    impactLevel: 'OPERATIONAL',
+  },
+  {
     id: 'dvir-agent',
     name: 'Autonomous DVIR & Hands-Free Roadside Agent',
     shortLabel: 'DVIR Agent',
@@ -292,6 +312,16 @@ export const ALL_FEATURES_CATALOG: FeatureItem[] = [
   },
 
   // 4. FLEET & OPERATIONS
+  {
+    id: 'rewards',
+    name: 'EaseRewards Driver Loyalty & Operational Badges',
+    shortLabel: 'EaseRewards',
+    category: 'FLEET & OPERATIONS',
+    description: 'Driver loyalty program: earn points for safe miles, clean inspections, and DVIRs. Redeem for fuel credits, subscription discounts, and badges.',
+    badge: 'POINTS',
+    defaultEnabledForRoles: ['admin', 'driver', 'safety', 'dispatch'],
+    impactLevel: 'CONVENIENCE',
+  },
   {
     id: 'drivers',
     name: 'Driver HR, Onboarding & DQF Vault (49 CFR Part 391)',

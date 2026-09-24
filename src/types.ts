@@ -38,7 +38,10 @@ export type TabType =
   | 'drive'
   | 'gmail'
   | 'tolls-bypass'
-  | 'ai-studio';
+  | 'ai-studio'
+  | 'health-chief'
+  | 'fleet-chief'
+  | 'rewards';
 
 export type OperatingTier =
   | 'TIER_1_CAB'

@@ -42,6 +42,9 @@ import { ELDAuditView } from './components/ELDAuditView';
 import { FuelIdleEfficiencyView } from './components/FuelIdleEfficiencyView';
 import { TollsAndBypassView } from './components/TollsAndBypassView';
 import { AiStudioView } from './components/AiStudioView';
+import { HealthChiefView } from './components/HealthChiefView';
+import { FleetChiefMechanicView } from './components/FleetChiefMechanicView';
+import { EaseRewardsView } from './components/EaseRewardsView';
 import { FeatureGovernanceModal } from './components/FeatureGovernanceModal';
 import { WebhookLogsModal } from './components/WebhookLogsModal';
 import { HighwayOAuthModal } from './components/HighwayOAuthModal';
@@ -470,6 +473,15 @@ export default function App() {
           {activeTab === 'quantum-compliance' && (
             <QuantumComplianceView onNavigateToTab={setActiveTab} />
           )}
+
+          {/* Health Chief: FMCSA 49 CFR § 391 Vitals & DOT Medical Card */}
+          {activeTab === 'health-chief' && <HealthChiefView />}
+
+          {/* Fleet Chief AI: Master Diagnostic Mechanic for Trucks & Trailers */}
+          {activeTab === 'fleet-chief' && <FleetChiefMechanicView />}
+
+          {/* EaseRewards: Driver Loyalty Points & Operational Achievement Badges */}
+          {activeTab === 'rewards' && <EaseRewardsView />}
 
           {activeTab === 'compliance' && <ComplianceView />}
 

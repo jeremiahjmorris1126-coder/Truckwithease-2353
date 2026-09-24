@@ -36,6 +36,7 @@ import {
   AlertTriangle,
   Crown,
   Sparkles,
+  HeartPulse,
 } from 'lucide-react';
 import { TabType, UserRoleType, AdminRevocationRecord } from '../types';
 import { TruckWithEaseLogo } from './TruckWithEaseLogo';
@@ -109,6 +110,8 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
     {
       title: 'AI ADVOCATE & COMPLIANCE',
       items: [
+        { id: 'fleet-chief', label: 'Fleet Chief Mechanic AI', badge: 'MECHANIC', icon: Wrench },
+        { id: 'health-chief', label: 'Health Chief (DOT Card)', badge: 'DOT CARD', icon: HeartPulse },
         { id: 'dvir-agent', label: 'DVIR & Roadside Agent', badge: 'PRE/POST', icon: ShieldCheck },
         { id: 'equipment-agent', label: 'Titan Equipment Agent', badge: '#1 RIG', icon: Wrench },
         { id: 'quantum-compliance', label: 'Predictive DOT Scenarios', badge: 'DOT-OPT', icon: Atom },
@@ -122,6 +125,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
     {
       title: 'FLEET & OPERATIONS',
       items: [
+        { id: 'rewards', label: 'EaseRewards & Badges', badge: 'POINTS', icon: Award },
         { id: 'drivers', label: 'Driver HR & Onboarding', badge: 'DQF/MVR', icon: UserCheck },
         { id: 'assets', label: 'Fleet Assets & Units', badge: 'VIN/DOT', icon: Truck },
         { id: 'maintenance', label: 'Maintenance DVIR', badge: 'DIAG', icon: Wrench },
