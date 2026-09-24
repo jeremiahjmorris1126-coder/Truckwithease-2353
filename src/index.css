@@ -1,0 +1,424 @@
+@import "tailwindcss";
+
+:root {
+  --radius: 0.5rem;
+  --on-tertiary-container: #332B00;
+  --error-container: #70000A;
+  --primary-fixed-dim: #FFE600;
+  --surface-variant: #0A0A0E;
+  --primary-container: #FFE600;
+  --secondary-fixed-dim: #FFE600;
+  --inverse-on-surface: #000000;
+  --surface-container-highest: #121218;
+  --on-primary-fixed-variant: #000000;
+  --surface-bright: #181822;
+  --on-tertiary: #000000;
+  --surface-container-high: #0D0D12;
+  --primary: #FFE600;
+  --on-primary: #000000;
+  --on-surface-variant: #FFF59D;
+  --on-background: #FFE600;
+  --on-primary-container: #000000;
+  --primary-fixed: #FFFF33;
+  --outline-variant: rgba(255, 230, 0, 0.25);
+  --surface-tint: #FFE600;
+  --on-error: #FFFFFF;
+  --outline: #FFE600;
+  --on-tertiary-fixed: #000000;
+  --on-secondary-fixed-variant: #000000;
+  --on-secondary: #000000;
+  --secondary: #FFE600;
+  --tertiary: #FFD54F;
+  --secondary-container: #FFE600;
+  --on-tertiary-fixed-variant: #000000;
+  --tertiary-fixed-dim: #FFE082;
+  --on-secondary-fixed: #000000;
+  --on-secondary-container: #000000;
+  --on-surface: #FFE600;
+  --surface-container-lowest: #000000;
+  --on-error-container: #FFCDD2;
+  --tertiary-fixed: #FFF9C4;
+  --tertiary-container: #FFD54F;
+  --secondary-fixed: #FFFF66;
+  --error: #FF5252;
+  --surface: #030305;
+  --surface-dim: #000000;
+  --on-primary-fixed: #000000;
+  --surface-container: #07070A;
+  --background: #000000;
+  --inverse-surface: #FFE600;
+  --inverse-primary: #000000;
+  --surface-container-low: #020203;
+}
+
+@theme {
+  --color-primary: var(--primary);
+  --color-on-tertiary-container: var(--on-tertiary-container);
+  --color-error-container: var(--error-container);
+  --color-primary-fixed-dim: var(--primary-fixed-dim);
+  --color-surface-variant: var(--surface-variant);
+  --color-primary-container: var(--primary-container);
+  --color-secondary-fixed-dim: var(--secondary-fixed-dim);
+  --color-inverse-on-surface: var(--inverse-on-surface);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-on-primary-fixed-variant: var(--on-primary-fixed-variant);
+  --color-surface-bright: var(--surface-bright);
+  --color-on-tertiary: var(--on-tertiary);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-on-primary: var(--on-primary);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-on-background: var(--on-background);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-primary-fixed: var(--primary-fixed);
+  --color-outline-variant: var(--outline-variant);
+  --color-surface-tint: var(--surface-tint);
+  --color-on-error: var(--on-error);
+  --color-outline: var(--outline);
+  --color-on-tertiary-fixed: var(--on-tertiary-fixed);
+  --color-on-secondary-fixed-variant: var(--on-secondary-fixed-variant);
+  --color-on-secondary: var(--on-secondary);
+  --color-secondary: var(--secondary);
+  --color-tertiary: var(--tertiary);
+  --color-secondary-container: var(--secondary-container);
+  --color-on-tertiary-fixed-variant: var(--on-tertiary-fixed-variant);
+  --color-tertiary-fixed-dim: var(--tertiary-fixed-dim);
+  --color-on-secondary-fixed: var(--on-secondary-fixed);
+  --color-on-secondary-container: var(--on-secondary-container);
+  --color-on-surface: var(--on-surface);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-on-error-container: var(--on-error-container);
+  --color-tertiary-fixed: var(--tertiary-fixed);
+  --color-tertiary-container: var(--tertiary-container);
+  --color-secondary-fixed: var(--secondary-fixed);
+  --color-error: var(--error);
+  --color-surface: var(--surface);
+  --color-surface-dim: var(--surface-dim);
+  --color-on-primary-fixed: var(--on-primary-fixed);
+  --color-surface-container: var(--surface-container);
+  --color-background: var(--background);
+  --color-inverse-surface: var(--inverse-surface);
+  --color-inverse-primary: var(--inverse-primary);
+  --color-surface-container-low: var(--surface-container-low);
+
+  --font-body-md: "Space Grotesk", sans-serif;
+  --font-telemetry-metric: "JetBrains Mono", monospace;
+  --font-telemetry-label: "JetBrains Mono", monospace;
+  --font-mono: "JetBrains Mono", monospace;
+  --font-label-caps: "Space Grotesk", sans-serif;
+  --font-body-sm: "Space Grotesk", sans-serif;
+  --font-headline-md: "Space Grotesk", sans-serif;
+  --font-headline-xl: "Space Grotesk", sans-serif;
+  --font-body-lg: "Space Grotesk", sans-serif;
+  --font-headline-sm: "Space Grotesk", sans-serif;
+  --font-headline-xl-mobile: "Space Grotesk", sans-serif;
+  --font-headline-lg-mobile: "Space Grotesk", sans-serif;
+  --font-headline-lg: "Space Grotesk", sans-serif;
+
+  /* Scaled up, highly legible typography defaults */
+  --text-body-md: 16px;
+  --text-body-md--line-height: 24px;
+  --text-telemetry-metric: 30px;
+  --text-telemetry-metric--line-height: 36px;
+  --text-telemetry-metric--letter-spacing: -0.02em;
+  --text-telemetry-label: 13px;
+  --text-telemetry-label--line-height: 18px;
+  --text-telemetry-label--letter-spacing: 0.12em;
+  --text-label-caps: 13px;
+  --text-label-caps--line-height: 18px;
+  --text-label-caps--letter-spacing: 0.14em;
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 22px;
+  --text-headline-md: 24px;
+  --text-headline-md--line-height: 32px;
+  --text-headline-md--letter-spacing: 0.03em;
+  --text-headline-xl: 52px;
+  --text-headline-xl--line-height: 60px;
+  --text-headline-xl--letter-spacing: -0.02em;
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 28px;
+  --text-headline-sm: 20px;
+  --text-headline-sm--line-height: 26px;
+  --text-headline-sm--letter-spacing: 0.04em;
+  --text-headline-xl-mobile: 36px;
+  --text-headline-xl-mobile--line-height: 44px;
+  --text-headline-xl-mobile--letter-spacing: -0.01em;
+  --text-headline-lg-mobile: 26px;
+  --text-headline-lg-mobile--line-height: 34px;
+  --text-headline-lg-mobile--letter-spacing: 0.02em;
+  --text-headline-lg: 36px;
+  --text-headline-lg--line-height: 44px;
+  --text-headline-lg--letter-spacing: 0.02em;
+
+  --spacing-space-base: 1rem;
+  --spacing-space-2xl: 3rem;
+  --spacing-gutter-mobile: 0.75rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-xl: 2rem;
+  --spacing-gutter-desktop: 1.25rem;
+  --spacing-space-md: 0.75rem;
+  --spacing-space-3xl: 4rem;
+  --spacing-space-lg: 1.5rem;
+  --spacing-cockpit-margin: 1.5rem;
+  --spacing-space-2xs: 0.125rem;
+  --spacing-space-xs: 0.25rem;
+}
+
+/* Base High-Visibility Gleaming Black & Bright Yellow Typography Scale */
+html {
+  font-size: 16px;
+  background-color: #000000;
+  color: #FFE600;
+}
+
+/* Driver / In-Cab Font Size Scaling Tiers */
+html[data-font-scale="normal"] {
+  font-size: 15px;
+}
+
+html[data-font-scale="large"] {
+  font-size: 17.5px;
+}
+
+html[data-font-scale="xl"] {
+  font-size: 20px;
+}
+
+@layer base {
+  html, body {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #000000;
+    color: #FFE600;
+    font-family: var(--font-body-md);
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Universal high-contrast readability rules */
+  h1, h2, h3, h4, h5, h6 {
+    color: #FFE600;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  p {
+    line-height: 1.6;
+  }
+
+  /* Make form controls distinctly large, gleaming black with bright yellow text */
+  input, select, textarea {
+    background-color: #050508 !important;
+    color: #FFE600 !important;
+    border-color: rgba(255, 230, 0, 0.35) !important;
+    font-size: 14px;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: #FFE600 !important;
+    outline: none !important;
+    box-shadow: 0 0 10px rgba(255, 230, 0, 0.4) !important;
+  }
+
+  /* Selection styling */
+  ::selection {
+    background: #FFE600;
+    color: #000000;
+  }
+}
+
+/* TruckWithEase Official Gradients & Special Utility Classes */
+.bg-gold-gradient,
+.twe-gold-grad {
+  background: linear-gradient(135deg, #FFE600, #FFF176 40%, #FFD700, #C9A84C);
+}
+
+.twe-navy-grad,
+.bg-gleaming-black {
+  background: linear-gradient(180deg, #09090D 0%, #030305 60%, #000000 100%);
+}
+
+.gleaming-panel {
+  background: linear-gradient(180deg, #09090D 0%, #030305 70%, #000000 100%);
+  border: 1px solid rgba(255, 230, 0, 0.28);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 230, 0, 0.15);
+}
+
+.text-gold-gradient,
+.text-yellow-gradient {
+  color: transparent;
+  background: linear-gradient(135deg, #FFE600, #FFF9C4 45%, #FFD700 70%, #FFE600);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.font-mono-data {
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.yellow-glow,
+.gold-glow {
+  box-shadow: 0 0 16px -2px rgba(255, 230, 0, 0.5);
+}
+
+.yellow-glow-lg,
+.gold-glow-lg {
+  box-shadow: 0 0 30px 0px rgba(255, 230, 0, 0.4);
+}
+
+.yellow-subtle-glow,
+.gold-subtle-glow {
+  box-shadow: 0 0 12px rgba(255, 230, 0, 0.22);
+}
+
+/* High-Visibility In-Cab Typography & Gleaming Black Enhancements */
+.text-slate-400,
+.text-slate-500,
+.text-\[\#8E92A4\],
+.text-\[\#A0A4B8\],
+.text-\[\#7E8B9B\],
+.text-\[\#8A8A8A\],
+.text-gray-400,
+.text-zinc-400 {
+  color: #FFF59D !important;
+}
+
+.text-slate-300,
+.text-slate-200,
+.text-zinc-300,
+.text-gray-300,
+.text-white {
+  color: #FFE600 !important;
+}
+
+/* Micro-Font Upscaling for Ease of Seeing */
+.text-\[8px\],
+.text-\[9px\] {
+  font-size: 11.5px !important;
+  line-height: 1.3 !important;
+}
+
+.text-\[10px\] {
+  font-size: 12.5px !important;
+  line-height: 1.35 !important;
+}
+
+.text-\[11px\] {
+  font-size: 13.5px !important;
+  line-height: 1.4 !important;
+}
+
+.text-xs {
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A2800;
+  border: 1px solid rgba(255, 230, 0, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FFE600;
+}
+
+/* 24-Column Grid for 24-Hour Duty Timelines */
+@utility grid-cols-24 {
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+}
+
+/* Safe Area Inset Support for Mobile Browsers */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0.5rem), 0.5rem);
+}
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0.5rem), 0.5rem);
+}
+
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle Diagnostic Pulsing Animation */
+@keyframes titan-pulse {
+  0%, 100% {
+    border-color: rgba(212, 175, 55, 0.45);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.2), inset 0 0 8px rgba(212, 175, 55, 0.05);
+  }
+  50% {
+    border-color: rgba(212, 175, 55, 0.95);
+    box-shadow: 0 0 24px rgba(212, 175, 55, 0.5), inset 0 0 14px rgba(212, 175, 55, 0.15);
+  }
+}
+
+.titan-diagnostic-pulse {
+  animation: titan-pulse 1.6s ease-in-out infinite;
+}
+
+/* FMCSA 24-Hour ELD Audit Print & PDF Styles */
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 0.4in;
+  }
+
+  html, body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide background application header, tabs, overlays, and non-printable elements */
+  header, nav, footer, .no-print, [data-no-print="true"] {
+    display: none !important;
+  }
+
+  /* Make sure the printable audit report is full-bleed and completely visible */
+  #fmcsa-audit-printable {
+    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    page-break-inside: avoid;
+  }
+
+  /* Hide scrollbars during print */
+  ::-webkit-scrollbar {
+    display: none !important;
+  }
+}
+

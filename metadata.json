@@ -1,0 +1,7 @@
+{
+  "name": "TRUCKWITHEASE — Drive Smart. Stay Compliant.",
+  "description": "Tactical trucking operations command center with Gemini 3.5 microphone audio transcription, Gemini 3.1 Flash image creation & editing studio, hands-free in-cab voice command listener, fleet maintenance calculations, repair history memory ledger, mandatory same-day DVIR compliance exports, generic ELD hardware audit and raw CAN-bus telemetry visualizer, Quantum Load Optimizer, interactive map-based geofencing, Night HUD, In-Cab Messaging & CB Radio, Sleeper Berth Cinema, Firebase Firestore persistence, Dispatch Zero, FMCSA HOS ELD, and low bridge detection mesh.",
+  "requestFramePermissions": ["microphone", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

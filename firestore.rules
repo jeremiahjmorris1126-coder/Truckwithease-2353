@@ -1,0 +1,193 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Default-Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Primitives
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Connection Healthcheck Test Document
+    match /test/{testId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 1. User Profiles Collection
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.uid is string && data.uid.size() <= 128 &&
+               data.email is string && data.email.size() <= 256 &&
+               data.role in ['DRIVER', 'CARRIER_ADMIN', 'DISPATCHER', 'AUDITOR'] &&
+               (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128)) &&
+               (!('usdot' in data) || (data.usdot is string && data.usdot.size() <= 32)) &&
+               (!('cdlNumber' in data) || (data.cdlNumber is string && data.cdlNumber.size() <= 64));
+      }
+
+      allow get: if isSignedIn() && (isOwner(userId) || request.auth.token.email == 'jeremiahjmorris1126@gmail.com');
+      allow list: if isSignedIn() && request.auth.token.email == 'jeremiahjmorris1126@gmail.com';
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming()) && incoming().uid == request.auth.uid;
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUser(incoming()) &&
+                    incoming().uid == existing().uid &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'usdot', 'cdlNumber', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // 2. Statutory Audit Records Ledger
+    match /audits/{auditId} {
+      function isValidAudit(data) {
+        return data.blockNumber is number &&
+               data.sha256Hash is string && data.sha256Hash.size() <= 128 &&
+               data.driverId is string && data.driverId.size() <= 128 &&
+               data.status in ['VERIFIED', 'SUBMITTED', 'FLAGGED'] &&
+               (!('merkleRoot' in data) || (data.merkleRoot is string && data.merkleRoot.size() <= 128)) &&
+               (!('driverName' in data) || (data.driverName is string && data.driverName.size() <= 128)) &&
+               (!('usdot' in data) || (data.usdot is string && data.usdot.size() <= 32)) &&
+               (!('vehicleVin' in data) || (data.vehicleVin is string && data.vehicleVin.size() <= 64));
+      }
+
+      allow get: if true; // Public verification allowed via QR scan / audit token
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(auditId) && isValidAudit(incoming());
+      allow update: if false; // Cryptographic ledger blocks are strictly immutable once signed
+      allow delete: if false;
+    }
+
+    // 3. FMCSA ERDS Submissions
+    match /fmcsa_submissions/{submissionId} {
+      function isValidSubmission(data) {
+        return data.submissionId is string && data.submissionId.size() <= 128 &&
+               data.driverId is string && data.driverId.size() <= 128 &&
+               data.protocol in ['WEB_SERVICES', 'BLUETOOTH', 'EMAIL_TRANSFER'] &&
+               data.transferStatus in ['ACCEPTED', 'PROCESSING', 'REJECTED'] &&
+               (!('usdot' in data) || (data.usdot is string && data.usdot.size() <= 32)) &&
+               (!('payloadHash' in data) || (data.payloadHash is string && data.payloadHash.size() <= 128));
+      }
+
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(submissionId) && isValidSubmission(incoming());
+      allow update: if isSignedIn() && isValidId(submissionId) && isValidSubmission(incoming()) &&
+                    incoming().submissionId == existing().submissionId &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['transferStatus', 'httpCode', 'submissionNotes']);
+      allow delete: if false;
+    }
+
+    // 4. Hours-of-Service Logs
+    match /hos_logs/{logId} {
+      function isValidHos(data) {
+        return data.logId is string && data.logId.size() <= 128 &&
+               data.driverId is string && data.driverId.size() <= 128 &&
+               data.date is string && data.date.size() <= 32 &&
+               data.certified is bool &&
+               (!('drivingMinutes' in data) || data.drivingMinutes is number) &&
+               (!('onDutyMinutes' in data) || data.onDutyMinutes is number) &&
+               (!('splitBerthExclusion' in data) || data.splitBerthExclusion is bool);
+      }
+
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(logId) && isValidHos(incoming());
+      allow update: if isSignedIn() && isValidId(logId) && isValidHos(incoming()) &&
+                    incoming().logId == existing().logId &&
+                    incoming().driverId == existing().driverId;
+      allow delete: if false;
+    }
+
+    // 5. Roadside Inspection Sessions
+    match /inspections/{inspectionId} {
+      function isValidInspection(data) {
+        return data.inspectionId is string && data.inspectionId.size() <= 128 &&
+               data.driverId is string && data.driverId.size() <= 128 &&
+               data.officerPin is string && data.officerPin.size() <= 16 &&
+               data.isCabinLocked is bool;
+      }
+
+      allow get: if true; // Public officer seal check
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(inspectionId) && isValidInspection(incoming());
+      allow update: if isSignedIn() && isValidId(inspectionId) && isValidInspection(incoming()) &&
+                    incoming().inspectionId == existing().inspectionId &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['isCabinLocked', 'updatedAt', 'activeUsdot']);
+      allow delete: if false;
+    }
+
+    // 6. Fleet Equipment Assets (with telemetry & Last Repaired links)
+    match /fleet_assets/{assetId} {
+      function isValidAsset(data) {
+        return data.id is string && data.id.size() <= 128 &&
+               data.unitNumber is string && data.unitNumber.size() <= 64 &&
+               data.type in ['TRACTOR', 'TRAILER'] &&
+               data.vin is string && data.vin.size() <= 64 &&
+               data.status in ['ACTIVE_RUNNING', 'IN_SHOP', 'SCHEDULED_PM', 'OUT_OF_SERVICE'];
+      }
+
+      allow get: if true;
+      allow list: if true;
+      allow create, update: if isValidId(assetId) && isValidAsset(incoming());
+      allow delete: if false;
+    }
+
+    // 7. Repair History Ledger Records (Linked to vehicle asset IDs)
+    match /repair_records/{workOrderId} {
+      function isValidRepair(data) {
+        return data.id is string && data.id.size() <= 128 &&
+               data.unitNumber is string && data.unitNumber.size() <= 64 &&
+               data.componentItem is string && data.componentItem.size() <= 256 &&
+               data.technicianName is string && data.technicianName.size() <= 128 &&
+               data.totalCost is number &&
+               data.status in ['COMPLETED_CERTIFIED', 'UNDER_WARRANTY', 'SCHEDULED', 'IN_PROGRESS'];
+      }
+
+      allow get: if true;
+      allow list: if true;
+      allow create, update: if isValidId(workOrderId) && isValidRepair(incoming());
+      allow delete: if false;
+    }
+
+    // 8. User Toll Passports & Transponder Credentials
+    match /user_toll_passports/{userId} {
+      allow get: if true;
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(userId);
+      allow delete: if false;
+    }
+
+    // 9. Drivewyze Enrolled Fleet Assets
+    match /drivewyze_enrollments/{enrollmentId} {
+      allow get: if true;
+      allow list: if true;
+      allow create, update: if isValidId(enrollmentId);
+      allow delete: if false;
+    }
+
+    // 10. Toll Expense Audit Logs
+    match /toll_expense_logs/{logId} {
+      allow get: if true;
+      allow list: if true;
+      allow create, update: if isValidId(logId);
+      allow delete: if false;
+    }
+  }
+}
