@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { db } from "../database";
 import * as schema from "../database/schema";
 import { desc, eq } from "drizzle-orm";
+import { computeClocks, hosViolations } from "./hos";
+import { scoreFatigue } from "./eld";
 
 /**
  * Dispatch compliance intelligence — server-side.
@@ -236,6 +238,60 @@ export const dispatch = new Hono()
     const rule = STATE_COMPLIANCE[code];
     if (!rule) return c.json({ error: "No rule set on file for this state", state: code, covered: Object.keys(STATE_COMPLIANCE) }, 404);
     return c.json({ code, ...rule, federal: FEDERAL_HOS });
+  })
+  /**
+   * Dispatch Go / No-Go Gate. This does not authorize a trip or replace the
+   * driver's judgement; it makes the data gaps and hard stops visible before a
+   * dispatcher assigns a load.
+   */
+  .post("/go-no-go", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const driverId = typeof body.driverId === "string" ? body.driverId : "";
+    const plannedDriveMinutes = Number(body.plannedDriveMinutes);
+    if (!driverId || !Number.isFinite(plannedDriveMinutes) || plannedDriveMinutes <= 0) {
+      return c.json({ error: "driverId and positive plannedDriveMinutes are required" }, 400);
+    }
+
+    const [driver, logs, dvirs, telemetry] = await Promise.all([
+      db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId)).limit(1),
+      db.select().from(schema.hosLogs).where(eq(schema.hosLogs.driverId, driverId)).orderBy(desc(schema.hosLogs.startedAt)),
+      db.select().from(schema.dvirInspections).where(eq(schema.dvirInspections.driverId, driverId)).orderBy(desc(schema.dvirInspections.createdAt)).limit(20),
+      db.select().from(schema.eldTelemetry).where(eq(schema.eldTelemetry.driverId, driverId)).orderBy(desc(schema.eldTelemetry.recordedAt)).limit(500),
+    ]);
+    if (!driver[0]) return c.json({ error: "Unknown driver" }, 404);
+
+    const blockers: Array<{ source: string; severity: "blocker" | "review"; message: string }> = [];
+    const clocks = computeClocks(logs);
+    const violations = hosViolations(clocks);
+    if (clocks.drivingRemaining < plannedDriveMinutes) {
+      blockers.push({ source: "HOS", severity: "blocker", message: `Planned driving needs ${plannedDriveMinutes} min; only ${clocks.drivingRemaining} min remain.` });
+    }
+    if (clocks.onDutyWindowRemaining < plannedDriveMinutes) {
+      blockers.push({ source: "HOS", severity: "blocker", message: `The 14-hour window has ${clocks.onDutyWindowRemaining} min remaining for a ${plannedDriveMinutes}-min plan.` });
+    }
+    for (const violation of violations) blockers.push({ source: "HOS", severity: violation.level === "danger" ? "blocker" : "review", message: violation.msg });
+
+    const unresolvedDefects = dvirs.filter((d) => d.hasDefects && (d.status === "submitted" || d.status === "needs_repair"));
+    const unsafeDvir = dvirs.filter((d) => !d.safeToOperate);
+    if (unsafeDvir.length) blockers.push({ source: "DVIR", severity: "blocker", message: `${unsafeDvir.length} inspection(s) mark the vehicle unsafe to operate.` });
+    else if (unresolvedDefects.length) blockers.push({ source: "DVIR", severity: "review", message: `${unresolvedDefects.length} inspection(s) have unresolved reported defects.` });
+    else if (!dvirs.length) blockers.push({ source: "DVIR", severity: "review", message: "No inspection records are available for this driver." });
+
+    const fatigue = scoreFatigue(telemetry);
+    if (fatigue.insufficientData) blockers.push({ source: "Telemetry", severity: "review", message: `Fatigue signal unavailable: ${fatigue.samples} of ${fatigue.needed} required telemetry samples.` });
+    else if (fatigue.level === "critical") blockers.push({ source: "Telemetry", severity: "blocker", message: "Recorded telemetry produced a critical fatigue signal; stop-driving guidance is indicated." });
+    else if (fatigue.level === "high" || fatigue.level === "elevated") blockers.push({ source: "Telemetry", severity: "review", message: `Recorded telemetry produced a ${fatigue.level} fatigue signal.` });
+
+    const decision = blockers.some((b) => b.severity === "blocker") ? "do_not_dispatch" : blockers.length ? "review_required" : "clear";
+    return c.json({
+      decision,
+      driver: { id: driver[0].id, name: driver[0].name, truckNumber: driver[0].truckNumber, status: driver[0].status },
+      plannedDriveMinutes,
+      blockers,
+      evidence: { hos: { clocks, violations }, dvir: { inspected: dvirs.length, unresolvedDefects: unresolvedDefects.length, unsafeToOperate: unsafeDvir.length }, telemetry: fatigue },
+      disclaimer: "This is a dispatch decision aid based only on recorded platform data. It does not replace the driver's judgment, carrier policy, or the ELD log of record.",
+      evaluatedAt: new Date().toISOString(),
+    });
   })
   .post("/check", async (c) => {
     const body = await c.req.json().catch(() => ({}));
