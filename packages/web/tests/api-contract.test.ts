@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import rootPackage from "../../../package.json";
 import handler from "../api/[...path]";
 
 const origin = "https://truckwithease.example";
@@ -69,4 +70,8 @@ test("telemetry ingestion bypasses user-session auth but requires device credent
 
   expect(response.status).toBe(400);
   expect(await response.json()).toMatchObject({ error: "deviceId, positive integer sequence, and Bearer device token are required" });
+});
+
+test("root Vercel function package remains ESM", () => {
+  expect(rootPackage.type).toBe("module");
 });
