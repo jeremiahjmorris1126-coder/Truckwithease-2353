@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 2474 463" width="2474" height="463" role="img" aria-label="TruckWithEase">
+  <title>TruckWithEase</title>
+  <defs>
+    <linearGradient id="tweGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A9762A"/>
+      <stop offset="55%" stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#F5E79E"/>
+    </linearGradient>
+  </defs>
+  <rect width="2474" height="463" fill="none"/>
+  <image href="/static/twe-logo-horizontal-transparent.png" xlink:href="/static/twe-logo-horizontal-transparent.png" x="0" y="0" width="2474" height="463" preserveAspectRatio="xMidYMid meet"/>
+</svg>

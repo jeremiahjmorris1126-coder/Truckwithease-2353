@@ -1,0 +1,137 @@
+// PocketBase Schema for TruckWithEase
+// Create these collections in your PocketBase instance
+
+export const collections = {
+  drivers: {
+    name: 'drivers',
+    fields: [
+      { name: 'email', type: 'email', required: true },
+      { name: 'phone', type: 'text', required: true },
+      { name: 'vehicle_type', type: 'select', options: ['truck', 'van', 'car', 'bike'] },
+      { name: 'accessibility_needs', type: 'json' },
+      { name: 'preferred_language', type: 'text', default: 'en' },
+      { name: 'status', type: 'select', options: ['active', 'inactive', 'onboarding'] }
+    ]
+  },
+
+  loads: {
+    name: 'loads',
+    fields: [
+      { name: 'origin', type: 'text', required: true },
+      { name: 'destination', type: 'text', required: true },
+      { name: 'weight', type: 'number' },
+      { name: 'rate', type: 'number', required: true },
+      { name: 'pickup_time', type: 'datetime' },
+      { name: 'delivery_time', type: 'datetime' },
+      { name: 'source', type: 'select', options: ['DAT', 'Uber Freight', 'Internal'] },
+      { name: 'assigned_driver', type: 'relation', collection: 'drivers' },
+      { name: 'status', type: 'select', options: ['available', 'assigned', 'picked_up', 'delivered'] }
+    ]
+  },
+
+  captions: {
+    name: 'captions',
+    fields: [
+      { name: 'driver_id', type: 'relation', collection: 'drivers' },
+      { name: 'source_text', type: 'text', required: true },
+      { name: 'source_language', type: 'text', default: 'en' },
+      { name: 'transcription', type: 'text' },
+      { name: 'confidence', type: 'number' },
+      { name: 'audio_url', type: 'text' },
+      { name: 'timestamp', type: 'datetime' }
+    ]
+  },
+
+  sign_language_videos: {
+    name: 'sign_language_videos',
+    fields: [
+      { name: 'driver_id', type: 'relation', collection: 'drivers' },
+      { name: 'input_text', type: 'text', required: true },
+      { name: 'language', type: 'select', options: ['ASL', 'BSL', 'LSF', 'DGS', 'ISL', 'AUSLAN', 'NZSL'] },
+      { name: 'video_url', type: 'text' },
+      { name: 'duration', type: 'number' },
+      { name: 'confidence', type: 'number' },
+      { name: 'timestamp', type: 'datetime' }
+    ]
+  },
+
+  haptic_communications: {
+    name: 'haptic_communications',
+    fields: [
+      { name: 'driver_id', type: 'relation', collection: 'drivers' },
+      { name: 'pattern_type', type: 'text' },
+      { name: 'vibration_sequence', type: 'json' },
+      { name: 'device_type', type: 'select', options: ['phone', 'smartwatch', 'steering_wheel', 'dashboard'] },
+      { name: 'urgency_level', type: 'select', options: ['low', 'medium', 'high', 'critical'] },
+      { name: 'delivered', type: 'bool' },
+      { name: 'timestamp', type: 'datetime' }
+    ]
+  },
+
+  fatigue_records: {
+    name: 'fatigue_records',
+    fields: [
+      { name: 'driver_id', type: 'relation', collection: 'drivers' },
+      { name: 'driving_hours', type: 'number' },
+      { name: 'rest_quality', type: 'number' },
+      { name: 'speed_data', type: 'json' },
+      { name: 'lane_variance', type: 'number' },
+      { name: 'fatigue_score', type: 'number' },
+      { name: 'risk_level', type: 'select', options: ['SAFE', 'HIGH', 'CRITICAL'] },
+      { name: 'quantum_vector', type: 'json' },
+      { name: 'prediction_24h', type: 'number' },
+      { name: 'recommended_action', type: 'text' },
+      { name: 'timestamp', type: 'datetime' }
+    ]
+  },
+
+  translations: {
+    name: 'translations',
+    fields: [
+      { name: 'driver_id', type: 'relation', collection: 'drivers' },
+      { name: 'source_text', type: 'text' },
+      { name: 'source_language', type: 'text' },
+      { name: 'target_language', type: 'text' },
+      { name: 'translated_text', type: 'text' },
+      { name: 'audio_url', type: 'text' },
+      { name: 'latency_ms', type: 'number' },
+      { name: 'confidence', type: 'number' },
+      { name: 'timestamp', type: 'datetime' }
+    ]
+  },
+
+  hos_logs: {
+    name: 'hos_logs',
+    fields: [
+      { name: 'driver_id', type: 'relation', collection: 'drivers' },
+      { name: 'status', type: 'select', options: ['off_duty', 'sleeper_berth', 'driving', 'on_duty'] },
+      { name: 'hours', type: 'number' },
+      { name: 'location', type: 'text' },
+      { name: 'latitude', type: 'number' },
+      { name: 'longitude', type: 'number' },
+      { name: 'timestamp', type: 'datetime' }
+    ]
+  },
+
+  load_board_licenses: {
+    name: 'load_board_licenses',
+    fields: [
+      { name: 'driver_id', type: 'relation', collection: 'drivers' },
+      { name: 'service', type: 'select', options: ['DAT', 'Uber Freight'] },
+      { name: 'username', type: 'text' },
+      { name: 'password_hash', type: 'text' },
+      { name: 'expiry_date', type: 'datetime' },
+      { name: 'is_active', type: 'bool', default: true },
+      { name: 'created_at', type: 'datetime' }
+    ]
+  }
+};
+
+export function initializeDatabase(pb) {
+  // Connect to PocketBase and create/verify collections
+  return Object.values(collections).map(collection => ({
+    name: collection.name,
+    created: true,
+    fields: collection.fields.length
+  }));
+}

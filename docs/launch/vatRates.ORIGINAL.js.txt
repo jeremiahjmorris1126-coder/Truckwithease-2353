@@ -1,0 +1,149 @@
+/**
+ * VAT Rates API Integration
+ * Real-time tax rates for 125+ countries: EU, UK, US states, GST, provincial rates
+ * Lookup by country code or auto-detect from IP
+ */
+
+export const getTaxRates = async (countryCodeOrIP) => {
+  try {
+    const response = await fetch('/api/vat-rates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lookup: countryCodeOrIP })
+    });
+    const data = await response.json();
+    return {
+      country: data.country,
+      countryCode: data.code,
+      standardRate: data.standard, // main VAT/GST rate
+      reducedRates: data.reduced, // [{ name, rate }] - books, food, etc.
+      categoryRates: data.categories, // EU: goods-specific rates
+      stateRates: data.states, // US/Canada: state/provincial breakdown
+      effectiveDate: data.effectiveDate,
+      notes: data.notes
+    };
+  } catch (err) {
+    console.error('Tax rates API error:', err);
+    return null;
+  }
+};
+
+// Auto-detect tax rates from driver's current IP
+export const getTaxRatesByIP = async () => {
+  try {
+    const response = await fetch('/api/vat-rates/auto-detect');
+    const data = await response.json();
+    return {
+      country: data.country,
+      state: data.state, // for US/Canada
+      standardRate: data.standard,
+      detectMethod: 'ip-geolocation'
+    };
+  } catch (err) {
+    console.error('Auto-detect tax rates error:', err);
+    return null;
+  }
+};
+
+// Calculate tax on a load price
+export const calculateLoadTax = async (loadPrice, originCountry, destCountry) => {
+  try {
+    const response = await fetch('/api/vat-rates/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        price: loadPrice,
+        origin: originCountry,
+        destination: destCountry
+      })
+    });
+    const data = await response.json();
+    return {
+      basePrice: data.base,
+      originTax: data.originTax, // tax at pickup
+      destTax: data.destTax, // tax at delivery
+      totalTax: data.totalTax,
+      finalPrice: data.final,
+      taxDetails: data.breakdown
+    };
+  } catch (err) {
+    console.error('Tax calculation error:', err);
+    return null;
+  }
+};
+
+// Get fuel tax rates by state (critical for owner-ops)
+export const getFuelTaxRates = async (state) => {
+  try {
+    const response = await fetch('/api/vat-rates/fuel-tax', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state })
+    });
+    const data = await response.json();
+    return {
+      state: data.state,
+      dieselTax: data.diesel, // $/gallon
+      gasolineTax: data.gasoline,
+      federalExcise: data.federal,
+      totalTax: data.total,
+      lastUpdated: data.updated
+    };
+  } catch (err) {
+    console.error('Fuel tax error:', err);
+    return null;
+  }
+};
+
+// Interstate load tax compliance check
+export const checkLoadTaxCompliance = async (loadDetails) => {
+  try {
+    const response = await fetch('/api/vat-rates/load-compliance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(loadDetails)
+    });
+    const data = await response.json();
+    return {
+      compliant: data.compliant,
+      taxableJurisdictions: data.jurisdictions,
+      estimatedTaxLiability: data.liability,
+      reportingRequirements: data.reporting,
+      deadlines: data.deadlines,
+      recommendations: data.recs
+    };
+  } catch (err) {
+    console.error('Tax compliance check error:', err);
+    return null;
+  }
+};
+
+// Compare tax burden across potential routes
+export const compareTaxByRoute = async (routes) => {
+  try {
+    const response = await fetch('/api/vat-rates/route-comparison', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ routes })
+    });
+    const data = await response.json();
+    return {
+      routes: data.routes, // [{ route, taxBurden, fuelTax, compliance }]
+      lowestTax: data.lowestTax,
+      highestTax: data.highestTax,
+      savings: data.potentialSavings
+    };
+  } catch (err) {
+    console.error('Route tax comparison error:', err);
+    return null;
+  }
+};
+
+export default {
+  getTaxRates,
+  getTaxRatesByIP,
+  calculateLoadTax,
+  getFuelTaxRates,
+  checkLoadTaxCompliance,
+  compareTaxByRoute,
+};

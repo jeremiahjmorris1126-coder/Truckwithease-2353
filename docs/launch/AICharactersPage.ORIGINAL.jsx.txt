@@ -1,0 +1,567 @@
+
+
+const NAVY = "#0B2A6B";
+const NAVY2 = "#081E4D";
+const ORANGE = "#FF6B00";
+const AMBER = "#FFB400";
+const GREEN = "#16A34A";
+const RED = "#DC2626";
+const DARK = "#06090F";
+
+const AI_CHARACTERS = [
+  {
+    id: "routing-robbie",
+    name: "Routing Robbie",
+    emoji: "🗺️",
+    tagline: "Truck-legal routing, low bridges, weigh stations",
+    role: "Routing & Navigation AI",
+    accent: "#38BDF8",
+    gradient: "linear-gradient(135deg, #0C4A6E 0%, #0369A1 100%)",
+    badge: "All Plans",
+    badgeColor: "#38BDF8",
+    voice: "Deep, steady",
+    personality: "Precise, efficient, quietly obsessed with the optimal path. Robbie doesn't guess — he calculates.",
+    desc: "Routing Robbie plans every mile before you turn the key. He factors your load weight, axle config, state permits, weigh station wait times, fuel prices, and your HOS clock to give you the fastest, cheapest, most compliant route — not just the shortest one.",
+    specialty: "I'm best at routing, low bridges, weigh stations, and reroutes — but I can help with anything.",
+    powers: ["HOS-aware route planning", "Weight-compliant routing by state", "Real-time fuel stop optimization", "Toll-free vs fastest route comparison", "Rest area and parking pre-planning"],
+    chat: [
+      { from: "driver", text: "Best way from Dallas to Chicago? 44,200 lbs flatbed." },
+      { from: "ai", text: "Copy. I-30 E → I-55 N. 921 miles, 13h 8m. Your weight is clean all the way — Illinois max 80k GVW. Routing you past Pilot in Texarkana at mile 221 for fuel — $3.07/gal, cheapest on the corridor. Weigh station at Sikeston MO is open, 8-minute wait. Want the toll-free route? Adds 34 miles, saves $18." },
+    ],
+    rigBucks: "Earn 50 pts when Robbie's route saves you fuel vs. your usual run",
+  },
+  {
+    id: "compliant-kathy",
+    name: "Compliant Kathy",
+    emoji: "📋",
+    tagline: "HOS clock, DVIR, inspections, expiring docs",
+    role: "Compliance AI",
+    accent: "#FB923C",
+    gradient: "linear-gradient(135deg, #7C2D12 0%, #9A3412 100%)",
+    badge: "All Plans",
+    badgeColor: "#FB923C",
+    voice: "Firm, motherly",
+    personality: "Detail-obsessed, proactive, never flustered. Kathy has read every regulation so you don't have to.",
+    desc: "Compliant Kathy knows every permit form, every filing deadline, and every state-specific requirement. IFTA filings, oversize permits, annual inspections, registration renewals — she tracks all of it and reminds you before it becomes a problem.",
+    specialty: "I'm best at HOS, DVIR, expiring docs, and inspections — but I can help with anything.",
+    powers: ["HOS violation prediction", "DVIR completion tracking", "IFTA quarterly prep", "Oversize permit sourcing", "Registration renewal tracking"],
+    chat: [
+      { from: "driver", text: "What do I need to cross into California with an oversize load?" },
+      { from: "ai", text: "California oversize: Caltrans permit required ($16, same-day online), CHP escort if width over 14 ft or height over 14.5 ft. Movement hours: sunrise to 30 min after sunset only. No night moves. Pre-filling your permit now with your truck config — want me to submit it? In your email within 2 hours." },
+    ],
+    rigBucks: "Earn 120 pts when Kathy catches an expiring permit before it lapses",
+  },
+  {
+    id: "dispatch-darryl",
+    name: "Dispatch Darryl",
+    emoji: "📡",
+    tagline: "Load board, best-paying loads, cost-per-mile",
+    role: "Dispatch AI",
+    accent: "#34D399",
+    gradient: "linear-gradient(135deg, #064E3B 0%, #065F46 100%)",
+    badge: "Pro & Fleet",
+    badgeColor: "#34D399",
+    voice: "Fast, hustling",
+    personality: "Fast-talking, no-nonsense, always three steps ahead. Darryl speaks trucker and broker equally.",
+    desc: "Dispatch Darryl handles load assignments, driver communication, route changes, and broker updates without you picking up the phone. He coordinates your whole fleet in real time — delivery confirmations, ETA updates, detention alerts — all automatically.",
+    specialty: "I'm best at loads, rates, and cost-per-mile — but I can help with anything.",
+    powers: ["Load assignment and driver matching", "Real-time ETA updates to brokers", "Detention timer and billing", "Driver ↔ Dispatcher message routing", "Broadcast alerts to entire fleet"],
+    chat: [
+      { from: "driver", text: "I'm stuck at the dock. Been here 2 hours." },
+      { from: "ai", text: "Detention clock started at 10:42 AM — you're billing now at $50/hour. Broker at Bluegrass Logistics has been notified. I've logged it in Traxes. Current owed: $0 until you gate out, then I'll send the invoice automatically. Keep me posted when you're clear." },
+    ],
+    rigBucks: "Earn 75 pts when Darryl catches a detention before you have to ask",
+  },
+  {
+    id: "money-marisol",
+    name: "Money Marisol",
+    emoji: "💎",
+    tagline: "Settlements, per diem, deductions, taxes — TRAXES tie-in",
+    role: "Revenue & Tax AI",
+    accent: "#A3E635",
+    gradient: "linear-gradient(135deg, #1A2E05 0%, #2D4A0A 100%)",
+    badge: "All Plans",
+    badgeColor: "#A3E635",
+    voice: "Sharp, clear",
+    personality: "Financially sharp, data-driven, never sentimental about a bad load. Marisol has one job: maximizing your take-home.",
+    desc: "Money Marisol connects directly to Traxes — she knows your settlement, your deductions, your per diem, and your quarterly tax estimate at any moment. She looks at every load and tells you if it's actually worth taking after fuel, tolls, and deadhead.",
+    specialty: "I'm best at settlements, taxes, and per-load profitability — but I can help with anything.",
+    powers: ["Per-load net profit calculation", "TRAXES settlement integration", "Per diem and deduction tracking", "Quarterly estimated tax calc", "Break-even rate by lane"],
+    chat: [
+      { from: "driver", text: "Broker offering $1,850 for 284 miles Dallas to OKC. Worth it?" },
+      { from: "ai", text: "$6.52/mile gross. After fuel ($87), tolls ($0 — I-35 is clean), you're at $1,763 net — $6.21/mile net. Market rate Dallas→OKC right now is $6.85/mile. I'd counter at $2,050 minimum. This broker paid $2,100 on this lane 11 days ago — I have the data. Counter now?" },
+    ],
+    rigBucks: "Earn 100 pts when Marisol's counter-offer gets you a higher rate",
+  },
+  {
+    id: "safety-sarge",
+    name: "Safety Sarge",
+    emoji: "🪖",
+    tagline: "Safety score, driving behavior, DOT physical",
+    role: "Safety & Health Coach",
+    accent: "#F87171",
+    gradient: "linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%)",
+    badge: "All Plans",
+    badgeColor: "#F87171",
+    voice: "Gruff, caring",
+    personality: "Gruff on the outside, genuinely cares about every driver. Sarge doesn't sugarcoat — but he's always on your side.",
+    desc: "Safety Sarge is your driving coach and health accountability partner. He tracks your safety score, flags risky driving patterns before they become violations, and makes sure your DOT physical is never a surprise. He's blunt, but he's rooting for you.",
+    specialty: "I'm best at safety scores, driving behavior, and DOT health — but I can help with anything.",
+    powers: ["Safety scorecard coaching", "Speeding and hard brake alerts", "DOT physical preparation", "Wellness check-ins for long hauls", "Zero-violation streak tracking"],
+    chat: [
+      { from: "driver", text: "What's my safety score looking like?" },
+      { from: "ai", text: "You're at 91/100 — Platinum tier. Good. But I'm watching that speed event Tuesday on I-40 at 79 in a 70 zone. One more like that this month and your score drops to Gold. That costs you load priority with three of your top brokers. Slow it down, Driver. You've got a clean 18-day streak — don't blow it on a half-mile." },
+    ],
+    rigBucks: "Earn 200 pts for a zero-violation month — Sarge's personal challenge to you",
+  },
+  {
+    id: "weather-wanda",
+    name: "Weather Wanda",
+    emoji: "🌧️",
+    tagline: "Storms, ice, wind, chain laws ahead",
+    role: "Weather Intelligence AI",
+    accent: "#7DD3FC",
+    gradient: "linear-gradient(135deg, #0C2340 0%, #1E3A5F 100%)",
+    badge: "All Plans",
+    badgeColor: "#7DD3FC",
+    voice: "Calm broadcaster",
+    personality: "Calm and measured like a meteorologist who has seen everything. Wanda never panics — but when she says stop, you stop.",
+    desc: "Weather Wanda monitors every mile of your route in real time — not just the weather app, but truck-specific hazards: black ice corridors, crosswind warnings on bridges, flash flood routes, and chain law activation. She speaks up before you reach the danger, not after.",
+    specialty: "I'm best at road weather, storms, and chain laws — but I can help with anything.",
+    powers: ["Route-specific weather hazard alerts", "High-wind bridge crosswind warnings", "Chain law and traction law tracking", "Black ice and road condition intel", "5-day forecast for planned routes"],
+    chat: [
+      { from: "driver", text: "Any weather issues on I-80 through Wyoming tonight?" },
+      { from: "ai", text: "Wyoming advisory, I-80. Wind 45–62 mph from Laramie to Rawlins, mile 310 to 220, 9 PM through 3 AM. Commercial vehicle restriction likely — vehicles over 7 ft wide may see closures. Elk Mountain summit dropping to 24°F — black ice risk at the top. My recommendation: depart before 7 PM or hold until after 3 AM. Alternate via US-30 adds 28 miles but stays in the valley. WYDOT cameras clear right now." },
+    ],
+    rigBucks: "Earn 50 pts when Wanda's warning helps you avoid a road closure",
+  },
+  {
+    id: "humanai-hr-manager",
+    name: "HRease",
+    emoji: "🤝",
+    tagline: "Driver records, payroll, hiring, background checks",
+    role: "Human Resources AI",
+    accent: "#C084FC",
+    gradient: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 100%)",
+    badge: "Fleet",
+    badgeColor: "#C084FC",
+    voice: "Professional, thorough",
+    personality: "Organized, thorough, and quietly authoritative. HRease doesn't miss renewals, doesn't forget expirations, and never cuts corners on compliance. Masters-level HR knowledge built in.",
+    desc: "HRease handles everything a fleet HR department with a master's degree would — driver onboarding, CDL and certification tracking, applicant screening with AI pre-interviews, payroll calculation, cost vs. revenue per driver, background check management, and California AB5 compliance.",
+    specialty: "I'm best at driver HR, payroll, and hiring — Fleet admins only.",
+    powers: ["Driver profile and document management", "Applicant pre-screen AI interviews", "Full payroll run: calculate, statements, export", "Background check intake and report generation", "Cost vs. revenue per driver analytics", "CDL, medical card, and certification tracking", "California AB5 compliance management", "Criminal background check intake + reports"],
+    chat: [
+      { from: "driver", text: "I need to run payroll for 5 drivers this week." },
+      { from: "ai", text: "Running payroll for your 5 drivers. Based on this week's mileage logs: Ray Davis — 2,840 miles @ $0.55/mi = $1,562. James Miller — 1,920 miles @ $0.55/mi = $1,056. Tony Williams — 3,105 miles @ $0.55/mi = $1,707.75. Andre Johnson — 1,440 miles (+ 8hrs detention @ $18/hr = $144) = $936. Derrick Brown — 2,210 miles @ $0.55/mi = $1,215.50. Total payroll: $6,477.25. Statements ready to export. Want me to generate the PDF payroll reports and send each driver their statement?" },
+    ],
+    rigBucks: "Earn 100 pts for completing every HR document on time — HRease tracks it",
+  },
+];
+
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@300;400;500&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body, html { background: ${DARK}; }
+
+  .acp-root {
+    font-family: 'Poppins', sans-serif;
+    background: ${DARK};
+    color: #fff;
+    min-height: 100vh;
+  }
+
+  /* NAV */
+  .acp-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: ${NAVY2};
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    height: 64px;
+    gap: 16px;
+  }
+  .acp-nav-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .acp-nav-logo {
+    height: 36px;
+    width: 36px;
+    object-fit: contain;
+  }
+  .acp-nav-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .acp-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .acp-nav-link {
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.75);
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .acp-nav-link:hover {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+  }
+  .acp-nav-link.back {
+    border-color: rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.6);
+  }
+  .acp-nav-link.back:hover {
+    border-color: rgba(255,255,255,0.35);
+    color: #fff;
+  }
+
+  /* HERO */
+  .acp-hero {
+    position: relative;
+    overflow: hidden;
+    background: ${NAVY2};
+    padding: 72px 32px 56px;
+    text-align: center;
+  }
+  .acp-hero-grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+  .acp-hero-glow {
+    position: absolute;
+    top: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 320px;
+    background: radial-gradient(ellipse at center, rgba(255,107,0,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .acp-hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  .acp-hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: ${ORANGE};
+    margin-bottom: 20px;
+    background: rgba(255,107,0,0.1);
+    padding: 6px 16px;
+    border-radius: 100px;
+    border: 1px solid rgba(255,107,0,0.25);
+  }
+  .acp-hero-headline {
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+  }
+  .acp-hero-headline span {
+    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .acp-hero-headline em {
+    font-style: normal;
+    background: linear-gradient(135deg, ${ORANGE} 0%, ${AMBER} 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .acp-hero-sub {
+    font-size: 18px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.6;
+    max-width: 540px;
+    margin: 0 auto 48px;
+  }
+
+  /* CHARACTER SELECTOR GRID */
+  .acp-selector {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  @media (max-width: 700px) {
+    .acp-selector { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 420px) {
+    .acp-selector { grid-template-columns: 1fr 1fr; }
+  }
+  .acp-sel-btn {
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    background: rgba(255,255,255,0.04);
+    border: 2px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    transition: all 0.22s ease;
+    outline: none;
+    position: relative;
+    overflow: hidden;
+  }
+  .acp-sel-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    opacity: 0;
+    transition: opacity 0.22s;
+  }
+  .acp-sel-btn:hover {
+    background: rgba(255,255,255,0.08);
+    transform: translateY(-2px);
+  }
+  .acp-sel-btn.active {
+    border-color: var(--accent);
+    background: rgba(255,255,255,0.07);
+    box-shadow: 0 0 0 1px var(--accent), 0 8px 32px rgba(0,0,0,0.4), 0 0 20px -4px var(--accent);
+  }
+  .acp-sel-emoji {
+    font-size: 28px;
+    line-height: 1;
+  }
+  .acp-sel-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.2;
+  }
+  .acp-sel-tagline {
+    font-size: 10px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.45);
+    line-height: 1.3;
+  }
+
+  /* DETAIL SECTION */
+  .acp-detail-wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 64px 32px;
+  }
+  .acp-detail-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    animation: fadeSlideIn 0.38s ease both;
+  }
+  @media (max-width: 860px) {
+    .acp-detail-panel { grid-template-columns: 1fr; }
+  }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* LEFT CARD */
+  .acp-char-card {
+    border-radius: 24px;
+    padding: 36px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-height: 540px;
+  }
+  .acp-char-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.5) 100%);
+    pointer-events: none;
+  }
+  .acp-char-card-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex: 1;
+  }
+  .acp-char-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .acp-char-emoji-wrap {
+    font-size: 64px;
+    line-height: 1;
+    animation: float 3s ease-in-out infinite;
+    display: inline-block;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  .acp-char-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 100px;
+    border: 1.5px solid;
+    white-space: nowrap;
+  }
+  .acp-char-name {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+  .acp-char-role {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.55);
+    margin-top: 2px;
+  }
+  .acp-char-voice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.5);
+    font-family: 'DM Mono', monospace;
+  }
+  .acp-char-voice-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+  .acp-char-personality {
+    font-size: 14px;
+    font-style: italic;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.6;
+    border-left: 3px solid rgba(255,255,255,0.2);
+    padding-left: 14px;
+  }
+  .acp-char-desc {
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.7;
+  }
+  .acp-powers-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 10px;
+  }
+  .acp-powers-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .acp-powers-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+    line-height: 1.4;
+  }
+  .acp-power-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.6);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .acp-bigrig {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(255,180,0,0.1);
+    border: 1px solid rgba(255,180,0,0.2);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: ${AMBER};
+    line-height: 1.5;
+    margin-top: auto;
+  }
+  .acp-bigrig-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* RIGHT: CHAT */
+  .acp-right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .acp-chat-panel {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    overflow: hidden;
+    flex: 1;
+  }
+  .acp-chat-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    display: flex;
