@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TruckWithEase Billing & Pricing Module</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: #94a3b8;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid #1e3a5f;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      padding: 1rem 1.5rem;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1rem;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s;
+      white-space: nowrap;
+    }
+
+    .tab-btn.active {
+      color: #f97316;
+      border-bottom-color: #f97316;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Pricing Tiers */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 2rem;
+      margin-bottom: 3rem;
+    }
+
+    .tier-card {
+      background: #1e3a5f;
+      border: 2px solid #334155;
+      border-radius: 0.75rem;
+      padding: 2rem;
+      transition: all 0.3s;
+    }
+
+    .tier-card:hover {
+      border-color: #f97316;
+      transform: translateY(-4px);
+      box-shadow: 0 20px 25px rgba(249, 115, 22, 0.1);
+    }
+
+    .tier-card.featured {
+      border-color: #f97316;
+      background: #1e3a5f;
+    }
+
+    .tier-card.featured::before {
+      content: 'MOST POPULAR';
+      display: block;
+      background: #f97316;
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin: -2rem -2rem 1.5rem -2rem;
+      text-align: center;
+    }
+
+    .tier-name {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f97316;
+      margin-bottom: 0.5rem;
+    }
+
+    .tier-desc {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .price-block {
+      margin: 1.5rem 0;
+      padding: 1.5rem;
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 0.5rem;
+    }
+
+    .price-main {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.25rem;
+    }
+
+    .price-period {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .price-note {
+      color: #cbd5e1;
+      font-size: 0.85rem;
+      margin-top: 0.75rem;
+      font-style: italic;
+    }
+
+    .features-list {
+      list-style: none;
+      margin: 1.5rem 0;
+    }
+
+    .features-list li {
+      padding: 0.75rem 0;
+      color: #cbd5e1;
+      border-bottom: 1px solid #334155;
+      font-size: 0.95rem;
+    }
+
+    .features-list li:before {
+      content: '✓ ';
+      color: #10b981;
+      font-weight: 700;
+      margin-right: 0.5rem;
+    }
+
+    .features-list li.disabled {
+      color: #64748b;
+      opacity: 0.6;
+    }
+
+    .features-list li.disabled:before {
+      content: '✗ ';
+      color: #ef4444;
+    }
+
+    /* Hardware Options */
+    .hardware-section {
+      background: #1e3a5f;
+      border: 2px solid #334155;
+      border-radius: 0.75rem;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .hardware-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #f97316;
+      margin-bottom: 1rem;
+    }
+
+    .hardware-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .hardware-option {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+    }
+
+    .hardware-option h4 {
+      color: #f59e0b;
+      margin-bottom: 0.75rem;
+      font-size: 1.1rem;
+    }
+
+    .hardware-specs {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.8;
+      margin-bottom: 1rem;
+    }
+
+    .hardware-specs strong {
+      color: #fff;
+    }
+
+    /* Comparison Table */
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1e3a5f;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid #334155;
+    }
+
+    .comparison-table th {
+      background: #0f172a;
+      font-weight: 700;
+      color: #f97316;
+    }
+
+    .comparison-table tbody tr:hover {
+      background: #2a4a6f;
+    }
+
+    .comparison-table td {
+      color: #cbd5e1;
+    }
+
+    .checkmark {
+      color: #10b981;
+      font-weight: 700;
+    }
+
+    .xmark {
+      color: #ef4444;
+      font-weight: 700;
+    }
+
+    /* Billing Examples */
+    .billing-example {
+      background: #1e3a5f;
+      border: 2px solid #334155;
+      border-radius: 0.75rem;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .billing-example h3 {
+      color: #f97316;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+
+    .example-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .example-card {
+      background: #0f172a;
+      border-left: 4px solid #f97316;
+      padding: 1.5rem;
+      border-radius: 0.25rem;
+    }
+
+    .example-title {
+      color: #f97316;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    .calculation {
+      display: grid;
+      gap: 0.5rem;
+      font-size: 0.95rem;
+      color: #cbd5e1;
+    }
+
+    .calculation-line {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .calculation-total {
+      border-top: 1px solid #334155;
+      padding-top: 0.75rem;
+      margin-top: 0.75rem;
+      font-weight: 700;
+      color: #f97316;
+    }
+
+    /* Invoice Template */
+    .invoice {
+      background: #1e3a5f;
+      border: 2px solid #334155;
+      border-radius: 0.75rem;
+      padding: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .invoice-header {
+      border-bottom: 2px solid #334155;
+      padding-bottom: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .invoice-title {
+      font-size: 1.5rem;
+      color: #f97316;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .invoice-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      font-size: 0.9rem;
+      color: #cbd5e1;
+    }
+
+    .invoice-meta-item {
+      border: 1px solid #334155;
+      padding: 0.75rem;
+      border-radius: 0.25rem;
+    }
+
+    .invoice-meta-label {
+      color: #94a3b8;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+
+    .invoice-meta-value {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .invoice-items {
+      margin: 1.5rem 0;
+    }
+
+    .invoice-item-header {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 1rem;
+      font-weight: 700;
+      color: #f97316;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 0.75rem;
+      font-size: 0.9rem;
+    }
+
+    .invoice-item {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 1rem;
+      padding: 0.75rem 0;
+      color: #cbd5e1;
+      border-bottom: 1px solid #334155;
+    }
+
+    .invoice-summary {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #334155;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.75rem;
+    }
+
+    .summary-line {
+      display: flex;
+      gap: 2rem;
+      font-size: 0.95rem;
+    }
+
+    .summary-label {
+      color: #94a3b8;
+    }
+
+    .summary-value {
+      color: #fff;
+      font-weight: 600;
+      min-width: 120px;
+      text-align: right;
+    }
+
+    .summary-total {
+      font-size: 1.3rem;
+      color: #f97316;
+      font-weight: 700;
+      border-top: 1px solid #334155;
+      padding-top: 0.75rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      .pricing-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hardware-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .invoice-item-header,
+      .invoice-item {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+      }
+
+      .tabs {
+        flex-wrap: wrap;
+      }
+
+      .tab-btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+      }
+    }
+
+    /* Download Button */
+    .download-section {
+      text-align: center;
+      margin: 2rem 0;
+    }
+
+    .download-btn {
+      padding: 1rem 2rem;
+      background: #f97316;
+      color: #fff;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .download-btn:hover {
+      background: #ea580c;
+      transform: translateY(-2px);
+    }
+
+    .footer-note {
+      text-align: center;
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid #334155;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>TruckWithEase Billing & Pricing</h1>
+      <p class="subtitle">Complete transparency on fleet software, hardware, and monthly charges</p>
+    </header>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('pricing')">Pricing Tiers</button>
+      <button class="tab-btn" onclick="switchTab('hardware')">Hardware Options</button>
+      <button class="tab-btn" onclick="switchTab('comparison')">Feature Comparison</button>
+      <button class="tab-btn" onclick="switchTab('examples')">Billing Examples</button>
+      <button class="tab-btn" onclick="switchTab('invoice')">Sample Invoice</button>
+    </div>
+
+    <!-- Pricing Tiers Tab -->
+    <div id="pricing" class="tab-content active">
+      <div class="pricing-grid">
+        <!-- Solo -->
+        <div class="tier-card">
+          <div class="tier-name">Solo</div>
+          <div class="tier-desc">For owner-operators and small fleets</div>
+          <div class="price-block">
+            <div class="price-main">$29.99</div>
+            <div class="price-period">per driver/month</div>
+            <div class="price-note">No setup fee, cancel anytime</div>
+          </div>
+          <div class="price-block">
+            <div style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem;">À la carte features:</div>
+            <div class="price-main" style="font-size: 1.8rem;">$2.99 - $10.99</div>
+            <div class="price-period">add what you need</div>
+          </div>
+          <ul class="features-list">
+            <li>HOS logging & ELD</li>
+            <li>Basic dispatch</li>
+            <li>GPS tracking</li>
+            <li>Fuel finder</li>
+            <li>Driver safety scorecard</li>
+            <li class="disabled">Fleet-wide dashboard</li>
+            <li class="disabled">Advanced compliance</li>
+            <li class="disabled">Dedicated support</li>
+          </ul>
+        </div>
+
+        <!-- Pro -->
+        <div class="tier-card featured">
+          <div class="tier-name">Pro</div>
+          <div class="tier-desc">All-in-one for growing fleets</div>
+          <div class="price-block">
+            <div class="price-main">$39.99</div>
+            <div class="price-period">per driver/month</div>
+            <div class="price-note">Everything included, no add-ons</div>
+          </div>
+          <ul class="features-list">
+            <li>HOS logging & ELD</li>
+            <li>AI dispatch optimization</li>
+            <li>GPS tracking + real-time updates</li>
+            <li>Fuel card integration & sync</li>
+            <li>DVIR compliance</li>
+            <li>Detention tracking & recovery</li>
+            <li>Driver performance analytics</li>
+            <li>Breakdown SOS & nearest repair</li>
+            <li>Load profitability calculator</li>
+            <li>Expense tracking & reporting</li>
+            <li class="disabled">Multi-fleet management</li>
+            <li class="disabled">Dedicated account manager</li>
+          </ul>
+        </div>
+
+        <!-- Fleet -->
+        <div class="tier-card">
+          <div class="tier-name">Fleet</div>
+          <div class="tier-desc">Enterprise fleet management</div>
+          <div class="price-block">
+            <div class="price-main">$49.99</div>
+            <div class="price-period">per truck/month (up to 10 trucks)</div>
+            <div class="price-note">includes hardware rental</div>
+          </div>
+          <div class="price-block" style="background: #065f46; border-left: 4px solid #10b981;">
+            <div style="color: #a7f3d0; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">OR buy outright:</div>
+            <div class="price-main" style="font-size: 2rem; color: #fff;">$59.99</div>
+            <div class="price-period">per driver/month (no hardware fee)</div>
+          </div>
+          <ul class="features-list">
+            <li>Everything in Pro +</li>
+            <li>Multi-fleet management</li>
+            <li>Advanced compliance audit</li>
+            <li>Batch DVIR reports</li>
+            <li>Custom integrations</li>
+            <li>Dedicated account manager</li>
+            <li>24/7 phone support</li>
+            <li>Hardware support & replacement</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hardware Options Tab -->
+    <div id="hardware" class="tab-content">
+      <div class="hardware-section">
+        <div class="hardware-title">Hardware Lease vs. Buy</div>
+        <div style="color: #cbd5e1; margin-bottom: 2rem;">Choose what works for your operation. Rental includes support, replacement, and updates. Ownership builds asset value.</div>
+        
+        <div class="hardware-grid">
+          <div class="hardware-option">
+            <h4>💰 Lease Option (Fleet Rental $49.99/truck)</h4>
+            <div class="hardware-specs">
+              <strong>Included per truck:</strong><br>
+              • Android tablet (8") with pre-loaded TruckWithEase app<br>
+              • ELD device with cellular (4G/LTE)<br>
+              • Dash camera (front-facing)<br>
+              • Vehicle mount & USB charging<br>
+              • 3-year warranty & damage protection<br>
+              • 24-hour hardware replacement
+            </div>
+            <div class="hardware-specs" style="color: #10b981; border-top: 1px solid #334155; padding-top: 1rem; margin-top: 1rem;">
+              <strong>Best for:</strong> Fleets wanting predictable costs, zero capital outlay, and 24/7 support
+            </div>
+          </div>
+
+          <div class="hardware-option">
+            <h4>🏠 Own Outright (Fleet Owned $59.99/driver)</h4>
+            <div class="hardware-specs">
+              <strong>One-time hardware purchase:</strong><br>
+              • Tablet + ELD: $380<br>
+              • Dash camera bundle: $180<br>
+              • Installation kit: $40<br>
+              • Total per truck: $600<br><br>
+              <strong>Monthly software:</strong> $59.99/driver
+            </div>
+            <div class="hardware-specs" style="color: #f59e0b; border-top: 1px solid #334155; padding-top: 1rem; margin-top: 1rem;">
+              <strong>Breakeven:</strong> ~10 months of payments<br>
+              <strong>5-year total cost:</strong> $3,900 (vs $2,999 leased)
+            </div>
+          </div>
+
+          <div class="hardware-option">
+            <h4>🔄 Upgrade Options</h4>
+            <div class="hardware-specs">
+              <strong>Hardware updates available:</strong><br>
+              • Tablet upgrade: $150 (every 3 years)<br>
+              • ELD replacement: $120 (battery/damage)<br>
+              • Additional dash cam: $180<br>
+              • 360° camera system: $450<br><br>
+              All upgrades ship within 48 hours
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparison Tab -->
+    <div id="comparison" class="tab-content">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Solo ($29.99)</th>
+            <th>Pro ($39.99)</th>
+            <th>Fleet ($49.99/$59.99)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>HOS Logging & ELD</td>
+            <td class="checkmark">✓</td>
+            <td class="checkmark">✓</td>
+            <td class="checkmark">✓</td>
+          </tr>
+          <tr>
+            <td>GPS Real-time Tracking</td>
+            <td class="checkmark">✓</td>
+            <td class="checkmark">✓</td>
+            <td class="checkmark">✓</td>
+          </tr>
+          <tr>
+            <td>Dispatch Optimization</td>
+            <td class="xmark">Basic</td>
+            <td class="checkmark">✓ AI</td>
+            <td class="checkmark">✓ AI</td>
+          </tr>
+          <tr>
+            <td>DVIR & Vehicle Inspections</td>
+            <td class="xmark">✗</td>
+            <td class="checkmark">✓</td>
+            <td class="checkmark">✓</td>
+          </tr>
+          <tr>
+            <td>Fuel Card Integration</td>
+            <td class="xmark">✗</td>
+            <td class="checkmark">✓</td>
+            <td class="checkmark">✓</td>
+          </tr>
+          <tr>
+            <td>Detention Tracking & Recovery</td>
+            <td class="xmark">✗</td>
+            <td class="checkmark">✓</td>
+            <td class="checkmark">✓</td>
+          </tr>
+          <tr>
+            <td>Load Profitability Calculator</td>
+            <td class="xmark">✗</td>
+            <td class="checkmark">✓</td>
+            <td class="checkmark">✓</td>
+          </tr>
+          <tr>
+            <td>Expense Tracking</td>
+            <td class="xmark">✗</td>
+            <td class="checkmark">✓</td>
+            <td class="checkmark">✓</td>
+          </tr>
+          <tr>
+            <td>Breakdown SOS & Repair Locator</td>
+            <td class="xmark">✗</td>
+            <td class="checkmark">✓</td>
+            <td class="checkmark">✓</td>
+          </tr>
+          <tr>
+            <td>Driver Performance Analytics</td>
+            <td class="xmark">✗</td>
+            <td class="checkmark">✓</td>
+            <td class="checkmark">✓</td>
+          </tr>
+          <tr>
+            <td>Multi-Fleet Management</td>
+            <td class="xmark">✗</td>
+            <td class="xmark">✗</td>
+            <td class="checkmark">✓</td>
+          </tr>
+          <tr>
+            <td>Advanced Compliance Reports</td>
+            <td class="xmark">✗</td>
+            <td class="xmark">✗</td>
+            <td class="checkmark">✓</td>
+          </tr>
+          <tr>
+            <td>Dedicated Account Manager</td>
+            <td class="xmark">✗</td>
+            <td class="xmark">✗</td>
+            <td class="checkmark">✓</td>
+          </tr>
+          <tr>
+            <td>24/7 Phone Support</td>
+            <td class="xmark">Email</td>
+            <td class="xmark">Email</td>
+            <td class="checkmark">✓ 24/7</td>
+          </tr>
+          <tr>
+            <td>Hardware Included</td>
+            <td class="xmark">✗</td>
+            <td class="xmark">✗</td>
+            <td class="checkmark">✓ w/ lease</td>
+          </tr>
+          <tr>
+            <td>14-Day Free Trial</td>
+            <td class="checkmark">✓</td>
+            <td class="checkmark">✓</td>
+            <td class="checkmark">✓</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Examples Tab -->
+    <div id="examples" class="tab-content">
+      <div class="billing-example">
+        <h3>Real-World Billing Scenarios</h3>
+        <div class="example-grid">
+          <div class="example-card">
+            <div class="example-title">Solo Owner-Operator</div>
+            <div class="calculation">
+              <div class="calculation-line">
+                <span>TruckWithEase Solo subscription:</span>
+                <span>$29.99</span>
+              </div>
+              <div class="calculation-line">
+                <span>Add: GPS Premium feature:</span>
+                <span>+$4.99</span>
+              </div>
+              <div class="calculation-line">
+                <span>Add: Advanced reports:</span>
+                <span>+$5.99</span>
+              </div>
+              <div class="calculation-total calculation-line">
+                <span>Monthly total:</span>
+                <span>$40.97</span>
+              </div>
+              <div style="margin-top: 0.75rem; color: #94a3b8; font-size: 0.85rem;">
+                ✓ No hardware costs<br>
+                ✓ 14-day free trial<br>
+                ✓ Cancel anytime
+              </div>
+            </div>
+          </div>
+
+          <div class="example-card">
+            <div class="example-title">Growing 5-Truck Fleet</div>
+            <div class="calculation">
+              <div class="calculation-line">
+                <span>Pro subscription (5 drivers):</span>
+                <span>$39.99 × 5</span>
+              </div>
+              <div class="calculation-line">
+                <span></span>
+                <span>$199.95</span>
+              </div>
+              <div class="calculation-line">
+                <span>Hardware rental (5 trucks):</span>
+                <span>(included in Pro)</span>
+              </div>
+              <div class="calculation-total calculation-line">
+                <span>Monthly total:</span>
+                <span>$199.95</span>
+              </div>
+              <div style="margin-top: 0.75rem; color: #94a3b8; font-size: 0.85rem;">
+                ✓ All features included<br>
+                ✓ No hardware cost<br>
+                ✓ Predictable monthly burn
+              </div>
+            </div>
+          </div>
+
+          <div class="example-card">
+            <div class="example-title">Enterprise: 50-Truck Fleet (Lease)</div>
+            <div class="calculation">
+              <div class="calculation-line">
+                <span>Fleet Rental subscriptions (50):</span>
+                <span>$49.99 × 50</span>
+              </div>
+              <div class="calculation-line">
+                <span></span>
+                <span>$2,499.50</span>
+              </div>
+              <div class="calculation-line">
+                <span>Hardware (included):</span>
+                <span>$0</span>
+              </div>
+              <div class="calculation-line">
+                <span>Dedicated support:</span>
+                <span>(included)</span>
+              </div>
+              <div class="calculation-total calculation-line">
+                <span>Monthly total:</span>
+                <span>$2,499.50</span>
+              </div>
+              <div style="margin-top: 0.75rem; color: #10b981; font-size: 0.85rem;">
+                <strong>Annual ROI:</strong> $82,000+ in optimizations<br>
+                <strong>Breakeven:</strong> 3.6 months
+              </div>
+            </div>
+          </div>
+
+          <div class="example-card">
+            <div class="example-title">Enterprise: 50-Truck Fleet (Owned)</div>
+            <div class="calculation">
+              <div class="calculation-line">
+                <span>Hardware (one-time):</span>
+                <span>$600 × 50</span>
+              </div>
+              <div class="calculation-line">
+                <span></span>
+                <span>$30,000 CAPEX</span>
+              </div>
+              <div class="calculation-line">
+                <span>Software subscriptions:</span>
+                <span>$59.99 × 50</span>
+              </div>
+              <div class="calculation-line">
+                <span></span>
+                <span>$2,999.50</span>
+              </div>
+              <div class="calculation-total calculation-line">
+                <span>Year 1 monthly:</span>
+                <span>$2,999.50</span>
+              </div>
+              <div style="margin-top: 0.75rem; color: #f59e0b; font-size: 0.85rem;">
+                <strong>Payback period:</strong> 10 months<br>
+                <strong>5-year savings vs lease:</strong> $9,975
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invoice Tab -->
+    <div id="invoice" class="tab-content">
+      <div class="invoice">
+        <div class="invoice-header">
+          <div class="invoice-title">INVOICE</div>
+          <div class="invoice-meta">
+            <div class="invoice-meta-item">
+              <div class="invoice-meta-label">Bill To</div>
+              <div class="invoice-meta-value">Midwest Express Logistics</div>
+            </div>
+            <div class="invoice-meta-item">
+              <div class="invoice-meta-label">Invoice #</div>
+              <div class="invoice-meta-value">INV-2026-08-001</div>
+            </div>
+            <div class="invoice-meta-item">
+              <div class="invoice-meta-label">Invoice Date</div>
+              <div class="invoice-meta-value">August 1, 2026</div>
+            </div>
+            <div class="invoice-meta-item">
+              <div class="invoice-meta-label">Due Date</div>
+              <div class="invoice-meta-value">August 31, 2026</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="invoice-items">
+          <div class="invoice-item-header">
+            <div>Description</div>
+            <div>Qty</div>
+            <div>Unit Price</div>
+            <div>Amount</div>
+          </div>
+
+          <div class="invoice-item">
+            <div>Fleet Subscription (Lease) - August 2026</div>
+            <div>25 trucks</div>
+            <div>$49.99</div>
+            <div>$1,249.75</div>
+          </div>
+
+          <div class="invoice-item">
+            <div>Hardware Lease (Tablet + ELD + Dash Cam per truck)</div>
+            <div>25 units</div>
+            <div>Included</div>
+            <div>$0.00</div>
+          </div>
+
+          <div class="invoice-item">
+            <div>24/7 Phone Support</div>
+            <div>1</div>
+            <div>Included</div>
+            <div>$0.00</div>
+          </div>
+
+          <div class="invoice-item">
+            <div>Advanced Compliance Reports (Optional)</div>
+            <div>1</div>
+            <div>$150.00</div>
+            <div>$150.00</div>
+          </div>
+        </div>
+
+        <div class="invoice-summary">
+          <div class="summary-line">
+            <span class="summary-label">Subtotal:</span>
+            <span class="summary-value">$1,399.75</span>
+          </div>
+          <div class="summary-line">
+            <span class="summary-label">Tax (varies by state):</span>
+            <span class="summary-value">$105.98</span>
+          </div>
+          <div class="summary-line summary-total">
+            <span class="summary-label">TOTAL DUE:</span>
+            <span class="summary-value">$1,505.73</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-note">
+        <strong>Payment Terms:</strong> Net 30 • Auto-renews monthly • All pricing in USD<br>
+        Questions? Contact us at billing@truckwitheaseai.com
+      </div>
+    </div>
+
+    <div class="download-section">
+      <button class="download-btn" onclick="downloadPDF()">📥 Download as PDF</button>
+    </div>
+
+    <div class="footer-note" style="margin-top: 3rem;">
+      TruckWithEase | Complete Fleet Management Platform<br>
+      14-day free trial • No contracts • Cancel anytime<br>
+      <strong>All pricing effective as of August 2026</strong>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tabName) {
+      // Hide all tabs
+      const tabs = document.querySelectorAll('.tab-content');
+      tabs.forEach(tab => tab.classList.remove('active'));
+
+      // Remove active class from all buttons
+      const buttons = document.querySelectorAll('.tab-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
+
+      // Show selected tab
+      document.getElementById(tabName).classList.add('active');
+
+      // Add active class to clicked button
+      event.target.classList.add('active');
+    }
+
+    function downloadPDF() {
+      alert('PDF download functionality would be integrated here. This is a static preview for sales presentations.');
+    }
+  </script>
+</body>
+</html>

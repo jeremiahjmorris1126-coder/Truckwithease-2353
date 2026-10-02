@@ -1,0 +1,41 @@
+/*
+ * REJECTED — do not apply.
+ *
+ * Pasted by Jeremiah on 2026-08-24 alongside the quantum dispatch / HOS /
+ * routing / RideWithEase pages. Preserved verbatim below for the record.
+ *
+ * Why it was not applied:
+ *
+ * 1. "dependencies" and "devDependencies" are both EMPTY objects. There is no
+ *    React, no Vite, no Hono, no Drizzle. `vite build` would not even resolve.
+ *    This file cannot build anything.
+ *
+ * 2. `scripts/deploy-live.cjs` is the dead IONOS deploy script that was already
+ *    rejected once. It is CommonJS and copies ../dist to /home/www/aibuilder-db9c0.
+ *    Shipping a frontend-only bundle with no API is exactly what broke
+ *    morrishive.com. TruckWithEase serves its Hono API from the same server as
+ *    the frontend; a static dist copy leaves every /api/* route 404.
+ *
+ * 3. "name": "my-site". The real project is a Bun + Turborepo workspace monorepo.
+ *    Its root package.json and packages/web/package.json are template-managed
+ *    and must not be replaced.
+ *
+ * The one good idea in here — a pre-build validation pass — already lives on as
+ * scripts/crash-audit.mjs, which runs standalone and exits 1 with --strict.
+ */
+
+{
+  "name": "my-site",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "validate": "node scripts/validate-build.cjs",
+    "build": "node scripts/validate-build.cjs && vite build --mode preview && node scripts/deploy-live.cjs",
+    "build:prod": "node scripts/validate-build.cjs && vite build && node scripts/deploy-live.cjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,0 +1,610 @@
+import { useState, useEffect, useRef } from "react";
+
+const NAVY   = "#0B2A6B";
+const NAVY2  = "#081E4D";
+const ORANGE = "#FF6B00";
+const AMBER  = "#FFB400";
+const DARK   = "#070D1A";
+
+function useInView(ref) {
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    if (!ref.current) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setSeen(true); }, { threshold: 0.12 });
+    obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+  return seen;
+}
+
+function FadeIn({ children, delay = 0, up = true, style = {} }) {
+  const ref = useRef(null);
+  const seen = useInView(ref);
+  return (
+    <div ref={ref} style={{
+      opacity: seen ? 1 : 0,
+      transform: seen ? "translateY(0)" : up ? "translateY(32px)" : "translateY(0)",
+      transition: `opacity 0.65s cubic-bezier(.22,1,.36,1) ${delay}ms, transform 0.65s cubic-bezier(.22,1,.36,1) ${delay}ms`,
+      ...style,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// Animated counter
+function Counter({ target, prefix = "", suffix = "", duration = 1800 }) {
+  const [val, setVal] = useState(0);
+  const ref = useRef(null);
+  const started = useRef(false);
+  const seen = useInView(ref);
+
+  useEffect(() => {
+    if (!seen || started.current) return;
+    started.current = true;
+    const isFloat = target % 1 !== 0;
+    const steps = 60;
+    let step = 0;
+    const inc = setInterval(() => {
+      step++;
+      const progress = step / steps;
+      const ease = 1 - Math.pow(1 - progress, 3);
+      setVal(isFloat ? parseFloat((target * ease).toFixed(1)) : Math.round(target * ease));
+      if (step >= steps) clearInterval(inc);
+    }, duration / steps);
+    return () => clearInterval(inc);
+  }, [seen]);
+
+  return <span ref={ref}>{prefix}{val.toLocaleString()}{suffix}</span>;
+}
+
+const traxesFeatures = [
+  {
+    icon: "📍",
+    title: "Automatic Mileage Tracking",
+    desc: "Every business mile recorded in the background — separated from personal driving without any manual logging. IRS-compliant records, always audit-ready.",
+    detail: "Logs per-state mileage automatically for IFTA quarterly reports too.",
+  },
+  {
+    icon: "🧾",
+    title: "Expense Logging on the Go",
+    desc: "Snap a receipt, say what it's for, and Traxes categorizes it instantly — fuel, tolls, meals, maintenance, permits. Nothing falls through the cracks at tax time.",
+    detail: "All 50+ trucking-specific expense categories built in.",
+  },
+  {
+    icon: "📊",
+    title: "Real-Time Financial Reports",
+    desc: "See your gross income, net take-home, deductible expenses, and profit per load — updated live as you drive. Not just at year end, all year long.",
+    detail: "Weekly, monthly, and quarterly breakdowns available.",
+  },
+  {
+    icon: "📁",
+    title: "Year-End Tax Preparation",
+    desc: "Traxes compiles your Schedule C, mileage deductions, per-diem, and all business expenses into a clean, complete tax package — ready to hand off or file directly.",
+    detail: "Supports self-employed, LLC, and S-Corp structures.",
+  },
+  {
+    icon: "💡",
+    title: "Proactive Tax-Saving Alerts",
+    desc: "Traxes flags deductions you might have missed and reminds you of quarterly estimated payment deadlines before penalties hit. Your money stays yours.",
+    detail: "Avg. $4,200+ in additional deductions found per driver.",
+  },
+  {
+    icon: "🏦",
+    title: "Connected to Your Whole Platform",
+    desc: "Works hand-in-hand with your factoring invoices, load profit calculator, and expense tracker inside TruckWithEase — one platform, your complete financial picture.",
+    detail: "Zero double-entry. Everything syncs automatically.",
+  },
+];
+
+const reportTabs = [
+  {
+    id: "monthly",
+    label: "Monthly Report",
+    preview: {
+      title: "July 2026 — Income Summary",
+      rows: [
+        { label: "Gross Revenue (6 loads)",       value: "$11,840",  positive: true  },
+        { label: "Fuel Expenses",                  value: "−$1,920", positive: false },
+        { label: "Tolls & Permits",                value: "−$340",   positive: false },
+        { label: "Meals & Per Diem",               value: "−$210",   positive: false },
+        { label: "Maintenance",                    value: "−$85",    positive: false },
+        { label: "TruckWithEase Subscription",     value: "−$34.99", positive: false },
+        { label: "Est. Tax Set-Aside (25%)",        value: "−$1,044", positive: false },
+      ],
+      total: { label: "Net Take-Home",             value: "$8,105",  },
+      badge: "On pace for best month",
+    },
+  },
+  {
+    id: "mileage",
+    label: "Mileage Log",
+    preview: {
+      title: "Mileage — Week of Jul 1–7",
+      rows: [
+        { label: "Monday  · TX→OK · 487 mi",   value: "$323.82",  positive: true },
+        { label: "Tuesday · OK→MO · 612 mi",   value: "$406.37",  positive: true },
+        { label: "Wednesday · MO→IL · 298 mi", value: "$197.97",  positive: true },
+        { label: "Thursday · Local",            value: "$44.20",   positive: true },
+        { label: "Friday · Off Duty",           value: "—",        positive: null },
+      ],
+      total: { label: "Week Total (IRS rate)", value: "$972.36" },
+      badge: "IRS-compliant · auto-filed",
+    },
+  },
+  {
+    id: "tax",
+    label: "Tax Package",
+    preview: {
+      title: "2025 Tax Year — Schedule C",
+      rows: [
+        { label: "Total Business Miles",              value: "142,880 mi", positive: true  },
+        { label: "Mileage Deduction",                 value: "$98,186",    positive: true  },
+        { label: "Fuel & Maintenance Deductions",     value: "$14,220",    positive: true  },
+        { label: "Meals & Per Diem",                  value: "$4,575",     positive: true  },
+        { label: "Phone & Software",                  value: "$744",       positive: true  },
+        { label: "Total Deductions",                  value: "$117,725",   positive: true  },
+        { label: "Package Status",                    value: "94% ready",  positive: true  },
+      ],
+      total: { label: "Est. Tax Savings vs. No Tracking", value: "$4,200+" },
+      badge: "Upload Jan receipts to finish",
+    },
+  },
+];
+
+const chatMessages = [
+  { role: "ai",   text: "Good morning! You drove 487 miles yesterday across 3 states. I've logged them all — $323.82 in deductible mileage at the current IRS rate. Your Q2 running total is $8,241." },
+  { role: "user", text: "What's my take-home looking like this month?" },
+  { role: "ai",   text: "This month: $11,840 gross from 6 loads. After fuel ($1,920), tolls ($340), your plan fee, and your quarterly tax set-aside — net take-home is $8,105. You're on pace for your best month yet." },
+  { role: "user", text: "Am I ready for tax time?" },
+  { role: "ai",   text: "Yes! Your Schedule C is 94% complete. Upload your January fuel receipts and your full year-end package is done. I've already found $4,200 in deductions most drivers miss — want a summary?" },
+];
+
+export default function TraxesPage() {
+  const [activeTab, setActiveTab] = useState("monthly");
+  const [chatIdx, setChatIdx] = useState(0);
+  const chatRef = useRef(null);
+
+  // Reveal chat messages one by one on load
+  useEffect(() => {
+    if (chatIdx >= chatMessages.length) return;
+    const t = setTimeout(() => setChatIdx(i => i + 1), chatIdx === 0 ? 700 : 1100);
+    return () => clearTimeout(t);
+  }, [chatIdx]);
+
+  useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+  }, [chatIdx]);
+
+  const activeReport = reportTabs.find(t => t.id === activeTab);
+
+  return (
+    <div style={{ fontFamily: "'Poppins', sans-serif", color: "#0F172A", overflowX: "hidden", background: DARK }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: ${DARK}; }
+        ::-webkit-scrollbar-thumb { background: #2A3A5C; border-radius: 3px; }
+        .trx-nav-link { transition: color 0.2s; }
+        .trx-nav-link:hover { color: ${AMBER} !important; }
+        .trx-feat-card { transition: background 0.25s, transform 0.25s, border-color 0.25s; }
+        .trx-feat-card:hover { background: rgba(255,180,0,0.07) !important; border-color: rgba(255,180,0,0.3) !important; transform: translateY(-3px); }
+        .trx-tab { transition: all 0.2s; cursor: pointer; }
+        .trx-tab:hover { color: ${AMBER} !important; }
+        .trx-tab.active { color: ${AMBER} !important; border-bottom: 2px solid ${AMBER} !important; }
+        .trx-stat { transition: transform 0.2s; }
+        .trx-stat:hover { transform: scale(1.04); }
+        @keyframes trxPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255,180,0,0.35); }
+          50%       { box-shadow: 0 0 0 12px rgba(255,180,0,0); }
+        }
+        .trx-pulse { animation: trxPulse 2.4s ease-in-out infinite; }
+        @keyframes trxBlink {
+          0%, 100% { opacity: 1; } 50% { opacity: 0; }
+        }
+        .trx-cursor { animation: trxBlink 1s step-end infinite; }
+        @keyframes trxSlideUp {
+          from { opacity: 0; transform: translateY(14px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .trx-msg { animation: trxSlideUp 0.4s cubic-bezier(.22,1,.36,1) both; }
+        @keyframes scanline {
+          from { background-position: 0 0; }
+          to   { background-position: 0 100%; }
+        }
+        @media (max-width: 767px) {
+          .trx-two-col { grid-template-columns: 1fr !important; }
+          .trx-three-col { grid-template-columns: 1fr 1fr !important; }
+          .trx-hero-right { display: none !important; }
+          .trx-nav-links { display: none !important; }
+          .trx-mob-btn { display: flex !important; }
+          .trx-hide-mob { display: none !important; }
+        }
+        @media (min-width: 768px) {
+          .trx-mob-btn { display: none !important; }
+        }
+      `}</style>
+
+      {/* ── STICKY NAV ───────────────────────────────────────────────────────── */}
+      <nav style={{
+        position: "sticky", top: 0, zIndex: 100,
+        background: "rgba(7,13,26,0.92)", backdropFilter: "blur(16px)",
+        borderBottom: "1px solid rgba(255,180,0,0.12)",
+        padding: "0 5%", height: 66,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <a href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+          <img src="/static/truckwithease-icon.png" alt="TruckWithEase" style={{ width: 32, height: 32, borderRadius: 8, objectFit: "cover" }} />
+          <span style={{ fontWeight: 800, fontSize: 15, color: "white" }}>
+            TruckWith<span style={{ color: AMBER }}>Ease</span>
+          </span>
+        </a>
+        <div className="trx-nav-links" style={{ display: "flex", alignItems: "center", gap: 28 }}>
+          {[
+            ["#traxes-features", "Features"],
+            ["#traxes-reports",  "Reports"],
+            ["#traxes-chat",     "Meet Traxes"],
+          ].map(([href, label]) => (
+            <a key={href} href={href} className="trx-nav-link"
+              style={{ color: "rgba(255,255,255,0.65)", fontWeight: 500, fontSize: 14, textDecoration: "none" }}>
+              {label}
+            </a>
+          ))}
+          <a href="#traxes-start" style={{
+            background: AMBER, color: DARK,
+            padding: "9px 20px", borderRadius: 8,
+            fontWeight: 800, fontSize: 14, textDecoration: "none",
+          }}>Get Traxes Free</a>
+          <a href="/" style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, textDecoration: "none" }}>← Back to site</a>
+        </div>
+        <div className="trx-mob-btn" style={{ display: "none", alignItems: "center", gap: 12 }}>
+          <a href="#traxes-start" style={{ background: AMBER, color: DARK, padding: "8px 16px", borderRadius: 7, fontWeight: 800, fontSize: 13, textDecoration: "none" }}>Get Free Trial</a>
+          <a href="/" style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, textDecoration: "none" }}>← Home</a>
+        </div>
+      </nav>
+
+      {/* ── HERO ─────────────────────────────────────────────────────────────── */}
+      <section style={{ minHeight: "92vh", background: DARK, display: "flex", alignItems: "center", padding: "60px 5% 80px", position: "relative", overflow: "hidden" }}>
+        {/* Grid texture */}
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,180,0,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,180,0,0.035) 1px, transparent 1px)", backgroundSize: "56px 56px", pointerEvents: "none" }} />
+        {/* Glow orbs */}
+        <div style={{ position: "absolute", top: -180, left: -120, width: 560, height: 560, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,180,0,0.09) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -200, right: -100, width: 480, height: 480, borderRadius: "50%", background: "radial-gradient(circle, rgba(11,42,107,0.35) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+        <div className="trx-two-col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center", maxWidth: 1200, margin: "0 auto", width: "100%", position: "relative", zIndex: 2 }}>
+          {/* Left */}
+          <div>
+            {/* AI badge */}
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
+              <div className="trx-pulse" style={{ width: 10, height: 10, borderRadius: "50%", background: AMBER, flexShrink: 0 }} />
+              <span style={{ color: AMBER, fontSize: 12, fontWeight: 800, letterSpacing: 2.5, textTransform: "uppercase" }}>AI Financial Co-Pilot for Truck Drivers</span>
+            </div>
+            {/* Wordmark */}
+            <div style={{ marginBottom: 24, lineHeight: 1 }}>
+              <div style={{ fontSize: "clamp(4rem,9vw,7rem)", fontWeight: 900, letterSpacing: -4, display: "flex", alignItems: "baseline", gap: 0 }}>
+                <span style={{ color: "white" }}>Trax</span>
+                <span style={{ color: AMBER }}>es</span>
+              </div>
+              <div style={{ marginTop: 6, fontSize: "clamp(1rem,1.6vw,1.25rem)", color: "rgba(255,255,255,0.45)", fontWeight: 500, letterSpacing: 4, textTransform: "uppercase" }}>
+                Finance · Mileage · Tax · Reports
+              </div>
+            </div>
+            <p style={{ color: "rgba(255,255,255,0.68)", fontSize: 18, lineHeight: 1.85, marginBottom: 40, maxWidth: 500 }}>
+              Your always-on financial AI — built for the road. Traxes tracks every mile, logs every expense, generates real-time reports, and has your complete tax return ready before your accountant answers the phone.
+            </p>
+            {/* Trust pills */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 40 }}>
+              {["✓ Auto mileage tracking", "✓ Year-end tax prep", "✓ Real-time reports", "✓ Included in all plans"].map(t => (
+                <span key={t} style={{ background: "rgba(255,180,0,0.1)", border: "1px solid rgba(255,180,0,0.25)", borderRadius: 20, padding: "6px 14px", fontSize: 12.5, color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>{t}</span>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              <a href="#traxes-start" style={{
+                background: AMBER, color: DARK,
+                padding: "16px 36px", borderRadius: 12,
+                fontWeight: 900, fontSize: 16, textDecoration: "none",
+                boxShadow: "0 8px 28px rgba(255,180,0,0.4)",
+              }}>Start Free — 30 Days</a>
+              <a href="#traxes-features" style={{
+                background: "rgba(255,255,255,0.07)", color: "white",
+                padding: "16px 28px", borderRadius: 12,
+                fontWeight: 600, fontSize: 16, textDecoration: "none",
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}>See What Traxes Does →</a>
+            </div>
+          </div>
+
+          {/* Right — live terminal preview */}
+          <div className="trx-hero-right" style={{ position: "relative" }}>
+            {/* Glow behind card */}
+            <div style={{ position: "absolute", inset: -20, borderRadius: 32, background: "radial-gradient(ellipse at center, rgba(255,180,0,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
+            <div style={{
+              background: "#0C1628", borderRadius: 20,
+              border: "1px solid rgba(255,180,0,0.2)",
+              overflow: "hidden",
+              boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)",
+              position: "relative",
+            }}>
+              {/* Terminal header */}
+              <div style={{ background: "#111D33", padding: "14px 18px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                {["#FF5F56","#FFBD2E","#27C93F"].map((c, i) => (
+                  <div key={i} style={{ width: 11, height: 11, borderRadius: "50%", background: c }} />
+                ))}
+                <span style={{ marginLeft: 10, fontSize: 12, color: "rgba(255,255,255,0.4)", fontFamily: "'DM Mono', monospace", fontWeight: 500 }}>traxes — financial-ai — active</span>
+              </div>
+              {/* Chat area */}
+              <div ref={chatRef} style={{ padding: "20px 18px", display: "flex", flexDirection: "column", gap: 12, maxHeight: 380, overflowY: "auto" }}>
+                {chatMessages.slice(0, chatIdx).map((m, i) => (
+                  <div key={i} className="trx-msg" style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                    {m.role === "ai" && (
+                      <div style={{ width: 28, height: 28, borderRadius: 8, background: `linear-gradient(135deg,${AMBER},#D97F00)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0, marginRight: 8, marginTop: 2 }}>💼</div>
+                    )}
+                    <div style={{
+                      maxWidth: "80%",
+                      background: m.role === "ai" ? "rgba(255,255,255,0.06)" : `linear-gradient(135deg,${AMBER},#D97F00)`,
+                      borderRadius: m.role === "ai" ? "4px 16px 16px 16px" : "16px 4px 16px 16px",
+                      padding: "10px 14px",
+                    }}>
+                      <p style={{ color: m.role === "ai" ? "rgba(255,255,255,0.88)" : DARK, fontSize: 13, lineHeight: 1.65, margin: 0, fontWeight: m.role === "user" ? 600 : 400 }}>{m.text}</p>
+                    </div>
+                  </div>
+                ))}
+                {chatIdx < chatMessages.length && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: `linear-gradient(135deg,${AMBER},#D97F00)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>💼</div>
+                    <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: "4px 16px 16px 16px", padding: "10px 14px" }}>
+                      <span style={{ color: AMBER, fontFamily: "'DM Mono', monospace" }}>▋</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {/* Input bar */}
+              <div style={{ padding: "14px 18px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", gap: 10, alignItems: "center" }}>
+                <div style={{ flex: 1, background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: "10px 14px", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Ask Traxes anything about your finances…</span>
+                </div>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: AMBER, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ color: DARK, fontWeight: 900, fontSize: 16 }}>↑</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── STATS BAR ────────────────────────────────────────────────────────── */}
+      <section style={{ background: "#0A1628", borderTop: "1px solid rgba(255,180,0,0.1)", borderBottom: "1px solid rgba(255,180,0,0.1)", padding: "36px 5%" }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: "clamp(32px,7vw,90px)", flexWrap: "wrap", maxWidth: 1100, margin: "0 auto" }}>
+          {[
+            { value: 4200,   prefix: "$", suffix: "+",    label: "Avg. Extra Deductions Found" },
+            { value: 100,    prefix: "",  suffix: "%",    label: "Mileage Auto-Logged" },
+            { value: 50,     prefix: "",  suffix: " States", label: "Mileage Rules Covered" },
+            { value: 5,      prefix: "< ",suffix: " Min", label: "To a Complete Tax Package" },
+          ].map(s => (
+            <FadeIn key={s.label}>
+              <div className="trx-stat" style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "clamp(2rem,3.5vw,2.8rem)", fontWeight: 900, color: AMBER, fontFamily: "'DM Mono', monospace" }}>
+                  <Counter target={s.value} prefix={s.prefix} suffix={s.suffix} />
+                </div>
+                <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, fontWeight: 500, marginTop: 6 }}>{s.label}</div>
+              </div>
+            </FadeIn>
+          ))}
+        </div>
+      </section>
+
+      {/* ── FEATURES ─────────────────────────────────────────────────────────── */}
+      <section id="traxes-features" style={{ padding: "100px 5%", background: DARK }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign: "center", marginBottom: 64 }}>
+              <div style={{ color: AMBER, fontWeight: 700, fontSize: 11, letterSpacing: 3, textTransform: "uppercase", marginBottom: 14 }}>What Traxes Does</div>
+              <h2 style={{ fontSize: "clamp(2.2rem,4.5vw,3.2rem)", fontWeight: 900, color: "white", lineHeight: 1.1, marginBottom: 16 }}>
+                Every dollar tracked.<br /><span style={{ color: AMBER }}>Every deduction captured.</span>
+              </h2>
+              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 16, maxWidth: 520, margin: "0 auto", lineHeight: 1.8 }}>
+                Traxes runs quietly in the background so you can focus on the road — and hands you a complete financial picture whenever you need it.
+              </p>
+            </div>
+          </FadeIn>
+          <div className="trx-two-col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            {traxesFeatures.map((f, i) => (
+              <FadeIn key={f.title} delay={i * 55}>
+                <div className="trx-feat-card" style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 16, padding: "24px 24px",
+                  display: "flex", gap: 18, alignItems: "flex-start",
+                  cursor: "default",
+                }}>
+                  <div style={{ fontSize: 28, flexShrink: 0, lineHeight: 1 }}>{f.icon}</div>
+                  <div>
+                    <div style={{ color: "white", fontWeight: 800, fontSize: 15, marginBottom: 8 }}>{f.title}</div>
+                    <div style={{ color: "rgba(255,255,255,0.58)", fontSize: 13.5, lineHeight: 1.75, marginBottom: 10 }}>{f.desc}</div>
+                    <div style={{ color: AMBER, fontSize: 12, fontWeight: 600 }}>↳ {f.detail}</div>
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── REPORTS PREVIEW ──────────────────────────────────────────────────── */}
+      <section id="traxes-reports" style={{ padding: "100px 5%", background: "#080F1E" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign: "center", marginBottom: 56 }}>
+              <div style={{ color: AMBER, fontWeight: 700, fontSize: 11, letterSpacing: 3, textTransform: "uppercase", marginBottom: 14 }}>Always Up to Date</div>
+              <h2 style={{ fontSize: "clamp(2.2rem,4.5vw,3rem)", fontWeight: 900, color: "white", lineHeight: 1.1 }}>
+                Reports that actually<br /><span style={{ color: AMBER }}>make sense.</span>
+              </h2>
+              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 16, maxWidth: 480, margin: "14px auto 0", lineHeight: 1.8 }}>
+                Clear, clean, and ready to hand to anyone — your tax preparer, a lender, or yourself at midnight wondering where the money went.
+              </p>
+            </div>
+          </FadeIn>
+
+          <FadeIn delay={80}>
+            <div style={{ maxWidth: 640, margin: "0 auto" }}>
+              {/* Tab bar */}
+              <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.1)", marginBottom: 0 }}>
+                {reportTabs.map(t => (
+                  <button key={t.id}
+                    className={`trx-tab${activeTab === t.id ? " active" : ""}`}
+                    onClick={() => setActiveTab(t.id)}
+                    style={{
+                      flex: 1, padding: "14px 10px",
+                      background: "none", border: "none",
+                      borderBottom: `2px solid ${activeTab === t.id ? AMBER : "transparent"}`,
+                      color: activeTab === t.id ? AMBER : "rgba(255,255,255,0.45)",
+                      fontWeight: 700, fontSize: 13,
+                      fontFamily: "'Poppins', sans-serif",
+                    }}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Report card */}
+              <div style={{ background: "#0C1628", borderRadius: "0 0 18px 18px", border: "1px solid rgba(255,255,255,0.07)", borderTop: "none", overflow: "hidden" }}>
+                {/* Card header */}
+                <div style={{ padding: "20px 24px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ color: "white", fontWeight: 700, fontSize: 15 }}>{activeReport.preview.title}</div>
+                  <span style={{ background: "rgba(255,180,0,0.12)", color: AMBER, fontSize: 11, fontWeight: 700, padding: "4px 12px", borderRadius: 20, border: "1px solid rgba(255,180,0,0.25)" }}>
+                    {activeReport.preview.badge}
+                  </span>
+                </div>
+                {/* Rows */}
+                <div style={{ padding: "6px 0" }}>
+                  {activeReport.preview.rows.map((row, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 24px", background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent" }}>
+                      <span style={{ color: "rgba(255,255,255,0.62)", fontSize: 13.5 }}>{row.label}</span>
+                      <span style={{ fontFamily: "'DM Mono', monospace", fontWeight: 500, fontSize: 13.5, color: row.positive === true ? "#4ADE80" : row.positive === false ? "#FC8181" : "rgba(255,255,255,0.35)" }}>
+                        {row.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {/* Total */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", background: "rgba(255,180,0,0.07)", borderTop: `1px solid rgba(255,180,0,0.2)` }}>
+                  <span style={{ color: "white", fontWeight: 800, fontSize: 15 }}>{activeReport.preview.total.label}</span>
+                  <span style={{ fontFamily: "'DM Mono', monospace", fontWeight: 900, fontSize: 20, color: AMBER }}>{activeReport.preview.total.value}</span>
+                </div>
+                {/* Export bar */}
+                <div style={{ padding: "14px 24px", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", gap: 10 }}>
+                  {["Export PDF", "Export CSV", "Share with Accountant"].map(action => (
+                    <button key={action} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "7px 14px", color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Poppins', sans-serif", transition: "background 0.2s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,180,0,0.12)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}>
+                      {action}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ── MEET TRAXES (full chat) ───────────────────────────────────────────── */}
+      <section id="traxes-chat" style={{ padding: "100px 5%", background: DARK }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <div className="trx-two-col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
+            {/* Left copy */}
+            <FadeIn>
+              <div>
+                <div style={{ color: AMBER, fontWeight: 700, fontSize: 11, letterSpacing: 3, textTransform: "uppercase", marginBottom: 14 }}>Always Available</div>
+                <h2 style={{ fontSize: "clamp(2rem,4vw,2.8rem)", fontWeight: 900, color: "white", lineHeight: 1.15, marginBottom: 20 }}>
+                  Ask Traxes anything.<br /><span style={{ color: AMBER }}>Any time. Any mile.</span>
+                </h2>
+                <p style={{ color: "rgba(255,255,255,0.62)", fontSize: 16, lineHeight: 1.85, marginBottom: 32 }}>
+                  Unlike a seasonal accountant, Traxes is with you every day of the year. Ask about your take-home, check your quarterly tax estimate, or get a full income breakdown — in plain language, instantly.
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {[
+                    { q: "\"What's my net this month?\"",       a: "Get a live breakdown: gross, expenses, take-home." },
+                    { q: "\"How many miles did I log today?\"",  a: "Exact mileage with IRS rate applied instantly." },
+                    { q: "\"Am I ready to file my taxes?\"",    a: "Traxes shows you what's complete and what's missing." },
+                    { q: "\"Did I miss any deductions?\"",      a: "Flags categories most drivers overlook every year." },
+                  ].map((item) => (
+                    <div key={item.q} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "14px 18px" }}>
+                      <div style={{ color: AMBER, fontWeight: 700, fontSize: 13.5, marginBottom: 4 }}>{item.q}</div>
+                      <div style={{ color: "rgba(255,255,255,0.58)", fontSize: 13 }}>→ {item.a}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </FadeIn>
+            {/* Right: How it works */}
+            <FadeIn delay={80}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 700, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 20 }}>How Traxes works</div>
+                {[
+                  { step: "01", title: "Drives with you", desc: "Traxes runs in the background of TruckWithEase, logging miles, monitoring loads, and capturing expenses automatically — nothing manual required." },
+                  { step: "02", title: "Categorizes everything", desc: "Every transaction is sorted into the right IRS bucket. Fuel, tolls, per-diem, maintenance — all separated and labeled for you." },
+                  { step: "03", title: "Builds your reports", desc: "Monthly income reports, mileage logs, quarterly tax estimates — generated live, exportable in one tap, always shareable with your accountant." },
+                  { step: "04", title: "Prepares your taxes", desc: "Come year end, your Schedule C and full deduction package is ready to go. Most drivers take less than 5 minutes to finalize." },
+                ].map((item, i) => (
+                  <div key={item.step} style={{ display: "flex", gap: 20, padding: "22px 0", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 28, fontWeight: 500, color: "rgba(255,180,0,0.25)", flexShrink: 0, lineHeight: 1, marginTop: 2 }}>{item.step}</div>
+                    <div>
+                      <div style={{ color: "white", fontWeight: 800, fontSize: 15, marginBottom: 6 }}>{item.title}</div>
+                      <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 13.5, lineHeight: 1.75 }}>{item.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA ──────────────────────────────────────────────────────────────── */}
+      <section id="traxes-start" style={{ padding: "100px 5%", background: "#080F1E", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,180,0,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <FadeIn>
+          <div style={{ textAlign: "center", position: "relative", zIndex: 2 }}>
+            <div style={{ display: "inline-block", background: "rgba(255,180,0,0.1)", border: "1px solid rgba(255,180,0,0.3)", borderRadius: 20, padding: "6px 18px", marginBottom: 24 }}>
+              <span style={{ color: AMBER, fontSize: 12, fontWeight: 800, letterSpacing: 2 }}>INCLUDED IN ALL PLANS</span>
+            </div>
+            <h2 style={{ fontSize: "clamp(2.2rem,5vw,3.6rem)", fontWeight: 900, color: "white", lineHeight: 1.1, marginBottom: 20 }}>
+              Stop leaving money<br /><span style={{ color: AMBER }}>on the road.</span>
+            </h2>
+            <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 17, maxWidth: 480, margin: "0 auto 40px", lineHeight: 1.8 }}>
+              Traxes is included in every TruckWithEase plan. Start your 30-day free trial and let your financial co-pilot go to work today.
+            </p>
+            <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+              <a href="/#pricing" style={{
+                background: AMBER, color: DARK,
+                padding: "17px 42px", borderRadius: 12,
+                fontWeight: 900, fontSize: 17, textDecoration: "none",
+                boxShadow: "0 8px 32px rgba(255,180,0,0.4)",
+                transition: "opacity 0.2s",
+              }}
+                onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+                onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+                Start Free Trial — 30 Days
+              </a>
+              <a href="/" style={{
+                background: "rgba(255,255,255,0.07)", color: "white",
+                padding: "17px 32px", borderRadius: 12,
+                fontWeight: 600, fontSize: 17, textDecoration: "none",
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}>← Back to TruckWithEase</a>
+            </div>
+            <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 13, marginTop: 24 }}>No credit card required · Cancel anytime · Works on iOS & Android</p>
+          </div>
+        </FadeIn>
+      </section>
+
+      {/* ── FOOTER ───────────────────────────────────────────────────────────── */}
+      <footer style={{ background: "#040810", padding: "28px 5%", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 12 }}>© 2026 TruckWithEase · Traxes is part of the TruckWithEase platform</span>
+        <a href="/" style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, textDecoration: "none" }}>← Back to main site</a>
+      </footer>
+    </div>
+  );
+}

@@ -1,0 +1,335 @@
+/* ============================================
+   TRUCKWITHEASE @ MORRISHIVE.COM
+   Global Brand Design System
+   Deep Black + Metallic Gold + Clean White
+   Premium · Refined · Professional
+   ============================================ */
+
+:root {
+  /* Core Brand Colors */
+  --twe-black:       #0a0a0a;
+  --twe-black-soft:  #111111;
+  --twe-black-card:  #141414;
+  --twe-black-card2: #1a1a1a;
+  --twe-black-border:#252525;
+  --twe-black-hover: #1e1e1e;
+
+  /* Metallic Gold — matches the logo lettering */
+  --twe-gold:        #C9A84C;
+  --twe-gold-bright: #D4AF5A;
+  --twe-gold-dim:    #7A5E2A;
+  --twe-gold-glow:   rgba(201,168,76,0.10);
+  --twe-gold-subtle: rgba(201,168,76,0.06);
+
+  /* White hierarchy */
+  --twe-white:       #FFFFFF;
+  --twe-white-90:    rgba(255,255,255,0.88);
+  --twe-white-60:    rgba(255,255,255,0.55);
+  --twe-white-30:    rgba(255,255,255,0.28);
+  --twe-white-10:    rgba(255,255,255,0.06);
+
+  /* Status — muted, professional */
+  --twe-green:       #16a34a;
+  --twe-green-dim:   rgba(22,163,74,0.12);
+  --twe-red:         #dc2626;
+  --twe-red-dim:     rgba(220,38,38,0.12);
+  --twe-amber:       #d97706;
+  --twe-amber-dim:   rgba(217,119,6,0.12);
+  --twe-blue:        #2563eb;
+  --twe-blue-dim:    rgba(37,99,235,0.12);
+
+  /* Typography */
+  --font-display:    'Bebas Neue', 'Oswald', sans-serif;
+  --font-heading:    'Oswald', sans-serif;
+  --font-body:       'Inter', system-ui, sans-serif;
+
+  /* Spacing */
+  --radius:          6px;
+  --radius-lg:       10px;
+  --radius-xl:       14px;
+
+  /* Gold gradient — refined, not flashy */
+  --gold-gradient: linear-gradient(135deg, #B8922E 0%, #C9A84C 35%, #D4AF5A 60%, #9A7535 100%);
+  --gold-border:   linear-gradient(135deg, #C9A84C, #B8922E);
+
+  /* Shadows — subtle depth, not glow */
+  --shadow-card:  0 1px 3px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.3);
+  --shadow-hover: 0 4px 16px rgba(0,0,0,0.5), 0 1px 4px rgba(201,168,76,0.08);
+}
+
+/* ---- Base reset ---- */
+html, body, #root {
+  background-color: var(--twe-black) !important;
+  color: var(--twe-white-90);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- Gold text utility ---- */
+.twe-gold-text {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ---- Display headline ---- */
+.twe-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 0.95;
+}
+
+/* ---- Cards — clean, solid, professional ---- */
+.twe-card {
+  background: var(--twe-black-card);
+  border: 1px solid var(--twe-black-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.twe-card:hover {
+  border-color: var(--twe-gold-dim);
+  box-shadow: var(--shadow-hover);
+  background: var(--twe-black-hover);
+}
+
+/* ---- Gold button — solid, confident ---- */
+.twe-btn-gold {
+  background: var(--gold-gradient);
+  color: #0a0a0a;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: none;
+  border-radius: var(--radius);
+  padding: 11px 26px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.twe-btn-gold:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+.twe-btn-gold:active {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* ---- Ghost button ---- */
+.twe-btn-ghost {
+  background: transparent;
+  color: var(--twe-gold);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--twe-gold-dim);
+  border-radius: var(--radius);
+  padding: 10px 24px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.twe-btn-ghost:hover {
+  background: var(--twe-gold-subtle);
+  border-color: var(--twe-gold);
+}
+
+/* ---- Section divider ---- */
+.twe-divider {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--twe-black-border) 30%, var(--twe-black-border) 70%, transparent);
+  margin: 32px 0;
+}
+
+/* ---- Gold accent divider ---- */
+.twe-divider-gold {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--twe-gold-dim) 30%, var(--twe-gold-dim) 70%, transparent);
+  margin: 32px 0;
+}
+
+/* ---- Status badges — clean pill style ---- */
+.twe-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.twe-badge-green  { background: var(--twe-green-dim);  color: #4ade80; border: 1px solid rgba(74,222,128,0.2); }
+.twe-badge-red    { background: var(--twe-red-dim);    color: #f87171; border: 1px solid rgba(248,113,113,0.2); }
+.twe-badge-amber  { background: var(--twe-amber-dim);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+.twe-badge-gold   { background: var(--twe-gold-subtle); color: var(--twe-gold); border: 1px solid var(--twe-gold-dim); }
+.twe-badge-blue   { background: var(--twe-blue-dim);   color: #60a5fa; border: 1px solid rgba(96,165,250,0.2); }
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--twe-black); }
+::-webkit-scrollbar-thumb { background: var(--twe-black-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--twe-gold-dim); }
+
+/* ---- Animations — subtle, purposeful ---- */
+
+/* Fade in — clean entry, no bounce */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.twe-fade-in { animation: fadeIn 0.4s ease both; }
+
+/* Stagger helpers */
+.twe-delay-1 { animation-delay: 0.05s; }
+.twe-delay-2 { animation-delay: 0.10s; }
+.twe-delay-3 { animation-delay: 0.15s; }
+.twe-delay-4 { animation-delay: 0.20s; }
+.twe-delay-5 { animation-delay: 0.25s; }
+
+/* Ticker — for live feed banners */
+@keyframes tickerScroll {
+  0%   { transform: translateX(100vw); }
+  100% { transform: translateX(-100%); }
+}
+.twe-ticker { animation: tickerScroll 32s linear infinite; white-space: nowrap; }
+
+/* Soft pulse — status dots only, not cards */
+@keyframes softPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+.twe-dot-pulse { animation: softPulse 2s ease-in-out infinite; }
+
+/* Logo fade in */
+@keyframes logoReveal {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.twe-logo-reveal { animation: logoReveal 0.8s ease both; }
+
+/* ---- Table styles ---- */
+.twe-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.twe-table th {
+  background: var(--twe-black-card2);
+  color: var(--twe-white-60);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--twe-black-border);
+  font-size: 11px;
+}
+.twe-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--twe-black-border);
+  color: var(--twe-white-90);
+  vertical-align: middle;
+}
+.twe-table tr:last-child td { border-bottom: none; }
+.twe-table tr:hover td { background: var(--twe-black-hover); }
+
+/* ---- Input fields ---- */
+.twe-input {
+  background: var(--twe-black-soft);
+  border: 1px solid var(--twe-black-border);
+  border-radius: var(--radius);
+  color: var(--twe-white-90);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 14px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.twe-input:focus { border-color: var(--twe-gold-dim); }
+.twe-input::placeholder { color: var(--twe-white-30); }
+
+/* ---- Nav ---- */
+.twe-nav {
+  background: rgba(10,10,10,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--twe-black-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* ---- Stat cards ---- */
+.twe-stat {
+  background: var(--twe-black-card);
+  border: 1px solid var(--twe-black-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  text-align: center;
+}
+.twe-stat-number {
+  font-family: var(--font-display);
+  font-size: 36px;
+  color: var(--twe-gold);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.twe-stat-label {
+  font-size: 11px;
+  color: var(--twe-white-60);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+/* ---- Gold accent left border ---- */
+.twe-accent-left {
+  border-left: 3px solid var(--twe-gold);
+  padding-left: 14px;
+}
+
+/* ---- Section header ---- */
+.twe-section-header {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--twe-white);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.twe-section-sub {
+  font-size: 13px;
+  color: var(--twe-white-60);
+  margin-bottom: 24px;
+}
+
+/* ---- Remove cartoon glows from generic elements ---- */
+* {
+  /* No global box-shadow glow effects — applied only where intentional */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---- Progress bar ---- */
+.twe-progress {
+  background: var(--twe-black-border);
+  border-radius: 20px;
+  height: 6px;
+  overflow: hidden;
+}
+.twe-progress-fill {
+  height: 100%;
+  border-radius: 20px;
+  background: var(--gold-gradient);
+  transition: width 0.4s ease;
+}
