@@ -21,7 +21,7 @@ import { useState, type ReactNode } from "react";
 import {
   LayoutDashboard, Clock, Map, ClipboardCheck, Fuel, Route, HeartPulse,
   Wrench, Trophy, Package, MessageSquare, FileText, CreditCard, Truck, Boxes, BrainCircuit,
-  ChevronDown, ShieldAlert,
+  ChevronDown, ShieldCheck, Menu, X,
 } from "lucide-react";
 import { useSession, type Role } from "../lib/session";
 
@@ -54,21 +54,45 @@ export function Shell({ children }: { children: ReactNode }) {
   const [loc] = useLocation();
   const { session, setSession } = useSession();
   const [open, setOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const nav = NAV.filter((n) => n.roles.includes(session.role));
+  const current = nav.find((n) => n.to === loc);
 
   return (
     <div className="min-h-screen bg-[#08090c] flex">
-      {/* Sidebar */}
-      <aside className="w-60 shrink-0 bg-gradient-to-b from-[#13151b] via-[#0d0e12] to-[#08090c] border-r border-[#222634] text-[#e3e2e6] flex flex-col sticky top-0 h-screen">
-        <Link to="/app" className="flex items-center gap-2 px-5 h-16 border-b border-[#222634]">
-          <div className="flex h-8 w-8 items-center justify-center  bg-gradient-to-br from-[#A9762A] via-[#ffd700] to-[#F5E79E]">
-            <Truck className="h-5 w-5 text-[#08090c]" />
-          </div>
-          <span className="text-lg font-[Oswald] font-semibold uppercase tracking-[0.06em]">
-            Truck<span className="text-[#ffd700]">WithEase</span>
-          </span>
-        </Link>
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+      {navOpen && (
+        <button
+          aria-label="Close menu"
+          onClick={() => setNavOpen(false)}
+          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+        />
+      )}
+
+      {/* Sidebar: off-canvas drawer below lg, pinned column at lg and up */}
+      <aside
+        id="app-nav"
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-[#222634] bg-[#0d0e12] text-[#e3e2e6] transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-60 lg:translate-x-0 ${
+          navOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex h-16 items-center justify-between border-b border-[#222634] pl-5 pr-2">
+          <Link to="/app" onClick={() => setNavOpen(false)} className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center bg-[#d4af37]">
+              <Truck className="h-5 w-5 text-[#08090c]" aria-hidden="true" />
+            </div>
+            <span className="text-lg font-[Oswald] font-semibold uppercase tracking-[0.06em]">
+              Truck<span className="text-[#ffd700]">WithEase</span>
+            </span>
+          </Link>
+          <button
+            onClick={() => setNavOpen(false)}
+            aria-label="Close menu"
+            className="flex min-h-11 min-w-11 items-center justify-center text-[#94a3b8] hover:text-[#ffd700] lg:hidden"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3" aria-label="App">
           {nav.map((n) => {
             const active = loc === n.to;
             const Icon = n.icon;
@@ -76,13 +100,15 @@ export function Shell({ children }: { children: ReactNode }) {
               <Link
                 key={n.to}
                 to={n.to}
-                className={`flex items-center gap-3  px-3 py-2 text-sm transition-colors ${
+                onClick={() => setNavOpen(false)}
+                aria-current={active ? "page" : undefined}
+                className={`flex min-h-11 items-center gap-3 px-3 text-sm transition-colors ${
                   active
                     ? "bg-[#d4af37] text-[#08090c] font-semibold"
                     : "text-[#d0c5af] hover:bg-[#1a1b21] hover:text-[#ffd700]"
                 }`}
               >
-                <Icon className="h-[18px] w-[18px]" />
+                <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
                 {n.label}
               </Link>
             );
@@ -95,29 +121,41 @@ export function Shell({ children }: { children: ReactNode }) {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-[#0d0e12] border-b border-[#222634] flex items-center justify-between px-6 sticky top-0 z-20">
-          <div className="flex items-center gap-2 text-sm text-[#94a3b8]">
-            <ShieldAlert className="h-4 w-4 text-[#ef4444]" />
-            <span>
-              <span className="font-[Oswald] uppercase tracking-[0.18em] text-[11px] text-[#ef4444]">No login wall</span>
-              <span className="mx-2 text-[#333]">|</span>
-              Every role is open to anyone with the URL. Real accounts are not built yet.
+        <header className="h-16 bg-[#0d0e12] border-b border-[#222634] flex items-center justify-between gap-2 px-2 sm:px-4 lg:px-6 sticky top-0 z-20">
+          <div className="flex min-w-0 items-center gap-1">
+            <button
+              onClick={() => setNavOpen(true)}
+              aria-label="Open menu"
+              aria-controls="app-nav"
+              aria-expanded={navOpen}
+              className="flex min-h-11 min-w-11 items-center justify-center text-[#e3e2e6] hover:text-[#ffd700] lg:hidden"
+            >
+              <Menu className="h-6 w-6" aria-hidden="true" />
+            </button>
+            <span className="truncate font-[Oswald] text-sm uppercase tracking-[0.14em] text-[#e3e2e6] lg:hidden">
+              {current?.label ?? "TruckWithEase"}
+            </span>
+            <span className="hidden items-center gap-2 text-sm text-[#94a3b8] lg:flex">
+              <ShieldCheck className="h-4 w-4 text-[#d4af37]" aria-hidden="true" />
+              Signed in
             </span>
           </div>
           {/* Role switcher */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <button
               onClick={() => setOpen((o) => !o)}
-              className="flex items-center gap-2  border border-[#222634] bg-[#13151b] px-3 py-2 text-sm hover:border-[#d4af37] transition-colors"
+              aria-expanded={open}
+              aria-haspopup="menu"
+              className="flex min-h-11 items-center gap-2 border border-[#222634] bg-[#13151b] px-2 sm:px-3 text-sm hover:border-[#d4af37] transition-colors"
             >
               <span className="flex h-6 w-6 items-center justify-center  bg-[#d4af37] text-[#08090c] text-xs font-bold">
                 {session.name[0]}
               </span>
-              <span className="font-medium text-[#e3e2e6]">{session.name}</span>
+              <span className="hidden font-medium text-[#e3e2e6] sm:inline">{session.name}</span>
               <span className="rounded bg-[#1a1b21] border border-[#222634] px-1.5 py-0.5 font-[Oswald] text-[10px] font-semibold uppercase tracking-[0.14em] text-[#d4af37]">
                 {session.role}
               </span>
-              <ChevronDown className="h-4 w-4 text-[#94a3b8]" />
+              <ChevronDown className="h-4 w-4 text-[#94a3b8]" aria-hidden="true" />
             </button>
             {open && (
               <div className="absolute right-0 mt-2 w-64  border border-[#222634] bg-[#13151b] shadow-lg shadow-black/60 py-1 z-30">
@@ -145,7 +183,7 @@ export function Shell({ children }: { children: ReactNode }) {
             )}
           </div>
         </header>
-        <main className="flex-1 p-6 max-w-[1400px] w-full mx-auto">{children}</main>
+        <main className="flex-1 p-4 lg:p-6 max-w-[1400px] w-full mx-auto">{children}</main>
       </div>
     </div>
   );
