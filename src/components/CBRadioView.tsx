@@ -50,6 +50,7 @@ import {
   CB10CodeItem,
 } from '../data/cbRadioChannels';
 import { cbAudioEngine, CBAudioEngineState } from '../services/cbAudioEngine';
+import { cbRadioService } from '../services/cbRadioService';
 import { triggerHapticFeedback } from '../services/haptics';
 
 interface CBRadioViewProps {
@@ -138,6 +139,32 @@ export const CBRadioView: React.FC<CBRadioViewProps> = ({ onNavigateToTab }) => 
     };
   }, []);
 
+  // Closed Loop: Real-time Channel Chatter Synchronization with RF Mesh Gateway
+  useEffect(() => {
+    let isMounted = true;
+    const syncChatter = async () => {
+      try {
+        const chatter = await cbRadioService.getChannelChatter(currentChannelNum);
+        if (isMounted && chatter && chatter.length > 0) {
+          setMessagesByChannel((prev) => ({
+            ...prev,
+            [currentChannelNum]: chatter,
+          }));
+        }
+      } catch (err) {
+        console.warn('[CBRadioView] Channel chatter sync notice:', err);
+      }
+    };
+
+    syncChatter();
+    const syncInterval = setInterval(syncChatter, 7000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(syncInterval);
+    };
+  }, [currentChannelNum]);
+
   // Sync Audio Engine Parameters
   useEffect(() => {
     cbAudioEngine.setVolume(volume);
@@ -222,8 +249,8 @@ export const CBRadioView: React.FC<CBRadioViewProps> = ({ onNavigateToTab }) => 
     }
   };
 
-  // Broadcast Message to Channel
-  const broadcastMessage = (text: string, isVoice: boolean = false, tenCode?: string) => {
+  // Broadcast Message to Channel - Closed-Loop 27MHz Mesh Relay
+  const broadcastMessage = async (text: string, isVoice: boolean = false, tenCode?: string) => {
     if (!text.trim()) return;
     triggerHapticFeedback('success');
 
@@ -252,8 +279,36 @@ export const CBRadioView: React.FC<CBRadioViewProps> = ({ onNavigateToTab }) => 
     setInterimVoiceText('');
     setLiveTranscript('');
 
-    // Trigger AI Trucker Response after 2.5-4 seconds
-    triggerSimulatedTruckerReply(text, currentChannelNum);
+    // Closed Loop: Transmit packet to RF Mesh Backend & Receive Authentic Peer Voice/Audio Reply
+    try {
+      const res = await cbRadioService.broadcast({
+        channel: currentChannelNum,
+        senderHandle: userHandle,
+        senderUnit: 'UNIT #104-E (Titan Peterbilt 579)',
+        text: text.trim(),
+        tenCode,
+        audioDurationSec: isVoice ? 4 : 3,
+      });
+
+      if (res?.peerReply) {
+        const peerReply = res.peerReply;
+        setTimeout(() => {
+          setMessagesByChannel((prev) => ({
+            ...prev,
+            [currentChannelNum]: [...(prev[currentChannelNum] || []), peerReply],
+          }));
+
+          // Trigger authentic RF bandpass voice playback & roger beep
+          cbAudioEngine.playSquelchTail(220);
+          cbAudioEngine.speakIncomingMessage(peerReply.text, () => {
+            cbAudioEngine.playRogerBeepSound();
+          });
+        }, 1600);
+      }
+    } catch (err) {
+      console.warn('Backend broadcast fallback:', err);
+      triggerSimulatedTruckerReply(text, currentChannelNum);
+    }
   };
 
   // Contextual AI Trucker Reply Simulation

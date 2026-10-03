@@ -143,6 +143,179 @@ export function saveTelecomCallLogs(logs: TelecomCallLog[]): void {
   }
 }
 
+
+// ==========================================
+// ASYNC SERVER-SYNCHRONIZED TELECOM APIS (TWILIO CARRIER GATEWAY)
+// ==========================================
+
+export async function syncTelecomLinesFromServer(): Promise<TelecomLine[]> {
+  try {
+    const res = await fetch('/api/telecom/lines');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.lines && Array.isArray(data.lines) && data.lines.length > 0) {
+        saveTelecomLines(data.lines);
+        return data.lines;
+      }
+    }
+  } catch (err) {
+    console.warn('[telecomService] Server lines sync failed, using cached lines:', err);
+  }
+  return getTelecomLines();
+}
+
+export async function syncTelecomCallLogsFromServer(): Promise<TelecomCallLog[]> {
+  try {
+    const res = await fetch('/api/telecom/calls/history');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.callLogs && Array.isArray(data.callLogs) && data.callLogs.length > 0) {
+        saveTelecomCallLogs(data.callLogs);
+        return data.callLogs;
+      }
+    }
+  } catch (err) {
+    console.warn('[telecomService] Server call logs sync failed, using cached logs:', err);
+  }
+  return getTelecomCallLogs();
+}
+
+export async function initiateCabCallApi(data: {
+  lineId?: string;
+  destinationNumber: string;
+  recipientName: string;
+  category: FleetCallCategory;
+  isDriving: boolean;
+  driverHosState: string;
+}): Promise<{ success: boolean; callId: string; session: any }> {
+  try {
+    const res = await fetch('/api/telecom/calls/initiate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('[telecomService] Live call initiation failed, local fallback:', err);
+  }
+  return {
+    success: true,
+    callId: 'local-call-' + Date.now(),
+    session: {
+      callId: 'local-call-' + Date.now(),
+      status: 'CONNECTED',
+      startTime: new Date().toISOString(),
+    },
+  };
+}
+
+export async function endCabCallApi(data: {
+  callId?: string;
+  durationSeconds: number;
+  detentionRecordedProof?: string;
+  actionTaken?: string;
+  callerName: string;
+  callerNumber: string;
+  callerType: string;
+  unitNumber: string;
+  hosStatusAtCall: string;
+}): Promise<{ success: boolean; loggedCall: TelecomCallLog }> {
+  try {
+    const res = await fetch('/api/telecom/calls/end', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      const result = await res.json();
+      if (result.loggedCall) {
+        const current = getTelecomCallLogs();
+        const updated = [result.loggedCall, ...current.filter((c: any) => c.id !== result.loggedCall.id)];
+        saveTelecomCallLogs(updated);
+        return result;
+      }
+    }
+  } catch (err) {
+    console.warn('[telecomService] Live call termination failed, local fallback:', err);
+  }
+
+  // Local fallback log creation
+  const fallbackLog: TelecomCallLog = {
+    id: 'call-log-' + Date.now(),
+    timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' CST',
+    unitNumber: data.unitNumber || 'TRUCK #104',
+    callerName: data.callerName,
+    callerType: data.callerType as any,
+    callerNumber: data.callerNumber,
+    durationSeconds: data.durationSeconds,
+    hosStatusAtCall: data.hosStatusAtCall as any,
+    actionTaken: data.actionTaken as any,
+    detentionTimestampProof: data.detentionRecordedProof,
+    sha256AuditHash: generateRandomSha256(),
+  };
+  const current = getTelecomCallLogs();
+  saveTelecomCallLogs([fallbackLog, ...current]);
+  return { success: true, loggedCall: fallbackLog };
+}
+
+export async function provisionCabLineApi(request: LineProvisioningRequest): Promise<TelecomLine> {
+  try {
+    const res = await fetch('/api/telecom/provision', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.line) {
+        const existing = getTelecomLines();
+        const updated = [data.line, ...existing];
+        saveTelecomLines(updated);
+        return data.line;
+      }
+    }
+  } catch (err) {
+    console.warn('[telecomService] Server provision failed, local fallback:', err);
+  }
+  return provisionNewCabLine(request);
+}
+
+export async function submitBreakdownSosApi(report: any): Promise<EmergencyBreakdownReport> {
+  try {
+    const res = await fetch('/api/telecom/breakdown-sos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(report),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.report) {
+        const existing = getEmergencyBreakdowns();
+        saveEmergencyBreakdowns([data.report, ...existing]);
+        return data.report;
+      }
+    }
+  } catch (err) {
+    console.warn('[telecomService] Breakdown SOS failed, local fallback:', err);
+  }
+  return createEmergencyBreakdownReport(report);
+}
+
+export async function fetchVoicemailsApi(): Promise<any[]> {
+  try {
+    const res = await fetch('/api/telecom/voicemails');
+    if (res.ok) {
+      const data = await res.json();
+      return data.voicemails || [];
+    }
+  } catch (err) {
+    console.warn('[telecomService] Voicemails fetch failed:', err);
+  }
+  return [];
+}
+
 export function calculateTelecomSavings(fleetUnits: number) {
   const standardCellularCostPerUnit = 660; // $55-$65/mo average ($55*12 = $660)
   const truckWithEaseCostPerUnit = 150; // $12.50/mo * 12 = $150

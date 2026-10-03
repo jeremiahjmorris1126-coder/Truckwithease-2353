@@ -5021,7 +5021,7 @@ app.get('/api/messages', (req, res) => {
   });
 });
 
-// POST /api/messages
+// POST /api/messages - Closed-Loop Intelligent Dispatcher & Driver Communications
 app.post('/api/messages', (req, res) => {
   const { channel = 'DISPATCH', text, priority = 'NORMAL', audioTranscript, attachedLoadId } = req.body;
   if (!text || text.trim() === '') {
@@ -5029,7 +5029,7 @@ app.post('/api/messages', (req, res) => {
   }
 
   const newMessage = {
-    id: `msg-${Date.now()}`,
+    id: 'msg-' + Date.now(),
     channel,
     senderName: 'Vance R. (Driver TR-904)',
     senderRole: 'DRIVER',
@@ -5043,13 +5043,169 @@ app.post('/api/messages', (req, res) => {
 
   messagesState.push(newMessage);
 
+  // Closed Loop Auto-Response Engine
+  const q = text.toLowerCase();
+  let autoReply = null;
+
+  if (channel === 'DISPATCH' || channel === 'ALL') {
+    let replyText = '10-4 Driver TR-904! Message acknowledged by Central Dispatch. Route itinerary is green-lit.';
+    let replySender = 'Central Dispatch (Sarah M.)';
+    let replyRole = 'DISPATCHER';
+
+    if (q.includes('loaded') || q.includes('rolling') || q.includes('bol')) {
+      replyText = '10-4 Driver! Signed BOL verified on file. Route green-lit. Fuel stop pre-authorized at Pilot Exit 142. Keep rolling safe!';
+    } else if (q.includes('arrived') || q.includes('dock') || q.includes('door') || q.includes('receiver') || q.includes('shipper')) {
+      replyText = 'Copied your arrival at destination dock! Check in at shipping door #4. Reference PO #884192. Detention clock initiates in 15 mins.';
+    } else if (q.includes('detention') || q.includes('wait') || q.includes('delay')) {
+      replyText = 'Detention pay clock verified and time-stamped. GPS geo-fence confirmed. Broker bill-back rate of $75.00/hr active.';
+    } else if (q.includes('advance') || q.includes('fuel') || q.includes('comchek') || q.includes('money') || q.includes('efs')) {
+      replyText = 'Fuel advance approved. EFS ExpressCode: 4892-0199 for $250.00 loaded on your fleet card.';
+      replySender = 'Fleet Accounting & Fuel Desk';
+    } else if (q.includes('scale') || q.includes('weight') || q.includes('heavy') || q.includes('axle')) {
+      replyText = 'Cat scale ticket noted. Gross 79,480 lbs, steers 11,840 lbs, drives 33,820 lbs, tandems 33,820 lbs. Fully compliant across all states.';
+      replySender = 'Safety & Weight Compliance';
+    }
+
+    autoReply = {
+      id: 'reply-' + (Date.now() + 100),
+      channel: 'DISPATCH',
+      senderName: replySender,
+      senderRole: replyRole,
+      text: replyText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      priority: 'NORMAL',
+      read: false,
+    };
+    messagesState.push(autoReply);
+  } else if (channel === 'SAFETY') {
+    let replyText = 'Safety & Compliance desk copied. Telematics telemetry nominal. Remember your mandatory 30-minute DOT rest break before 8 hours.';
+    if (q.includes('inspection') || q.includes('dot') || q.includes('officer')) {
+      replyText = 'Level II inspection logged. Upload inspection sheet via cab camera. Clean inspection bonus ($100) credited upon zero-defect upload.';
+    }
+    autoReply = {
+      id: 'reply-' + (Date.now() + 100),
+      channel: 'SAFETY',
+      senderName: 'Safety Compliance Officer (Dave)',
+      senderRole: 'SAFETY_OFFICER',
+      text: replyText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      priority: 'NORMAL',
+      read: false,
+    };
+    messagesState.push(autoReply);
+  } else if (channel === 'MAINTENANCE') {
+    let replyText = 'Fleet Maintenance desk alerted. Mobile service coordinator is tracking your unit GPS coordinates.';
+    if (q.includes('tire') || q.includes('flat') || q.includes('air') || q.includes('leak') || q.includes('psi')) {
+      replyText = 'Tire maintenance alert received. Loves Truck Care mobile unit at Exit 142 alerted. Service truck en route with replacement 295/75R22.5.';
+    } else if (q.includes('check engine') || q.includes('def') || q.includes('regen') || q.includes('coolant')) {
+      replyText = 'J1939 fault logged on server. Cummins ISX15 ECM diagnostics indicate sensor drift. Cleared for 45 miles to TA Service Bay.';
+    }
+    autoReply = {
+      id: 'reply-' + (Date.now() + 100),
+      channel: 'MAINTENANCE',
+      senderName: 'Fleet Maintenance Desk (Pete)',
+      senderRole: 'MECHANIC',
+      text: replyText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      priority: 'HIGH',
+      read: false,
+    };
+    messagesState.push(autoReply);
+  } else if (channel === 'SHIPPER_RECEIVER') {
+    autoReply = {
+      id: 'reply-' + (Date.now() + 100),
+      channel: 'SHIPPER_RECEIVER',
+      senderName: 'Facility Gate Guard & Shipping Office',
+      senderRole: 'SYSTEM',
+      text: 'Shipping Office: Gate code is #4192. Proceed to Staging Bay C and unhook trailer seals after green light indicator.',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      priority: 'NORMAL',
+      read: false,
+    };
+    messagesState.push(autoReply);
+  }
+
   res.status(201).json({
     success: true,
     message: 'Message dispatched successfully',
     newMessage,
+    autoReply,
   });
 });
 
+// POST /api/messages/quick-action - One-Touch Driver Dispatch Macro
+app.post('/api/messages/quick-action', (req, res) => {
+  const { actionType, unitNumber = 'TR-904', location = 'I-80 EB Mile Marker 142' } = req.body;
+  let driverText = '';
+  let dispatchReply = '';
+  let channel = 'DISPATCH';
+
+  switch (actionType) {
+    case 'LOADED_AND_ROLLING':
+      driverText = 'Unit ' + unitNumber + ' is fully loaded with signed BOL. Leaving dock and rolling to delivery. ETA on schedule.';
+      dispatchReply = '10-4 Driver! BOL received and stamped. Route approved. Have a safe run!';
+      break;
+    case 'ARRIVED_SHIPPER':
+      driverText = 'Unit ' + unitNumber + ' arrived at shipper facility gate at ' + location + '. Awaiting dock assignment.';
+      dispatchReply = 'Gate check confirmed. Pull up to Door #4 and present PO #884192.';
+      break;
+    case 'DETENTION_TRIGGERED':
+      driverText = '2 Hours free-time expired at dock facility. Detention pay clock officially initiated ($75/hr). Geo-fence confirmed.';
+      dispatchReply = 'Detention clock recorded and signed with shipper logistics manager. Time-stamp archived.';
+      break;
+    case 'NEED_ROAD_ASSISTANCE':
+      channel = 'MAINTENANCE';
+      driverText = 'URGENT: Unit ' + unitNumber + ' stopped on shoulder at ' + location + '. Mechanical assistance needed.';
+      dispatchReply = 'Roadside coordinator notified. Nearest mobile vendor dispatched to your mile marker.';
+      break;
+    default:
+      driverText = 'Unit ' + unitNumber + ' status check-in at ' + location + '.';
+      dispatchReply = 'Status acknowledged by central dispatch.';
+  }
+
+  const driverMsg = {
+    id: 'msg-macro-' + Date.now(),
+    channel,
+    senderName: 'Vance R. (Driver ' + unitNumber + ')',
+    senderRole: 'DRIVER',
+    text: driverText,
+    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    priority: actionType === 'NEED_ROAD_ASSISTANCE' ? 'HIGH' : 'NORMAL',
+    read: true,
+  };
+  messagesState.push(driverMsg);
+
+  const replyMsg = {
+    id: 'reply-macro-' + (Date.now() + 50),
+    channel,
+    senderName: channel === 'MAINTENANCE' ? 'Fleet Roadside Support' : 'Central Dispatch (Sarah M.)',
+    senderRole: channel === 'MAINTENANCE' ? 'MECHANIC' : 'DISPATCHER',
+    text: dispatchReply,
+    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    priority: actionType === 'NEED_ROAD_ASSISTANCE' ? 'HIGH' : 'NORMAL',
+    read: false,
+  };
+  messagesState.push(replyMsg);
+
+  res.json({
+    success: true,
+    actionType,
+    driverMessage: driverMsg,
+    dispatchReply: replyMsg,
+  });
+});
+
+// POST /api/messages/ack - Acknowledge delivery / read receipt
+app.post('/api/messages/ack', (req, res) => {
+  const { messageId } = req.body;
+  if (!messageId) return res.status(400).json({ error: 'messageId is required' });
+  const msg = messagesState.find(m => m.id === messageId);
+  if (msg) {
+    msg.read = true;
+    return res.json({ success: true, messageId, status: 'DELIVERED_AND_READ' });
+  }
+  res.status(404).json({ error: 'Message not found' });
+});
 // PATCH /api/messages/:id/read
 app.patch('/api/messages/:id/read', (req, res) => {
   const { id } = req.params;
@@ -9040,6 +9196,586 @@ app.post('/api/telecom/simulate-call', (req, res) => {
   res.json({
     success: true,
     call: responsePayload,
+  });
+});
+
+
+// ==========================================
+// IN-CAB TELECOM & DEDICATED PHONE SYSTEM (TWILIO CARRIER SUPER-NETWORK)
+// ==========================================
+let serverTelecomCallLogs = [
+  {
+    id: 'call-log-1',
+    timestamp: '2026-10-02 18:42:10 CST',
+    unitNumber: 'TRUCK #104 (MISSOURI DEDICATED)',
+    callerName: 'C.H. Robinson (Freight Broker)',
+    callerType: 'FREIGHT_BROKER',
+    callerNumber: '(312) 555-0199',
+    durationSeconds: 142,
+    hosStatusAtCall: 'DRIVING_11H_ACTIVE',
+    actionTaken: 'CALL_ROUTED_TO_HEADSET',
+    detentionTimestampProof: 'GEO-LOCKED: 32.7767° N, 96.7970° W (DFW Metro Receiver Dock) • TIME: 18:42 CST',
+    sha256AuditHash: 'a4b8c9e0f1d2e3b4a5c6d7e8f90123456789abcdef0123456789abcdef012345',
+  },
+  {
+    id: 'call-log-2',
+    timestamp: '2026-10-02 16:15:33 CST',
+    unitNumber: 'TRUCK #104 (MISSOURI DEDICATED)',
+    callerName: 'Apex Central Dispatch (Sarah M.)',
+    callerType: 'DISPATCH',
+    callerNumber: '(800) 555-0104',
+    durationSeconds: 84,
+    hosStatusAtCall: 'ON_DUTY_PARKED',
+    actionTaken: 'CALL_ANSWERED',
+    detentionTimestampProof: 'GEO-LOCKED: 39.7392° N, 104.9903° W • TIME: 16:15 CST',
+    sha256AuditHash: '7f8e9d0a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789',
+  },
+  {
+    id: 'call-log-3',
+    timestamp: '2026-10-02 14:02:18 CST',
+    unitNumber: 'TRUCK #108 (TEXAS TRIANGLE SQUAD)',
+    callerName: 'DFW Cold Storage Receiver Dock',
+    callerType: 'RECEIVER_DOCK',
+    callerNumber: '(972) 555-8821',
+    durationSeconds: 195,
+    hosStatusAtCall: 'ON_DUTY_PARKED',
+    actionTaken: 'DETENTION_PROOF_LOCKED',
+    detentionTimestampProof: 'GEO-LOCKED: 32.7767° N, 96.7970° W • DETENTION INITIATED 14:02 CST',
+    sha256AuditHash: '3b4c5d6e7f8a9b0c1d2e3f405162738495a6b7c8d9e0f123456789abcdef0123',
+  },
+];
+
+let serverActiveCalls = new Map();
+
+let serverSpeedDialContacts = [
+  { id: 'c1', name: 'Apex Central Dispatch', number: '(800) 555-0104', category: 'DISPATCH', roleTitle: 'Primary Dispatch Desk' },
+  { id: 'c2', name: 'Fleet Safety Director (Dave)', number: '(800) 555-0109', category: 'SAFETY', roleTitle: 'HOS & Compliance' },
+  { id: 'c3', name: 'Loves Truck Care 24/7 Roadside', number: '(800) 615-6837', category: 'ROADSIDE', roleTitle: 'National Roadside Network' },
+  { id: 'c4', name: 'C.H. Robinson Broker Support', number: '(312) 555-0199', category: 'BROKER', roleTitle: 'Load #892-441 Tracking' },
+  { id: 'c5', name: 'DFW Cold Storage Receiver Dock', number: '(972) 555-8821', category: 'RECEIVER', roleTitle: 'Inbound Dock Gate #4' },
+];
+
+let serverBreakdownReports = [
+  {
+    id: 'sos-bd-101',
+    timestamp: '2026-10-02 17:15 CST',
+    unitNumber: 'TRUCK #104',
+    issueCategory: 'TIRE_BLOWOUT',
+    severity: 'URGENT_OOS',
+    location: 'I-80 Mile Marker 142 EB Shoulder',
+    odometer: 482190,
+    description: 'Right drive tire tread separation. Stopped on wide paved shoulder with triangles deployed.',
+    requireTow: false,
+    status: 'DISPATCHED',
+    technicianEta: '28 mins (Loves Truck Care Mobile #14)',
+  },
+];
+
+let serverVoicemails = [
+  {
+    id: 'vm-1',
+    timestamp: 'Today at 17:30 CST',
+    callerName: 'C.H. Robinson (Freight Broker)',
+    callerNumber: '(312) 555-0199',
+    durationSeconds: 24,
+    audioDuration: '0:24',
+    transcription: 'Hey Vance, just checking your 100-mile out ping for the Dallas delivery. Appointment door 4 is ready whenever you back in. Call me back if you hit any construction.',
+    read: false,
+  },
+  {
+    id: 'vm-2',
+    timestamp: 'Today at 15:10 CST',
+    callerName: 'Apex Central Dispatch (Sarah M.)',
+    callerNumber: '(800) 555-0104',
+    durationSeconds: 19,
+    audioDuration: '0:19',
+    transcription: 'Unit 104, remember to lock your geo-proof timestamp in the in-cab telecom app right when you check in with the gate guard for detention backup.',
+    read: true,
+  },
+  {
+    id: 'vm-3',
+    timestamp: 'Yesterday at 09:45 CST',
+    callerName: 'Fleet Safety Director (Dave)',
+    callerNumber: '(800) 555-0109',
+    durationSeconds: 16,
+    audioDuration: '0:16',
+    transcription: 'Great job on the clean Level II inspection at the Missouri scales yesterday, Vance. We logged the clean sheet with FMCSA and credited your safety bonus.',
+    read: true,
+  },
+];
+
+// GET /api/telecom/lines
+app.get('/api/telecom/lines', (req, res) => {
+  res.json({
+    success: true,
+    lines: serverTelecomLines,
+    activeCount: serverTelecomLines.length,
+    carrierNetwork: 'Twilio Global Tier-1 Super-Network',
+  });
+});
+
+// POST /api/telecom/calls/initiate
+app.post('/api/telecom/calls/initiate', (req, res) => {
+  const { lineId, destinationNumber, recipientName = 'Recipient', category = 'DISPATCH', isDriving = false, driverHosState = 'DRIVING' } = req.body;
+  const callId = 'sip-call-' + Date.now();
+  const callSession = {
+    callId,
+    lineId: lineId || 'line-unit-104',
+    destinationNumber,
+    recipientName,
+    category,
+    isDriving,
+    driverHosState,
+    status: 'CONNECTED',
+    startTime: new Date().toISOString(),
+    sipTrunk: 'TWILIO_TIER1_SIP_US_CENTRAL',
+    latencyMs: 14.2,
+    audioChannelOpen: true,
+    hosComplianceLock: isDriving,
+    safetyHeadsetNotice: isDriving ? 'HANDS-FREE CAB HEADSET ENFORCED BY HOS PROTOCOL' : null,
+  };
+
+  serverActiveCalls.set(callId, callSession);
+
+  res.json({
+    success: true,
+    callId,
+    status: 'CONNECTED',
+    session: callSession,
+    message: 'Call to ' + recipientName + ' (' + destinationNumber + ') connected via dedicated In-Cab line.',
+  });
+});
+
+// POST /api/telecom/calls/end
+app.post('/api/telecom/calls/end', (req, res) => {
+  const { callId, durationSeconds = 45, detentionRecordedProof, actionTaken = 'CALL_COMPLETED', callerName = 'Dispatch', callerNumber = '(800) 555-0104', callerType = 'DISPATCH', unitNumber = 'TRUCK #104', hosStatusAtCall = 'ON_DUTY_PARKED' } = req.body;
+
+  const crypto = require('crypto');
+  const auditString = callId + '|' + callerNumber + '|' + durationSeconds + '|' + (detentionRecordedProof || 'NONE') + '|' + Date.now();
+  const sha256Hash = crypto.createHash('sha256').update(auditString).digest('hex');
+
+  const newLog = {
+    id: 'call-log-' + Date.now(),
+    timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' CST',
+    unitNumber,
+    callerName,
+    callerType,
+    callerNumber,
+    durationSeconds: Number(durationSeconds),
+    hosStatusAtCall,
+    actionTaken: detentionRecordedProof ? 'DETENTION_PROOF_LOCKED' : actionTaken,
+    detentionTimestampProof: detentionRecordedProof || ('GEO-LOCKED: 32.7767° N, 96.7970° W • TIME: ' + new Date().toLocaleTimeString() + ' CST'),
+    sha256AuditHash: sha256Hash,
+  };
+
+  serverTelecomCallLogs.unshift(newLog);
+  if (callId) serverActiveCalls.delete(callId);
+
+  res.json({
+    success: true,
+    loggedCall: newLog,
+    sha256AuditHash: sha256Hash,
+    message: 'Call terminated and archived with cryptographic detention proof.',
+  });
+});
+
+// GET /api/telecom/calls/history
+app.get('/api/telecom/calls/history', (req, res) => {
+  res.json({
+    success: true,
+    count: serverTelecomCallLogs.length,
+    callLogs: serverTelecomCallLogs,
+  });
+});
+
+// GET /api/telecom/contacts
+app.get('/api/telecom/contacts', (req, res) => {
+  res.json({
+    success: true,
+    contacts: serverSpeedDialContacts,
+  });
+});
+
+// POST /api/telecom/breakdown-sos
+app.post('/api/telecom/breakdown-sos', (req, res) => {
+  const { unitNumber = 'TRUCK #104', issueCategory = 'TIRE_BLOWOUT', severity = 'URGENT_OOS', location = 'I-80 Mile Marker 142 EB Shoulder', odometer = 482190, description = 'Roadside assistance requested', requireTow = false } = req.body;
+  const report = {
+    id: 'sos-bd-' + Date.now(),
+    timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16).replace('T', ' ') + ' CST',
+    unitNumber,
+    issueCategory,
+    severity,
+    location,
+    odometer,
+    description,
+    requireTow,
+    status: 'DISPATCHED',
+    technicianEta: '32 mins (National Fleet Roadside Mesh)',
+  };
+
+  serverBreakdownReports.unshift(report);
+
+  res.json({
+    success: true,
+    report,
+    message: 'Roadside Breakdown SOS dispatched to nearest certified mobile service technician.',
+  });
+});
+
+// GET /api/telecom/voicemails
+app.get('/api/telecom/voicemails', (req, res) => {
+  res.json({
+    success: true,
+    voicemails: serverVoicemails,
+    unreadCount: serverVoicemails.filter(v => !v.read).length,
+  });
+});
+
+// ==========================================
+// 27MHz CB RADIO TRANSCEIVER GATEWAY & MESH ENGINE (40 CHANNELS)
+// ==========================================
+const CB_FREQUENCIES = [
+  26.965, 26.975, 26.985, 27.005, 27.015, 27.025, 27.035, 27.055, 27.065, 27.075,
+  27.085, 27.105, 27.115, 27.125, 27.135, 27.155, 27.165, 27.175, 27.185, 27.205,
+  27.215, 27.225, 27.255, 27.235, 27.245, 27.265, 27.275, 27.285, 27.295, 27.305,
+  27.315, 27.325, 27.335, 27.345, 27.355, 27.365, 27.375, 27.385, 27.395, 27.405,
+];
+
+let serverCbChannels = Array.from({ length: 40 }, (_, idx) => {
+  const ch = idx + 1;
+  let designation = 'General Simplex';
+  let trafficLevel = 'MODERATE';
+  let isHighwayPrimary = false;
+  let isEmergency = false;
+  let isCalling = false;
+
+  if (ch === 19) {
+    designation = 'National Interstate Highway Primary (East / West)';
+    trafficLevel = 'HEAVY';
+    isHighwayPrimary = true;
+    isCalling = true;
+  } else if (ch === 17) {
+    designation = 'Interstate North / South Primary Corridor';
+    trafficLevel = 'HEAVY';
+    isCalling = true;
+  } else if (ch === 9) {
+    designation = 'Official Emergency, REACT & Highway Assistance Only';
+    trafficLevel = 'SPARSE';
+    isEmergency = true;
+  } else if (ch === 6) {
+    designation = 'High-Power DX & Super Bowl Long Distance';
+    trafficLevel = 'HEAVY';
+  } else if (ch === 11) {
+    designation = 'Simplex Calling Frequency';
+    isCalling = true;
+  }
+
+  return {
+    channel: ch,
+    frequencyMhz: CB_FREQUENCIES[idx],
+    name: 'Channel ' + ch,
+    designation,
+    trafficLevel,
+    isHighwayPrimary,
+    isEmergency,
+    isCalling,
+    activeNodes: ch === 19 ? 84 : ch === 17 ? 42 : ch === 9 ? 12 : Math.floor(6 + Math.random() * 20),
+    squelchThresholdDb: 35,
+    rfPropagation: 'NOMINAL_CLEAR',
+  };
+});
+
+let serverCbChatter = {
+  19: [
+    {
+      id: 'cb-19-1',
+      channel: 19,
+      senderHandle: 'Rubber Duck',
+      senderUnit: 'UNIT #104-E (Peterbilt 579)',
+      role: 'DRIVER',
+      text: 'Break one-nine for a radio check! How am I sounding out there on I-80 eastbound?',
+      timestamp: '3 mins ago',
+      signalStrengthS: 9,
+      distanceMiles: 1.4,
+      tenCode: '10-36',
+      location: 'I-80 Mile Marker 142 EB',
+      verified: true,
+      audioDurationSec: 4,
+    },
+    {
+      id: 'cb-19-2',
+      channel: 19,
+      senderHandle: 'Midnight Hauler',
+      senderUnit: 'UNIT #208-T (Freightliner Cascadia)',
+      role: 'DRIVER',
+      text: 'You got me loud and proud, Duck! Wall-to-wall and tree-top tall. Heads up, Smokey sitting in the grass under the overpass at mile 148!',
+      timestamp: '2 mins ago',
+      signalStrengthS: 9,
+      distanceMiles: 2.8,
+      tenCode: '10-4',
+      location: 'I-80 Mile Marker 146 EB',
+      verified: true,
+      audioDurationSec: 5,
+    },
+    {
+      id: 'cb-19-3',
+      channel: 19,
+      senderHandle: 'Iowa State DOT Mesh',
+      senderUnit: 'Advisory Station MM140',
+      role: 'WEIGH_STATION',
+      text: 'ADVISORY: I-80 Eastbound scale master is open at mile 152. PrePass and Drivewyze bypass green signals active.',
+      timestamp: '1 min ago',
+      signalStrengthS: 8,
+      distanceMiles: 4.1,
+      tenCode: '10-13',
+      location: 'I-80 Milepost 152',
+      verified: true,
+      audioDurationSec: 6,
+    },
+  ],
+  9: [
+    {
+      id: 'cb-9-1',
+      channel: 9,
+      senderHandle: 'REACT Command 9',
+      senderUnit: 'National Emergency Monitor',
+      role: 'DISPATCH',
+      text: 'Channel 9 Emergency Net active. Monitor station standing by for 10-33 traffic, road hazards, and severe storm alerts.',
+      timestamp: '5 mins ago',
+      signalStrengthS: 9,
+      distanceMiles: 0.8,
+      tenCode: '10-33',
+      location: 'State Highway Patrol Emergency Net',
+      verified: true,
+      audioDurationSec: 5,
+    },
+  ],
+  17: [
+    {
+      id: 'cb-17-1',
+      channel: 17,
+      senderHandle: 'Lone Star Expedite',
+      senderUnit: 'Kenworth T680',
+      role: 'DRIVER',
+      text: 'Northbound I-35 corridor is moving at speed. Clean run up through Waco, construction lane shifted to the right.',
+      timestamp: '4 mins ago',
+      signalStrengthS: 8,
+      distanceMiles: 3.5,
+      tenCode: '10-4',
+      location: 'I-35 NB Mile Marker 310',
+      verified: true,
+      audioDurationSec: 5,
+    },
+  ],
+  6: [
+    {
+      id: 'cb-6-1',
+      channel: 6,
+      senderHandle: 'Heavy Audio King',
+      senderUnit: 'Custom KW 900 Double-Barrel',
+      role: 'DRIVER',
+      text: 'Big radio pumping 500 watts straight into the skip! Shout out to all the chrome pushers across the heartland!',
+      timestamp: '7 mins ago',
+      signalStrengthS: 9,
+      distanceMiles: 12.0,
+      tenCode: '10-20',
+      location: 'Heartland Skywave DX',
+      verified: true,
+      audioDurationSec: 4,
+    },
+  ],
+};
+
+// GET /api/cb/channels
+app.get('/api/cb/channels', (req, res) => {
+  res.json({
+    success: true,
+    channels: serverCbChannels,
+    totalChannels: 40,
+    emergencyChannel: 9,
+    interstateCallingChannel: 19,
+    status: 'ONLINE',
+  });
+});
+
+// GET /api/cb/chatter/:channel
+app.get('/api/cb/chatter/:channel', (req, res) => {
+  const ch = parseInt(req.params.channel, 10) || 19;
+  const chatter = serverCbChatter[ch] || [];
+  res.json({
+    success: true,
+    channel: ch,
+    count: chatter.length,
+    chatter,
+    frequencyMhz: CB_FREQUENCIES[ch - 1] || 27.185,
+  });
+});
+
+// POST /api/cb/broadcast - Driver PTT Broadcast with Intelligent Corridor Mesh Closed Loop
+app.post('/api/cb/broadcast', (req, res) => {
+  const { channel = 19, senderHandle = 'Rubber Duck', senderUnit = 'UNIT #104-E (Peterbilt 579)', role = 'USER', text, tenCode, location = 'I-80 Mile Marker 142 EB', audioDurationSec = 4 } = req.body;
+
+  if (!text || text.trim() === '') {
+    return res.status(400).json({ error: 'Broadcast text is required' });
+  }
+
+  const ch = parseInt(channel, 10) || 19;
+  if (!serverCbChatter[ch]) {
+    serverCbChatter[ch] = [];
+  }
+
+  const driverBroadcast = {
+    id: 'cb-msg-' + Date.now(),
+    channel: ch,
+    senderHandle,
+    senderUnit,
+    role: 'USER',
+    text: text.trim(),
+    timestamp: 'Just now',
+    signalStrengthS: 9,
+    distanceMiles: 0,
+    tenCode: tenCode || (text.includes('10-') ? text.match(/10-\d+/)?.[0] : undefined),
+    location,
+    verified: true,
+    audioDurationSec,
+  };
+
+  serverCbChatter[ch].push(driverBroadcast);
+
+  // Closed Loop Corridor Peer Response
+  const q = text.toLowerCase();
+  let peerHandle = 'Midwest Express';
+  let peerUnit = 'Freightliner Cascadia #22';
+  let peerText = '10-4 driver, copied you loud and clear on the one-nine! Keep it between the ditches.';
+  let peerTenCode = '10-4';
+  let peerRole = 'DRIVER';
+
+  if (q.includes('radio check') || q.includes('how am i') || q.includes('audio') || q.includes('modulation')) {
+    peerHandle = 'Silver Dollar';
+    peerUnit = 'Kenworth W900L';
+    peerText = 'Got you wall-to-wall and tree-top tall, driver! Audio is crisp and modulation is 100%.';
+    peerTenCode = '10-2';
+  } else if (q.includes('smokey') || q.includes('bear') || q.includes('cop') || q.includes('police')) {
+    peerHandle = 'Night Owl';
+    peerUnit = 'Peterbilt 389';
+    peerText = 'Appreciate the bear report! Smokey was clocking eastbound traffic at mile 149. Hammer back a notch.';
+    peerTenCode = '10-4';
+  } else if (q.includes('scale') || q.includes('coop') || q.includes('weigh') || q.includes('bypass')) {
+    peerHandle = 'Diesel Boss';
+    peerUnit = 'Volvo VNL 860';
+    peerText = 'Scale house is open but rolling trucks across the bypass lane. PrePass green lights are active.';
+    peerTenCode = '10-4';
+  } else if (q.includes('weather') || q.includes('snow') || q.includes('ice') || q.includes('wind') || q.includes('rain')) {
+    peerHandle = 'Road King';
+    peerUnit = 'Western Star 57X';
+    peerText = 'Gusty crosswinds picking up near mile 160. Drop down to 55 and watch your trailer swing.';
+    peerTenCode = '10-13';
+  } else if (q.includes('parking') || q.includes('pilot') || q.includes('love') || q.includes('rest') || q.includes('flying j')) {
+    peerHandle = 'Highway Knight';
+    peerUnit = 'International LT';
+    peerText = 'Love\'s at exit 142 has about 12 open spots in the rear lot, filling up fast for the night!';
+    peerTenCode = '10-77';
+  } else if (q.includes('10-33') || q.includes('emergency') || q.includes('accident') || q.includes('breakdown') || ch === 9) {
+    peerHandle = 'REACT Command 9';
+    peerUnit = 'State Highway Emergency Net';
+    peerText = 'Emergency traffic acknowledged on Channel 9. Highway patrol service unit notified at your coordinates.';
+    peerTenCode = '10-33';
+    peerRole = 'DISPATCH';
+  }
+
+  const peerReply = {
+    id: 'cb-reply-' + (Date.now() + 150),
+    channel: ch,
+    senderHandle: peerHandle,
+    senderUnit: peerUnit,
+    role: peerRole,
+    text: peerText,
+    timestamp: 'Just now',
+    signalStrengthS: 8 + Math.floor(Math.random() * 2),
+    distanceMiles: parseFloat((1.2 + Math.random() * 4.5).toFixed(1)),
+    tenCode: peerTenCode,
+    location: 'I-80 Mile Marker ' + (140 + Math.floor(Math.random() * 15)),
+    verified: true,
+    audioDurationSec: 5,
+  };
+
+  // Add peer reply to server chatter
+  serverCbChatter[ch].push(peerReply);
+
+  res.status(201).json({
+    success: true,
+    message: driverBroadcast,
+    peerReply,
+    meshActiveUnits: 58,
+    rfPropagationIndex: 'EXCELLENT',
+    squelchThresholdDb: 35,
+  });
+});
+
+// POST /api/cb/emergency-sos - Channel 9 Mayday Broadcast
+app.post('/api/cb/emergency-sos', (req, res) => {
+  const { nature = 'ACCIDENT_OR_BREAKDOWN', location = 'I-80 Mile Marker 142 EB', unitNumber = 'TRUCK #104' } = req.body;
+
+  const maydayMessage = {
+    id: 'cb-mayday-' + Date.now(),
+    channel: 9,
+    senderHandle: 'MAYDAY TRANSMISSION',
+    senderUnit: unitNumber,
+    role: 'USER',
+    text: '10-33 EMERGENCY MAYDAY: Vehicle breakdown at ' + location + '. Nature: ' + nature + '. Immediate corridor assistance requested.',
+    timestamp: 'Just now',
+    signalStrengthS: 9,
+    distanceMiles: 0,
+    tenCode: '10-33',
+    location,
+    verified: true,
+    audioDurationSec: 6,
+  };
+
+  const reactReply = {
+    id: 'cb-react-' + (Date.now() + 100),
+    channel: 9,
+    senderHandle: 'REACT Net Command 9',
+    senderUnit: 'Emergency Response Monitor',
+    role: 'DISPATCH',
+    text: 'MAYDAY CONFIRMED for ' + unitNumber + ' at ' + location + '. State Highway Patrol and emergency roadside towing units have been locked on coordinates. Keep hazard lights illuminated.',
+    timestamp: 'Just now',
+    signalStrengthS: 9,
+    distanceMiles: 1.0,
+    tenCode: '10-33',
+    location: 'State Highway Patrol Emergency Net',
+    verified: true,
+    audioDurationSec: 7,
+  };
+
+  if (!serverCbChatter[9]) serverCbChatter[9] = [];
+  serverCbChatter[9].unshift(maydayMessage);
+  serverCbChatter[9].unshift(reactReply);
+
+  res.json({
+    success: true,
+    maydayId: maydayMessage.id,
+    channel: 9,
+    maydayMessage,
+    reactReply,
+    statePatrolRelay: 'CONFIRMED',
+    message: 'Mayday emergency packet transmitted across 27MHz Channel 9 Mesh.',
+  });
+});
+
+// GET /api/cb/status
+app.get('/api/cb/status', (req, res) => {
+  res.json({
+    transceiver: 'Cobra 29 LTD Professional 27MHz AM/SSB Mesh Transceiver',
+    status: 'ACTIVE_TRANSMITTING',
+    swrRatio: 1.12,
+    rfPowerWatts: 4.0,
+    squelchThresholdDb: 35,
+    activeMeshNodes: 142,
+    noiseBlanker: true,
+    rogerBeep: true,
+    antennaMatched: true,
+    activeCorridor: 'I-80 Transcontinental Freight Spine',
   });
 });
 

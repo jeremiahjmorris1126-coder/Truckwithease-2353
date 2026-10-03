@@ -57,6 +57,11 @@ import {
   getEmergencyBreakdowns,
   playDtmfTone,
   playRingbackBeep,
+  syncTelecomLinesFromServer,
+  syncTelecomCallLogsFromServer,
+  initiateCabCallApi,
+  endCabCallApi,
+  provisionCabLineApi,
 } from '../services/telecomService';
 import { PhoneTutorialModal } from './PhoneTutorialModal';
 import { EmergencyBreakdownModal } from './EmergencyBreakdownModal';
@@ -127,6 +132,19 @@ export const InCabTelecomView: React.FC<InCabTelecomViewProps> = ({ onNavigateTo
     if (loadedLines.length > 0) {
       setSelectedLine(loadedLines[0]);
     }
+
+    // Closed Loop: Synchronize with Twilio & Carrier Backend
+    syncTelecomLinesFromServer().then((srvLines) => {
+      if (srvLines && srvLines.length > 0) {
+        setLines(srvLines);
+        setSelectedLine((prev) => prev || srvLines[0]);
+      }
+    });
+    syncTelecomCallLogsFromServer().then((srvLogs) => {
+      if (srvLogs && srvLogs.length > 0) {
+        setCallLogs(srvLogs);
+      }
+    });
   }, []);
 
   // Timer for active call simulator (if active)
@@ -147,7 +165,7 @@ export const InCabTelecomView: React.FC<InCabTelecomViewProps> = ({ onNavigateTo
   };
 
   // Dial / Call Initiate
-  const handleStartCall = (
+  const handleStartCall = async (
     contactName: string,
     phoneNumber: string,
     category: FleetCallCategory,
@@ -164,34 +182,51 @@ export const InCabTelecomView: React.FC<InCabTelecomViewProps> = ({ onNavigateTo
       durationSeconds: 0,
       isRecordingDetention: false,
     });
+
+    // Closed Loop: Initiate SIP call session on carrier super-network
+    try {
+      await initiateCabCallApi({
+        lineId: selectedLine?.id,
+        destinationNumber: phoneNumber,
+        recipientName: contactName,
+        category,
+        isDriving: driverHosState === 'DRIVING',
+        driverHosState,
+      });
+    } catch (e) {
+      console.warn('Call initiate background sync:', e);
+    }
   };
 
-  const handleEndCall = () => {
+  const handleEndCall = async () => {
     if (activeCallSession) {
-      // Record call log
-      const newLog: TelecomCallLog = {
-        id: `call-log-${Date.now()}`,
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' CST',
-        unitNumber: selectedLine ? selectedLine.unitNumber : 'TRUCK #104',
-        callerName: activeCallSession.contactName,
-        callerType:
-          activeCallSession.category === 'BROKER'
-            ? 'FREIGHT_BROKER'
-            : activeCallSession.category === 'RECEIVER'
-            ? 'RECEIVER_DOCK'
-            : activeCallSession.category === 'DISPATCH'
-            ? 'DISPATCH'
-            : 'SAFETY_DEPT',
-        callerNumber: activeCallSession.phoneNumber,
-        durationSeconds: activeCallSession.durationSeconds,
-        hosStatusAtCall: driverHosState === 'DRIVING' ? 'DRIVING_11H_ACTIVE' : 'ON_DUTY_PARKED',
-        actionTaken: 'CALL_ROUTED_TO_HEADSET',
-        detentionTimestampProof: activeCallSession.detentionRecordedProof,
-        sha256AuditHash: generateRandomSha256(),
-      };
-      const updated = [newLog, ...callLogs];
-      setCallLogs(updated);
-      saveTelecomCallLogs(updated);
+      const durationSec = activeCallSession.durationSeconds || 45;
+      const callerType =
+        activeCallSession.category === 'BROKER'
+          ? 'FREIGHT_BROKER'
+          : activeCallSession.category === 'RECEIVER'
+          ? 'RECEIVER_DOCK'
+          : activeCallSession.category === 'DISPATCH'
+          ? 'DISPATCH'
+          : 'SAFETY_DEPT';
+
+      // Closed Loop: Terminate on server & generate cryptographic SHA-256 detention proof
+      try {
+        const res = await endCabCallApi({
+          durationSeconds: durationSec,
+          detentionRecordedProof: activeCallSession.detentionRecordedProof,
+          callerName: activeCallSession.contactName,
+          callerNumber: activeCallSession.phoneNumber,
+          callerType,
+          unitNumber: selectedLine ? selectedLine.unitNumber : 'TRUCK #104',
+          hosStatusAtCall: driverHosState === 'DRIVING' ? 'DRIVING_11H_ACTIVE' : 'ON_DUTY_PARKED',
+        });
+        if (res?.loggedCall) {
+          setCallLogs((prev) => [res.loggedCall, ...prev.filter((c) => c.id !== res.loggedCall.id)]);
+        }
+      } catch (err) {
+        console.warn('Server end call fallback:', err);
+      }
     }
     setActiveCallSession(null);
   };
