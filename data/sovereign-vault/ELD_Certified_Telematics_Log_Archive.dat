@@ -1,0 +1,17 @@
+--- TRUCK WITH EASE IMMUTABLE RECORD ---
+{
+  "id": "FMCSA-ELD-2026-004",
+  "category": "ELD_HOS_LOGS",
+  "fmcsaPart": "49 CFR Part 395",
+  "title": "Electronic Logging Device (ELD) Certified 6-Month Raw Telematics Archive",
+  "filename": "ELD_Certified_Telematics_Log_Archive.dat",
+  "carrierUsdot": "USDOT-4109822",
+  "timestamp": "2026-09-30T00:34:39.179Z",
+  "status": "TAMPER_SEALED",
+  "retentionUntil": "2027-03-31",
+  "notes": "FMCSA certified engine synchronization, rod/meter pulse capture, zero unassigned driving hours, Web Services transfer key ready.",
+  "rawPayload": "ELD_DEVICE_TELEMATICS_SYNC_ENGINE_RPM_ODOMETER_GEO_COORDINATES_CERTIFIED_HEX_STREAM",
+  "sha256Hash": "5cb75b3edca37866e5118aba0b24fbad5534735826cb43c3829dc42f50600b88",
+  "sizeBytes": 82003,
+  "localDiskPath": "C:\\Users\\truck\\antigravity\\Truck-With-Ease---Enterprise-Integrations\\data\\sovereign-vault\\ELD_Certified_Telematics_Log_Archive.dat"
+}

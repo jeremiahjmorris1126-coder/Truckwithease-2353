@@ -1,0 +1,38 @@
+{
+  "appId": "com.morrishive.truckwithease",
+  "appName": "Truck With Ease",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "backgroundColor": "#040810",
+  "server": {
+    "url": "https://truckwithease.com",
+    "cleartext": false,
+    "allowNavigation": [
+      "truckwithease.com",
+      "*.truckwithease.com",
+      "morrishive.com",
+      "*.morrishive.com"
+    ]
+  },
+  "ios": {
+    "contentInset": "always",
+    "scheme": "TruckWithEase",
+    "preferredContentMode": "mobile"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#040810",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "dark",
+      "backgroundColor": "#040810"
+    }
+  }
+}

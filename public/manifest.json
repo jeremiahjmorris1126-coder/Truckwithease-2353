@@ -1,0 +1,30 @@
+﻿{
+  "name": "Truck With Ease — Enterprise Fleet Cockpit",
+  "short_name": "TruckWithEase",
+  "description": "Enterprise commercial motor carrier operations, FMCSA compliance, low-bridge radar, and NASA satellite hazard intercept.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#040810",
+  "theme_color": "#FFD700",
+  "categories": ["business", "navigation", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

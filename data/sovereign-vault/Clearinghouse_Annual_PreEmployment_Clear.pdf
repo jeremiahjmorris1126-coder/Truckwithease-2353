@@ -1,0 +1,17 @@
+--- TRUCK WITH EASE IMMUTABLE RECORD ---
+{
+  "id": "FMCSA-CLR-2026-003",
+  "category": "CLEARINGHOUSE_DRUG_ALCOHOL",
+  "fmcsaPart": "49 CFR Part 382",
+  "title": "FMCSA Drug & Alcohol Clearinghouse Annual Query & Negative Screening Certificate",
+  "filename": "Clearinghouse_Annual_PreEmployment_Clear.pdf",
+  "carrierUsdot": "USDOT-4109822",
+  "timestamp": "2026-09-30T00:34:39.179Z",
+  "status": "TAMPER_SEALED",
+  "retentionUntil": "2031-09-30",
+  "notes": "Full statutory annual query completed with 0 violations returned. 5-year retention protocol active.",
+  "rawPayload": "CLEARINGHOUSE_GOV_QUERY_ZERO_VIOLATION_RECORD_USDOT_4109822_DOT_5_PANEL_NEGATIVE",
+  "sha256Hash": "d4cc345685e8d67a55f2f8f323f2c6294178bb076ca74b49102fa0693999e7ff",
+  "sizeBytes": 82000,
+  "localDiskPath": "C:\\Users\\truck\\antigravity\\Truck-With-Ease---Enterprise-Integrations\\data\\sovereign-vault\\Clearinghouse_Annual_PreEmployment_Clear.pdf"
+}

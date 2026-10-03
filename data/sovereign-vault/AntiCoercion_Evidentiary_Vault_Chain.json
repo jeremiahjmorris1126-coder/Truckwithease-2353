@@ -1,0 +1,17 @@
+--- TRUCK WITH EASE IMMUTABLE RECORD ---
+{
+  "id": "FMCSA-CRN-2026-007",
+  "category": "COERCION_SHIELD_EVIDENCE",
+  "fmcsaPart": "49 CFR § 390.6",
+  "title": "Statutory Anti-Coercion Evidentiary Vault - Voice & Telematics Signed Audit Trail",
+  "filename": "AntiCoercion_Evidentiary_Vault_Chain.json",
+  "carrierUsdot": "USDOT-4109822",
+  "timestamp": "2026-09-30T00:34:39.179Z",
+  "status": "TAMPER_SEALED",
+  "retentionUntil": "2031-12-31",
+  "notes": "Cryptographically sealed electronic black-box preserving in-cab refusal to violate 11/14-hour rule following shipper/broker dispatch attempt.",
+  "rawPayload": "EVIDENTIARY_SHIELD_49CFR390_6_CAB_AUDIO_LOG_AND_GPS_BLACKBOX_TIMESTAMPED",
+  "sha256Hash": "95cd35877f0ebd8b36ec62b9eb8e065d690a06b9d63a79b9c3ebd2231025266d",
+  "sizeBytes": 81992,
+  "localDiskPath": "C:\\Users\\truck\\antigravity\\Truck-With-Ease---Enterprise-Integrations\\data\\sovereign-vault\\AntiCoercion_Evidentiary_Vault_Chain.json"
+}

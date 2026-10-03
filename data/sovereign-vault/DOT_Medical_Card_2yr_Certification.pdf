@@ -1,0 +1,17 @@
+--- TRUCK WITH EASE IMMUTABLE RECORD ---
+{
+  "id": "FMCSA-MEC-2026-002",
+  "category": "MEDICAL_EXAMINER_CERTIFICATE",
+  "fmcsaPart": "49 CFR § 391.43",
+  "title": "DOT Medical Examiner Certificate (National Registry NRCME #889210)",
+  "filename": "DOT_Medical_Card_2yr_Certification.pdf",
+  "carrierUsdot": "USDOT-4109822",
+  "timestamp": "2026-09-30T00:34:39.179Z",
+  "status": "TAMPER_SEALED",
+  "retentionUntil": "2028-09-15",
+  "notes": "24-Month medical certification registered with FMCSA NRCME. Hearing, vision, cardiovascular benchmarks satisfied.",
+  "rawPayload": "NRCME_CERTIFIED_EXAMINER_889210_DRIVER_JMORRIS_24MO_CLEARANCE_NO_RESTRICTIONS",
+  "sha256Hash": "b1028772f1f6d700fd1abaec6ab4b324ca49900b1f2f61dcf72ebc13ccfc7041",
+  "sizeBytes": 81997,
+  "localDiskPath": "C:\\Users\\truck\\antigravity\\Truck-With-Ease---Enterprise-Integrations\\data\\sovereign-vault\\DOT_Medical_Card_2yr_Certification.pdf"
+}

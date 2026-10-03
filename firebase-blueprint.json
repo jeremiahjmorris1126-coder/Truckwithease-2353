@@ -1,0 +1,366 @@
+{
+  "entities": {
+    "userProfile": {
+      "title": "UserProfile",
+      "description": "Commercial driver or carrier admin profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["DRIVER", "CARRIER_ADMIN", "DISPATCHER", "AUDITOR"] },
+        "usdot": { "type": "string", "maxLength": 32 },
+        "cdlNumber": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "auditRecord": {
+      "title": "AuditRecord",
+      "description": "Cryptographic statutory audit ledger block for FMCSA compliance",
+      "type": "object",
+      "properties": {
+        "blockNumber": { "type": "number" },
+        "sha256Hash": { "type": "string", "maxLength": 128 },
+        "merkleRoot": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "driverName": { "type": "string", "maxLength": 128 },
+        "driverId": { "type": "string", "maxLength": 128 },
+        "usdot": { "type": "string", "maxLength": 32 },
+        "mcNumber": { "type": "string", "maxLength": 32 },
+        "vehicleVin": { "type": "string", "maxLength": 64 },
+        "signature": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["VERIFIED", "SUBMITTED", "FLAGGED"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["blockNumber", "sha256Hash", "driverId", "status"]
+    },
+    "fmcsaSubmission": {
+      "title": "FmcsaSubmission",
+      "description": "Electronic Records of Duty Status (ERDS) web transfer receipt",
+      "type": "object",
+      "properties": {
+        "submissionId": { "type": "string", "maxLength": 128 },
+        "driverId": { "type": "string", "maxLength": 128 },
+        "usdot": { "type": "string", "maxLength": 32 },
+        "protocol": { "type": "string", "enum": ["WEB_SERVICES", "BLUETOOTH", "EMAIL_TRANSFER"] },
+        "transferStatus": { "type": "string", "enum": ["ACCEPTED", "PROCESSING", "REJECTED"] },
+        "httpCode": { "type": "number" },
+        "payloadHash": { "type": "string", "maxLength": 128 },
+        "submissionNotes": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["submissionId", "driverId", "protocol", "transferStatus"]
+    },
+    "hosLog": {
+      "title": "HosLog",
+      "description": "Daily 24-hour statutory hours of service record",
+      "type": "object",
+      "properties": {
+        "logId": { "type": "string", "maxLength": 128 },
+        "driverId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 32 },
+        "drivingMinutes": { "type": "number" },
+        "onDutyMinutes": { "type": "number" },
+        "sleeperMinutes": { "type": "number" },
+        "offDutyMinutes": { "type": "number" },
+        "splitBerthExclusion": { "type": "boolean" },
+        "violationsCount": { "type": "number" },
+        "certified": { "type": "boolean" },
+        "signature": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["logId", "driverId", "date", "certified"]
+    },
+    "inspectionSession": {
+      "title": "InspectionSession",
+      "description": "Roadside inspection token and cabin lock status",
+      "type": "object",
+      "properties": {
+        "inspectionId": { "type": "string", "maxLength": 128 },
+        "driverId": { "type": "string", "maxLength": 128 },
+        "officerPin": { "type": "string", "maxLength": 16 },
+        "officerPortalUrl": { "type": "string", "maxLength": 256 },
+        "isCabinLocked": { "type": "boolean" },
+        "activeUsdot": { "type": "string", "maxLength": 32 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["inspectionId", "driverId", "officerPin", "isCabinLocked"]
+    },
+    "fleetAsset": {
+      "title": "FleetAsset",
+      "description": "Commercial vehicle asset record with telemetry and last repaired links",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "unitNumber": { "type": "string", "maxLength": 64 },
+        "type": { "type": "string", "enum": ["TRACTOR", "TRAILER"] },
+        "vin": { "type": "string", "maxLength": 64 },
+        "makeModelYear": { "type": "string", "maxLength": 128 },
+        "licensePlate": { "type": "string", "maxLength": 32 },
+        "odometerMiles": { "type": "number" },
+        "engineHours": { "type": "number" },
+        "assignedDriver": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["ACTIVE_RUNNING", "IN_SHOP", "SCHEDULED_PM", "OUT_OF_SERVICE"] },
+        "pmDueMiles": { "type": "number" },
+        "dotAnnualInspectionExpiry": { "type": "string", "maxLength": 32 },
+        "lastRepairedTimestamp": { "type": "string", "maxLength": 64 },
+        "lastRepairedWorkOrderId": { "type": "string", "maxLength": 128 },
+        "lastRepairedComponent": { "type": "string", "maxLength": 256 },
+        "lastRepairedOdometer": { "type": "number" },
+        "totalRepairsCount": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "unitNumber", "type", "vin", "status"]
+    },
+    "repairRecord": {
+      "title": "RepairRecord",
+      "description": "Maintenance repair work order ledger entry linked to a vehicle asset ID in Firebase",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "assetId": { "type": "string", "maxLength": 128 },
+        "unitNumber": { "type": "string", "maxLength": 64 },
+        "trailerNumber": { "type": "string", "maxLength": 64 },
+        "repairDate": { "type": "string", "maxLength": 32 },
+        "completedTimestamp": { "type": "string", "maxLength": 64 },
+        "componentCategory": { "type": "string", "maxLength": 64 },
+        "componentItem": { "type": "string", "maxLength": 256 },
+        "repairType": { "type": "string", "maxLength": 64 },
+        "description": { "type": "string", "maxLength": 1024 },
+        "workPerformed": { "type": "string", "maxLength": 1024 },
+        "technicianName": { "type": "string", "maxLength": 128 },
+        "technicianCertNumber": { "type": "string", "maxLength": 128 },
+        "shopOrVendor": { "type": "string", "maxLength": 128 },
+        "laborHours": { "type": "number" },
+        "laborRatePerHour": { "type": "number" },
+        "partsCost": { "type": "number" },
+        "laborCost": { "type": "number" },
+        "emergencySurcharge": { "type": "number" },
+        "totalCost": { "type": "number" },
+        "odometerAtRepair": { "type": "number" },
+        "fmcsaStatute": { "type": "string", "maxLength": 128 },
+        "warrantyExpiresDate": { "type": "string", "maxLength": 32 },
+        "warrantyActive": { "type": "boolean" },
+        "integritySha256Hash": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["COMPLETED_CERTIFIED", "UNDER_WARRANTY", "SCHEDULED", "IN_PROGRESS"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "unitNumber", "componentItem", "technicianName", "totalCost", "status"]
+    },
+    "tollPassport": {
+      "title": "TollPassport",
+      "description": "Driver and fleet nationwide toll transponders and billing account credentials",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "ezPassNumber": { "type": "string", "maxLength": 64 },
+        "sunPassNumber": { "type": "string", "maxLength": 64 },
+        "fastrakNumber": { "type": "string", "maxLength": 64 },
+        "txTagNumber": { "type": "string", "maxLength": 64 },
+        "bestpassFleetId": { "type": "string", "maxLength": 64 },
+        "prepassPlusId": { "type": "string", "maxLength": 64 },
+        "primaryTransponder": { "type": "string", "maxLength": 64 },
+        "defaultAxles": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId"]
+    },
+    "drivewyzeEnrollment": {
+      "title": "DrivewyzeEnrollment",
+      "description": "Fleet asset Drivewyze PreClear weigh station bypass registration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "unitNumber": { "type": "string", "maxLength": 64 },
+        "vin": { "type": "string", "maxLength": 64 },
+        "usdot": { "type": "string", "maxLength": 32 },
+        "licensePlate": { "type": "string", "maxLength": 32 },
+        "plateState": { "type": "string", "maxLength": 8 },
+        "status": { "type": "string", "enum": ["ACTIVE_PRE_CLEAR", "PENDING_VERIFICATION", "SUSPENDED"] },
+        "enrolledAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "unitNumber", "vin", "usdot", "licensePlate", "plateState"]
+    },
+    "tollExpenseLog": {
+      "title": "TollExpenseLog",
+      "description": "Real-time toll transaction and expense receipt entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "facilityName": { "type": "string", "maxLength": 128 },
+        "state": { "type": "string", "maxLength": 8 },
+        "amount": { "type": "number" },
+        "transponderUsed": { "type": "string", "maxLength": 64 },
+        "vehicleVin": { "type": "string", "maxLength": 64 },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "facilityName", "state", "amount"]
+    },
+    "driverRecord": {
+      "title": "DriverRecord",
+      "description": "Commercial driver DQF credentials, DVIR/HOS links, medical card MCSA-5876, physicals, and 30-day renewal status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "driverName": { "type": "string", "maxLength": 128 },
+        "cdlNumber": { "type": "string", "maxLength": 64 },
+        "cdlState": { "type": "string", "maxLength": 8 },
+        "cdlExpirationDate": { "type": "string", "maxLength": 32 },
+        "dotMedCardRegistryNumber": { "type": "string", "maxLength": 64 },
+        "dotMedCardExpirationDate": { "type": "string", "maxLength": 32 },
+        "dotMedCardCertifiedDate": { "type": "string", "maxLength": 32 },
+        "examiningDoctorName": { "type": "string", "maxLength": 128 },
+        "examiningClinic": { "type": "string", "maxLength": 128 },
+        "medCardStatus": { "type": "string", "enum": ["CERTIFIED_COMPLIANT", "EXPIRING_SOON", "EXPIRED"] },
+        "daysUntilMedCardRenewal": { "type": "number" },
+        "renewalAlertActive": { "type": "boolean" },
+        "assignedUnit": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "driverName", "cdlNumber", "medCardStatus"]
+    },
+    "dvirRecord": {
+      "title": "DvirRecord",
+      "description": "FMCSA 49 CFR Part 396 pre-trip and post-trip DVIR records with defect flags and mechanic signoffs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "driverName": { "type": "string", "maxLength": 128 },
+        "unitNumber": { "type": "string", "maxLength": 64 },
+        "trailerNumber": { "type": "string", "maxLength": 64 },
+        "type": { "type": "string", "enum": ["PRE_TRIP", "POST_TRIP"] },
+        "date": { "type": "string", "maxLength": 32 },
+        "odometer": { "type": "number" },
+        "hasDefects": { "type": "boolean" },
+        "safeToOperate": { "type": "boolean" },
+        "mechanicSignature": { "type": "string", "maxLength": 128 },
+        "driverSignature": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "driverName", "unitNumber", "type", "date", "safeToOperate"]
+    },
+    "roadsideInspection": {
+      "title": "RoadsideInspection",
+      "description": "CVSA roadside inspection records, clean passes, violations, and state-specific corrective remediation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "reportNumber": { "type": "string", "maxLength": 64 },
+        "driverName": { "type": "string", "maxLength": 128 },
+        "stateJurisdiction": { "type": "string", "maxLength": 8 },
+        "inspectionDate": { "type": "string", "maxLength": 32 },
+        "isCleanPass": { "type": "boolean" },
+        "outOfService": { "type": "boolean" },
+        "violationsCount": { "type": "number" },
+        "sentToCompany": { "type": "boolean" },
+        "sentToDot": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "reportNumber", "driverName", "stateJurisdiction", "isCleanPass"]
+    },
+    "maintenanceDiagnosticLog": {
+      "title": "MaintenanceDiagnosticLog",
+      "description": "Autonomous maintenance agent 2x/24hr scheduled scans, endpoint telemetry, repaired issues, and performance code overrides",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "scanTimestamp": { "type": "string", "format": "date-time" },
+        "scheduleInterval": { "type": "string", "maxLength": 64 },
+        "overallUptimePercent": { "type": "number" },
+        "endpointsScanned": { "type": "number" },
+        "issuesDetected": { "type": "number" },
+        "issuesRepaired": { "type": "number" },
+        "codeOverridesApplied": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["ALL_HEALTHY", "REPAIRED_HEALTHY", "DEGRADED"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "scanTimestamp", "overallUptimePercent", "status"]
+    },
+    "fleetTickerPreference": {
+      "title": "FleetTickerPreference",
+      "description": "Admin configuration and category toggles for the real-time live fleet news ticker",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "showTruckingNews": { "type": "boolean" },
+        "showGeneralNews": { "type": "boolean" },
+        "showDotAlerts": { "type": "boolean" },
+        "showNasaWeatherAlerts": { "type": "boolean" },
+        "showFleetReminders": { "type": "boolean" },
+        "tickerSpeed": { "type": "string", "enum": ["slow", "normal", "fast"] },
+        "theme": { "type": "string", "enum": ["gold", "amber", "emerald"] },
+        "isPaused": { "type": "boolean" },
+        "updatedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "showTruckingNews", "showGeneralNews", "showDotAlerts", "showNasaWeatherAlerts"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/userProfile" },
+      "description": "Commercial driver and fleet administrator profile documents"
+    },
+    "/audits/{auditId}": {
+      "schema": { "$ref": "#/entities/auditRecord" },
+      "description": "Tamper-evident Merkle ledger blocks and cryptographic roadside audit records"
+    },
+    "/fmcsa_submissions/{submissionId}": {
+      "schema": { "$ref": "#/entities/fmcsaSubmission" },
+      "description": "FMCSA Web Services and Bluetooth ERDS transmission records"
+    },
+    "/hos_logs/{logId}": {
+      "schema": { "$ref": "#/entities/hosLog" },
+      "description": "8-day rolling statutory hours-of-service compliance records"
+    },
+    "/inspections/{inspectionId}": {
+      "schema": { "$ref": "#/entities/inspectionSession" },
+      "description": "Active roadside inspection sessions, officer verification tokens, and cabin shield states"
+    },
+    "/fleet_assets/{assetId}": {
+      "schema": { "$ref": "#/entities/fleetAsset" },
+      "description": "Fleet equipment asset documents with real-time maintenance schedule and last repaired links"
+    },
+    "/repair_records/{workOrderId}": {
+      "schema": { "$ref": "#/entities/repairRecord" },
+      "description": "Permanent maintenance repair ledger entries linked to vehicle asset IDs in Firebase"
+    },
+    "/user_toll_passports/{userId}": {
+      "schema": { "$ref": "#/entities/tollPassport" },
+      "description": "Commercial driver transponder credentials and multi-state toll passport"
+    },
+    "/drivewyze_enrollments/{enrollmentId}": {
+      "schema": { "$ref": "#/entities/drivewyzeEnrollment" },
+      "description": "Drivewyze PreClear weigh station bypass vehicle registry"
+    },
+    "/toll_expense_logs/{logId}": {
+      "schema": { "$ref": "#/entities/tollExpenseLog" },
+      "description": "Real-time toll plaza expense audit records"
+    },
+    "/driver_records/{driverId}": {
+      "schema": { "$ref": "#/entities/driverRecord" },
+      "description": "Driver DQF records, medical card tracking, and 30-day renewal alerts"
+    },
+    "/dvir_records/{dvirId}": {
+      "schema": { "$ref": "#/entities/dvirRecord" },
+      "description": "Pre-trip and post-trip DVIR inspection logs with defect history"
+    },
+    "/roadside_inspections/{inspectionId}": {
+      "schema": { "$ref": "#/entities/roadsideInspection" },
+      "description": "Clean inspections and violation records with state-specific remediation"
+    },
+    "/maintenance_diagnostic_logs/{logId}": {
+      "schema": { "$ref": "#/entities/maintenanceDiagnosticLog" },
+      "description": "Maintenance and diagnostic agent 2x/24hr scheduled sweeps, repaired issues, and code performance overrides"
+    },
+    "/fleet_ticker_preferences/{configId}": {
+      "schema": { "$ref": "#/entities/fleetTickerPreference" },
+      "description": "Admin configuration and category toggles for real-time live fleet news ticker"
+    }
+  }
+}

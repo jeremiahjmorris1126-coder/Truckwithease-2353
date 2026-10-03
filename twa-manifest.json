@@ -1,0 +1,44 @@
+{
+  "packageId": "com.morrishive.truckwithease",
+  "host": "truckwithease.com",
+  "name": "Truck With Ease — Enterprise Fleet Cockpit",
+  "launcherName": "TruckWithEase",
+  "themeColor": "#FFD700",
+  "navigationColor": "#040810",
+  "backgroundColor": "#040810",
+  "startUrl": "/",
+  "iconUrl": "https://truckwithease.com/icon-512.png",
+  "maskableIconUrl": "https://truckwithease.com/icon-512.png",
+  "appVersionName": "2.0.0",
+  "appVersionCode": 200,
+  "shortcuts": [
+    {
+      "name": "Roadside Night HUD",
+      "short_name": "Night HUD",
+      "url": "/?tab=nighthud",
+      "icon": "https://truckwithease.com/icon-192.png"
+    },
+    {
+      "name": "FMCSA Sovereign Vault",
+      "short_name": "Audit Vault",
+      "url": "/?tab=security-vault",
+      "icon": "https://truckwithease.com/icon-192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://truckwithease.com/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    },
+    "playBilling": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false
+}

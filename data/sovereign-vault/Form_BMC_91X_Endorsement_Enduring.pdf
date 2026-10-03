@@ -1,0 +1,17 @@
+--- TRUCK WITH EASE IMMUTABLE RECORD ---
+{
+  "id": "FMCSA-BMC-2026-006",
+  "category": "FINANCIAL_RESPONSIBILITY",
+  "fmcsaPart": "49 CFR Part 387",
+  "title": "Form BMC-91X Endorsement of Primary Liability Insurance (,000,000 Bodily Injury & Property Damage)",
+  "filename": "Form_BMC_91X_Endorsement_Enduring.pdf",
+  "carrierUsdot": "USDOT-4109822",
+  "timestamp": "2026-09-30T00:34:39.179Z",
+  "status": "TAMPER_SEALED",
+  "retentionUntil": "2030-01-01",
+  "notes": "Active continuous policy filed directly with FMCSA Licensing & Insurance (L&I).",
+  "rawPayload": "FMCSA_FORM_BMC91X_INSURANCE_PRIMARY_LIABILITY_1000000_UNDERWRITER_CERTIFIED",
+  "sha256Hash": "522907695a3e0fd38a51ecf537a466ee1b12d88c9f07c2e57f09fd1713df8a59",
+  "sizeBytes": 81995,
+  "localDiskPath": "C:\\Users\\truck\\antigravity\\Truck-With-Ease---Enterprise-Integrations\\data\\sovereign-vault\\Form_BMC_91X_Endorsement_Enduring.pdf"
+}

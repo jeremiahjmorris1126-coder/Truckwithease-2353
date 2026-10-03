@@ -1,0 +1,8 @@
+{
+  "firestore": {
+    "databaseId": "ai-studio-truckwitheaseent-2371eb55-d5a9-4283-9f6b-2d0e530c0bff",
+    "rules": "firestore.rules",
+    "edition": "ENTERPRISE",
+    "dataAccessMode": "FIRESTORE_NATIVE"
+  }
+}

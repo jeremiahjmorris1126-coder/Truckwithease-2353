@@ -1,0 +1,17 @@
+--- TRUCK WITH EASE IMMUTABLE RECORD ---
+{
+  "id": "FMCSA-DVIR-2026-005",
+  "category": "MAINTENANCE_DVIR",
+  "fmcsaPart": "49 CFR Part 396",
+  "title": "Pre-Trip & Post-Trip Driver Vehicle Inspection Report (DVIR) & Annual Periodic Inspection",
+  "filename": "DVIR_PreTrip_Annual_Inspection_396_17.pdf",
+  "carrierUsdot": "USDOT-4109822",
+  "timestamp": "2026-09-30T00:34:39.179Z",
+  "status": "TAMPER_SEALED",
+  "retentionUntil": "2027-09-30",
+  "notes": "Complete brake stroke measurement, steering gear backlash, tire tread depths >= 4/32 steer and 2/32 drive, air brake leak-down cert.",
+  "rawPayload": "DVIR_PASSED_ZERO_DEFECTS_BRAKE_MEASURE_STEERING_TIRES_AIR_SYSTEM_CERTIFIED_ANNUAL_396_17",
+  "sha256Hash": "c69e734ca6e0f13ae592d09ad5ba9fd29c5d7c5bb4020007084cd61719f4ee59",
+  "sizeBytes": 82008,
+  "localDiskPath": "C:\\Users\\truck\\antigravity\\Truck-With-Ease---Enterprise-Integrations\\data\\sovereign-vault\\DVIR_PreTrip_Annual_Inspection_396_17.pdf"
+}

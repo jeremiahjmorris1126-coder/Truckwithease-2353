@@ -1,0 +1,17 @@
+--- TRUCK WITH EASE IMMUTABLE RECORD ---
+{
+  "id": "FMCSA-DQF-2026-001",
+  "category": "DRIVER_QUALIFICATION_FILE",
+  "fmcsaPart": "49 CFR Part 391",
+  "title": "Commercial Driver Qualification Master File - James Morris (CDL Class-A)",
+  "filename": "DQF_Morris_James_ClassA_Certified.pdf",
+  "carrierUsdot": "USDOT-4109822",
+  "timestamp": "2026-09-30T00:34:39.179Z",
+  "status": "TAMPER_SEALED",
+  "retentionUntil": "2029-12-31",
+  "notes": "Includes 3-year safety performance history, initial MVR inquiry, road test certificate, and valid medical card.",
+  "rawPayload": "VERIFIED_OFFICIAL_RECORD_DRIVER_QUALIFICATION_FILE_USDOT_4109822_JMORRIS_CDL_VALID_MVR_CLEAR",
+  "sha256Hash": "5c0de1c63e7e5cd925970e10a0736e3f82db537909b800804d01b752877c56e7",
+  "sizeBytes": 82012,
+  "localDiskPath": "C:\\Users\\truck\\antigravity\\Truck-With-Ease---Enterprise-Integrations\\data\\sovereign-vault\\DQF_Morris_James_ClassA_Certified.pdf"
+}
