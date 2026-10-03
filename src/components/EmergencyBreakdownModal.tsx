@@ -183,9 +183,9 @@ STATUTORY COMPLIANCE: 49 CFR § 392.22 Warning Triangles deployed.`;
         <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
           {/* Active Broadcast Confirmation Card if triggered */}
           {activeReport && (
-            <div className="p-4 rounded-xl bg-emerald-950/70 border-2 border-emerald-500/60 text-zinc-200 space-y-2 animate-in fade-in duration-200 shadow-xl shadow-emerald-950/40">
+            <div className="p-4 rounded-xl bg-yellow-950/40 border-2 border-[#FFE600]/60 text-zinc-200 space-y-2 animate-in fade-in duration-200 shadow-xl shadow-emerald-950/40">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-emerald-400 font-mono font-black text-sm">
+                <div className="flex items-center gap-2 text-[#FFE600] font-mono font-black text-sm">
                   <CheckCircle2 className="w-5 h-5" />
                   <span>EMERGENCY SOS BROADCAST DELIVERED TO DISPATCH &amp; SAFETY</span>
                 </div>
@@ -199,14 +199,14 @@ STATUTORY COMPLIANCE: 49 CFR § 392.22 Warning Triangles deployed.`;
               <div className="pt-1 flex items-center gap-3">
                 <button
                   onClick={handleCopyDossier}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-black font-mono font-bold text-xs rounded flex items-center gap-1.5 transition-transform active:scale-95"
+                  className="shadow-[0_0_15px_rgba(255,230,0,0.45)] px-3 py-1.5 bg-[#FFE600] hover:bg-[#FFE600] text-black font-mono font-bold text-xs rounded flex items-center gap-1.5 transition-transform active:scale-95"
                 >
                   <Copy className="w-3.5 h-3.5" />
                   {copiedDossier ? 'COPIED TO CLIPBOARD' : 'COPY SOS PACKET FOR SMS / EMAIL'}
                 </button>
                 <button
                   onClick={() => onCallNumber(selectedVendor, '(800) 655-6837', 'EMERGENCY_BREAKDOWN')}
-                  className="px-3 py-1.5 bg-[#1F2937] hover:bg-[#374151] text-emerald-300 border border-emerald-500/30 font-mono font-bold text-xs rounded flex items-center gap-1.5"
+                  className="px-3 py-1.5 bg-[#FFE600] hover:bg-[#FFD700] text-black font-extrabold shadow-[0_0_15px_rgba(255,230,0,0.45)] border border-yellow-300 font-mono text-xs rounded flex items-center gap-1.5"
                 >
                   <Phone className="w-3.5 h-3.5" />
                   CONNECT PHONE CALL TO DISPATCHED VENDOR

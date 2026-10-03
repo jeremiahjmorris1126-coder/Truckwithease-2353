@@ -1023,7 +1023,7 @@ export const MapGeofencingTool: React.FC<MapGeofencingToolProps> = ({
               {drawingPoints.length >= 3 && (
                 <button
                   onClick={handleFinishPolygon}
-                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-[10px] uppercase flex items-center gap-1"
+                  className="shadow-[0_0_15px_rgba(255,230,0,0.45)] px-2.5 py-1 bg-[#FFE600] hover:bg-[#FFE600] text-black rounded font-bold text-[10px] uppercase flex items-center gap-1"
                 >
                   <Check className="w-3 h-3" />
                   <span>COMPLETE ZONE</span>

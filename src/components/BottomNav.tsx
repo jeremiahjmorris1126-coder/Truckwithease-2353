@@ -468,7 +468,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             {/* Tactical Sector Header */}
             <div className="flex items-center justify-between px-4 py-3 bg-[#111A13] border-b border-[#233327]">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#16251A] border border-[#2D4533] flex items-center justify-center text-[#4ADE80] shadow-[0_0_10px_rgba(74,222,128,0.3)]">
+                <div className="w-8 h-8 rounded-lg bg-[#16251A] border border-[#2D4533] flex items-center justify-center text-[#FFE600] shadow-[0_0_10px_rgba(255,230,0,0.3)]">
                   {currentSectorObj.icon}
                 </div>
                 <div>
@@ -503,7 +503,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                     onClick={() => handleSelectTab(item.id)}
                     className={`flex flex-col text-left p-2.5 rounded-xl border transition-all duration-150 relative ${
                       isSelected
-                        ? 'bg-[#182C1D] border-[#4ADE80] shadow-[0_0_15px_rgba(74,222,128,0.3)] text-[#F1F5F9]'
+                        ? 'bg-[#182C1D] border-[#FFE600] shadow-[0_0_15px_rgba(255,230,0,0.3)] text-[#F1F5F9]'
                         : 'bg-[#111813]/90 border-[#1E2D22] text-[#94A39A] hover:border-[#2D4533] hover:text-[#F1F5F9] active:bg-[#162218]'
                     }`}
                   >
@@ -511,8 +511,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                       <div
                         className={`w-6 h-6 rounded-md flex items-center justify-center ${
                           isSelected
-                            ? 'bg-[#4ADE80] text-[#0A0E0B]'
-                            : 'bg-[#162017] text-[#4ADE80] border border-[#233327]'
+                            ? 'bg-[#FFE600] text-[#0A0E0B]'
+                            : 'bg-[#162017] text-[#FFE600] border border-[#233327]'
                         }`}
                       >
                         {item.icon}
@@ -525,15 +525,15 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                             ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
                             : item.badgeType === 'blue'
                             ? 'bg-sky-500/20 text-sky-400 border border-sky-500/40'
-                            : 'bg-[#4ADE80]/20 text-[#4ADE80] border border-[#4ADE80]/40'
+                            : 'bg-[#FFE600]/20 text-[#FFE600] border border-[#FFE600]/40 font-extrabold shadow-[0_0_8px_rgba(255,230,0,0.3)]'
                         }`}
                       >
                         {item.badge}
                       </span>
                     </div>
                     <span
-                      className={`text-xs font-['Chakra_Petch'] font-bold leading-snug truncate w-full ${
-                        isSelected ? 'text-[#4ADE80]' : 'text-[#F1F5F9]'
+                      className={`text-xs font-['Chakra_Petch'] font-extrabold leading-snug truncate w-full ${
+                        isSelected ? 'text-[#FFE600]' : 'text-[#F1F5F9]'
                       }`}
                     >
                       {item.label}
@@ -542,7 +542,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                       {item.subtitle}
                     </span>
                     {isSelected && (
-                      <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#4ADE80] shadow-[0_0_6px_#4ADE80]" />
+                      <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#FFE600] shadow-[0_0_6px_#FFE600]" />
                     )}
                   </button>
                 );
@@ -552,8 +552,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             {/* Quick Status Bar */}
             <div className="px-4 py-2 bg-[#0A0E0B] border-t border-[#1E2D22] flex items-center justify-between text-[10px] text-[#64748B]">
               <span className="font-mono">TRUCKWITHEASE // MOBILE TACTICAL OS</span>
-              <span className="text-[#4ADE80] font-mono font-bold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80] animate-ping" />
+              <span className="text-[#FFE600] font-mono font-bold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FFE600] animate-ping" />
                 ACTIVE
               </span>
             </div>
@@ -576,8 +576,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           <div className="flex items-center gap-1.5 text-[9px] font-mono text-[#64748B]">
             {isCollapsed ? (
               <>
-                <ChevronUp className="w-3 h-3 text-[#4ADE80]" />
-                <span className="text-[#4ADE80] font-bold tracking-wider">EXPAND COMMAND DOCK</span>
+                <ChevronUp className="w-3 h-3 text-[#FFE600]" />
+                <span className="text-[#FFE600] font-bold tracking-wider">EXPAND COMMAND DOCK</span>
               </>
             ) : (
               <>
@@ -601,22 +601,22 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 onClick={() => handleSectorToggle(sector.id)}
                 className={`flex-1 flex flex-col items-center justify-center h-full py-1 relative transition-all duration-150 rounded-lg ${
                   isSectorOpened
-                    ? 'text-[#4ADE80] bg-[#16251A] shadow-[inset_0_0_12px_rgba(74,222,128,0.25)]'
+                    ? 'text-[#FFE600] bg-[#16251A] shadow-[inset_0_0_12px_rgba(255,230,0,0.25)]'
                     : isSectorActive
-                    ? 'text-[#4ADE80] bg-[#111A13]/90'
+                    ? 'text-[#FFE600] bg-[#111A13]/90'
                     : 'text-[#94A39A] hover:text-[#F1F5F9] active:bg-[#111813]'
                 }`}
               >
                 {/* Active Sector Illuminated Reticle Line */}
                 {isSectorActive && (
-                  <span className="absolute top-0 left-2 right-2 h-[2.5px] bg-[#4ADE80] shadow-[0_0_10px_#4ADE80] rounded-full" />
+                  <span className="absolute top-0 left-2 right-2 h-[2.5px] bg-[#FFE600] shadow-[0_0_10px_#FFE600] rounded-full" />
                 )}
 
                 <div className="flex items-center gap-1">
                   <span
                     className={`transition-transform duration-200 ${
                       isSectorActive || isSectorOpened
-                        ? 'scale-110 text-[#4ADE80]'
+                        ? 'scale-110 text-[#FFE600]'
                         : 'text-[#64748B]'
                     }`}
                   >
@@ -625,7 +625,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                   <span
                     className={`text-[8px] font-mono px-1 py-0.2 rounded font-bold leading-none ${
                       isSectorActive
-                        ? 'bg-[#4ADE80] text-[#0A0E0B]'
+                        ? 'bg-[#FFE600] text-[#0A0E0B]'
                         : 'bg-[#162017] text-[#64748B] border border-[#233327]'
                     }`}
                   >
@@ -635,7 +635,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
                 <span
                   className={`text-[10px] font-['Chakra_Petch'] font-bold tracking-wider uppercase mt-0.5 ${
-                    isSectorActive || isSectorOpened ? 'text-[#4ADE80]' : 'text-[#94A39A]'
+                    isSectorActive || isSectorOpened ? 'text-[#FFE600]' : 'text-[#94A39A]'
                   }`}
                 >
                   {sector.shortLabel}

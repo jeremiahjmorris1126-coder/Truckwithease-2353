@@ -2903,7 +2903,7 @@ export const HosView: React.FC<HosViewProps> = ({ onNavigateToTab }) => {
                   <button
                     onClick={handleManualSyncEldIndexedDb}
                     disabled={isManualSyncingLocal || eldSyncState?.isOffline}
-                    className="px-3.5 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold uppercase transition-all flex items-center gap-1.5 shadow-md disabled:opacity-50"
+                    className="px-3.5 py-2 rounded-lg bg-gradient-to-r from-[#FFE600] to-[#F59E0B] hover:from-[#FFD700] hover:to-[#EAB308] text-black text-xs font-bold uppercase transition-all flex items-center gap-1.5 shadow-md disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isManualSyncingLocal ? 'animate-spin' : ''}`} />
                     <span>

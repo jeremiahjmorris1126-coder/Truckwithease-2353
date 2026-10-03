@@ -442,7 +442,7 @@ export const MaintenanceView: React.FC = () => {
           </div>
           <h1 className="font-headline text-2xl sm:text-3xl uppercase text-white font-black tracking-tight mt-1 flex items-center gap-2">
             Maintenance Calculations &amp; Repair History Memory
-            <span className="inline-block w-2 h-2 bg-[#C9A84C]" />
+            <span className="inline-block w-2 h-2 bg-[#FFE600] shadow-[0_0_16px_rgba(255,230,0,0.45)] border border-yellow-200/50" />
           </h1>
           <p className="text-xs font-mono text-[#888] mt-1 max-w-3xl">
             Real-time maintenance calculations (CPM, PM intervals, spend analytics), permanent memory of past certified repairs linked to vehicle asset IDs in Firebase, and automatic same-day DVIR export compliance.
@@ -481,7 +481,7 @@ export const MaintenanceView: React.FC = () => {
 
           <button
             onClick={() => setIsDvirModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#C9A84C] hover:bg-white text-black text-xs font-mono font-black uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(201,168,76,0.25)]"
+            className="flex items-center gap-2 px-4 py-2 bg-[#FFE600] shadow-[0_0_16px_rgba(255,230,0,0.45)] border border-yellow-200/50 hover:bg-[#FFD700] text-black text-xs font-mono font-black uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(201,168,76,0.25)]"
           >
             <Plus className="w-4 h-4 text-black" />
             <span>SUBMIT DVIR</span>
@@ -514,7 +514,7 @@ export const MaintenanceView: React.FC = () => {
           </div>
           <button
             onClick={() => setExportNotice(null)}
-            className="text-emerald-400 hover:text-white font-bold px-2 py-0.5"
+            className="bg-[#FFE600] hover:bg-[#FFD700] text-black font-extrabold px-3 py-1 rounded shadow-[0_0_14px_rgba(255,230,0,0.45)] transition-all cursor-pointer"
           >
             ✕
           </button>
@@ -704,7 +704,7 @@ export const MaintenanceView: React.FC = () => {
                       </div>
                       <div className="w-full bg-[#0A0A0A] h-2 border border-[#222]">
                         <div
-                          className="h-full bg-[#C9A84C]"
+                          className="h-full bg-[#FFE600] shadow-[0_0_16px_rgba(255,230,0,0.45)] border border-yellow-200/50"
                           style={{ width: `${Math.max(2, pct)}%` }}
                         />
                       </div>
@@ -920,7 +920,7 @@ export const MaintenanceView: React.FC = () => {
 
               <button
                 onClick={() => setIsNewRepairModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#C9A84C] text-black font-black uppercase text-xs hover:bg-white transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFE600] shadow-[0_0_16px_rgba(255,230,0,0.45)] border border-yellow-200/50 text-black font-black uppercase text-xs hover:bg-[#FFD700] transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Repair Record</span>
@@ -937,7 +937,7 @@ export const MaintenanceView: React.FC = () => {
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#222] pb-3">
                   <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="px-2 py-0.5 bg-[#C9A84C]/20 text-[#C9A84C] text-[10px] font-black uppercase">
+                    <span className="px-2 py-0.5 bg-[#FFE600] shadow-[0_0_16px_rgba(255,230,0,0.45)] border border-yellow-200/50/20 text-[#C9A84C] text-[10px] font-black uppercase">
                       {wo.repairType.replace(/_/g, ' ')}
                     </span>
                     <span className="font-black text-white text-base">{wo.id}</span>
@@ -1038,7 +1038,7 @@ export const MaintenanceView: React.FC = () => {
               </button>
               <button
                 onClick={() => setIsDvirModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#C9A84C] text-black font-black uppercase text-xs hover:bg-white"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFE600] shadow-[0_0_16px_rgba(255,230,0,0.45)] border border-yellow-200/50 text-black font-black uppercase text-xs hover:bg-[#FFD700]"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>New DVIR</span>
@@ -1135,7 +1135,7 @@ export const MaintenanceView: React.FC = () => {
               </button>
               <button
                 onClick={handleExportTodayDvirs}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#C9A84C] text-black font-black uppercase text-xs hover:bg-white"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFE600] shadow-[0_0_16px_rgba(255,230,0,0.45)] border border-yellow-200/50 text-black font-black uppercase text-xs hover:bg-[#FFD700]"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Export Today's DVIR Package</span>
@@ -1153,7 +1153,7 @@ export const MaintenanceView: React.FC = () => {
                 </p>
                 <button
                   onClick={handleExportTodayDvirs}
-                  className="px-4 py-2 bg-[#C9A84C] text-black font-black text-xs uppercase"
+                  className="px-4 py-2 bg-[#FFE600] shadow-[0_0_16px_rgba(255,230,0,0.45)] border border-yellow-200/50 text-black font-black text-xs uppercase"
                 >
                   Generate First Daily Export
                 </button>
@@ -1335,7 +1335,7 @@ export const MaintenanceView: React.FC = () => {
                     </div>
                     <div className="w-full bg-[#0A0A0A] h-1.5 border border-[#222]">
                       <div
-                        className={`h-full ${isPmWarning ? 'bg-amber-400' : 'bg-[#C9A84C]'}`}
+                        className={`h-full ${isPmWarning ? 'bg-amber-400' : 'bg-[#FFE600] shadow-[0_0_16px_rgba(255,230,0,0.45)] border border-yellow-200/50'}`}
                         style={{ width: `${Math.max(10, Math.min(100, 100 - (milesToPm / 15000) * 100))}%` }}
                       />
                     </div>
@@ -1399,7 +1399,7 @@ export const MaintenanceView: React.FC = () => {
                           ? 'bg-rose-500'
                           : wear.wearPercentage > 50
                           ? 'bg-amber-400'
-                          : 'bg-[#C9A84C]'
+                          : 'bg-[#FFE600] shadow-[0_0_16px_rgba(255,230,0,0.45)] border border-yellow-200/50'
                       }`}
                       style={{ width: `${wear.wearPercentage}%` }}
                     />
@@ -1565,7 +1565,7 @@ export const MaintenanceView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#C9A84C] text-black font-black uppercase text-xs hover:bg-white transition-colors"
+                  className="px-5 py-2 bg-[#FFE600] shadow-[0_0_16px_rgba(255,230,0,0.45)] border border-yellow-200/50 text-black font-black uppercase text-xs hover:bg-[#FFD700] transition-colors"
                 >
                   Sign &amp; Export DVIR
                 </button>
@@ -1758,7 +1758,7 @@ export const MaintenanceView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#C9A84C] text-black font-black uppercase text-xs hover:bg-white transition-colors flex items-center gap-1.5"
+                  className="px-5 py-2 bg-[#FFE600] shadow-[0_0_16px_rgba(255,230,0,0.45)] border border-yellow-200/50 text-black font-black uppercase text-xs hover:bg-[#FFD700] transition-colors flex items-center gap-1.5"
                 >
                   <ShieldCheck className="w-4 h-4 text-black" />
                   <span>Certify &amp; Save Work Order</span>

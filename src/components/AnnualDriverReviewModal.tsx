@@ -266,7 +266,7 @@ export const AnnualDriverReviewModal: React.FC<AnnualDriverReviewModalProps> = (
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-black font-black text-xs uppercase rounded-lg shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-5 py-2 bg-gradient-to-r from-[#FFE600] to-[#F59E0B] hover:brightness-110 text-black font-black text-xs uppercase rounded-lg shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Check className="w-4 h-4 text-black" />
                 <span>{isSubmitting ? 'Signing & Filing...' : 'Sign & Complete Annual Review'}</span>

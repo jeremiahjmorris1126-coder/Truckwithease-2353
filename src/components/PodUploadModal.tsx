@@ -240,7 +240,7 @@ export const PodUploadModal: React.FC<PodUploadModalProps> = ({
               <button
                 onClick={handleSubmitPodAndFactor}
                 disabled={!selectedFile || isProcessing}
-                className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-mono text-xs font-black uppercase tracking-wider rounded transition-all shadow flex items-center gap-2 disabled:opacity-40"
+                className="shadow-[0_0_15px_rgba(255,230,0,0.45)] px-5 py-2.5 bg-[#FFE600] hover:bg-[#FFE600] text-black font-mono text-xs font-black uppercase tracking-wider rounded transition-all shadow flex items-center gap-2 disabled:opacity-40"
               >
                 {isProcessing ? (
                   <>

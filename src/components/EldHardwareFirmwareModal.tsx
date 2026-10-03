@@ -632,7 +632,7 @@ void loop() {
             <button
               type="button"
               onClick={handleDownloadFile}
-              className="px-3 py-1.5 rounded bg-[#00FF66]/20 hover:bg-[#00FF66]/30 text-[#00FF66] border border-[#00FF66]/50 text-xs font-bold transition-colors flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,255,102,0.2)] active:scale-95"
+              className="px-3 py-1.5 rounded bg-[#FFE600]/20 hover:bg-[#FFE600]/30 text-black border border-[#FFE600] text-xs font-bold transition-colors flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,255,102,0.2)] active:scale-95"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Download Firmware</span>

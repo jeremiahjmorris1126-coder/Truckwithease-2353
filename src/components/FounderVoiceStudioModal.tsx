@@ -675,7 +675,7 @@ export const FounderVoiceStudioModal: React.FC<FounderVoiceStudioModalProps> = (
 
                 <button
                   onClick={handleSaveScript}
-                  className="px-5 py-2.5 rounded-xl bg-[#00FF66] hover:bg-[#00E55C] text-[#0A0A0A] font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-[0_0_20px_rgba(0,255,102,0.3)] transition-all cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[#FFE600] hover:bg-[#FFD700] text-black font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-[0_0_20px_rgba(0,255,102,0.3)] transition-all cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   <span>Save &amp; Apply Reworded Text</span>
@@ -751,7 +751,7 @@ export const FounderVoiceStudioModal: React.FC<FounderVoiceStudioModalProps> = (
                   ) : (
                     <button
                       onClick={stopRecording}
-                      className="px-6 py-3 rounded-xl bg-[#00FF66] hover:bg-[#00E55C] text-[#0A0A0A] font-mono font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-[0_0_25px_rgba(0,255,102,0.5)] active:scale-95 transition-all cursor-pointer"
+                      className="px-6 py-3 rounded-xl bg-[#FFE600] hover:bg-[#FFD700] text-black font-mono font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-[0_0_25px_rgba(0,255,102,0.5)] active:scale-95 transition-all cursor-pointer"
                     >
                       <Square className="w-4 h-4 fill-current" />
                       <span>Stop &amp; Review Recording</span>

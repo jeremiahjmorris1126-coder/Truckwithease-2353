@@ -402,7 +402,7 @@ export const MobileCockpitView: React.FC<MobileCockpitViewProps> = ({ onNavigate
                     <button
                       key={p.val}
                       onClick={() => setVehicleHeightInches(p.val)}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      className={`px-2 py-0.5 rounded text-xs font-extrabold ${
                         vehicleHeightInches === p.val ? 'bg-[#D4AF37] text-black shadow' : 'text-slate-400 hover:text-white'
                       }`}
                     >
@@ -411,7 +411,7 @@ export const MobileCockpitView: React.FC<MobileCockpitViewProps> = ({ onNavigate
                   ))}
                   <button
                     onClick={() => setIsAirDumped(!isAirDumped)}
-                    className={`ml-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-all ${
+                    className={`ml-1 px-2 py-0.5 rounded text-xs font-extrabold border transition-all ${
                       isAirDumped
                         ? 'bg-amber-500 text-black border-amber-400 animate-pulse'
                         : 'bg-black border-slate-800 text-slate-400 hover:text-amber-300'
@@ -859,7 +859,7 @@ export const MobileCockpitView: React.FC<MobileCockpitViewProps> = ({ onNavigate
                     setIsAuditoryMuted(next);
                     showToast(next ? 'AUDITORY SIREN MUTED' : 'AUDITORY SIREN UNMUTED (ALERTS ACTIVE)');
                   }}
-                  className={`px-3 py-2 rounded-lg font-bold uppercase text-[11px] flex items-center gap-1.5 transition-all shadow ${
+                  className={`px-3 py-2 rounded-lg font-extrabold uppercase text-xs tracking-wider flex items-center gap-1.5 transition-all shadow ${
                     isAuditoryMuted
                       ? 'bg-slate-800 text-slate-300 border border-slate-600 hover:text-white'
                       : 'bg-rose-950 text-rose-200 border border-rose-500 hover:bg-rose-900'
@@ -881,7 +881,7 @@ export const MobileCockpitView: React.FC<MobileCockpitViewProps> = ({ onNavigate
                     );
                     showToast(`TESTING AUDITORY CHIME & VOCAL ALERT FOR ${primaryHazardWithin5Miles.bridge.name}`);
                   }}
-                  className="px-3 py-2 rounded-lg font-bold uppercase text-[11px] bg-black border border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 flex items-center gap-1 shadow"
+                  className="px-3 py-2 rounded-lg font-extrabold uppercase text-xs tracking-wider bg-black border border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 flex items-center gap-1 shadow"
                 >
                   <Volume2 className="w-3.5 h-3.5" />
                   <span>PLAY CHIME</span>
@@ -1001,7 +1001,7 @@ export const MobileCockpitView: React.FC<MobileCockpitViewProps> = ({ onNavigate
                 if (onNavigateToTab) onNavigateToTab('telemetry');
                 showToast('OPENING UNTOUCHABLE TELEMATICS SUITE');
               }}
-              className="text-[10px] font-bold text-[#D4AF37] hover:underline flex items-center gap-1"
+              className="text-xs font-extrabold text-[#D4AF37] hover:underline flex items-center gap-1"
             >
               <span>FULL SUITE</span>
               <ChevronRight className="w-3 h-3" />
@@ -1173,7 +1173,7 @@ export const MobileCockpitView: React.FC<MobileCockpitViewProps> = ({ onNavigate
                       RIG HEIGHT PROFILE &amp; RESTRICTED ROUTE SENTINEL
                     </span>
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      className={`px-2 py-0.5 rounded text-xs font-extrabold ${
                         restrictedBridges.length > 0
                           ? 'bg-rose-950 text-rose-300 border border-rose-600 animate-pulse'
                           : 'bg-emerald-950 text-emerald-300 border border-emerald-600'
@@ -1208,7 +1208,7 @@ export const MobileCockpitView: React.FC<MobileCockpitViewProps> = ({ onNavigate
                       showToast(`RIG PROFILE UPDATED: ${preset.label} (${preset.inches}")`);
                     }}
                     title={preset.title}
-                    className={`px-2.5 py-1 rounded text-[10px] font-bold transition-all ${
+                    className={`px-2.5 py-1 rounded text-xs font-extrabold transition-all ${
                       vehicleHeightInches === preset.inches
                         ? 'bg-[#D4AF37] text-black shadow-md'
                         : 'bg-[#111319] border border-slate-800 text-slate-300 hover:text-white'
@@ -1253,7 +1253,7 @@ export const MobileCockpitView: React.FC<MobileCockpitViewProps> = ({ onNavigate
                         : 'PNEUMATIC SUSPENSION RESTORED TO NOMINAL RIDE HEIGHT'
                     );
                   }}
-                  className={`px-2.5 py-1 rounded text-[10px] font-bold border transition-all ${
+                  className={`px-2.5 py-1 rounded text-xs font-extrabold border transition-all ${
                     isAirDumped
                       ? 'bg-amber-500 text-black border-amber-300 shadow animate-pulse'
                       : 'bg-[#111319] border-slate-700 text-slate-300 hover:text-amber-400'
@@ -1404,7 +1404,7 @@ export const MobileCockpitView: React.FC<MobileCockpitViewProps> = ({ onNavigate
                         );
                       }
                     }}
-                    className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700 hover:bg-emerald-900 font-bold flex items-center gap-1"
+                    className="px-2.5 py-1 rounded bg-[#FFE600] hover:bg-[#FFD700] text-black font-extrabold shadow-[0_0_12px_rgba(255,230,0,0.45)] border border-yellow-300 flex items-center gap-1 transition-all active:scale-95 text-xs"
                   >
                     <Navigation className="w-3 h-3" />
                     <span>DEVICE GPS</span>
@@ -1605,7 +1605,7 @@ export const MobileCockpitView: React.FC<MobileCockpitViewProps> = ({ onNavigate
             <div className="bg-[#161922] rounded p-2 border border-slate-800 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-[#D4AF37] bg-black/50 px-1 rounded">
+                  <span className="text-xs font-extrabold text-[#D4AF37] bg-black/50 px-1 rounded">
                     GET
                   </span>
                   <span className="text-white font-semibold text-[11px]">/api/hos</span>
@@ -1623,7 +1623,7 @@ export const MobileCockpitView: React.FC<MobileCockpitViewProps> = ({ onNavigate
             <div className="bg-[#161922] rounded p-2 border border-slate-800 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-[#D4AF37] bg-black/50 px-1 rounded">
+                  <span className="text-xs font-extrabold text-[#D4AF37] bg-black/50 px-1 rounded">
                     GET
                   </span>
                   <span className="text-white font-semibold text-[11px]">/api/bridges/status</span>
@@ -1641,7 +1641,7 @@ export const MobileCockpitView: React.FC<MobileCockpitViewProps> = ({ onNavigate
             <div className="bg-[#161922] rounded p-2 border border-slate-800 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-[#D4AF37] bg-black/50 px-1 rounded">
+                  <span className="text-xs font-extrabold text-[#D4AF37] bg-black/50 px-1 rounded">
                     GET
                   </span>
                   <span className="text-white font-semibold text-[11px]">/api/support</span>
@@ -1758,7 +1758,7 @@ export const MobileCockpitView: React.FC<MobileCockpitViewProps> = ({ onNavigate
             <div className="bg-[#12080A] rounded-lg p-2.5 border border-red-900/60 opacity-80">
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-2">
-                  <span className="text-[10px] font-bold px-1 rounded bg-red-950 text-red-400 border border-red-800">
+                  <span className="text-xs font-extrabold px-1 rounded bg-red-950 text-red-400 border border-red-800">
                     DISQ
                   </span>
                   <div className="line-through text-slate-500 font-mono text-xs">

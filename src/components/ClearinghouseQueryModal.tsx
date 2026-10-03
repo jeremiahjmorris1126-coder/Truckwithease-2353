@@ -151,7 +151,7 @@ export const ClearinghouseQueryModal: React.FC<ClearinghouseQueryModalProps> = (
                 type="button"
                 onClick={handleRunQuery}
                 disabled={isRunningQuery || !consentGranted}
-                className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-black font-black text-xs uppercase rounded-lg shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                className="px-5 py-2 bg-gradient-to-r from-[#FFE600] to-[#F59E0B] hover:brightness-110 text-black font-black text-xs uppercase rounded-lg shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isRunningQuery ? 'animate-spin' : ''}`} />
                 <span>{isRunningQuery ? 'Querying FMCSA Portal...' : 'Run Query ($1.25 Flat Rate)'}</span>

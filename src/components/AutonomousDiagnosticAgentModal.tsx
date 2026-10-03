@@ -176,7 +176,7 @@ export const AutonomousDiagnosticAgentModal: React.FC<AutonomousDiagnosticAgentM
             <button
               onClick={handleRunSweep}
               disabled={isRunningScan}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 text-white rounded-lg text-xs font-bold font-mono transition-all shadow-md active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFE600] hover:bg-[#FFE600] disabled:bg-zinc-800 text-black rounded-lg text-xs font-bold font-mono transition-all shadow-md active:scale-95 cursor-pointer"
               title="Execute immediate deep audit sweep across all 5 operational pillars"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRunningScan ? 'animate-spin' : ''}`} />
@@ -700,7 +700,7 @@ export const AutonomousDiagnosticAgentModal: React.FC<AutonomousDiagnosticAgentM
             </button>
             <button
               onClick={onClose}
-              className="px-4 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded transition-colors cursor-pointer"
+              className="shadow-[0_0_15px_rgba(255,230,0,0.45)] px-4 py-1 bg-[#FFE600] hover:bg-[#FFE600] text-black font-bold rounded transition-colors cursor-pointer"
             >
               Dismiss
             </button>

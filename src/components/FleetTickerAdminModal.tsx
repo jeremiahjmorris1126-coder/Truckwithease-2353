@@ -452,7 +452,7 @@ export const FleetTickerAdminModal: React.FC<FleetTickerAdminModalProps> = ({
               type="button"
               disabled={isSavingToFirestore}
               onClick={handleSaveAllToFirestore}
-              className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-bold uppercase text-[10px] flex items-center justify-center gap-1.5 shadow transition-all active:scale-95 disabled:opacity-50"
+              className="shadow-[0_0_15px_rgba(255,230,0,0.45)] flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg bg-[#FFE600] hover:bg-[#FFD700] border border-[#FFE600] text-black font-bold uppercase text-[10px] flex items-center justify-center gap-1.5 shadow transition-all active:scale-95 disabled:opacity-50"
               title="Save all category toggles directly to Firestore Database"
             >
               {isSavingToFirestore ? (

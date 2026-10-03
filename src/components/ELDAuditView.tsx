@@ -1400,7 +1400,7 @@ export const ELDAuditView: React.FC<ELDAuditViewProps> = ({ onNavigateToTab, onA
             <button
               type="button"
               onClick={handleCommitDutySnapshot}
-              className="px-3.5 py-2 bg-[#00FF66] hover:bg-[#20ff78] text-black text-xs font-mono font-black uppercase rounded transition-all shadow-[0_0_15px_rgba(0,255,102,0.3)] flex items-center gap-1.5"
+              className="px-3.5 py-2 bg-[#FFE600] hover:bg-[#FFD700] text-black text-xs font-mono font-black uppercase rounded transition-all shadow-[0_0_15px_rgba(0,255,102,0.3)] flex items-center gap-1.5"
             >
               <Database className="w-4 h-4 text-black" />
               <span>Commit Snapshot</span>
@@ -1490,7 +1490,7 @@ export const ELDAuditView: React.FC<ELDAuditViewProps> = ({ onNavigateToTab, onA
                 <button
                   type="button"
                   onClick={handleConnectBluetooth}
-                  className="py-1.5 px-2 bg-[#00FF66]/20 text-[#00FF66] border border-[#00FF66]/50 rounded text-[10px] font-bold uppercase"
+                  className="shadow-[0_0_15px_rgba(255,230,0,0.45)] py-1.5 px-2 bg-[#FFE600]/20 text-black border border-[#FFE600] rounded text-[10px] font-bold uppercase"
                 >
                   RETRY
                 </button>
@@ -2363,7 +2363,7 @@ export const ELDAuditView: React.FC<ELDAuditViewProps> = ({ onNavigateToTab, onA
             <button
               type="button"
               onClick={handleCommitDutySnapshot}
-              className="px-2.5 py-1.5 bg-[#00FF66] hover:bg-[#20ff78] text-black font-mono font-black text-[10px] uppercase rounded transition-all shadow flex items-center gap-1"
+              className="shadow-[0_0_15px_rgba(255,230,0,0.45)] px-2.5 py-1.5 bg-[#FFE600] hover:bg-[#FFD700] text-black font-mono font-black text-[10px] uppercase rounded transition-all shadow flex items-center gap-1"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Snapshot</span>

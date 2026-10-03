@@ -1091,7 +1091,7 @@ export const VirtualEldHardwareDebugPanel: React.FC<VirtualEldHardwareDebugPanel
               type="button"
               id="apply-decoded-to-sim-btn"
               onClick={handleApplyDecodedToSimulation}
-              className="px-3.5 py-2 bg-[#00FF66] hover:bg-[#20ff78] text-black text-xs font-mono font-black uppercase rounded transition-all shadow-[0_0_15px_rgba(0,255,102,0.3)] flex items-center gap-1.5 active:scale-95 cursor-pointer"
+              className="px-3.5 py-2 bg-[#FFE600] hover:bg-[#FFD700] text-black text-xs font-mono font-black uppercase rounded transition-all shadow-[0_0_15px_rgba(0,255,102,0.3)] flex items-center gap-1.5 active:scale-95 cursor-pointer"
               title="Apply all decoded parameter values (RPM, Speed, Fuel, Oil, Temps) directly into the live virtual engine simulation"
             >
               <Zap className="w-4 h-4 text-black" />

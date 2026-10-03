@@ -442,7 +442,7 @@ spec:
           <button
             onClick={handleOneClickRemediate}
             disabled={isRemediating}
-            className="px-3.5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+            className="px-3.5 py-2 rounded-lg bg-[#FFE600] hover:bg-[#FFE600] text-black font-black text-xs uppercase flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all cursor-pointer disabled:opacity-50 shrink-0"
           >
             <Zap className="w-3.5 h-3.5 text-black" />
             {isRemediating ? 'Enforcing Policy...' : '1-Click VPC-SC Policy Sync'}

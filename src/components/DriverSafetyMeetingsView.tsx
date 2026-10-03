@@ -515,7 +515,7 @@ export const DriverSafetyMeetingsView: React.FC = () => {
 
                 <button
                   onClick={handleSubmitAttendance}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold uppercase transition-all shadow-md active:scale-95"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#FFE600] to-[#FFD700] hover:from-[#FFEA2E] hover:to-[#FFD700] text-black font-bold uppercase transition-all shadow-md active:scale-95"
                 >
                   Certify &amp; Store Attendance
                 </button>

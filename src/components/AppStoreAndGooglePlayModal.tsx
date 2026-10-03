@@ -233,7 +233,7 @@ Review Notes: TruckWithEase is a commercial motor carrier operations suite. Sele
                 </div>
                 <button
                   onClick={handleInstallClick}
-                  className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-black font-bold font-mono text-xs rounded-lg shadow-lg hover:brightness-110 flex items-center gap-2 shrink-0 select-none"
+                  className="px-4 py-2.5 bg-gradient-to-r from-[#FFE600] to-[#F59E0B] text-black font-bold font-mono text-xs rounded-lg shadow-lg hover:brightness-110 flex items-center gap-2 shrink-0 select-none"
                 >
                   <Download className="w-4 h-4" />
                   <span>INSTALL ON ANDROID</span>

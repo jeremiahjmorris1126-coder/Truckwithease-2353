@@ -717,7 +717,7 @@ export const EcosystemMasterIndexModal: React.FC<EcosystemMasterIndexModalProps>
           <button
             onClick={handleRunMeshTest}
             disabled={isRunningMeshTest}
-            className="px-3.5 py-1.5 rounded-lg font-bold uppercase text-[11px] bg-gradient-to-r from-emerald-500 to-emerald-700 text-black hover:from-emerald-400 hover:to-emerald-600 flex items-center gap-1.5 shadow active:scale-95 disabled:opacity-60 transition-all"
+            className="shadow-[0_0_15px_rgba(255,230,0,0.45)] px-3.5 py-1.5 rounded-lg font-bold uppercase text-[11px] bg-gradient-to-r from-[#FFE600] to-[#FFD700] text-black hover:from-[#FFEA2E] hover:to-[#FFD700] flex items-center gap-1.5 shadow active:scale-95 disabled:opacity-60 transition-all"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRunningMeshTest ? 'animate-spin' : ''}`} />
             <span>{isRunningMeshTest ? 'VERIFYING CONDUITS...' : 'TEST ALL 7 CONDUITS LIVE'}</span>

@@ -233,7 +233,7 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
               <span className="px-3 py-1 bg-zinc-800 text-zinc-300 font-mono text-xs rounded-md border border-zinc-700">
                 FMCSA 49 CFR § 395 REGISTERED
               </span>
-              <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 font-mono text-xs rounded-md border border-emerald-500/30 flex items-center gap-1.5">
+              <span className="px-3 py-1 bg-[#FFE600]/20 text-[#FFE600] font-mono text-xs rounded-md border border-[#FFE600]/40 flex items-center gap-1.5 shadow-[0_0_12px_rgba(255,230,0,0.3)]">
                 <CheckCircle2 className="w-3.5 h-3.5" /> 100% ZERO-DOWNTIME GUARANTEE
               </span>
             </div>
@@ -265,7 +265,7 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
 
               <button
                 onClick={() => setIsDemoModalOpen(true)}
-                className="px-6 py-3.5 bg-zinc-800/80 hover:bg-zinc-700 text-white font-bold text-sm uppercase tracking-wider rounded-xl border border-zinc-600 flex items-center gap-2 transition cursor-pointer"
+                className="px-6 py-3.5 bg-[#FFE600] hover:bg-[#FFD700] text-black font-extrabold text-sm uppercase tracking-wider rounded-xl border border-yellow-300 shadow-[0_0_18px_rgba(255,230,0,0.4)] flex items-center gap-2 transition cursor-pointer"
               >
                 <FileText className="w-5 h-5 text-[#FFE600]" /> Request 14-Day Fleet Demo
               </button>
@@ -289,8 +289,8 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
           <div className="bg-black/80 border border-zinc-800 p-5 rounded-2xl w-full lg:w-80 space-y-4 shadow-xl backdrop-blur-md">
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#FFE600] animate-ping" />
+                <span className="text-xs font-mono font-bold text-[#FFE600] uppercase tracking-wider">
                   LIVE AZUGA CAN-STREAM
                 </span>
               </div>
@@ -316,16 +316,16 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
               </div>
             </div>
 
-            <div className="p-2.5 bg-emerald-950/30 border border-emerald-500/30 rounded-lg flex items-center justify-between text-[11px] font-mono">
-              <span className="text-emerald-400 font-bold">DUTY STATUS:</span>
-              <span className="text-white px-2 py-0.5 bg-emerald-500/20 rounded font-bold">
+            <div className="p-2.5 bg-yellow-950/30 border border-[#FFE600]/30 rounded-lg flex items-center justify-between text-[11px] font-mono">
+              <span className="text-[#FFE600] font-bold">DUTY STATUS:</span>
+              <span className="text-white px-2 py-0.5 bg-[#FFE600]/20 rounded font-bold">
                 {liveTelemetry.hosAutoDutyStatus}
               </span>
             </div>
             
             <div className="text-[10px] text-zinc-400 font-mono flex items-center justify-between">
               <span>ZERO-LOSS BUFFER: ACTIVE</span>
-              <span className="text-emerald-400">0 DROPPED PACKETS</span>
+              <span className="text-[#FFE600]">0 DROPPED PACKETS</span>
             </div>
           </div>
         </div>
@@ -346,7 +346,7 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
         </div>
 
         <div className="p-5 rounded-2xl bg-zinc-950 border border-zinc-800 hover:border-[#FFE600]/50 transition space-y-2">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-[#FFE600]/40 flex items-center justify-center text-[#FFE600]">
             <Activity className="w-5 h-5" />
           </div>
           <h3 className="font-bold text-white text-base">100% No Downtime Telematics</h3>
@@ -461,14 +461,14 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
             <div className="text-xl font-bold font-mono text-white">
               ${roiData.hardwareRetailTotal.toLocaleString()}
             </div>
-            <span className="text-[10px] text-emerald-400 font-mono">
+            <span className="text-[10px] text-[#FFE600] font-mono">
               +${roiData.totalMarkupProfit.toLocaleString()} Gross Margin
             </span>
           </div>
 
           <div className="bg-zinc-900/80 border border-zinc-800 p-4 rounded-xl space-y-1">
             <span className="text-[11px] text-zinc-400 font-mono uppercase">Annual Fleet Savings</span>
-            <div className="text-xl font-black font-mono text-emerald-400">
+            <div className="text-xl font-black font-mono text-[#FFE600]">
               ${roiData.totalAnnualFleetSavings.toLocaleString()}
             </div>
             <span className="text-[10px] text-zinc-400">Violations + Idle + Insurance</span>
@@ -572,7 +572,7 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
                         <span className="text-xs font-mono line-through text-zinc-500">
                           ${item.wholesalePriceUsd.toFixed(2)}
                         </span>
-                        <span className="ml-1.5 px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold rounded">
+                        <span className="ml-1.5 px-1.5 py-0.5 bg-[#FFE600]/20 text-[#FFE600] text-[10px] font-mono font-bold rounded">
                           +{item.markupPercent.toFixed(1)}% Markup
                         </span>
                       </div>
@@ -608,7 +608,7 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
                     </div>
                     <div className="flex justify-between">
                       <span>Connectivity:</span>
-                      <span className="text-emerald-400 truncate max-w-[150px]">{item.specs.connectivity}</span>
+                      <span className="text-[#FFE600] truncate max-w-[150px]">{item.specs.connectivity}</span>
                     </div>
                   </div>
                 </div>
@@ -706,7 +706,7 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
             <p className="text-xs text-zinc-400 leading-relaxed">
               Plug the Azuga ELD One gateway into the secondary branch of the Y-cable and secure it with the included heavy-duty zip tie.
             </p>
-            <div className="text-[10px] font-mono text-emerald-400 bg-black/40 p-2 rounded border border-zinc-800">
+            <div className="text-[10px] font-mono text-[#FFE600] bg-black/40 p-2 rounded border border-zinc-800">
               Status LEDs: Solid Green = GPS &amp; CAN Active
             </div>
           </div>
@@ -731,7 +731,7 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
       {/* ========================================================================= */}
       <div className="rounded-3xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-black border-2 border-emerald-500/40 p-6 sm:p-8 space-y-6">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-emerald-500/10 border border-emerald-500/40 rounded-xl text-emerald-400">
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/40 rounded-xl text-[#FFE600]">
             <Activity className="w-7 h-7 animate-pulse" />
           </div>
           <div>
@@ -748,7 +748,7 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
           <div className="bg-black/60 border border-zinc-800 p-4 rounded-xl space-y-2">
             <div className="flex items-center justify-between text-zinc-400 font-mono text-[10px]">
               <span>PRIMARY CONDUIT</span>
-              <span className="text-emerald-400 font-bold">ACTIVE</span>
+              <span className="text-[#FFE600] font-bold">ACTIVE</span>
             </div>
             <h4 className="font-bold text-white text-sm">Dual LTE-M Carrier Auto-Switching</h4>
             <p className="text-zinc-400 leading-relaxed">
@@ -866,7 +866,7 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
                     <span>Retail Subtotal:</span>
                     <span className="text-white">${cartTotals.subtotalRetail.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-emerald-400">
+                  <div className="flex justify-between text-[#FFE600]">
                     <span>Dealer Wholesale Margin:</span>
                     <span>${cartTotals.totalMarkupMargin.toLocaleString()} (avg {cartTotals.markupPercentAverage}%)</span>
                   </div>
@@ -1044,7 +1044,7 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
                     }`}
                   >
                     <div className="font-bold text-xs text-white">Standard Ground</div>
-                    <div className="text-[11px] text-emerald-400">FREE Promotion</div>
+                    <div className="text-[11px] text-[#FFE600]">FREE Promotion</div>
                     <div className="text-[10px] text-zinc-500">3-5 Business Days</div>
                   </button>
 
@@ -1086,7 +1086,7 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
                 </div>
                 <div className="flex justify-between text-zinc-400">
                   <span>Estimated Freight Shipping:</span>
-                  <span className="text-emerald-400">
+                  <span className="text-[#FFE600]">
                     {shippingMethod === 'STANDARD_GROUND' ? 'FREE' : shippingMethod === 'TWO_DAY_AIR' ? '$24.95' : '$49.95'}
                   </span>
                 </div>
@@ -1142,7 +1142,7 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
           <div className="bg-zinc-950 border-2 border-emerald-500 rounded-3xl w-full max-w-xl p-6 sm:p-8 space-y-6 shadow-[0_0_50px_rgba(16,185,129,0.25)] my-8">
             <div className="text-center space-y-2">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400 flex items-center justify-center mx-auto">
+              <div className="w-14 h-14 rounded-2xl bg-[#FFE600]/20 border-2 border-emerald-500 text-[#FFE600] flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <h3 className="text-2xl font-black text-white">
@@ -1168,7 +1168,7 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
               </div>
               <div className="flex justify-between border-b border-zinc-800 pb-2">
                 <span className="text-zinc-500">Dealer Markup Margin:</span>
-                <span className="text-emerald-400 font-bold">+${latestOrder.totalMarkupMarginUsd.toFixed(2)} ({latestOrder.markupPercentAverage}%)</span>
+                <span className="text-[#FFE600] font-bold">+${latestOrder.totalMarkupMarginUsd.toFixed(2)} ({latestOrder.markupPercentAverage}%)</span>
               </div>
               <div className="flex justify-between text-sm font-bold text-white pt-1">
                 <span>Total Invoiced:</span>
@@ -1176,8 +1176,8 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
               </div>
             </div>
 
-            <div className="bg-emerald-950/20 border border-emerald-500/30 p-4 rounded-xl text-xs space-y-1.5 text-zinc-300">
-              <div className="font-bold text-emerald-400 flex items-center gap-1.5">
+            <div className="bg-emerald-950/20 border border-[#FFE600]/40 p-4 rounded-xl text-xs space-y-1.5 text-zinc-300">
+              <div className="font-bold text-[#FFE600] flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4" /> FMCSA Certified &amp; Pre-Paired
               </div>
               <p className="text-[11px] leading-relaxed">

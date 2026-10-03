@@ -677,7 +677,7 @@ export const HReaseConsultationModal: React.FC<HReaseConsultationModalProps> = (
                   <button
                     type="submit"
                     disabled={isAutoScanning}
-                    className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs uppercase tracking-wider rounded-lg shadow-lg shadow-emerald-950 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 cursor-pointer"
+                    className="px-6 py-2.5 bg-gradient-to-r from-[#FFE600] to-[#F59E0B] hover:from-[#FFD700] hover:to-[#EAB308] text-black font-black text-xs uppercase tracking-wider rounded-lg shadow-lg shadow-emerald-950 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 cursor-pointer"
                   >
                     <Zap className={`w-4 h-4 ${isAutoScanning ? 'animate-spin' : ''}`} />
                     <span>{isAutoScanning ? 'Scanning & Creating Profile...' : 'Create Driver Profile & Auto-Trigger Checkr Scan'}</span>
@@ -863,7 +863,7 @@ export const HReaseConsultationModal: React.FC<HReaseConsultationModalProps> = (
                     <button
                       onClick={handleRunCheckrTest}
                       disabled={checkrRunning}
-                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-950"
+                      className="w-full py-2 bg-[#FFE600] hover:bg-[#FFE600] disabled:opacity-50 text-black font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-950"
                     >
                       <Zap className={`w-3.5 h-3.5 ${checkrRunning ? 'animate-spin' : ''}`} />
                       {checkrRunning ? 'Flowing Back Data...' : 'Run Checkr Screening Now'}

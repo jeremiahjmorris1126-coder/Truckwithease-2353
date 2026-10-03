@@ -648,7 +648,7 @@ export const EldSetupAssistantModal: React.FC<EldSetupAssistantModalProps> = ({
                           <button
                             type="button"
                             onClick={onClose}
-                            className="px-3.5 py-1 bg-[#00FF66] hover:bg-[#20ff78] text-black rounded text-[11px] font-black uppercase"
+                            className="shadow-[0_0_15px_rgba(255,230,0,0.45)] px-3.5 py-1 bg-[#FFE600] hover:bg-[#FFD700] text-black rounded text-[11px] font-black uppercase"
                           >
                             Return to Telemetry Stream
                           </button>
@@ -691,7 +691,7 @@ export const EldSetupAssistantModal: React.FC<EldSetupAssistantModalProps> = ({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="px-4 py-1.5 bg-[#00FF66] hover:bg-[#20ff78] text-black font-bold rounded-lg flex items-center gap-1 shadow-md transition-colors"
+                      className="px-4 py-1.5 bg-[#FFE600] hover:bg-[#FFD700] text-black font-bold rounded-lg flex items-center gap-1 shadow-md transition-colors"
                     >
                       <span>Complete Setup</span>
                       <CheckCircle2 className="w-4 h-4" />

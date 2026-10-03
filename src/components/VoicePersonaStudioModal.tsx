@@ -824,7 +824,7 @@ export const VoicePersonaStudioModal: React.FC<VoicePersonaStudioModalProps> = (
                         className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-bold text-xs shadow-lg transition-all ${
                           !recordedAudioBlob || isDeploying
                             ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-amber-600 to-emerald-600 hover:from-amber-500 hover:to-emerald-500 text-white shadow-emerald-950/40 active:scale-95'
+                            : 'bg-[#FFE600] hover:bg-[#FFD700] text-black font-extrabold shadow-[0_0_20px_rgba(255,230,0,0.5)] active:scale-95 border border-yellow-200'
                         }`}
                       >
                         <Zap className="w-4 h-4" />

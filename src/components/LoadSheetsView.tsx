@@ -196,7 +196,7 @@ export const LoadSheetsView: React.FC<LoadSheetsViewProps> = ({ initialLoad, onN
 
             <button
               onClick={handlePrintSheet}
-              className="px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 transition-all border border-emerald-400"
+              className="px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 bg-[#FFE600] hover:bg-[#FFE600] text-black shadow-lg shadow-emerald-600/20 transition-all border border-[#FFE600]"
             >
               <Printer className="w-4 h-4" />
               PRINT LOAD SHEET
@@ -900,7 +900,7 @@ export const LoadSheetsView: React.FC<LoadSheetsViewProps> = ({ initialLoad, onN
               <div className="flex items-center gap-2">
                 <button
                   onClick={handlePrintSheet}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs font-mono flex items-center gap-2"
+                  className="shadow-[0_0_15px_rgba(255,230,0,0.45)] px-4 py-2 bg-[#FFE600] hover:bg-[#FFE600] text-black font-bold rounded-lg text-xs font-mono flex items-center gap-2"
                 >
                   <Printer className="w-4 h-4" />
                   PRINT COPY

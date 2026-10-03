@@ -1765,7 +1765,7 @@ export const VoiceCommandListener: React.FC<VoiceCommandListenerProps> = ({
                 onClick={handleToggleListening}
                 className={`flex-1 flex items-center justify-center gap-2.5 py-2.5 px-3 rounded-xl font-mono text-xs font-bold uppercase transition-all shadow-md active:scale-98 ${
                   isListening
-                    ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.35)]'
+                    ? 'bg-gradient-to-r from-[#FFE600] to-[#FFD700] text-black shadow-[0_0_15px_rgba(16,185,129,0.35)]'
                     : 'bg-gradient-to-r from-[#D4AF37] via-[#F2CA50] to-[#E5B834] text-[#120E02]'
                 }`}
               >

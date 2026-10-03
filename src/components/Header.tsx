@@ -349,9 +349,9 @@ export const Header: React.FC<HeaderProps> = ({
               className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/90 hover:bg-black border border-[#FFE600]/50 hover:border-[#FFE600] text-[11px] font-mono text-[#FFE600] cursor-pointer transition-all active:scale-95 shadow-sm"
               title="Inspect DNS & Confirm Latest Version Pushed to truckwithease.com"
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              <span className="w-2 h-2 rounded-full bg-[#FFE600] animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
               <span className="font-bold tracking-wider">truckwithease.com</span>
-              <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/80 px-1 py-0.2 rounded border border-emerald-500/40">
+              <span className="text-[10px] text-[#FFE600] font-bold bg-yellow-950/80 px-1 py-0.2 rounded border border-emerald-500/40">
                 PRIMARY
               </span>
             </div>
@@ -361,7 +361,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/90 hover:bg-black border border-[#FFE600]/50 hover:border-[#FFE600] text-[11px] font-mono text-[#FFE600] cursor-pointer transition-all active:scale-95 shadow-sm"
               title="Inspect DNS & Confirm Latest Version Pushed to morrishive.com"
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              <span className="w-2 h-2 rounded-full bg-[#FFE600] animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
               <span className="font-bold tracking-wider">morrishive.com</span>
               <span className="text-[10px] text-blue-400 font-bold bg-blue-950/80 px-1 py-0.2 rounded border border-blue-500/40">
                 RELAY
@@ -388,7 +388,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="absolute left-0 mt-1 w-72 bg-[#090b10] border border-cyan-500/60 rounded-lg shadow-2xl p-1.5 z-50 text-xs font-mono">
                   <div className="px-2 py-1 text-[10px] text-cyan-400 font-bold border-b border-white/10 uppercase tracking-wider flex items-center justify-between">
                     <span>DOT &amp; FMCSA Hauler Mode</span>
-                    <span className="text-emerald-400 text-[9px]">100% REGULATED</span>
+                    <span className="text-[#FFE600] text-[9px]">100% REGULATED</span>
                   </div>
                   <div className="py-1 space-y-0.5 max-h-64 overflow-y-auto">
                     <button
@@ -470,7 +470,7 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Server className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
             <span className="hidden md:inline">Backend Agent</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FFE600]" />
           </button>
 
           <button
@@ -492,14 +492,14 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="header-sentinel-agent-btn"
               onClick={onOpenDiagnosticAgent}
-              className="flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-lg border border-emerald-500/60 hover:border-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 text-xs font-mono font-bold uppercase transition-all shadow-[0_0_15px_rgba(16,185,129,0.25)] shrink-0 active:scale-95 group cursor-pointer"
+              className="flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-lg border border-[#FFE600] hover:border-[#FFE600] bg-[#FFE600] hover:bg-[#FFD700] text-black text-xs font-mono font-bold uppercase transition-all shadow-[0_0_15px_rgba(16,185,129,0.25)] shrink-0 active:scale-95 group cursor-pointer"
               title="Apex Sentinel Agent: 100% Uptime, API Connectors, Automated Error Detection & Self-Healing Function Manager"
             >
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FFE600] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FFE600]"></span>
               </span>
-              <Cpu className="w-3.5 h-3.5 text-emerald-400 group-hover:rotate-12 transition-transform" />
+              <Cpu className="w-3.5 h-3.5 text-[#FFE600] group-hover:rotate-12 transition-transform" />
               <span className="hidden lg:inline tracking-wider">SENTINEL 100%</span>
               <span className="lg:hidden text-[10px]">100%</span>
             </button>
@@ -636,7 +636,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-bold text-white group-hover:text-cyan-300 flex items-center gap-1.5">
                         <span>Autonomous Diagnostic Agent</span>
-                        <span className="text-[9px] text-emerald-400 bg-emerald-950 px-1 rounded">100% UP</span>
+                        <span className="text-[9px] text-[#FFE600] bg-yellow-950 px-1 rounded">100% UP</span>
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">
                         2x/24h schedule · fleet fault diagnostic engine
@@ -693,24 +693,24 @@ export const Header: React.FC<HeaderProps> = ({
               }}
               className={`flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-lg border text-xs font-mono font-bold uppercase transition-all shrink-0 active:scale-95 shadow-sm ${
                 isSafetyOpen
-                  ? 'bg-emerald-500 text-black border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-                  : 'bg-[#06140C] hover:bg-[#0A2416] border-emerald-500/40 hover:border-emerald-400 text-emerald-300'
+                  ? 'bg-[#FFE600] text-black border-[#FFE600] shadow-[0_0_18px_rgba(255,230,0,0.5)] font-black'
+                  : 'bg-[#141206] hover:bg-[#201C08] border-[#FFE600]/40 hover:border-[#FFE600] text-[#FFE600]'
               }`}
               title="FMCSA Safety & Roadside Inspection Controls: Night HUD, 7-Day Dossier, DOT Audit, Voice Triggers"
             >
-              <ShieldCheck className={`w-3.5 h-3.5 ${isSafetyOpen ? 'text-black' : 'text-emerald-400'}`} />
+              <ShieldCheck className={`w-3.5 h-3.5 ${isSafetyOpen ? 'text-black' : 'text-[#FFE600]'}`} />
               <span className="font-extrabold text-[11px] tracking-wider">SAFETY &amp; DOT</span>
-              <span className="hidden md:inline px-1 py-0.2 bg-emerald-950 text-emerald-300 border border-emerald-600/40 rounded text-[9px] font-mono">
+              <span className="hidden md:inline px-1 py-0.2 bg-yellow-950 text-[#FFE600] border border-yellow-500/40 rounded text-[9px] font-mono font-bold">
                 PASS 18
               </span>
               <ChevronDown className={`w-3 h-3 transition-transform ${isSafetyOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {isSafetyOpen && (
-              <div className="absolute left-0 sm:right-auto mt-2 w-80 rounded-xl border border-emerald-500/50 bg-[#07160D] shadow-2xl shadow-black/95 p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 font-mono">
-                <div className="px-3 py-1.5 border-b border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-between">
+              <div className="absolute left-0 sm:right-auto mt-2 w-80 rounded-xl border border-[#FFE600]/50 bg-[#120F05] shadow-2xl shadow-black/95 p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 font-mono">
+                <div className="px-3 py-1.5 border-b border-[#FFE600]/30 text-[10px] font-bold uppercase tracking-wider text-[#FFE600] flex items-center justify-between">
                   <span>Safety, HOS &amp; Roadside Audit</span>
-                  <span className="text-[9px] bg-emerald-950 px-1.5 py-0.5 rounded text-emerald-300 border border-emerald-800">
+                  <span className="text-[9px] bg-yellow-950 px-1.5 py-0.5 rounded text-[#FFE600] border border-emerald-800">
                     5 TOOLS
                   </span>
                 </div>
@@ -722,16 +722,16 @@ export const Header: React.FC<HeaderProps> = ({
                     setIsSafetyOpen(false);
                   }}
                   className={`w-full flex items-center gap-2.5 p-2 rounded-lg text-left transition-colors group ${
-                    activeTab === 'nighthud' ? 'bg-emerald-900/50 border border-emerald-500/50' : 'hover:bg-emerald-950/40'
+                    activeTab === 'nighthud' ? 'bg-yellow-900/50 border border-emerald-500/50' : 'hover:bg-yellow-950/40'
                   }`}
                 >
-                  <div className="w-7 h-7 rounded bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                  <div className="w-7 h-7 rounded bg-[#FFE600]/10 border border-[#FFE600]/40 flex items-center justify-center text-[#FFE600] shrink-0">
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold text-white group-hover:text-emerald-300 flex items-center justify-between">
+                    <div className="text-xs font-bold text-white group-hover:text-[#FFE600] flex items-center justify-between">
                       <span>Driver Night HUD</span>
-                      <span className="text-[9px] bg-black px-1.5 py-0.2 rounded text-emerald-400">ROADSIDE</span>
+                      <span className="text-[9px] bg-black px-1.5 py-0.2 rounded text-[#FFE600]">ROADSIDE</span>
                     </div>
                     <div className="text-[10px] text-slate-400 truncate">
                       Officer glanceable high-contrast inspection mode
@@ -746,13 +746,13 @@ export const Header: React.FC<HeaderProps> = ({
                       onOpenPrior7DaysDossier();
                       setIsSafetyOpen(false);
                     }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-emerald-950/40 text-left transition-colors group"
+                    className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-yellow-950/40 text-left transition-colors group"
                   >
-                    <div className="w-7 h-7 rounded bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                    <div className="w-7 h-7 rounded bg-[#FFE600]/10 border border-[#FFE600]/40 flex items-center justify-center text-[#FFE600] shrink-0">
                       <ShieldCheck className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-white group-hover:text-emerald-300">
+                      <div className="text-xs font-bold text-white group-hover:text-[#FFE600]">
                         1-Click 7-Day FMCSA Dossier
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">
@@ -769,15 +769,15 @@ export const Header: React.FC<HeaderProps> = ({
                       onChangeTab('compliance');
                       setIsSafetyOpen(false);
                     }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-emerald-950/40 text-left transition-colors group"
+                    className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-yellow-950/40 text-left transition-colors group"
                   >
-                    <div className="w-7 h-7 rounded bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                    <div className="w-7 h-7 rounded bg-[#FFE600]/10 border border-[#FFE600]/40 flex items-center justify-center text-[#FFE600] shrink-0">
                       <ShieldCheck className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-white group-hover:text-emerald-300 flex items-center justify-between">
+                      <div className="text-xs font-bold text-white group-hover:text-[#FFE600] flex items-center justify-between">
                         <span>DOT Score: 18 (PASS Tier)</span>
-                        <span className="text-[9px] text-emerald-400">98.4% BYPASS</span>
+                        <span className="text-[9px] text-[#FFE600]">98.4% BYPASS</span>
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">
                         Carrier safety measurement &amp; regulatory vault
@@ -793,15 +793,15 @@ export const Header: React.FC<HeaderProps> = ({
                       onOpenDailyAudit();
                       setIsSafetyOpen(false);
                     }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-emerald-950/40 text-left transition-colors group"
+                    className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-yellow-950/40 text-left transition-colors group"
                   >
-                    <div className="w-7 h-7 rounded bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                    <div className="w-7 h-7 rounded bg-[#FFE600]/10 border border-[#FFE600]/40 flex items-center justify-center text-[#FFE600] shrink-0">
                       <Check className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-white group-hover:text-emerald-300 flex items-center justify-between">
+                      <div className="text-xs font-bold text-white group-hover:text-[#FFE600] flex items-center justify-between">
                         <span>Daily Function Health Audit</span>
-                        <span className="text-[9px] text-emerald-400 bg-emerald-950 px-1 rounded">36/36</span>
+                        <span className="text-[9px] text-[#FFE600] bg-yellow-950 px-1 rounded">36/36</span>
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">
                         Zero-downtime automated system verification
@@ -816,15 +816,15 @@ export const Header: React.FC<HeaderProps> = ({
                     handleOpenVoiceCommands();
                     setIsSafetyOpen(false);
                   }}
-                  className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-emerald-950/40 text-left transition-colors group"
+                  className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-yellow-950/40 text-left transition-colors group"
                 >
-                  <div className="w-7 h-7 rounded bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                  <div className="w-7 h-7 rounded bg-[#FFE600]/10 border border-[#FFE600]/40 flex items-center justify-center text-[#FFE600] shrink-0">
                     <Mic className="w-4 h-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold text-white group-hover:text-emerald-300 flex items-center justify-between">
+                    <div className="text-xs font-bold text-white group-hover:text-[#FFE600] flex items-center justify-between">
                       <span>Hands-Free Voice Triggers</span>
-                      <span className="text-[9px] text-emerald-400 bg-black px-1.5 rounded">38 CMDS</span>
+                      <span className="text-[9px] text-[#FFE600] bg-black px-1.5 rounded">38 CMDS</span>
                     </div>
                     <div className="text-[10px] text-slate-400 truncate">
                       49 CFR § 392.82 driver speech control guide
@@ -860,7 +860,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {isEcosystemOpen && (
-              <div className="absolute right-0 sm:left-0 sm:right-auto mt-2 w-84 rounded-xl border border-[#D4AF37]/60 bg-[#120F05] shadow-2xl shadow-black/95 p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 font-mono">
+              <div className="absolute left-0 mt-2 w-84 rounded-xl border border-[#D4AF37]/60 bg-[#120F05] shadow-2xl shadow-black/95 p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 font-mono">
                 <div className="px-3 py-1.5 border-b border-[#D4AF37]/20 text-[10px] font-bold uppercase tracking-wider text-[#FFE08A] flex items-center justify-between">
                   <span>AI, Mesh &amp; Cross-Program Conduits</span>
                   <span className="text-[9px] bg-[#2E2408] px-1.5 py-0.5 rounded text-[#FFE08A] border border-[#D4AF37]/40">
@@ -1026,7 +1026,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={handleGoogleAuth}
             className={`hidden sm:flex items-center gap-1.5 h-9 px-2.5 rounded-lg border text-xs font-mono font-bold transition-all shrink-0 ${
               firebaseUser
-                ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/40 hover:bg-emerald-900/50'
+                ? 'bg-[#FFE600] text-black border-[#FFE600] hover:bg-[#FFD700]'
                 : 'bg-[#050508] text-[#FFE600] border-[#FFE600]/30 hover:border-[#FFE600]'
             }`}
             title={
@@ -1037,7 +1037,7 @@ export const Header: React.FC<HeaderProps> = ({
           >
             {firebaseUser ? (
               <>
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="w-2 h-2 rounded-full bg-[#FFE600] animate-pulse" />
                 <span className="hidden md:inline truncate max-w-[80px]">
                   {firebaseUser.displayName?.split(' ')[0] || 'Driver'}
                 </span>
@@ -1095,7 +1095,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-[#F2CA50] font-bold uppercase text-[10px]">
               ROTATOR:
             </span>
-            <span className="text-emerald-400 font-bold text-[10px]">
+            <span className="text-[#FFE600] font-bold text-[10px]">
               0-DOWNTIME
             </span>
           </button>
@@ -1121,14 +1121,14 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setIsLoginModalOpen(true)}
             className={`flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-lg border text-xs font-mono font-bold uppercase transition-all shrink-0 ${
               firebaseUser
-                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400 hover:bg-emerald-900/50'
+                ? 'bg-yellow-950/40 border-emerald-500/40 text-[#FFE600] hover:bg-yellow-900/50'
                 : 'bg-[#181A22] border-[#F2CA50]/40 text-[#F2CA50] hover:bg-[#F2CA50]/15 shadow-[0_0_10px_rgba(242,202,80,0.15)]'
             }`}
             title={firebaseUser ? `Authenticated as ${firebaseUser.email}` : 'TruckWithEase Fleet Identity & SSO'}
           >
             {firebaseUser ? (
               <>
-                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <UserCheck className="w-3.5 h-3.5 text-[#FFE600]" />
                 <span className="hidden sm:inline truncate max-w-[100px]">
                   {firebaseUser.displayName?.split(' ')[0] || 'SSO Active'}
                 </span>
@@ -1164,7 +1164,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {isRoleDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-72 rounded-xl border border-[#222222] bg-[#161616] shadow-2xl shadow-black/80 py-1.5 z-50">
+              <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-72 rounded-xl border border-[#FFE600]/40 bg-[#120F05] shadow-2xl shadow-black/90 py-1.5 z-50 origin-top-left">
                 <div className="px-3 py-2 border-b border-[#222222] font-[Oswald] text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8A8A] flex items-center justify-between">
                   <span>Switch Operator Role</span>
                   <span className="text-[9px] text-[#C9A84C]">OPEN ACCESS</span>
@@ -1262,8 +1262,8 @@ export const Header: React.FC<HeaderProps> = ({
                     {currentRole.role}
                   </span>
                 </div>
-                <div className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="text-[10px] text-[#FFE600] font-mono flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FFE600] animate-pulse" />
                   DOT #3928192 · Active
                 </div>
               </div>

@@ -683,7 +683,7 @@ export const QrCertificationScannerOverlay: React.FC<QrCertificationScannerOverl
                   type="button"
                   onClick={handleConfirmIngestion}
                   disabled={isIngesting}
-                  className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:brightness-110 active:scale-95 text-black font-headline font-black text-xs uppercase tracking-wider rounded-lg transition-all shadow-lg flex items-center gap-2"
+                  className="px-6 py-2.5 bg-gradient-to-r from-[#FFE600] via-[#FFD700] to-[#F59E0B] hover:brightness-110 active:scale-95 text-black font-headline font-black text-xs uppercase tracking-wider rounded-lg transition-all shadow-lg flex items-center gap-2"
                 >
                   <Check className="w-4 h-4 stroke-[3]" />
                   <span>

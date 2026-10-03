@@ -1461,7 +1461,7 @@ export const SafetyMeetingArchiveSection: React.FC<SafetyMeetingArchiveSectionPr
               </button>
               <button
                 onClick={handleDriverSignOff}
-                className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase rounded shadow-lg"
+                className="px-5 py-2 bg-[#FFE600] hover:bg-[#FFE600] text-black font-black uppercase rounded shadow-lg"
               >
                 COMPLETE CERTIFICATION
               </button>

@@ -745,7 +745,7 @@ export const SafeHarborCoercionDefenseModal: React.FC<SafeHarborCoercionDefenseM
                   <button
                     onClick={handleClaimEscrow}
                     disabled={isClaimingEscrow || currentEscrowAccrued <= 0}
-                    className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-400 text-black font-bold text-xs uppercase rounded shadow hover:brightness-105 active:scale-95 transition-all shrink-0"
+                    className="shadow-[0_0_15px_rgba(255,230,0,0.45)] px-5 py-2.5 bg-gradient-to-r from-[#FFE600] to-[#FFD700] text-black font-bold text-xs uppercase rounded shadow hover:brightness-105 active:scale-95 transition-all shrink-0"
                   >
                     {isClaimingEscrow ? 'PROCESSING ESCROW...' : `CLAIM $${currentEscrowAccrued.toFixed(2)} ESCROW NOW`}
                   </button>

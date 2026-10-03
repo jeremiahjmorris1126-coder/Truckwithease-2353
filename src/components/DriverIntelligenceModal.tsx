@@ -264,7 +264,7 @@ export const DriverIntelligenceModal: React.FC<DriverIntelligenceModalProps> = (
                   <button
                     onClick={handleSimulateVoiceCalibration}
                     disabled={isCalibratingVoice}
-                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold uppercase transition-all shadow active:scale-95 disabled:opacity-50 shrink-0"
+                    className="shadow-[0_0_15px_rgba(255,230,0,0.45)] px-4 py-2 rounded-lg bg-gradient-to-r from-[#FFE600] to-[#FFD700] hover:from-[#FFEA2E] hover:to-[#FFD700] text-black font-bold uppercase transition-all shadow active:scale-95 disabled:opacity-50 shrink-0"
                   >
                     {isCalibratingVoice ? 'Calibrating...' : 'Run Live Calibration'}
                   </button>
@@ -449,7 +449,7 @@ export const DriverIntelligenceModal: React.FC<DriverIntelligenceModalProps> = (
             </span>
             <button
               onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold uppercase transition-all shadow"
+              className="shadow-[0_0_15px_rgba(255,230,0,0.45)] px-5 py-2 rounded-xl bg-[#FFE600] hover:bg-[#FFE600] text-black font-mono text-xs font-bold uppercase transition-all shadow"
             >
               Done
             </button>

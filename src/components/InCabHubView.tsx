@@ -959,7 +959,7 @@ export const InCabHubView: React.FC<InCabHubViewProps> = ({ onNavigateToTab }) =
                 disabled={fmcsaTransferState === 'TRANSMITTING'}
                 className={`w-full py-space-md px-space-sm rounded-lg font-headline-sm text-sm uppercase tracking-wider flex items-center justify-center gap-space-sm shadow-xl transition-all active:scale-[0.98] ${
                   fmcsaTransferState === 'SUCCESS' 
-                    ? 'bg-emerald-600 text-white font-bold' 
+                    ? 'bg-[#FFE600] text-black font-bold' 
                     : 'bg-primary text-black font-black hover:brightness-110'
                 }`}
               >

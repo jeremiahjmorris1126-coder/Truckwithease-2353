@@ -897,7 +897,7 @@ export const TraxesAdvocateView: React.FC<TraxesAdvocateViewProps> = ({ onNaviga
                 <button
                   onClick={handleResolveDispute}
                   disabled={isResolving}
-                  className="py-2.5 px-3 bg-[#1e241c] hover:bg-[#283226] border border-[#446633] text-emerald-300 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 rounded transition-all"
+                  className="shadow-[0_0_15px_rgba(255,230,0,0.45)] py-2.5 px-3 bg-[#FFE600] hover:bg-[#FFD700] border border-[#FFE600] text-black font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 rounded transition-all"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>{isResolving ? 'GENERATING (1.4s)...' : 'GENERATE DISPUTE PACKET'}</span>

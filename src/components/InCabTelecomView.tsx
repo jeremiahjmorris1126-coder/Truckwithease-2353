@@ -577,7 +577,7 @@ export const InCabTelecomView: React.FC<InCabTelecomViewProps> = ({ onNavigateTo
                     <button
                       onClick={handleDialCustomNumber}
                       disabled={!keypadDialedNumber}
-                      className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-black font-mono font-black text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50"
+                      className="w-full py-3 bg-[#FFE600] hover:bg-[#FFE600] disabled:opacity-40 text-black font-mono font-black text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50"
                     >
                       <Phone className="w-4 h-4 fill-black" />
                       <span>DIAL NUMBER NOW</span>

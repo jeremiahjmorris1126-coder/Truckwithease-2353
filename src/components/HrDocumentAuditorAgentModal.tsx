@@ -271,7 +271,7 @@ export const HrDocumentAuditorAgentModal: React.FC<HrDocumentAuditorAgentModalPr
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 font-mono">
       <div className="bg-[#0A0D14] border-2 border-cyan-500/40 rounded-2xl w-full max-w-5xl max-h-[94vh] flex flex-col shadow-2xl relative overflow-hidden">
         {/* Top Glow Bar */}
-        <div className="h-1 w-full bg-gradient-to-r from-cyan-500 via-[#FFE600] to-emerald-400" />
+        <div className="h-1 w-full bg-gradient-to-r from-[#FFE600] via-[#FFD700] to-[#F59E0B] shadow-[0_0_20px_rgba(255,230,0,0.5)]" />
 
         {/* Modal Header */}
         <div className="p-4 sm:p-5 border-b border-slate-800 bg-[#0E131F] flex items-start justify-between gap-4">

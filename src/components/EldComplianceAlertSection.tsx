@@ -492,7 +492,7 @@ export const EldComplianceAlertSection: React.FC<EldComplianceAlertSectionProps>
                 className={`p-2 rounded border text-[10px] font-bold transition-all flex items-center justify-center gap-1 active:scale-95 ${
                   activeAlert.hardwareConnected
                     ? 'bg-[#1A0D12] hover:bg-red-950 border-red-600/50 text-red-300'
-                    : 'bg-[#0E1D16] hover:bg-emerald-950 border-emerald-600/50 text-emerald-300'
+                    : 'bg-[#0E1D16] hover:bg-[#FFE600] border-[#FFE600] text-black'
                 }`}
               >
                 <Power className="w-3 h-3" />
@@ -504,7 +504,7 @@ export const EldComplianceAlertSection: React.FC<EldComplianceAlertSectionProps>
               type="button"
               disabled={isActionPending}
               onClick={handleResetClocks}
-              className="w-full p-2 rounded bg-[#14221B] hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95"
+              className="shadow-[0_0_15px_rgba(255,230,0,0.45)] w-full p-2 rounded bg-[#FFE600] hover:bg-[#FFD700] border border-[#FFE600] text-black text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95"
             >
               <RefreshCw className="w-3 h-3 text-emerald-400" />
               <span>Full 10-Hour Off-Duty Reset (All Limits)</span>
