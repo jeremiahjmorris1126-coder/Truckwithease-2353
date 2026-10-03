@@ -236,6 +236,10 @@ export const AzugaEldSalesPageView: React.FC<AzugaEldSalesPageViewProps> = ({
               <span className="px-3 py-1 bg-[#FFE600]/20 text-[#FFE600] font-mono text-xs rounded-md border border-[#FFE600]/40 flex items-center gap-1.5 shadow-[0_0_12px_rgba(255,230,0,0.3)]">
                 <CheckCircle2 className="w-3.5 h-3.5" /> 100% ZERO-DOWNTIME GUARANTEE
               </span>
+              <span className="px-3 py-1 bg-black/90 text-[#FFE600] font-mono text-xs rounded-md border border-[#FFE600]/60 flex items-center gap-1.5 shadow-[0_0_15px_rgba(255,230,0,0.35)]">
+                <Radio className="w-3.5 h-3.5 text-[#FFE600] animate-pulse" />
+                BRIDGE WIRELESS // CLIENT: 7dcee77c // TOKEN: 99f8893b
+              </span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight">
