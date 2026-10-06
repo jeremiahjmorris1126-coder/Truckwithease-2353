@@ -646,7 +646,7 @@ export const CAPS: Cap[] = [
     pages: ["/accessibility"],
     name: "Accessibility request queue",
     domain: "Accessibility",
-    what: "Driver requests for captions, translation, haptic or sign-language support.",
+    what: "Driver requests for captions, translation or haptic support.",
     kind: "human",
     disciplines: ["design", "webdev"],
     worlds: ["truck", "car", "bike"],
@@ -669,20 +669,6 @@ export const CAPS: Cap[] = [
     tables: ["haptic_events"],
     envKeys: [],
     trust: "Patterns are defined server-side so phone and wearable agree. Device support is per-device and is listed, not assumed.",
-  },
-  {
-    id: "sign-language-video",
-    name: "Sign-language video generation",
-    domain: "Accessibility",
-    what: "Not built.",
-    kind: "ai",
-    disciplines: ["programmer"],
-    worlds: ["truck", "car", "bike"],
-    endpoints: [],
-    tables: [],
-    envKeys: [],
-    trust:
-      "NOT BUILT and no provider exists in this codebase. /api/captions returns signLanguageVideo:false. Every page that mentions it says so.",
   },
 
   /* ---------------- HR ---------------- */

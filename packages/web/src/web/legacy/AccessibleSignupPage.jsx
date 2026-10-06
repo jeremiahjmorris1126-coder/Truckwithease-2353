@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { authClient } from "../lib/auth";
 
 /**
  * Accessible signup — this is the page that serves /signup.
@@ -72,7 +73,8 @@ export default function AccessibleSignupPage() {
   const [config, setConfig] = useState(null);
   const [plan, setPlan] = useState("pro");
   const [role, setRole] = useState("owner_operator");
-  const [form, setForm] = useState({ name: "", phone: "", email: "", company: "", mcNumber: "", trucks: "1", trialCode: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", password: "", company: "", mcNumber: "", trucks: "1", trialCode: "" });
+  const [accountReady, setAccountReady] = useState(false);
   const [codeState, setCodeState] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -132,6 +134,9 @@ export default function AccessibleSignupPage() {
     if (!form.email.trim()) {
       return setError("We need an email to create the account. If you would rather do it by phone, call " + PHONE + ".");
     }
+    if (form.password.length < 8) {
+      return setError("Pick a password with at least 8 characters. You will use it to sign in.");
+    }
 
     setLoading(true);
     try {
@@ -157,6 +162,21 @@ export default function AccessibleSignupPage() {
         setLoading(false);
         return;
       }
+      const email = form.email.trim();
+      const created = await authClient.signUp.email({ email, password: form.password, name: form.name.trim() });
+      let signedIn = !created.error;
+      if (!signedIn) {
+        const existing = await authClient.signIn.email({ email, password: form.password });
+        signedIn = !existing.error;
+      }
+      if (!signedIn) {
+        setError(
+          `Your signup is saved, but we could not open your account. If you already have one, sign in at /sign-in with your existing password, or call ${PHONE}.`,
+        );
+        setLoading(false);
+        return;
+      }
+      setAccountReady(true);
       setResult(d);
       setStep(4);
     } catch {
@@ -413,6 +433,21 @@ export default function AccessibleSignupPage() {
               </div>
 
               <div>
+                <label className="as-label" htmlFor="as-password">Password *</label>
+                <input
+                  id="as-password"
+                  className="as-input"
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="At least 8 characters"
+                  autoComplete="new-password"
+                  minLength={8}
+                />
+                <p className="as-hint">You will use this with your email to sign in on any device.</p>
+              </div>
+
+              <div>
                 <label className="as-label">Phone</label>
                 <input
                   className="as-input"
@@ -539,7 +574,9 @@ export default function AccessibleSignupPage() {
               </div>
             </div>
 
-            <a href="/app" className="as-gold" style={{ marginBottom: 12 }}>GO TO MY DASHBOARD</a>
+            <a href={accountReady ? "/app" : "/sign-in"} className="as-gold" style={{ marginBottom: 12 }}>
+              {accountReady ? "GO TO MY DASHBOARD" : "SIGN IN"}
+            </a>
             <a href="/" className="as-ghost">BACK TO THE SITE</a>
           </div>
         )}

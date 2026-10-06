@@ -6,17 +6,17 @@ import * as schema from "../database/schema";
 /**
  * Accessibility — server side.
  *
- * Rebuilt from the pasted PocketBase schema (`captions`, `sign_language_videos`,
- * `haptic_communications`, `translations`, plus the accessibility fields that
- * were bolted onto `drivers`). Those collections existed on no server, so the
- * accessibility pages saved nothing at all.
+ * Rebuilt from the pasted PocketBase schema (`captions`, `haptic_communications`,
+ * `translations`, plus the accessibility fields that were bolted onto
+ * `drivers`). Those collections existed on no server, so the accessibility
+ * pages saved nothing at all.
  *
  * What is deliberately NOT reproduced:
- *  - `confidence` on captions / translations / sign-language rows. There is no
- *    ASR, MT or sign-language provider connected. A confidence number with no
- *    model behind it is a fabricated number.
- *  - `video_url` / `audio_url`. Nothing renders sign-language video or TTS on
- *    the server today, so a url column would only ever hold a broken link.
+ *  - `confidence` on captions / translations rows. There is no ASR or MT
+ *    provider connected. A confidence number with no model behind it is a
+ *    fabricated number.
+ *  - `audio_url`. Nothing renders TTS on the server today, so a url column
+ *    would only ever hold a broken link.
  * Requests are stored with `fulfilled: false` and a plain-English `note`
  * instead, so the queue is real and the gap is visible.
  */
@@ -34,16 +34,14 @@ export const ACCESS_NEEDS = [
   "none",
 ] as const;
 
-export const SIGN_LANGUAGES = ["ASL", "BSL", "LSF", "DGS", "ISL", "AUSLAN", "NZSL"] as const;
 export const HAPTIC_DEVICES = ["phone", "smartwatch", "steering_wheel", "dashboard"] as const;
 export const URGENCY = ["low", "medium", "high", "critical"] as const;
-export const REQUEST_KINDS = ["caption", "translation", "sign_language"] as const;
+export const REQUEST_KINDS = ["caption", "translation"] as const;
 
-/** No speech-to-text, machine-translation or sign-language provider is wired. */
+/** No speech-to-text or machine-translation provider is wired to this queue. */
 const PROVIDERS = {
   caption: { provider: null as string | null, live: false, note: "No speech-to-text provider is connected. Caption requests are queued, not transcribed." },
   translation: { provider: null as string | null, live: false, note: "No machine-translation provider is connected. Phrases already in the static safety catalog are answered from it; anything else is queued." },
-  sign_language: { provider: null as string | null, live: false, note: "No sign-language video source exists. Requests are queued so we can see what drivers actually ask for." },
 };
 
 /** Haptic patterns are fixed sequences in ms (vibrate, pause, vibrate...). */
@@ -64,7 +62,6 @@ export const accessibility = new Hono()
   .get("/", (c) =>
     c.json({
       needs: ACCESS_NEEDS,
-      signLanguages: SIGN_LANGUAGES,
       hapticDevices: HAPTIC_DEVICES,
       urgency: URGENCY,
       requestKinds: REQUEST_KINDS,
@@ -73,7 +70,7 @@ export const accessibility = new Hono()
       notes: {
         haptics:
           "Haptic events are recorded here. Whether the phone or watch actually buzzed depends on the device; `delivered` is only true once a client confirms it.",
-        media: "No caption, translation or sign-language provider is connected. Nothing here transcribes or translates on its own.",
+        media: "No caption or translation provider is connected to this queue. Nothing here transcribes or translates on its own.",
       },
     }),
   )
@@ -104,10 +101,6 @@ export const accessibility = new Hono()
     const unknownNeeds = needs.filter((n) => !ACCESS_NEEDS.includes(n as (typeof ACCESS_NEEDS)[number]));
     if (unknownNeeds.length) return c.json(bad(`unknown needs: ${unknownNeeds.join(", ")}`), 400);
 
-    const sign = body.signLanguage ? String(body.signLanguage).toUpperCase() : null;
-    if (sign && !SIGN_LANGUAGES.includes(sign as (typeof SIGN_LANGUAGES)[number]))
-      return c.json(bad(`signLanguage must be one of: ${SIGN_LANGUAGES.join(", ")}`), 400);
-
     const device = body.hapticDevice ? String(body.hapticDevice) : null;
     if (device && !HAPTIC_DEVICES.includes(device as (typeof HAPTIC_DEVICES)[number]))
       return c.json(bad(`hapticDevice must be one of: ${HAPTIC_DEVICES.join(", ")}`), 400);
@@ -118,7 +111,6 @@ export const accessibility = new Hono()
       needs: JSON.stringify(needs),
       captionsEnabled: Boolean(body.captionsEnabled),
       hapticsEnabled: Boolean(body.hapticsEnabled),
-      signLanguage: sign,
       hapticDevice: device,
       vehicleWorld: ["truck", "car", "bike"].includes(String(body.vehicleWorld)) ? String(body.vehicleWorld) : "truck",
       notes: body.notes ? String(body.notes).slice(0, 2000) : null,
@@ -219,7 +211,7 @@ export const accessibility = new Hono()
     });
   })
 
-  // ── Caption / translation / sign-language requests ────────────────────────
+  // ── Caption / translation requests ────────────────────────────────────────
   .post("/requests", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const driverId = String(body.driverId || "").trim();

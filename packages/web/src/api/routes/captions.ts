@@ -11,9 +11,8 @@ import { GEMINI_MODELS, callGemini, firstText, geminiKey } from "./gemini";
  * no AWS credentials in this project at all, it imported the end-of-support
  * aws-sdk v2, and its quality numbers were hardcoded (`confidence: 0.998` on
  * transcription, `confidence: 0.96` and `latency: '2.3s'` on translation) rather
- * than measured. Its `generateSignLanguageVideo()` invoked a Lambda named
- * truckwithease-asl-generator that does not exist, and `predictFatigue()` filled
- * 124 of 128 model input dimensions with Math.random().
+ * than measured, and its `predictFatigue()` filled 124 of 128 model input
+ * dimensions with Math.random().
  *
  * What this route does instead:
  *   - Transcribes audio with Gemini (the key is already live and server-side).
@@ -27,10 +26,6 @@ import { GEMINI_MODELS, callGemini, firstText, geminiKey } from "./gemini";
  *   - Logs every request to accessibility_requests (the same queue the
  *     accessibility page reads) with provider "gemini" and fulfilled true only
  *     when the provider actually returned text.
- *
- * Deliberately NOT built: sign-language video. No model available here produces
- * real ASL/BSL/LSF, so /api/captions has no sign-language endpoint at all rather
- * than a stub that returns a broken video url.
  */
 
 const rid = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -123,14 +118,12 @@ export const captions = new Hono()
         transcribeAudio: Boolean(key),
         translateText: Boolean(key),
         speakTranslation: Boolean(key), // via POST /api/gemini/tts, not this route
-        signLanguageVideo: false,
       },
       languages: CAPTION_LANGUAGES,
       limits: { maxAudioBytes: MAX_AUDIO_BYTES, maxTextChars: MAX_TEXT_CHARS },
       notes: [
         "Gemini returns no ASR confidence score, so confidence is always null here. Nothing invents one.",
         "latencyMs on every response is measured around the provider call.",
-        "Sign-language video is not implemented. No model available here produces real ASL, BSL or LSF.",
         "Translation targets are limited to the ten locales the app ships translated copy for.",
       ],
       note: key

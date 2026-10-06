@@ -176,7 +176,7 @@ const REAL_CAPABILITIES = [
     title: "Deaf and hard-of-hearing support",
     endpoint: "GET /api/captions/status",
     body:
-      "Live captioning through a real provider, plus a 15-pattern haptic alert vocabulary with every pattern measured against a 5,000 ms ceiling. Sign-language video is not built and the page says so.",
+      "Live captioning through a real provider, plus a 15-pattern haptic alert vocabulary with every pattern measured against a 5,000 ms ceiling.",
   },
   {
     icon: Gauge,
@@ -436,15 +436,19 @@ function Cta({
   to,
   children,
   primary,
+  className,
 }: {
   to: string;
   children: React.ReactNode;
   primary?: boolean;
+  className?: string;
 }) {
   return (
     <Link
       href={to}
+      className={className}
       style={{
+        whiteSpace: "nowrap",
         display: "inline-flex",
         alignItems: "center",
         gap: 8,
@@ -561,7 +565,17 @@ export default function Landing() {
           borderBottom: `1px solid ${C.border}`,
         }}
       >
+        <style>
+          {`@media (max-width: 640px){
+            .twe-nav-row{padding:0 12px !important;gap:8px !important}
+            .twe-nav-truck,.twe-nav-long{display:none !important}
+            .twe-nav-cta{padding:12px 12px !important;letter-spacing:0.1em !important;min-height:44px}
+            .twe-nav-row .twe-wordmark > span{font-size:19px !important}
+          }
+          @media (min-width: 641px){.twe-nav-short{display:none !important}}`}
+        </style>
         <div
+          className="twe-nav-row"
           style={{
             ...wrap,
             display: "flex",
@@ -570,12 +584,20 @@ export default function Landing() {
             height: 64,
           }}
         >
-          <Truck size={22} color={GOLD} />
-          <Wordmark />
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-            <Cta to="/sign-in">Sign in</Cta>
-            <Cta to="/signup" primary>
-              Create an account <ArrowRight size={14} />
+          <span className="twe-nav-truck" style={{ display: "inline-flex" }}>
+            <Truck size={22} color={GOLD} />
+          </span>
+          <span className="twe-wordmark" style={{ fontSize: 26, lineHeight: 1 }}>
+            <Wordmark />
+          </span>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+            <Cta to="/sign-in" className="twe-nav-cta">
+              Sign in
+            </Cta>
+            <Cta to="/signup" primary className="twe-nav-cta">
+              <span className="twe-nav-long">Create an account</span>
+              <span className="twe-nav-short">Sign up</span>
+              <ArrowRight size={14} />
             </Cta>
           </div>
         </div>
