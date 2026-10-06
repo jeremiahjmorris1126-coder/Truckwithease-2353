@@ -1,5 +1,10 @@
 import { Hono } from "hono";
+import { generateObject, jsonSchema } from "ai";
 import { getKeyOrEnv } from "./vault";
+import { gateway, hasAI } from "../agent/gateway";
+
+/** Same Gemini vision model, served through Vercel AI Gateway when no direct key exists. */
+const GATEWAY_VISION_MODEL = "google/gemini-3.6-flash";
 
 /**
  * Gemini (Google AI Studio) — document OCR + text-to-speech.
@@ -183,18 +188,21 @@ export const gemini = new Hono()
   /** Status — is a key present, what models are configured. Never returns the key. */
   .get("/", async (c) => {
     const key = await geminiKey();
+    const viaGateway = !key && hasAI();
     return c.json(
       {
-        connected: !!key,
-        provider: "google-ai-studio",
-        models: GEMINI_MODELS,
-        capabilities: ["document_ocr", "text_to_speech"],
+        connected: !!key || viaGateway,
+        provider: key ? "google-ai-studio" : viaGateway ? "vercel-ai-gateway" : "google-ai-studio",
+        models: viaGateway ? { ...GEMINI_MODELS, vision: GATEWAY_VISION_MODEL } : GEMINI_MODELS,
+        capabilities: key ? ["document_ocr", "text_to_speech"] : viaGateway ? ["document_ocr"] : [],
         voices: COPILOT_VOICES.length,
         docTypes: DOC_TYPES,
         verifiedLive: "2026-08-24",
         note: key
           ? "Key loaded server-side. It is never sent to the browser."
-          : "No Gemini key configured — set GEMINI_API_KEY in the root .env or store it in the vault as service 'gemini'.",
+          : viaGateway
+            ? "Document OCR runs through Vercel AI Gateway. Gemini voice (TTS) needs GEMINI_API_KEY or a vault key for service 'gemini'."
+            : "No Gemini key configured — set GEMINI_API_KEY in the root .env or store it in the vault as service 'gemini'.",
       },
       200,
     );
@@ -253,6 +261,74 @@ export const gemini = new Hono()
     }
 
     const fields = OCR_FIELDS[docType];
+    const operatorNote =
+      typeof body.prompt === "string" && body.prompt.trim() ? `Operator note: ${body.prompt.trim()}\n` : "";
+
+    // No direct Gemini key: run the same extraction through AI Gateway, which is
+    // configured on the project. Same model family, same no-guessing rules.
+    if (!(await geminiKey()) && hasAI()) {
+      try {
+        const { object, usage } = await generateObject({
+          model: gateway(GATEWAY_VISION_MODEL),
+          temperature: 0,
+          abortSignal: AbortSignal.timeout(45_000),
+          schema: jsonSchema<{ fields: Record<string, string | null>; notes?: string | null; unreadable?: string[] }>({
+            type: "object",
+            properties: {
+              fields: {
+                type: "object",
+                properties: Object.fromEntries(fields.map((f) => [f, { type: ["string", "null"] }])),
+                required: fields,
+                additionalProperties: false,
+              },
+              notes: { type: ["string", "null"] },
+              unreadable: { type: "array", items: { type: "string" } },
+            },
+            required: ["fields", "notes", "unreadable"],
+            additionalProperties: false,
+          }),
+          messages: [
+            {
+              role: "user",
+              content: [
+                mimeType === "application/pdf"
+                  ? { type: "file", data: imageBase64, mediaType: mimeType }
+                  : { type: "image", image: imageBase64, mediaType: mimeType },
+                {
+                  type: "text",
+                  text: `${OCR_INSTRUCTIONS}\n\nDocument type: ${docType}\nFields to extract: ${fields.join(", ")}\n${operatorNote}`,
+                },
+              ],
+            },
+          ],
+        });
+        const extracted = object.fields ?? {};
+        const readCount = Object.values(extracted).filter((v) => v !== null && v !== "" && v !== undefined).length;
+        return c.json(
+          {
+            live: true,
+            source: "ai-gateway",
+            model: GATEWAY_VISION_MODEL,
+            docType,
+            fields: extracted,
+            fieldsRead: readCount,
+            fieldsRequested: fields.length,
+            notes: object.notes ?? null,
+            unreadable: object.unreadable ?? [],
+            verified: false,
+            note: "Transcribed from the image by Gemini via AI Gateway. Null means the field was not legible or not present — confirm before invoicing.",
+            usage,
+          },
+          200,
+        );
+      } catch (e) {
+        return c.json(
+          { live: false, error: e instanceof Error ? e.message : "gateway_failed", model: GATEWAY_VISION_MODEL },
+          502,
+        );
+      }
+    }
+
     const request = {
       contents: [
         {
