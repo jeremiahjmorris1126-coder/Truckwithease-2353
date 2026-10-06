@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/gif" href="/static/morrishive-logo.gif" />
+    <title>Morrishive TruckWithEase — HOS, ELD, DOT AI &amp; Fleet Management</title>
+    <meta name="description" content="Morrishive TruckWithEase: The all-in-one platform for truck drivers and fleets — HOS/ELD compliance, DOT AI, load board, Traxes financial AI, Big Rig Points rewards, and 7 AI co-pilots. 14-day free trial, no contracts." />
+    <style>html,body{background:#0a0a0a;margin:0;padding:0;font-family:'Inter',sans-serif;}</style>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
