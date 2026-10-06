@@ -51,6 +51,25 @@ test("Fleet Chief requires a Better Auth session", async () => {
   });
 });
 
+test("no parameter-free GET route crashes with a 500", async () => {
+  const { default: app } = await import("../src/api/index");
+  const paths = [
+    ...new Set(
+      (app.routes as { method: string; path: string }[])
+        .filter((r) => r.method === "GET" && r.path.startsWith("/api") && !/[:*]/.test(r.path))
+        .map((r) => r.path),
+    ),
+  ];
+  expect(paths.length).toBeGreaterThan(50);
+
+  const crashed: string[] = [];
+  for (const path of paths) {
+    const response = await handler(new Request(`${origin}${path}`));
+    if (response.status === 500) crashed.push(path);
+  }
+  expect(crashed).toEqual([]);
+}, 120_000);
+
 test("maintenance endpoints require a Better Auth session", async () => {
   const response = await handler(new Request(`${origin}/api/maintenance/pm-intervals`));
 

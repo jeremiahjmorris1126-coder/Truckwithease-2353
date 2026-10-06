@@ -211,7 +211,15 @@ export const gemini = new Hono()
   /** Live model list straight from Google. Proves the key works. */
   .get("/models", async (c) => {
     const key = await geminiKey();
-    if (!key) return c.json({ live: false, error: "no_api_key" }, 503);
+    if (!key) {
+      if (hasAI()) {
+        return c.json(
+          { live: true, provider: "vercel-ai-gateway", count: 1, models: [GATEWAY_VISION_MODEL] },
+          200,
+        );
+      }
+      return c.json({ live: false, error: "no_api_key" }, 503);
+    }
     try {
       const res = await fetch(`${GEMINI_BASE}/models?key=${encodeURIComponent(key)}`);
       const json: any = await res.json();
