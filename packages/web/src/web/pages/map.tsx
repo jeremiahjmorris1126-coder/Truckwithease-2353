@@ -66,12 +66,12 @@ export default function MapPage() {
               const { x, y } = project(p.lat, p.lng);
               const active = p.id === selected;
               return (
-                <button key={p.id} onClick={() => setSelected(p.id)}
+                <button key={p.id} onClick={() => setSelected(p.id)} aria-label={`Truck ${p.truckNumber}`} aria-pressed={active}
                   className="absolute -translate-x-1/2 -translate-y-1/2 group" style={{ left: `${x}%`, top: `${y}%` }}>
-                  <div className={`flex h-9 w-9 items-center justify-center  shadow-lg transition-transform ${active ? "bg-[#d4af37] scale-125" : p.status === "driving" ? "bg-[#d4af37]" : "bg-[#13151b]"}`}>
+                  <div className={`flex h-11 w-11 items-center justify-center  shadow-lg transition-transform ${active ? "bg-[#d4af37] scale-125" : p.status === "driving" ? "bg-[#d4af37]" : "bg-[#13151b]"}`}>
                     <Truck className={`h-4 w-4 ${active ? "text-[#d4af37]" : p.status === "driving" ? "text-white" : "text-[#d4af37]"}`} />
                   </div>
-                  <div className="absolute left-1/2 -translate-x-1/2 mt-1 whitespace-nowrap rounded bg-[#ffd700] px-1.5 py-0.5 text-[10px] font-semibold text-[#08090c] opacity-0 group-hover:opacity-100">
+                  <div className={`absolute left-1/2 -translate-x-1/2 mt-1 whitespace-nowrap rounded bg-[#ffd700] px-1.5 py-0.5 text-xs font-semibold text-[#08090c] ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
                     {p.truckNumber}
                   </div>
                 </button>

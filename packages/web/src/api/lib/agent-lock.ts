@@ -31,7 +31,6 @@ export const ACCESSIBILITY_AGENTS: AccessibilityAgent[] = [
       "Real-time captions",
       "Visual alert system (color-coded)",
       "Haptic feedback patterns (6 types)",
-      "ASL video explainers",
       "Emergency alert captions",
       "Phone call transcription",
       "Message urgency indicators",

@@ -24,16 +24,14 @@ import { computeClocks, hosViolations } from "./hos";
  *       of the 128 dimensions were literally `Math.random()`, then returned
  *       `vectorDimensions: 128` as if a model had consumed them.
  *     - `prediction24h: fatigueScore + 5` — a forecast produced by adding five.
- *     - `confidence: 0.998` (captions), `confidence: 0.96` (translation),
- *       `confidence: 0.94` (sign language) — invented accuracy numbers. No
- *       accuracy figure is published anywhere in this platform unless the
- *       provider itself returned it.
- *     - INSERTs into sign_language_videos, haptic_alerts, fatigue_records,
- *       translations — four tables that do not exist in this schema.
+ *     - `confidence: 0.998` (captions) and `confidence: 0.96` (translation) —
+ *       invented accuracy numbers. No accuracy figure is published anywhere in
+ *       this platform unless the provider itself returned it.
+ *     - INSERTs into haptic_alerts, fatigue_records and translations — tables
+ *       that do not exist in this schema.
  *     - `delivered: true` on a haptic send that never reached a device, and
  *       `latency: '2.3s'` typed as a string constant.
- *     - "7 sign languages" and "47 languages" — sign-language video is not
- *       built on this platform, by decision.
+ *     - "47 languages" — the app ships translated copy for ten.
  *
  * WHAT IS ACTUALLY COMPUTED
  *   A fatigue INDEX (not a prediction) per driver, from up to five components,
@@ -316,7 +314,6 @@ export const intelligence = new Hono()
         "No machine-learning model, no training data, no inference engine — the index is a weighted sum.",
         "No fatigue prediction hours ahead.",
         "No accuracy or confidence percentage for any output.",
-        "No sign-language video generation — that feature is not built.",
         "TruckWithEase is not an FMCSA-registered ELD and files nothing with any agency.",
       ],
       measuredMs: Date.now() - started,

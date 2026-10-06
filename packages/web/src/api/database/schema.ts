@@ -756,7 +756,6 @@ export const driverAccessibility = pgTable("driver_accessibility", {
   needs: text("needs"), // json array: deaf, hard_of_hearing, low_vision, dyslexia, ...
   captionsEnabled: boolean("captions_enabled").notNull().default(false),
   hapticsEnabled: boolean("haptics_enabled").notNull().default(false),
-  signLanguage: text("sign_language"), // ASL, BSL, LSF, ...
   hapticDevice: text("haptic_device"), // phone, smartwatch, steering_wheel, dashboard
   vehicleWorld: text("vehicle_world").notNull().default("truck"), // truck, car, bike
   notes: text("notes"),
@@ -777,13 +776,13 @@ export const hapticEvents = pgTable("haptic_events", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().$defaultFn(() => new Date()),
 });
 
-// One table for caption / translation / sign-language requests. Nothing is
+// One table for caption / translation requests. Nothing is
 // fulfilled until a real provider is connected — `fulfilled` stays false and
 // `note` says why. No fabricated confidence scores, no fake media urls.
 export const accessibilityRequests = pgTable("accessibility_requests", {
   id: text("id").primaryKey(),
   driverId: text("driver_id").notNull(),
-  kind: text("kind").notNull(), // caption, translation, sign_language
+  kind: text("kind").notNull(), // caption, translation
   sourceText: text("source_text"),
   sourceLanguage: text("source_language").notNull().default("en"),
   targetLanguage: text("target_language"),

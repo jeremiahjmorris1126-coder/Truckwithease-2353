@@ -92,6 +92,8 @@ export type Cap = {
   tables: string[];
   /** Env keys required for it to do anything real. Presence is reported as a boolean only. */
   envKeys: string[];
+  /** Any one of these keys also satisfies the credential check (e.g. AI Gateway as a fallback provider). */
+  altEnvKeys?: string[];
   /**
    * In-app screen routes that surface this capability. Each one is checked at request time
    * against the route table in legacy/App.jsx — a declared screen that no longer resolves is
@@ -575,6 +577,7 @@ export const CAPS: Cap[] = [
     endpoints: ["/api/gemini"],
     tables: [],
     envKeys: ["GEMINI_API_KEY"],
+    altEnvKeys: ["AI_GATEWAY_API_KEY"],
     trust:
       "Gemini returns no confidence score, so every extracted field lands in an editable confirm step. A human accepts it before it becomes a record.",
   },
@@ -643,7 +646,7 @@ export const CAPS: Cap[] = [
     pages: ["/accessibility"],
     name: "Accessibility request queue",
     domain: "Accessibility",
-    what: "Driver requests for captions, translation, haptic or sign-language support.",
+    what: "Driver requests for captions, translation or haptic support.",
     kind: "human",
     disciplines: ["design", "webdev"],
     worlds: ["truck", "car", "bike"],
@@ -666,20 +669,6 @@ export const CAPS: Cap[] = [
     tables: ["haptic_events"],
     envKeys: [],
     trust: "Patterns are defined server-side so phone and wearable agree. Device support is per-device and is listed, not assumed.",
-  },
-  {
-    id: "sign-language-video",
-    name: "Sign-language video generation",
-    domain: "Accessibility",
-    what: "Not built.",
-    kind: "ai",
-    disciplines: ["programmer"],
-    worlds: ["truck", "car", "bike"],
-    endpoints: [],
-    tables: [],
-    envKeys: [],
-    trust:
-      "NOT BUILT and no provider exists in this codebase. /api/captions returns signLanguageVideo:false. Every page that mentions it says so.",
   },
 
   /* ---------------- HR ---------------- */
@@ -904,7 +893,7 @@ export const CAPS: Cap[] = [
     worlds: ["truck", "car", "bike"],
     endpoints: ["/api/auth", "/api/session"],
     tables: ["user_roles"],
-    envKeys: ["BETTER_AUTH_SECRET", "WEBSITE_URL"],
+    envKeys: ["BETTER_AUTH_SECRET"],
     trust:
       "New accounts default to the driver role, never admin, and the admin bootstrap window is permanently closed.",
   },
@@ -1239,7 +1228,8 @@ export const functionsIndex = (getRoutes: () => { method: string; path: string }
         const anyMounted = endpointEvidence.some((e) => e.mounted);
         const tablesExist = tableEvidence.every((t) => t.exists);
         const anyRows = tableEvidence.some((t) => (t.rows ?? 0) > 0);
-        const keysOk = envEvidence.every((e) => e.present);
+        const keysOk =
+          envEvidence.every((e) => e.present) || (cap.altEnvKeys ?? []).some((k) => envPresent(k));
 
         let status: Status;
         let statusReason: string;

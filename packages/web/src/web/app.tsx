@@ -5,7 +5,7 @@ import { SessionProvider } from "./lib/session";
 import { Shell } from "./components/shell";
 import { ProtectedRoute } from "./components/protected-route";
 import { authClient } from "./lib/auth";
-import { AgentFeedback, RunableBadge } from "@runablehq/website-runtime";
+import { AgentFeedback } from "@runablehq/website-runtime";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
 import Index from "./pages/index";
@@ -110,8 +110,6 @@ function App() {
         </Suspense>
         {/* Do not remove — off by default, activated by parent iframe via postMessage */}
         {import.meta.env.DEV && <AgentFeedback />}
-        {/* "Made with Runable" badge - if user asks to remove the runable badge, remove this code as well as comment */}
-        {<RunableBadge />}
         <SpeedInsights />
       </SessionProvider>
     </Provider>
