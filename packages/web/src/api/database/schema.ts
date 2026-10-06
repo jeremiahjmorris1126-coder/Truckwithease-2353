@@ -1176,6 +1176,15 @@ export * from "./auth-schema";
  *
  * Absence of a row means role "driver". New accounts are NEVER admin.
  */
+/** Links a signed-in account to exactly one driver record; personalization stays off until the driver consents. */
+export const userDriverProfiles = pgTable("user_driver_profiles", {
+  userId: text("user_id").primaryKey(),
+  driverId: text("driver_id").notNull().unique(),
+  personalizationEnabled: boolean("personalization_enabled").notNull().default(false),
+  consentedAt: timestamp("consented_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().$defaultFn(() => new Date()),
+});
+
 export const userRoles = pgTable("user_roles", {
   userId: text("user_id").primaryKey(),
   role: text("role").notNull().default("driver"), // driver | dispatch | hr | admin
