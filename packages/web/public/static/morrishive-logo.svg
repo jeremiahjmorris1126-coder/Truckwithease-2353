@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 120" width="720" height="120" role="img" aria-label="MorrisHive">
+  <title>MorrisHive</title>
+  <defs>
+    <linearGradient id="mhGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A9762A"/>
+      <stop offset="55%" stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#F5E79E"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#mhGold)">
+    <!-- hex mark -->
+    <path d="M60 12 L102 36 L102 84 L60 108 L18 84 L18 36 Z" fill="none" stroke="url(#mhGold)" stroke-width="7"/>
+    <path d="M60 36 L81 48 L81 72 L60 84 L39 72 L39 48 Z"/>
+    <text x="128" y="78" font-family="Oswald, 'Arial Narrow', Arial, sans-serif" font-size="64" font-weight="600" letter-spacing="6">MORRISHIVE</text>
+  </g>
+</svg>

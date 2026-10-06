@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "icon": "./assets/icon.png",
+    "android": {
+      "package": "com.truckwithease.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBV1A1j58NrmJwGx4Mzk3qZoraLg4EDcbs"
+        }
+      }
+    },
+    "extra": {
+      "apiUrl": "https://truckwi-bhnknc6-preview-4200.runable.site/",
+      "applicationId": "truckwi-bhnknc6"
+    },
+    "ios": {
+      "bundleIdentifier": "com.truckwithease.app",
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyBV1A1j58NrmJwGx4Mzk3qZoraLg4EDcbs"
+      }
+    },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#ffffff"
+    },
+    "name": "TruckWithEase",
+    "slug": "truckwithease",
+    "version": "1.0.0",
+    "scheme": "truckwithease",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "TruckWithEase uses your location to show your position on the live map, find nearby diesel, and share your position with dispatch."
+        }
+      ]
+    ]
+  }
+}

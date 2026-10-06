@@ -1,0 +1,394 @@
+# TruckWithEase — Complete Platform Summary
+**morrishive.com | Built for Jeremiah Morris**
+*Last updated: August 2026*
+
+---
+
+## What TruckWithEase Is
+
+TruckWithEase is an all-in-one fleet intelligence platform built for trucking companies, owner-operators, and fleet managers of all sizes — from a single-truck owner-op to a 50-truck fleet. It replaces 15–20 separate apps and subscriptions with a single command center that handles dispatch, compliance, maintenance, driver management, load sourcing, financial reporting, and AI-powered decision-making.
+
+The platform is a progressive web app (PWA) — meaning it runs in a web browser but can be installed on any phone or tablet like a native app, with no App Store required. It also has a Google Play submission guide built-in for those who want the full app-store experience.
+
+All data is stored securely in the platform's own backend, never in a third party's hands.
+
+---
+
+## Active Members
+- Jeremiah Morris (owner / admin)
+  
+
+---
+
+## THE COMMAND CENTER (`/command`)
+
+The home base of the entire platform. Every tool, agent, and feature is reachable from here in one tap.
+
+**What it does:**
+- Shows live fleet status: active loads, HOS status, asset health, revenue
+- Quick-access grid to every platform feature
+- Organized into categories: Operations, Compliance, Fleet, ELD & Payroll, Intelligence
+- Real-time alerts surface from any connected agent
+
+---
+
+## CORE OPERATIONS
+
+### Dispatch (`/dispatch`)
+Full AI-powered dispatch with complete driver intelligence.
+- Tap any driver to see their full profile: CDL expiration, medical card, DOT record, insurance, violations, accidents, miles YTD, fuel MPG, on-time %, emergency contact, preferred lanes
+- Accident sensor toggle — connects to telematics for real-time incident detection
+- Accident Alert Modal: 8-step fleet protocol fires automatically on any incident
+- One-tap 911 call, one-tap driver call from dispatch screen
+- Auto-SMS load assignment via Twilio integration
+- Fleet procedure enforcement — THE GOAT reviews your custom procedure document
+
+### Load Board (`/loads`)
+- Sourced from 5 major load boards simultaneously
+- Broker trust scoring on every load
+- Profit margin calculator per load before accepting
+- Direct book or contact from the app
+
+### Fleet Load Board (`/fleet-load-board`)
+- Per-fleet private boards — your loads, your drivers, your rules
+- 12 data sources aggregated
+- GOAT Load Index scores every load by profitability and risk
+- Board value analytics
+
+### Quantum Nexus (`/quantum-nexus`)
+Unified hub connecting dispatch + load board + shipper contacts + broker network + insurers + A2P status.
+- GOAT Quantum Scan: AI reviews your entire operational picture and flags issues
+- 5 tabs: Dispatch, Loads, Contacts, Insurance, A2P Status
+
+### Freight Nexus (`/freight-nexus`)
+- Broker intelligence with trust scores and payment history ratings
+- Direct shipper connect: link directly to Amazon, Walmart, Sysco, and other major shippers
+- Revenue calculator: shows exactly what direct freight pays vs. broker
+- Partner portal for fleet-to-fleet capacity sharing
+
+### Client Builder (`/client-builder`)
+- Email templates for 5 outreach types (cold intro, rate proposal, check-in, etc.) — auto-filled with your fleet info
+- Direct connection module for major shippers by sector (food/bev, retail, industrial, etc.)
+- Shipper intel: contact info, lane patterns, payment terms
+
+---
+
+## DRIVER & FLEET INTELLIGENCE
+
+### Driver Profile (`/driver-profile`)
+Complete per-driver record: CDL info, medical card, insurance, violations, accident history, miles driven, performance scores.
+
+### HOS Logger (`/hos`)
+Hours of Service tracking, ELD-compliant, with violation warnings before they happen.
+
+### DVIR (`/dvir`)
+Standalone DOT-compliant inspection forms — pre-trip and post-trip.
+
+### Leaderboard (`/leaderboard`)
+Driver performance rankings by miles, on-time %, fuel efficiency, and safety score.
+
+### Scorecard (`/scorecard`)
+Per-driver DOT safety scorecard with trend tracking.
+
+### HRease / HumanAI (`/humanai`)
+AI-powered hiring and HR management:
+- Job posting generator
+- Driver screening questions
+- Onboarding checklist
+- Payroll integration
+
+### Payroll (`/payroll`)
+Automated payroll calculation by miles, loads, or hourly — with per-driver rule sets.
+
+---
+
+## MAINTENANCE & DIAGNOSTICS
+
+### MaintEase (`/maintenance`)
+The full fleet maintenance intelligence system.
+- **Photo Scan**: Take a photo of any engine component — AI identifies the part and potential issues
+- **DTC Code Reader**: Enter any fault code — full library of SPN/J1939 and OBD codes decoded
+- **Quantum Predictive Engine**: AI predicts failures before they happen based on mileage, hours, and patterns
+- **Service Log**: Full history of every repair, every part, every cost — saved permanently
+- **Asset Health Index**: Visual health score for every vehicle in the fleet
+- **Brand Studio**: Custom fleet branding (colors, logo, white-label) unlocks at 10+ assets
+- **16 Customizable Modules**: Fleet managers toggle exactly the modules they need
+- All records saved to the fleet's permanent maintenance archive
+
+### INDEX=MECHANIC (`/mechanic`)
+Legend-level AI diagnostic agent — the best truck mechanic in the world, available 24/7.
+
+**4 Modes:**
+
+**1. Diagnose a Problem**
+- Describe any symptom in plain language (or paste a fault code)
+- THE MECHANIC decodes it using a professional knowledge base covering: engine, fuel system, air system, aftertreatment (DEF/DPF), transmission, brakes, tires, electrical, cooling, steering, clutch, and fuel economy
+- Brand-specific responses: select Volvo, Peterbilt, Kenworth, Freightliner, International, Mack, or Western Star and get known issues + service bulletins for that specific brand
+- Multi-keyword matching catches every variation of how a driver might describe a problem
+- One-tap "Log to MaintEase" saves the full diagnosis to the permanent service record
+
+**2. ELD Fault Scan**
+- Select your tracking device (Geotab, Motive/KeepTruckin, Samsara, Azuga, or manual entry)
+- Paste in any SPN or DTC codes from the screen
+- THE MECHANIC instantly decodes: what it means, what caused it, and the exact fix procedure
+- 19 codes in the built-in library with full root-cause and repair guidance
+- One-tap escalation to full chat diagnosis
+- Saved to permanent service records with one tap
+
+**3. DVIR Inspection (with Memory)**
+- Full DOT-compliant pre-trip and post-trip checklists (60+ inspection points across 8 categories)
+- **Memory**: The agent automatically loads the prior day's DVIR — any defect not seen before is flagged in orange as "NEW DAMAGE"
+- **Photo capture**: Tap the camera icon on any failed item — photo is taken with the phone camera and attached to that specific defect
+- **Damage notes**: Free-text notes field opens on every defect for precise description
+- **Auto-alert to insurance**: Enter your insurance company name — any new damage detected automatically flags the report for your insurer with all photos attached
+- **Auto-wire to MaintEase**: Any defects found create a work order in MaintEase automatically — the fleet manager sees it immediately
+
+**4. PM Planner**
+- Enter current odometer and engine hours
+- THE MECHANIC calculates your complete preventive maintenance schedule across 20 service intervals
+- Color-coded: overdue (red), due soon (orange), on track (green)
+- Covers: oil changes, fuel filters, air filters, coolant SCA, belts, transmission fluid, differentials, wheel bearings, DPF cleaning, DOT annual inspection, and 10 more
+
+---
+
+## COMPLIANCE & SAFETY
+
+### Permit Book (`/permit-book`)
+Digital permit storage, expiration tracking, state-by-state oversize/overweight rules.
+
+### DVIR Standalone (`/dvir`)
+DOT inspection forms, standalone version.
+
+### Load Rework Command (`/load-rework`)
+Emergency tool for when loads go wrong mid-route:
+- Emergency lumper finder with tap-to-call
+- Real-time detention clock (shows dollar loss per hour)
+- State weight map for overweight routing decisions
+- Revenue recovery guide
+
+### Accident Report (`/accident-report`)
+Fully rebuilt incident command:
+- 4 tabs: Report, Fleet Procedure, Incident History, GOAT Scan
+- Customizable fleet procedure (upload your document, THE GOAT reads it and enforces it)
+- Document upload capability
+- THE GOAT reviews every incident and flags compliance gaps
+- Saves permanently to fleet incident archive
+- Connected to Dispatch for instant accident protocol activation
+
+### State Patrol (`/state-patrol`)
+State police frequencies, weigh station locations, and bypass information by state.
+
+### Bypass (`/bypass`)
+PrePass and weight station bypass integration and status.
+
+### Tolls (`/tolls`)
+Toll calculation and E-ZPass integration by route.
+
+### Health (`/health`)
+Driver health and wellness tracking — DOT physical reminder, fatigue alerts.
+
+### Detention (`/detention`)
+Detention time calculator and legal guide for billing shippers.
+
+---
+
+## FINANCIAL & ASSET MANAGEMENT
+
+### AssetEase (`/asset-ease`)
+Running asset bank — every truck and trailer in the fleet with:
+- Live market valuation and depreciation tracking
+- Equity position (what you'd get if you sold today)
+- Compliance radar (registration, insurance, inspection due dates)
+- Quantum Asset Index: AI health + value + risk score per unit
+- Direct link to Live GPS
+
+### Expenses (`/expenses`)
+All fleet expenses tracked, categorized, and reported — fuel, maintenance, tolls, permits, insurance.
+
+### Reports (`/reports`)
+Financial reporting: revenue per mile, revenue per truck, load profit vs. cost, monthly P&L.
+
+### Load Profit Calculator (`/load-profit`)
+Before accepting any load: enter rate and miles, see exact net profit after all costs.
+
+### Factoring (`/factoring`)
+Freight factoring management — rate tracking, advance amounts, fee calculation.
+
+### Fuel Card (`/fuel-card`)
+Fleet fuel card management and discount tracking.
+
+---
+
+## GPS & TRACKING
+
+### Live GPS (`/live-gps`)
+Phone-based live GPS tracking — no hardware required.
+- Every driver's phone becomes a tracker
+- Split-screen: map view + driver list with live locations
+- Updates every 30 seconds
+- Location syncs back to AssetEase per vehicle
+
+---
+
+## AI AGENTS & INTELLIGENCE
+
+### THE GOAT (Supreme Master Agent) — `/ai-team`
+The top-level AI agent that oversees the entire platform. THE GOAT can:
+- Scan any section of the platform and identify gaps, risks, or opportunities
+- Review and enforce fleet procedures
+- Advise on loads, drivers, compliance, and operations
+- The final authority on every platform decision
+
+### INDEX=MECHANIC — `/mechanic`
+See Maintenance & Diagnostics section above.
+
+### Road Agent (`/road-agent`)
+Real-time route intelligence: traffic, weather, construction, port congestion — all combined into a single road condition brief.
+
+### Weather (`/weather`)
+Severe weather alerts by route and current location.
+
+### Ghost Nerve (`/ghost-nerve`)
+Proprietary predictive intelligence layer — monitors patterns across the fleet and surfaces anomalies before they become problems.
+
+### Quantum Mind (`/quantum-mind`)
+Deep pattern analysis across all fleet data — identifies trends in revenue, driver performance, maintenance costs, and compliance exposure.
+
+### Neural Safety (`/neural-safety`)
+AI safety monitor — watches for HOS violations, inspection failures, and driver behavior patterns that increase accident risk.
+
+### Finance Alert Agent (`/finance-alert-agent`)
+Real-time financial monitoring — flags cash flow issues, slow-pay brokers, and revenue dips before they become crises.
+
+### Memory Management Agent (`/memory-management-agent`)
+The platform's memory layer — maintains context across all sessions so every agent knows your fleet's full history.
+
+### Page Guardian Agent
+Background process that monitors every page in the platform every hour — catches errors before drivers see them.
+
+---
+
+## COMMUNICATIONS
+
+### Fleet Voice (`/fleet-voice`)
+AI-powered voice communications for the fleet:
+- 5 tabs: Voice AI, Driver Chat, Emergency, Settings, A2P Compliance
+- Hands-free operation for drivers
+- Auto-call routing based on load status
+
+### A2P Registration Manager (`/a2p`)
+10DLC (A2P) SMS campaign registration — required by carriers to send automated texts to drivers and customers.
+- 5-step wizard walks through every requirement
+- Campaign selector by use type (driver alerts, load notifications, safety messages)
+- GOAT Compliance Scan
+- Connected to Fleet Voice and Quantum Nexus
+
+### Traxes (`/traxes`)
+Driver-fleet communication and location sharing.
+
+### Driver Chat (`/walkie-talk`)
+In-app driver messaging — no phone number needed.
+
+---
+
+## TRAINING & GROWTH
+
+### Game Up (`/game-up`)
+Driver training and education platform:
+- CDL prep materials
+- DOT regulation reference
+- Safety scenario training
+
+### BigRig Points (`/rig-bucks`)
+Driver rewards and gamification:
+- Points earned for safe driving, on-time delivery, fuel efficiency
+- Leaderboard competition
+- Redeemable rewards
+
+### Cinema (`/cinema`)
+Training video library — safety, compliance, operational best practices.
+
+---
+
+## STORE & ONBOARDING
+
+### Signup (`/signup`)
+Fleet onboarding — account creation, fleet size, subscription tier.
+
+### Checkout (`/checkout`)
+Subscription management and payment.
+
+### Cover / Download Page
+App Store and Google Play download badges — for directing drivers to install the app.
+
+### Privacy Policy (`/privacy`)
+Full CCPA-compliant privacy policy covering: location data, ELD records, driver data, encryption standards — ready to paste into Google Play Console.
+
+### Google Play Guide (`/google-play`)
+Complete step-by-step guide for submitting to Google Play: store listing copy, screenshot guide, content rating answers, PWABuilder packaging steps.
+
+---
+
+## KEY INTEGRATIONS BUILT IN
+
+| Category | Integrations |
+|----------|-------------|
+| ELD / Telematics | Geotab, Motive (KeepTruckin), Samsara, Azuga, iDrive |
+| Load Boards | DAT, Truckstop, 123Loadboard, Convoy, Direct Freight |
+| Communications | Twilio (SMS/Voice), A2P 10DLC |
+| GPS | Phone-native GPS (no hardware), Geotab device |
+| Payments | Stripe Payment Link, factoring integration |
+| Weather | Real-time route weather |
+| Fuel | Fuel card discount network |
+| Insurance | New damage DVIR auto-alert with photo attachment |
+
+---
+
+## DATA STORED (Permanent Fleet Records)
+
+Every piece of data below lives in your fleet's secure backend, never lost, accessible from any device:
+
+- **mechanic_sessions** — every DVIR inspection, ELD scan, and diagnosis session; includes photos, damage notes, prior-DVIR comparison, insurance flags
+- **maintenance_records** — every service record: 30 fields including DTC codes, ELD flags, scan data, quantum diagnosis, photo notes, warranty claims
+- **fleet_branding** — company colors, logo, enabled modules, white-label settings
+- **accident_reports** — every incident with fleet procedure, custom steps, GOAT recommendations, uploaded documents
+- **platform_settings** — all API keys and integration credentials (securely stored)
+
+---
+
+## WHAT MAKES TRUCKWITHEASE DIFFERENT
+
+1. **Everything in one place.** No switching between 12 apps — dispatch, compliance, maintenance, GPS, comms, training, finance are all one platform with one login.
+
+2. **AI that actually knows trucking.** The agents understand CDL law, FMCSA regulations, DOT inspection standards, J1939 fault codes, and brand-specific truck issues. This isn't a generic AI — it's been trained on trucking.
+
+3. **THE MECHANIC costs nothing extra.** A single diagnostic call at a shop is $150-200. THE MECHANIC is available 24/7, decodes every code, and guides drivers through the fix before they ever call a shop.
+
+4. **DVIR with memory and insurance.** No other platform compares today's inspection to yesterday's and automatically flags new damage — then attaches the photos and notifies insurance. This alone is worth the platform.
+
+5. **Built for owner-ops and fleets equally.** A single owner-operator gets everything they need. A 50-truck fleet manager gets fleet-wide visibility, per-driver intelligence, and multi-unit asset management.
+
+6. **No hardware required.** GPS tracking from the driver's phone. ELD codes entered from the dashboard display. Photo diagnosis from the phone camera. Zero upfront hardware cost.
+
+7. **Grows with you.** Brand Studio unlocks at 10+ assets. Fleet features scale automatically.
+
+---
+
+## PRICING SUMMARY (as built)
+
+The platform has a subscription model with multiple tiers — visible at `/pricing`. The checkout and onboarding flow is fully functional.
+
+---
+
+## PLATFORM HEALTH
+
+- **165+ routes** across the platform
+- **51 pages** all validated and crash-audited before every update
+- **27 API integrations** documented and wired
+- **Zero duplicate routes** — all conflicts resolved August 2026
+- **Build validation** runs automatically: catches broken pages, missing imports, and hook errors before anything reaches drivers
+- **Runtime crash audit** checks all 51 pages on every build
+
+---
+
+*This document is the official reference for TruckWithEase. Updated as features are added.*
