@@ -31,6 +31,7 @@ import { accessibility } from "./routes/accessibility";
 import { licensing } from "./routes/licensing";
 import { signup } from "./routes/signup";
 import { subscriptions } from "./routes/subscriptions";
+import { billing } from "./routes/billing";
 import { a2p } from "./routes/a2p";
 import { twilio } from "./routes/twilio";
 import { comms } from "./routes/comms";
@@ -113,6 +114,7 @@ const app = new Hono()
   .route("/ride", ride)
   .route("/signup", signup)
   .route("/subscriptions", subscriptions)
+  .route("/billing", billing)
   .route("/a2p", a2p)
   .route("/accessibility", accessibility)
   .route("/licensing", licensing).route("/twilio", twilio)

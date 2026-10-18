@@ -5,7 +5,7 @@
  *   GET /api/signup — PLANS in api/routes/signup.ts is the ONLY price list in this
  *                     product. This page renders whatever the server returns and
  *                     nothing else, including the server's own notes.payment
- *                     admission that billing is not live.
+ *                     explanation of how Stripe billing works.
  *
  * REMOVED IN THIS REWRITE
  *   - The hardcoded PLANS array (Solo 29.99 / Pro 39.99 / Fleet 49.99) — a second
@@ -135,9 +135,9 @@ export default function Pricing() {
                   <AlertTriangle className="h-4 w-4 text-[#c96a4c] mt-0.5 shrink-0" />
                   <div>
                     <div className="text-xs uppercase tracking-[0.18em] text-[#c96a4c]">
-                      MISSING / NOT TRACKED
+                      HOW BILLING WORKS
                     </div>
-                    <div className="text-sm text-[#F5F5F5] mt-1">Billing is not live</div>
+                    <div className="text-sm text-[#F5F5F5] mt-1">14-day free trial, then billed by Stripe</div>
                     <p className="text-sm text-[#8A8A8A] mt-1 leading-relaxed">
                       {data.notes.payment}
                     </p>

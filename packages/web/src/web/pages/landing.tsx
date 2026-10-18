@@ -82,7 +82,7 @@
  *   - No hardware ships today. The $600/truck and lease lines in the Fleet plans are
  *     the plan table, not a shipping product.
  *   - TruckWithEase files nothing with any agency. No IFTA, no 2290, no tax filing.
- *   - Payment processing is not live. Signing up stores a record and charges nothing.
+ *   - Billing runs through Stripe Checkout with a 14-day trial. Signing up alone charges nothing.
  *   - No load board integration. No uptime percentage. No compliance certification
  *     (no SOC 2, no PCI-DSS, no GDPR/CCPA, no WCAG conformance level).
  *   - No competitor is named, priced or scored anywhere on this page.
@@ -206,7 +206,6 @@ const NOT_CLAIMED = [
   "TruckWithEase is not an FMCSA-registered ELD. It does not appear on eld.fmcsa.dot.gov/List. Nothing has been filed and no registration is being pursued.",
   "We do not ship hardware today. The hardware lines in the Fleet plans are plan pricing, not a shipping product.",
   "We do not file anything with any agency. No IFTA return, no Form 2290, no tax filing, no MCS-150 update.",
-  "Payment processing is not live. Signing up stores a record and charges nothing.",
   "There is no load board integration. No DAT, no Uber Freight, no broker feed of any kind.",
   "We do not run payroll, post jobs, or move money. No banking or payment-method data is stored anywhere in this platform.",
   "We publish no uptime percentage, because we do not measure one.",
@@ -324,7 +323,15 @@ function Panel({
   );
 }
 
-function Missing({ label, reason }: { label: string; reason: string }) {
+function Missing({
+  label,
+  reason,
+  heading = "MISSING / NOT TRACKED",
+}: {
+  label: string;
+  reason: string;
+  heading?: string;
+}) {
   return (
     <div
       style={{
@@ -347,7 +354,7 @@ function Missing({ label, reason }: { label: string; reason: string }) {
             letterSpacing: "0.18em",
           }}
         >
-          MISSING / NOT TRACKED
+          {heading}
         </div>
         <div style={{ font: `600 13px ${FB}`, color: C.white, marginTop: 4 }}>{label}</div>
         <div style={{ font: `400 12px ${FB}`, color: C.muted, marginTop: 4, lineHeight: 1.55 }}>
@@ -881,7 +888,7 @@ export default function Landing() {
 
               <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
                 {signup?.notes?.payment ? (
-                  <Missing label="Billing is not live" reason={signup.notes.payment} />
+                  <Missing heading="HOW BILLING WORKS" label="14-day free trial, then billed by Stripe" reason={signup.notes.payment} />
                 ) : null}
                 {signup?.notes?.mcCheck ? (
                   <Missing label="MC number is not verified with FMCSA" reason={signup.notes.mcCheck} />
@@ -1198,8 +1205,8 @@ export default function Landing() {
           >
             TruckWithEase is compliance and fleet-management software. It is not an electronic
             logging device, it is not registered with FMCSA as an ELD provider, and it does not
-            replace the ELD in your truck. It files nothing with any agency. Payment processing is
-            not live. Support is not 24/7 — the real hours are on this page, read from the server.
+            replace the ELD in your truck. It files nothing with any agency. Payments are processed by
+            Stripe. Support is not 24/7 — the real hours are on this page, read from the server.
           </p>
           <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
             {support?.email ? (

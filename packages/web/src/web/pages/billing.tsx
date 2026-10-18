@@ -1,5 +1,16 @@
 import { useState } from "react";
 import { Check, X, Truck, Sparkles, Building2, Download, Wrench, Home, RefreshCw } from "lucide-react";
+import { PlanCheckout } from "../components/plan-checkout";
+import { CheckoutResult } from "../components/checkout-result";
+
+const CHECKOUT_OPTIONS: Record<string, { planId: string; label: string; unit: string }[]> = {
+  solo: [{ planId: "solo", label: "Solo", unit: "driver" }],
+  pro: [{ planId: "pro", label: "Pro", unit: "driver" }],
+  fleet: [
+    { planId: "fleet_lease", label: "Lease $49.99", unit: "truck" },
+    { planId: "fleet_owned", label: "Own $59.99", unit: "driver" },
+  ],
+};
 
 /* ------------------------------------------------------------------ data */
 
@@ -234,6 +245,8 @@ export default function Billing() {
           <div className="mx-auto mt-6 h-px w-40 bg-gradient-to-r from-transparent via-twgold to-transparent" />
         </header>
 
+        <CheckoutResult />
+
         {/* tabs */}
         <nav className="mt-10 flex gap-1 overflow-x-auto border-b border-twborder">
           {TABS.map((t) => (
@@ -290,15 +303,7 @@ export default function Billing() {
                     </div>
                   )}
 
-                  <button
-                    className={`mt-6 w-full rounded-lg py-3 font-heading text-sm uppercase tracking-wide transition-colors ${
-                      t.featured
-                        ? "bg-twgoldbright text-twblack hover:bg-twgold"
-                        : "border border-twgold text-twgold hover:bg-twgold hover:text-twblack"
-                    }`}
-                  >
-                    Start 14-day free trial
-                  </button>
+                  <PlanCheckout options={CHECKOUT_OPTIONS[t.id]} featured={t.featured} />
 
                   <ul className="mt-6 space-y-2.5">
                     {t.included.map((f) => (

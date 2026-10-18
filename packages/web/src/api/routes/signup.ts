@@ -48,7 +48,7 @@ export const signup = new Hono()
       statuses: SIGNUP_STATUSES,
       notes: {
         mcCheck: "MC number is validated for format only (5-8 digits). No FMCSA authority lookup is performed.",
-        payment: "Signing up stores a record. It does not charge anything and does not create a payment-provider subscription.",
+        payment: "Plans are billed through Stripe. Starting a plan from the Billing page begins a 14-day free trial; your card is charged when the trial ends unless you cancel first. Signing up alone charges nothing.",
       },
     }),
   )
