@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from "hono/cors";
+import { HTTPException } from "hono/http-exception";
 import { fleet } from "./routes/fleet";
 import { assets } from "./routes/assets";
 import { quantumOperations } from "./routes/quantum-operations";
@@ -75,6 +76,19 @@ import { requireSession } from "./middleware/session";
 const app = new Hono()
   .basePath('api')
   .use(cors({ origin: (origin) => origin ?? "*", credentials: true, exposeHeaders: ["set-auth-token"] }))
+  .onError((error, c) => {
+    if (error instanceof HTTPException) return error.getResponse();
+    if (error instanceof SyntaxError) return c.json({ error: "Request body must be valid JSON." }, 400);
+    if (error instanceof Error && error.name === "ZodError") return c.json({ error: "Invalid request input." }, 400);
+    // Postgres SQLSTATE class 22 (bad data) and 23 (missing/duplicate/invalid reference) mean the caller sent bad input.
+    const sqlState = String((error as { cause?: { code?: unknown } }).cause?.code ?? (error as { code?: unknown }).code ?? "");
+    if (sqlState === "23505") return c.json({ error: "That record already exists." }, 409);
+    if (/^2[23]/.test(sqlState) || (error instanceof Error && error.message === "No values to set")) {
+      return c.json({ error: "Missing or invalid fields in the request." }, 400);
+    }
+    console.error(JSON.stringify({ evt: "api_error", path: c.req.path, message: error instanceof Error ? error.message : String(error) }));
+    return c.json({ error: "The request could not be completed." }, 500);
+  })
   // The guard explicitly allows Better Auth and the minimal public onboarding surface.
   .use("*", requireSession)
   // Better Auth owns /api/auth/*. Registered before every feature route so a
