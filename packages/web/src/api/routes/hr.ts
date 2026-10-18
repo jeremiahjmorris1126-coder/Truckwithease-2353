@@ -305,6 +305,7 @@ export const hr = new Hono()
   .get("/status", (c) => c.json({ live: hasAI() }, 200))
   .post("/chat", async (c) => {
     const { messages } = await c.req.json();
+    if (!Array.isArray(messages) || !messages.length) return c.json({ error: "messages_required" }, 400);
     // Give the agent a live snapshot so it advises on real records.
     const people = await db.select().from(schema.hrPeople);
     const occ = await db.select().from(schema.hrOccurrences);

@@ -83,10 +83,11 @@ export const rewards = new Hono()
       200,
     );
   })
-  .post("/:driverId/earn", async (c) => {
+  .post("/:driverId/earn", zValidator("json", z.object({ points: z.number().int().min(1).max(1000), note: z.string().max(200).optional() })), async (c) => {
     const driverId = c.req.param("driverId");
-    const b = await c.req.json();
+    const b = c.req.valid("json");
     const [d] = await db.select().from(schema.drivers).where(eq(schema.drivers.id, driverId));
+    if (!d) return c.json({ error: "Driver not found" }, 404);
     const newPts = (d?.points ?? 0) + b.points;
     await db.update(schema.drivers).set({ points: newPts }).where(eq(schema.drivers.id, driverId));
     ledger.push({ id: Math.random().toString(36).slice(2), driverId, type: "earn", points: b.points, note: b.note ?? "Points earned", at: Date.now() });

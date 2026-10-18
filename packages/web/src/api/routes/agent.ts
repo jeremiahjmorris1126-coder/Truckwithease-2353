@@ -133,24 +133,24 @@ export const agentRoutes = new Hono().onError((error, c) => {
   })
   /* AI Command Post — the 7 personality-driven characters. */
   .post("/routing-robbie", async (c) => {
-    const { messages, driving, profile, driverId } = await c.req.json();
+    const { messages, driving, profile, driverId } = await agentRequest(c);
     const text = await runAgent("routing-robbie", messages, await profileNote(driverId), { driving: !!driving, profile: profile ?? null });
     return c.json({ text, live: hasAI(), driving: !!driving }, 200);
   })
   .post("/compliant-kathy", async (c) => {
-    const { messages, driving, profile, driverId } = await c.req.json();
+    const { messages, driving, profile, driverId } = await agentRequest(c);
     const text = await runAgent("compliant-kathy", messages, await profileNote(driverId), { driving: !!driving, profile: profile ?? null });
     return c.json({ text, live: hasAI() }, 200);
   })
   .post("/dispatch-darryl", async (c) => {
-    const { messages, profile, context, driverId } = await c.req.json();
+    const { messages, profile, context, driverId } = await agentRequest(c);
     const loadCtx = context ? `# Load / broker context supplied by the platform\n${typeof context === "string" ? context : JSON.stringify(context, null, 2)}` : undefined;
     const learned = await profileNote(driverId);
     const text = await runAgent("dispatch-darryl", messages, [loadCtx, learned].filter(Boolean).join("\n\n") || undefined, { profile: profile ?? null });
     return c.json({ text, live: hasAI() }, 200);
   })
   .post("/money-marisol", async (c) => {
-    const { messages, profile, context, traxes, driverId } = await c.req.json();
+    const { messages, profile, context, traxes, driverId } = await agentRequest(c);
     const money = context ?? traxes;
     const moneyCtx = money ? `# TRAXES / financial context supplied by the platform\n${typeof money === "string" ? money : JSON.stringify(money, null, 2)}` : undefined;
     const learned = await profileNote(driverId);
@@ -158,17 +158,17 @@ export const agentRoutes = new Hono().onError((error, c) => {
     return c.json({ text, live: hasAI() }, 200);
   })
   .post("/safety-sarge", async (c) => {
-    const { messages, driving, profile, driverId } = await c.req.json();
+    const { messages, driving, profile, driverId } = await agentRequest(c);
     const text = await runAgent("safety-sarge", messages, await profileNote(driverId), { driving: !!driving, profile: profile ?? null });
     return c.json({ text, live: hasAI() }, 200);
   })
   .post("/weather-wanda", async (c) => {
-    const { messages, driving, profile, driverId } = await c.req.json();
+    const { messages, driving, profile, driverId } = await agentRequest(c);
     const text = await runAgent("weather-wanda", messages, await profileNote(driverId), { driving: !!driving, profile: profile ?? null });
     return c.json({ text, live: hasAI() }, 200);
   })
   .post("/humanai-hr-manager", async (c) => {
-    const { messages, profile, context, driverId } = await c.req.json();
+    const { messages, profile, context, driverId } = await agentRequest(c);
     const hrCtx = context ? `# HR / roster context supplied by the platform\n${typeof context === "string" ? context : JSON.stringify(context, null, 2)}` : undefined;
     const learned = await profileNote(driverId);
     const text = await runAgent("humanai-hr-manager", messages, [hrCtx, learned].filter(Boolean).join("\n\n") || undefined, { profile: profile ?? null });
