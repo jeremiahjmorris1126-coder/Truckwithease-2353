@@ -77,3 +77,4 @@ packages/mobile/scripts/*
 !scripts/
 scripts/*
 !scripts/crash-audit.mjs
+!scripts/validate-env.ts
