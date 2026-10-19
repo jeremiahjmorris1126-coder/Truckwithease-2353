@@ -1,23 +1,44 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "YourAppID",
+  "appId": "com.truckwithease.desktop",
   "asar": true,
-  "productName": "YourAppName",
+  "productName": "TruckWithEase",
+  "copyright": "Copyright © 2026 TruckWithEase",
   "directories": {
-    "output": "release/${version}"
+    "output": "release/${version}",
+    "buildResources": "build"
   },
   "files": [
     "dist",
     "dist-electron"
   ],
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "jeremiahjmorris1126-coder",
+      "repo": "Truckwithease-2353"
+    }
+  ],
   "mac": {
+    "category": "public.app-category.business",
+    "icon": "build/icon.icns",
     "target": [
-      "dmg"
+      { "target": "dmg", "arch": ["x64", "arm64"] },
+      { "target": "zip", "arch": ["x64", "arm64"] }
     ],
-    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
+    "entitlements": "build/entitlements.mac.plist",
+    "entitlementsInherit": "build/entitlements.mac.plist",
+    // Signing identity comes from CSC_LINK / CSC_KEY_PASSWORD env vars.
+    // Notarization uses APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID.
+    "notarize": true,
+    "artifactName": "${productName}-Mac-${version}-${arch}.${ext}"
   },
   "win": {
+    "icon": "build/icon.ico",
+    // Signing certificate comes from WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD env vars.
     "target": [
       {
         "target": "nsis",
@@ -35,8 +56,14 @@
     "deleteAppDataOnUninstall": false
   },
   "linux": {
+    "icon": "build/icons",
+    "category": "Office",
+    "maintainer": "TruckWithEase <support@truckwithease.com>",
+    "synopsis": "Dispatch and fleet tools for truckers",
     "target": [
-      "AppImage"
+      "AppImage",
+      "deb",
+      "rpm"
     ],
     "artifactName": "${productName}-Linux-${version}.${ext}"
   }

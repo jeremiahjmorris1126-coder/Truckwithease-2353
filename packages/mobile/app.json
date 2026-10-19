@@ -8,11 +8,11 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyBV1A1j58NrmJwGx4Mzk3qZoraLg4EDcbs"
-        }
-      }
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "extra": {
       "apiUrl": "https://truckwi-bhnknc6-preview-4200.runable.site/",
@@ -21,8 +21,10 @@
     "ios": {
       "bundleIdentifier": "com.truckwithease.app",
       "supportsTablet": true,
-      "config": {
-        "googleMapsApiKey": "AIzaSyBV1A1j58NrmJwGx4Mzk3qZoraLg4EDcbs"
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "TruckWithEase uses your location to show your position on the live map and find nearby diesel."
       }
     },
     "splash": {
@@ -49,6 +51,17 @@
           "locationAlwaysAndWhenInUsePermission": "TruckWithEase uses your location to show your position on the live map, find nearby diesel, and share your position with dispatch."
         }
       ]
-    ]
+    ],
+    "owner": "jeremiahjmorris1126-coder",
+    "description": "TruckWithEase: live map, fuel, and dispatch tools for truckers.",
+    "privacy": "public",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "privacyPolicyUrl": "https://truckwithease-2353-desktop.vercel.app/privacy",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }

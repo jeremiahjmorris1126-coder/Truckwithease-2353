@@ -1,0 +1,62 @@
+name: Release builds
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [ios, android]
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GOOGLE_MAPS_MOBILE_API_KEY: ${{ secrets.GOOGLE_MAPS_MOBILE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run validate:env mobile
+      - run: bun run build:mobile:${{ matrix.platform }}
+
+  desktop:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            script: build:desktop:mac
+            group: desktop-mac
+          - os: windows-latest
+            script: build:desktop:windows
+            group: desktop-win
+          - os: ubuntu-latest
+            script: build:desktop:linux
+            group: none
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+      WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - if: matrix.group != 'none'
+        run: bun run validate:env ${{ matrix.group }}
+      - run: bun run ${{ matrix.script }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          path: |
+            packages/desktop/release/**/*.dmg
+            packages/desktop/release/**/*.zip
+            packages/desktop/release/**/*.exe
+            packages/desktop/release/**/*.AppImage
+            packages/desktop/release/**/*.deb
+            packages/desktop/release/**/*.rpm
