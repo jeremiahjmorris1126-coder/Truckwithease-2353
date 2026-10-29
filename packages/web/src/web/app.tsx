@@ -26,6 +26,7 @@ const Rewards = lazy(() => import("./pages/rewards"));
 const Loads = lazy(() => import("./pages/loads"));
 const Chat = lazy(() => import("./pages/chat"));
 const Reports = lazy(() => import("./pages/reports"));
+const DispatchGate = lazy(() => import("./pages/dispatch-gate"));
 const Billing = lazy(() => import("./pages/billing"));
 const Badges = lazy(() => import("./pages/badges"));
 // Recovered launch build — 253 pages behind its own path router.
@@ -109,6 +110,7 @@ function App() {
           <Route path="/app/loads" component={() => <AppShell><Loads /></AppShell>} />
           <Route path="/app/chat" component={() => <AppShell><Chat /></AppShell>} />
           <Route path="/app/reports" component={() => <AppShell><Reports /></AppShell>} />
+          <Route path="/app/dispatch-gate" component={() => <AppShell><DispatchGate /></AppShell>} />
           <Route path="/app/badges" component={() => <ProtectedRoute><Badges /></ProtectedRoute>} />
           <Route path="/app/pricing" component={() => <ProtectedRoute><Billing /></ProtectedRoute>} />
           <Route path="/app/billing" component={() => <ProtectedRoute><Billing /></ProtectedRoute>} />

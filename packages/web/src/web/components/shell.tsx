@@ -21,7 +21,7 @@ import { useState, type ReactNode } from "react";
 import {
   LayoutDashboard, Clock, Map, ClipboardCheck, Fuel, Route, HeartPulse,
   Wrench, Trophy, Package, MessageSquare, FileText, CreditCard, Truck, Boxes, BrainCircuit,
-  ChevronDown, ShieldAlert,
+  ChevronDown, ShieldAlert, ShieldCheck,
 } from "lucide-react";
 import { useSession, type Role } from "../lib/session";
 
@@ -39,6 +39,7 @@ const NAV = [
   { to: "/app/rewards", label: "EaseRewards", icon: Trophy, roles: ["admin", "dispatch", "driver"] },
   { to: "/app/loads", label: "Load Board", icon: Package, roles: ["admin", "dispatch", "driver"] },
   { to: "/app/chat", label: "Dispatch Chat", icon: MessageSquare, roles: ["admin", "dispatch", "driver"] },
+  { to: "/app/dispatch-gate", label: "Dispatch Go / No-Go", icon: ShieldCheck, roles: ["admin", "dispatch"] },
   { to: "/app/reports", label: "Reports", icon: FileText, roles: ["admin", "dispatch"] },
   { to: "/app/pricing", label: "Plans", icon: CreditCard, roles: ["admin", "dispatch", "driver"] },
 ];

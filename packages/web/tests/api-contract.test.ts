@@ -72,6 +72,14 @@ test("telemetry ingestion bypasses user-session auth but requires device credent
   expect(await response.json()).toMatchObject({ error: "deviceId, positive integer sequence, and Bearer device token are required" });
 });
 
+test("dispatch go/no-go requires a Better Auth session", async () => {
+  const response = await handler(new Request(`${origin}/api/dispatch/go-no-go`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ driverId: "drv-1", plannedDriveMinutes: 240 }),
+  }));
+  expect(response.status).toBe(401);
+});
+
 test("root Vercel function package remains ESM", () => {
   expect(rootPackage.type).toBe("module");
 });
