@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import rootPackage from "../../../package.json";
 import handler from "../api/[...path]";
 
 const origin = "https://truckwithease.example";
@@ -77,4 +78,8 @@ test("dispatch go/no-go requires a Better Auth session", async () => {
     body: JSON.stringify({ driverId: "drv-1", plannedDriveMinutes: 240 }),
   }));
   expect(response.status).toBe(401);
+});
+
+test("root Vercel function package remains ESM", () => {
+  expect(rootPackage.type).toBe("module");
 });
