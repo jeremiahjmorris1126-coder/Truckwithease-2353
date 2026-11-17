@@ -2,7 +2,7 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#FFD700" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -13,9 +13,9 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
     <title>TRUCKWITHEASE — Drive Smart. Stay Compliant.</title>
-    <meta name="description" content="Tactical trucking operations command center with Gemini 3.5 microphone audio transcription, Gemini 3.1 Flash image creation &amp; editing studio, hands-free in-cab voice command listener, fleet maintenance calculations, repair history memory ledger, mandatory same-day DVIR compliance exports, generic ELD hardware audit and raw CAN-bus telemetry visualizer, Quantum Load Optimizer, interactive map-based geofencing, Night HUD, In-Cab Messaging &amp; CB Radio, Sleeper Berth Cinema, Firebase Firestore persistence, Dispatch Zero, FMCSA HOS ELD, and low bridge detection mesh." />
+    <meta name="description" content="TruckWithEase: a trucking operations app for drivers and small fleets, with hours-of-service log tracking, DVIR reports, dispatch, load boards, maintenance records and fleet telematics." />
     <meta property="og:title" content="TRUCKWITHEASE — Drive Smart. Stay Compliant." />
-    <meta property="og:description" content="Tactical trucking operations command center with Gemini 3.5 microphone audio transcription, Gemini 3.1 Flash image creation &amp; editing studio, hands-free in-cab voice command listener, fleet maintenance calculations, repair history memory ledger, mandatory same-day DVIR compliance exports, generic ELD hardware audit and raw CAN-bus telemetry visualizer, Quantum Load Optimizer, interactive map-based geofencing, Night HUD, In-Cab Messaging &amp; CB Radio, Sleeper Berth Cinema, Firebase Firestore persistence, Dispatch Zero, FMCSA HOS ELD, and low bridge detection mesh." />
+    <meta property="og:description" content="TruckWithEase: a trucking operations app for drivers and small fleets, with hours-of-service log tracking, DVIR reports, dispatch, load boards, maintenance records and fleet telematics." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://truckwithease.com" />
     <link rel="canonical" href="https://truckwithease.com" />
@@ -37,19 +37,8 @@
         } catch(e) {}
       })();
     </script>
-      <!-- Google Analytics 4 (GA4) Measurement -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TWE2026MGR1"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-TWE2026MGR1', {
-        send_page_view: true,
-        cookie_flags: 'SameSite=None;Secure'
-      });
-    </script>
-    <!-- Cloudflare Web Analytics Beacon (truckwithease.com & Morrishive.com) -->
-    <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "cf_bcn_truckwithease_9841"}'></script>
+    <!-- Analytics: GA4 and the Cloudflare beacon are loaded by src/services/liveAnalyticsConnectorService.ts,
+         only when VITE_GA4_MEASUREMENT_ID / VITE_CLOUDFLARE_BEACON_TOKEN are set. No IDs are hard-coded here. -->
   </head>
   <body class="bg-[#0A0E0B] text-[#F1F5F9] font-['Inter',sans-serif] antialiased selection:bg-[#22C55E]/30 selection:text-[#4ADE80] min-h-screen">
     <div id="root"></div>
