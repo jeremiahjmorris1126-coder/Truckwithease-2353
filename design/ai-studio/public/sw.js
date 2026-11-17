@@ -1,15 +1,19 @@
 // ============================================================================
-// TRUCKWITHEASE LOCAL-FIRST SERVICE WORKER (PWA & OFFLINE ELD SYNC)
-// FMCSA §395 Compliant: Caches app assets and critical ELD HOS logs offline.
-// Stores logs in IndexedDB and triggers automatic background push to Firestore.
+// TRUCKWITHEASE LOCAL-FIRST SERVICE WORKER (PWA & OFFLINE LOG SYNC)
+// Caches the app shell so it opens offline. HOS logs themselves are stored in
+// IndexedDB by src/services (eldIndexedDbService / eldFirestoreSyncService);
+// this worker only tells open windows when to retry the Firestore sync.
 // ============================================================================
 
-const CACHE_NAME = 'truckwithease-pwa-v1';
+const CACHE_NAME = 'truckwithease-pwa-v2';
+// Only files that really exist in public/ or the build output.
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.ico',
+  '/favicon.png',
+  '/icon-192.png',
+  '/icon-512.png',
 ];
 
 const BROADCAST_CHANNEL_NAME = 'truckwithease_eld_sync';
@@ -29,11 +33,17 @@ try {
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('Service worker precache warning:', err);
-      });
-    })
+    caches.open(CACHE_NAME).then((cache) =>
+      // Cache each file on its own: cache.addAll() is all-or-nothing, so one
+      // missing file used to leave the whole offline cache empty.
+      Promise.allSettled(STATIC_ASSETS.map((asset) => cache.add(asset))).then((results) => {
+        results.forEach((result, i) => {
+          if (result.status === 'rejected') {
+            console.error('Service worker could not precache ' + STATIC_ASSETS[i] + ':', result.reason);
+          }
+        });
+      })
+    )
   );
 });
 
@@ -82,12 +92,15 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         })
-        .catch(() => {
-          // If offline and request is HTML navigation, return cached index.html
+        .catch(async () => {
+          // Offline. For page loads, fall back to the cached app shell.
+          // (caches.match() returns a Promise, so `a || b` never reached b before.)
           if (event.request.mode === 'navigate') {
-            return caches.match('/index.html') || caches.match('/');
+            const shell = (await caches.match('/index.html')) || (await caches.match('/'));
+            if (shell) return shell;
           }
-          return cachedResponse;
+          // respondWith() must always get a Response, never undefined.
+          return cachedResponse || Response.error();
         });
 
       return cachedResponse || fetchPromise;

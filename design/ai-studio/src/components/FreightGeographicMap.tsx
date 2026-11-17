@@ -147,9 +147,9 @@ export const FreightGeographicMap: React.FC<FreightGeographicMapProps> = ({
   selectedRigId,
   onSelectRig,
 }) => {
-  // API key configuration with default user provided Google Maps API key
+  // Google Maps key: prop, then VITE_GOOGLE_MAPS_API_KEY, then a key typed in at runtime (never hard-coded)
   const envKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || '';
-  const [customKey, setCustomKey] = useState<string>(apiKey || 'AIzaSyARKnjOYNAyq5RdWdif6qn4tTLT0lEEb0w');
+  const [customKey, setCustomKey] = useState<string>(apiKey || '');
   const [isKeyInputOpen, setIsKeyInputOpen] = useState<boolean>(false);
   const activeKey = apiKey || envKey || customKey;
 

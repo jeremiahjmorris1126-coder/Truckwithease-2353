@@ -5,7 +5,7 @@
   "bundledWebRuntime": false,
   "backgroundColor": "#040810",
   "server": {
-    "url": "https://truckwithease.com",
+    "androidScheme": "https",
     "cleartext": false,
     "allowNavigation": [
       "truckwithease.com",

@@ -53,8 +53,9 @@ export interface RealtimeEdgeTelemetry {
 
 class LiveAnalyticsConnectorService {
   private config: LiveAnalyticsConfig = {
-    ga4MeasurementId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GA4_MEASUREMENT_ID) || 'G-TWE2026MGR1',
-    cloudflareBeaconToken: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CLOUDFLARE_BEACON_TOKEN) || 'cf_bcn_truckwithease_9841',
+    // Real IDs only come from the environment. No placeholder fallbacks: if a value isn't set, that script isn't loaded.
+    ga4MeasurementId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GA4_MEASUREMENT_ID) || '',
+    cloudflareBeaconToken: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CLOUDFLARE_BEACON_TOKEN) || '',
     cloudflareApiToken: '',
     cloudflareZoneTruckWithEase: 'twe_zone_truckwithease_com',
     cloudflareZoneMorrishive: 'mh_zone_morrishive_com',

@@ -1,19 +1,17 @@
-# TruckWithEase Backend Maintenance Agent Rule
+# TruckWithEase: rules for coding agents
 
-## Agent Identity & Sole Directive
-You are the **TruckWithEase Backend Maintenance Agent**.
-Your **SOLE ROLE** is to work the backend maintenance of TruckWithEase:
-- **Confirm and direct all exported updates from Google AI** (Gemini 3.8 Flash, Google AI Studio, Gemini Grounding feeds, vision/transcription outputs).
-- Maintain 100% operational uptime and sub-50ms latency across all Express routes and microservices in `server.ts`.
-- Ensure zero data loss across Cloud Firestore, IndexedDB local-first storage, and sovereign ledger entries.
-- Verify schema integrity before applying any Google AI export to live registries.
+## What this project is
+- Front end: React + Vite + Tailwind (`src/`), with a service worker in `public/sw.js`.
+- Back end: Express in `server.ts`.
+- Data and logins: Firestore and Firebase Auth (Google sign-in). Rules live in `firestore.rules`.
+- Phone apps: Capacitor (`capacitor.config.json`) bundles the built `dist/` folder.
+- Deploy target: Google Cloud Run for the server, Firebase Hosting for the web app, plus Firestore rules. Never Vercel, Render or pm2.
 
-## Key Backend Systems Maintained
-1. **Google AI Studio Pipeline**: `/api/gemini/*` (Gemini 3.8 Flash, 3.1 Flash Image, 3.5 Transcribe).
-2. **State DOT Highway Closures**: `/api/twitter-studio/*` with official X tokens.
-3. **FMCSA Legal & Regulatory Vault**: `/api/claude/audit` with Title 49 CFR jurisprudence.
-4. **SAE J1939 CAN-Bus 29-Bit Engine**: `/api/j1939/*` PGN/SPN decoding.
-5. **Nationwide Insurance Rating Engine**: `/api/v1/insurance/*` telematics discount tiering.
-6. **Quantum Fleet Sensing Suite**: `/api/v1/quantum/*` cold-atom inertial fix and cat qubit routing.
-7. **PrePass, Drivewyze, MyGeotab, & DAT One**: 50-state bypass and freight mesh.
-8. **Cloud Firestore & Local IndexedDB**: Store-and-forward offline synchronization.
+## Rules
+1. Describe only what the code actually does. Don't claim features, AI model versions, uptime or speed that nobody has measured.
+2. Never call the app FMCSA-registered, FMCSA-certified or FMCSA-compliant. It is not a registered ELD.
+3. Many screens use simulated data (mock data, `Math.random()`). Label those screens "Demo data", and never present simulated numbers as real.
+4. Never hard-code API keys, analytics IDs or tokens. Use environment variables (see `.env.example`) and Google Secret Manager.
+5. Never invent test results. Say exactly what you ran and what happened.
+6. Keep `firestore.rules` locked down: no `if true` on driver, DVIR, HOS, asset, repair or toll data.
+7. Don't deploy, push to main or change cloud settings without asking the owner first.

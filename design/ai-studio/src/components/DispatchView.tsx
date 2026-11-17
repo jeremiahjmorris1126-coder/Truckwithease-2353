@@ -56,6 +56,9 @@ import {
 } from '../services/fleetTelematicsService';
 import { FleetManagerFingertipCockpit } from './FleetManagerFingertipCockpit';
 
+// Google Maps key comes from the environment (VITE_GOOGLE_MAPS_API_KEY), never from source code.
+const GOOGLE_MAPS_API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || '';
+
 const INITIAL_AVAILABLE_DRIVERS: AvailableRelayDriver[] = [
   {
     id: 'drv-relay-vance',
@@ -730,7 +733,7 @@ export const DispatchView: React.FC<DispatchViewProps> = ({ onNavigateToTab }) =
             <FreightGeographicMap
               hazards={LOW_BRIDGE_HAZARDS}
               simulatedVehicleHeight={162}
-              apiKey="AIzaSyARKnjOYNAyq5RdWdif6qn4tTLT0lEEb0w"
+              apiKey={GOOGLE_MAPS_API_KEY}
               activeLoad={selectedLoad}
               fleetRigs={fleetRigs}
               selectedRigId={selectedRigId}
@@ -782,7 +785,7 @@ export const DispatchView: React.FC<DispatchViewProps> = ({ onNavigateToTab }) =
             <FreightGeographicMap
               hazards={LOW_BRIDGE_HAZARDS}
               simulatedVehicleHeight={162}
-              apiKey="AIzaSyARKnjOYNAyq5RdWdif6qn4tTLT0lEEb0w"
+              apiKey={GOOGLE_MAPS_API_KEY}
               activeLoad={selectedLoad}
               fleetRigs={fleetRigs}
               selectedRigId={selectedRigId}
@@ -1874,7 +1877,7 @@ export const DispatchView: React.FC<DispatchViewProps> = ({ onNavigateToTab }) =
                     <FreightGeographicMap
                       hazards={LOW_BRIDGE_HAZARDS}
                       simulatedVehicleHeight={162}
-                      apiKey="AIzaSyARKnjOYNAyq5RdWdif6qn4tTLT0lEEb0w"
+                      apiKey={GOOGLE_MAPS_API_KEY}
                       activeLoad={selectedLoad}
                       fleetRigs={fleetRigs}
                       selectedRigId={selectedRigId}
