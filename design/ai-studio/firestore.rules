@@ -134,6 +134,8 @@ service cloud.firestore {
     }
 
     // 6. Fleet Equipment Assets (with telemetry & Last Repaired links)
+    // Security fix: the collections below used to allow reads and writes with no login at all.
+    // They now require a signed-in user. Still to do: limit each user to their own fleet's records.
     match /fleet_assets/{assetId} {
       function isValidAsset(data) {
         return data.id is string && data.id.size() <= 128 &&
@@ -143,9 +145,9 @@ service cloud.firestore {
                data.status in ['ACTIVE_RUNNING', 'IN_SHOP', 'SCHEDULED_PM', 'OUT_OF_SERVICE'];
       }
 
-      allow get: if true;
-      allow list: if true;
-      allow create, update: if isValidId(assetId) && isValidAsset(incoming());
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(assetId) && isValidAsset(incoming());
       allow delete: if false;
     }
 
@@ -160,15 +162,15 @@ service cloud.firestore {
                data.status in ['COMPLETED_CERTIFIED', 'UNDER_WARRANTY', 'SCHEDULED', 'IN_PROGRESS'];
       }
 
-      allow get: if true;
-      allow list: if true;
-      allow create, update: if isValidId(workOrderId) && isValidRepair(incoming());
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(workOrderId) && isValidRepair(incoming());
       allow delete: if false;
     }
 
     // 8. User Toll Passports & Transponder Credentials
     match /user_toll_passports/{userId} {
-      allow get: if true;
+      allow get: if isSignedIn() && isOwner(userId);
       allow list: if isSignedIn();
       allow create, update: if isSignedIn() && isValidId(userId);
       allow delete: if false;
@@ -176,17 +178,17 @@ service cloud.firestore {
 
     // 9. Drivewyze Enrolled Fleet Assets
     match /drivewyze_enrollments/{enrollmentId} {
-      allow get: if true;
-      allow list: if true;
-      allow create, update: if isValidId(enrollmentId);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(enrollmentId);
       allow delete: if false;
     }
 
     // 10. Toll Expense Audit Logs
     match /toll_expense_logs/{logId} {
-      allow get: if true;
-      allow list: if true;
-      allow create, update: if isValidId(logId);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(logId);
       allow delete: if false;
     }
 
@@ -199,9 +201,9 @@ service cloud.firestore {
                data.medCardStatus in ['CERTIFIED_COMPLIANT', 'EXPIRING_SOON', 'EXPIRED'];
       }
 
-      allow get: if true;
-      allow list: if true;
-      allow create, update: if isValidId(driverId) && isValidDriverRecord(incoming());
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(driverId) && isValidDriverRecord(incoming());
       allow delete: if false;
     }
 
@@ -215,9 +217,9 @@ service cloud.firestore {
                data.safeToOperate is bool;
       }
 
-      allow get: if true;
-      allow list: if true;
-      allow create, update: if isValidId(dvirId) && isValidDvir(incoming());
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(dvirId) && isValidDvir(incoming());
       allow delete: if false;
     }
 
@@ -230,9 +232,9 @@ service cloud.firestore {
                data.isCleanPass is bool;
       }
 
-      allow get: if true;
-      allow list: if true;
-      allow create, update: if isValidId(inspectionId) && isValidRoadside(incoming());
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(inspectionId) && isValidRoadside(incoming());
       allow delete: if false;
     }
 
@@ -244,9 +246,9 @@ service cloud.firestore {
                data.status in ['ALL_HEALTHY', 'REPAIRED_HEALTHY', 'DEGRADED'];
       }
 
-      allow get: if true;
-      allow list: if true;
-      allow create, update: if isValidId(logId) && isValidDiagnosticLog(incoming());
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(logId) && isValidDiagnosticLog(incoming());
       allow delete: if false;
     }
 
@@ -260,9 +262,9 @@ service cloud.firestore {
                data.showNasaWeatherAlerts is bool;
       }
 
-      allow get: if true;
-      allow list: if true;
-      allow create, update: if isValidId(configId) && isValidTickerPref(incoming());
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(configId) && isValidTickerPref(incoming());
       allow delete: if false;
     }
   }
